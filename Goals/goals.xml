@@ -30,7 +30,7 @@
         <Frames>
             <Button name="GoalsMainTab" inherits="UIPanelButtonTemplate">
                 <Size>
-                    <AbsDimension x="100" y="30" />
+                    <AbsDimension x="120" y="40" />
                 </Size>
                 <Anchors>
                     <Anchor point="TOPLEFT" x="10" y="-10" />
@@ -59,10 +59,10 @@
 
             <Button name="GoalsLootHistoryTab" inherits="UIPanelButtonTemplate">
                 <Size>
-                    <AbsDimension x="100" y="30" />
+                    <AbsDimension x="120" y="40" />
                 </Size>
                 <Anchors>
-                    <Anchor point="TOPLEFT" x="120" y="-10" />
+                    <Anchor point="TOPLEFT" x="140" y="-10" />
                 </Anchors>
                 <NormalTexture file="Interface\Buttons\UI-Panel-Button-Up" />
                 <PushedTexture file="Interface\Buttons\UI-Panel-Button-Down" />
