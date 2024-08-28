@@ -1,35 +1,35 @@
--- Create a table to store boss kill data
-local bossKills = {}
+-- Reference to the SavedVariables table
+GoalsDB = GoalsDB or {}
 
 -- Function to handle boss kill event
 local function OnBossKill(self, event, encounterID, encounterName, difficultyID, groupSize, success)
     -- Check if the boss was killed successfully
     if success then
         -- If this boss has not been killed before, initialize its count
-        if not bossKills[encounterName] then
-            bossKills[encounterName] = { count = 0, players = {} }
+        if not GoalsDB[encounterName] then
+            GoalsDB[encounterName] = { count = 0, players = {} }
         end
         
         -- Increment the boss kill count
-        bossKills[encounterName].count = bossKills[encounterName].count + 1
+        GoalsDB[encounterName].count = GoalsDB[encounterName].count + 1
         
         -- Get the list of players in the raid or group
         local numGroupMembers = GetNumGroupMembers()
-        bossKills[encounterName].players = {} -- Reset the player list
+        GoalsDB[encounterName].players = {} -- Reset the player list
         
         for i = 1, numGroupMembers do
             local name = GetRaidRosterInfo(i)
             if name then
-                table.insert(bossKills[encounterName].players, name)
+                table.insert(GoalsDB[encounterName].players, name)
             end
         end
         
         -- Update the UI with the new data
-        MyBossTracker_UpdateUI()
+        Goals_UpdateUI()
 
         -- Print a message to the chat to confirm the boss kill has been recorded
-        print("Boss killed: " .. encounterName .. ". Kill count: " .. bossKills[encounterName].count)
-        print("Participants: " .. table.concat(bossKills[encounterName].players, ", "))
+        print("Boss killed: " .. encounterName .. ". Kill count: " .. GoalsDB[encounterName].count)
+        print("Participants: " .. table.concat(GoalsDB[encounterName].players, ", "))
     end
 end
 
@@ -39,14 +39,30 @@ f:RegisterEvent("ENCOUNTER_END")
 f:SetScript("OnEvent", OnBossKill)
 
 -- Function to update the UI
-function MyBossTracker_UpdateUI()
+function Goals_UpdateUI()
     -- Clear the existing list
-    MyBossTrackerFrameScrollChildText:SetText("")
+    GoalsFrameScrollChildText:SetText("")
 
-    -- Iterate over the bossKills table and display each boss and its count
-    for bossName, data in pairs(bossKills) do
+    -- Iterate over the GoalsDB table and display each boss and its count
+    for bossName, data in pairs(GoalsDB) do
         local players = table.concat(data.players, ", ")
         local info = string.format("%s: %d kills - Participants: %s\n", bossName, data.count, players)
-        MyBossTrackerFrameScrollChildText:SetText(MyBossTrackerFrameScrollChildText:GetText() .. info)
+        GoalsFrameScrollChildText:SetText(GoalsFrameScrollChildText:GetText() .. info)
     end
 end
+
+-- Initialize the UI when the addon is loaded
+local function OnAddonLoaded(self, event, name)
+    if name == "Goals" then
+        Goals_UpdateUI()
+    end
+end
+
+f:RegisterEvent("ADDON_LOADED")
+f:SetScript("OnEvent", function(self, event, ...)
+    if event == "ADDON_LOADED" then
+        OnAddonLoaded(self, event, ...)
+    elseif event == "ENCOUNTER_END" then
+        OnBossKill(self, event, ...)
+    end
+end)
