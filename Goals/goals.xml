@@ -30,25 +30,12 @@
         <Frames>
             <Button name="GoalsMainTab" inherits="UIPanelButtonTemplate">
                 <Size>
-                    <AbsDimension x="120" y="40" />
+                    <AbsDimension x="120" y="30" />
                 </Size>
                 <Anchors>
                     <Anchor point="TOPLEFT" x="10" y="-10" />
                 </Anchors>
-                <NormalTexture file="Interface\Buttons\UI-Panel-Button-Up" />
-                <PushedTexture file="Interface\Buttons\UI-Panel-Button-Down" />
-                <HighlightTexture file="Interface\Buttons\UI-Panel-Button-Highlight" blendMode="ADD" />
-                <DisabledTexture file="Interface\Buttons\UI-Panel-Button-Disabled" />
-                <Layers>
-                    <Layer level="OVERLAY">
-                        <FontString name="GoalsMainTabText" inherits="GameFontNormal">
-                            <Anchors>
-                                <Anchor point="CENTER" />
-                            </Anchors>
-                            <Text>Main</Text>
-                        </FontString>
-                    </Layer>
-                </Layers>
+                <Text>Main</Text>
                 <Scripts>
                     <OnClick>
                         GoalsFrameMainContent:Show()
@@ -59,25 +46,12 @@
 
             <Button name="GoalsLootHistoryTab" inherits="UIPanelButtonTemplate">
                 <Size>
-                    <AbsDimension x="120" y="40" />
+                    <AbsDimension x="120" y="30" />
                 </Size>
                 <Anchors>
                     <Anchor point="TOPLEFT" x="140" y="-10" />
                 </Anchors>
-                <NormalTexture file="Interface\Buttons\UI-Panel-Button-Up" />
-                <PushedTexture file="Interface\Buttons\UI-Panel-Button-Down" />
-                <HighlightTexture file="Interface\Buttons\UI-Panel-Button-Highlight" blendMode="ADD" />
-                <DisabledTexture file="Interface\Buttons\UI-Panel-Button-Disabled" />
-                <Layers>
-                    <Layer level="OVERLAY">
-                        <FontString name="GoalsLootHistoryTabText" inherits="GameFontNormal">
-                            <Anchors>
-                                <Anchor point="CENTER" />
-                            </Anchors>
-                            <Text>Loot History</Text>
-                        </FontString>
-                    </Layer>
-                </Layers>
+                <Text>Loot History</Text>
                 <Scripts>
                     <OnClick>
                         GoalsFrameMainContent:Hide()
