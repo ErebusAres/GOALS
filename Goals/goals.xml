@@ -35,7 +35,16 @@
                 <Anchors>
                     <Anchor point="TOPLEFT" x="10" y="-10" />
                 </Anchors>
-                <Text>Main</Text>
+                <Layers>
+                    <Layer level="OVERLAY">
+                        <FontString name="$parentText" inherits="GameFontNormal">
+                            <Anchors>
+                                <Anchor point="CENTER" />
+                            </Anchors>
+                            <Text>Main</Text>
+                        </FontString>
+                    </Layer>
+                </Layers>
                 <Scripts>
                     <OnClick>
                         GoalsFrameMainContent:Show()
@@ -51,7 +60,16 @@
                 <Anchors>
                     <Anchor point="TOPLEFT" x="140" y="-10" />
                 </Anchors>
-                <Text>Loot History</Text>
+                <Layers>
+                    <Layer level="OVERLAY">
+                        <FontString name="$parentText" inherits="GameFontNormal">
+                            <Anchors>
+                                <Anchor point="CENTER" />
+                            </Anchors>
+                            <Text>Loot History</Text>
+                        </FontString>
+                    </Layer>
+                </Layers>
                 <Scripts>
                     <OnClick>
                         GoalsFrameMainContent:Hide()
