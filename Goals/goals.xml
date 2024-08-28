@@ -29,32 +29,28 @@
         <!-- Tab Buttons -->
         <Frames>
             <Button name="GoalsMainTab" inherits="UIPanelButtonTemplate">
-                <Size>
-                    <AbsDimension x="120" y="40" />
-                </Size>
+            <Size>
+                <AbsDimension x="120" y="40" />
+            </Size>
+            <Anchors>
+                <Anchor point="TOPLEFT" x="10" y="-10" />
+            </Anchors>
+            <NormalTexture file="Interface\Buttons\UI-Panel-Button-Up" />
+            <PushedTexture file="Interface\Buttons\UI-Panel-Button-Down" />
+            <HighlightTexture file="Interface\Buttons\UI-Panel-Button-Highlight" blendMode="ADD" />
+            <DisabledTexture file="Interface\Buttons\UI-Panel-Button-Disabled" />
+            <FontString name="GoalsMainTabText" inherits="GameFontNormal">
                 <Anchors>
-                    <Anchor point="TOPLEFT" x="10" y="-10" />
+                <Anchor point="CENTER" />
                 </Anchors>
-                <NormalTexture file="Interface\Buttons\UI-Panel-Button-Up" />
-                <PushedTexture file="Interface\Buttons\UI-Panel-Button-Down" />
-                <HighlightTexture file="Interface\Buttons\UI-Panel-Button-Highlight" blendMode="ADD" />
-                <DisabledTexture file="Interface\Buttons\UI-Panel-Button-Disabled" />
-                <Layers>
-                    <Layer level="OVERLAY">
-                        <FontString name="GoalsMainTabText" inherits="GameFontNormal">
-                            <Anchors>
-                                <Anchor point="CENTER" />
-                            </Anchors>
-                            <Text>Main</Text>
-                        </FontString>
-                    </Layer>
-                </Layers>
-                <Scripts>
-                    <OnClick>
-                        GoalsFrameMainContent:Show()
-                        GoalsFrameLootHistory:Hide()
-                    </OnClick>
-                </Scripts>
+                <Text>Main</Text>
+            </FontString>
+            <Scripts>
+                <OnClick>
+                GoalsFrameMainContent:Show()
+                GoalsFrameLootHistory:Hide()
+                </OnClick>
+            </Scripts>
             </Button>
 
             <Button name="GoalsLootHistoryTab" inherits="UIPanelButtonTemplate">
