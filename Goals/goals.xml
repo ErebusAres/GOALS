@@ -1,0 +1,55 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <Frame name="MyBossTrackerFrame" parent="UIParent" hidden="true" movable="true" enableMouse="true" clampedToScreen="true">
+        <Size>
+            <AbsDimension x="400" y="300" />
+        </Size>
+        <Anchors>
+            <Anchor point="CENTER" />
+        </Anchors>
+        <Backdrop bgFile="Interface\DialogFrame\UI-DialogBox-Background" edgeFile="Interface\DialogFrame\UI-DialogBox-Border" tile="true">
+            <BackgroundInsets>
+                <AbsInset left="11" right="12" top="12" bottom="11" />
+            </BackgroundInsets>
+            <TileSize>
+                <AbsValue val="32" />
+            </TileSize>
+            <EdgeSize>
+                <AbsValue val="32" />
+            </EdgeSize>
+        </Backdrop>
+        <TitleRegion>
+            <Size>
+                <AbsDimension x="100" y="32" />
+            </Size>
+            <Anchors>
+                <Anchor point="TOP" />
+            </Anchors>
+        </TitleRegion>
+        <Frames>
+            <ScrollFrame name="MyBossTrackerFrameScroll" inherits="UIPanelScrollFrameTemplate">
+                <Size>
+                    <AbsDimension x="360" y="250" />
+                </Size>
+                <Anchors>
+                    <Anchor point="TOPLEFT" x="20" y="-40" />
+                </Anchors>
+                <ScrollChild name="MyBossTrackerFrameScrollChild">
+                    <FontString name="MyBossTrackerFrameScrollChildText" inherits="GameFontNormalSmall">
+                        <Anchors>
+                            <Anchor point="TOPLEFT" />
+                        </Anchors>
+                        <Text>Boss Kill Tracker:</Text>
+                    </FontString>
+                </ScrollChild>
+            </ScrollFrame>
+        </Frames>
+        <Scripts>
+            <OnLoad>
+                MyBossTrackerFrame:RegisterForDrag("LeftButton")
+                MyBossTrackerFrame:SetScript("OnDragStart", MyBossTrackerFrame.StartMoving)
+                MyBossTrackerFrame:SetScript("OnDragStop", MyBossTrackerFrame.StopMovingOrSizing)
+                MyBossTrackerFrame:Show()
+            </OnLoad>
+        </Scripts>
+    </Frame>
+</Ui>
