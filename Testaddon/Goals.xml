@@ -37,5 +37,13 @@
                 </FontString>
             </Layer>
         </Layers>
+        <Scripts>
+            <OnLoad>
+                GoalsFrame:RegisterForDrag("LeftButton")
+                GoalsFrame:SetScript("OnDragStart", GoalsFrame.StartMoving)
+                GoalsFrame:SetScript("OnDragStop", GoalsFrame.StopMovingOrSizing)
+                GoalsFrame:Show()
+            </OnLoad>
+        </Scripts>
     </Frame>
 </Ui>
