@@ -65,7 +65,56 @@ local function OnLootReceived(self, event, message)
         if #GoalsLootHistory > 10 then
             table.remove(GoalsLootHistory, 11)
         end
+-- Function to update the loot history UI
+function Goals_UpdateLootHistoryUI()
+    -- Ensure GoalsLootScrollChildText is initialized
+    if not GoalsLootScrollChildText then
+        print("Error: GoalsLootScrollChildText is not initialized.")
+        return
+    end
+    -- Clear the existing list
+    GoalsLootScrollChildText:SetText("")
+    -- Iterate over the GoalsLootHistory table and display the last 10 items
+    for _, entry in ipairs(GoalsLootHistory) do
+        local info = string.format("%s received %s from %s\n", entry.player, entry.item, entry.boss)
+        GoalsLootScrollChildText:SetText(GoalsLootScrollChildText:GetText() .. info)
+    end
+    -- Display "NO INFORMATION YET" if GoalsLootHistory is empty
+    if GoalsLootScrollChildText:GetText() == "" then
+        GoalsLootScrollChildText:SetText("NO INFORMATION YET")
+    end
+end
 
+-- Function to handle button click
+function GoalsMainTab_OnClick()
+    -- Ensure GoalsFrameMainContent is initialized
+    if not GoalsFrameMainContent then
+        print("Error: GoalsFrameMainContent is not initialized.")
+        return
+    end
+    -- Your existing code to handle the button click
+    GoalsFrameMainContent:SetText("Button clicked!")
+end
+
+-- Initialize the UI when the addon is loaded
+local function OnAddonLoaded(self, event, name)
+    if name == "Goals" then
+        Goals_UpdateUI()
+        Goals_UpdateLootHistoryUI()
+    end
+end
+
+local f = CreateFrame("Frame")
+f:RegisterEvent("ADDON_LOADED")
+f:SetScript("OnEvent", function(self, event, ...)
+    if event == "ADDON_LOADED" then
+        OnAddonLoaded(self, event, ...)
+    elseif event == "COMBAT_LOG_EVENT_UNFILTERED" then
+        OnCombatLogEvent(self, event, ...)
+    elseif event == "CHAT_MSG_LOOT" then
+        OnLootReceived(self, event, ...)
+    end
+end)
         -- Update the UI to reflect the reset
         Goals_UpdateUI()        -- Function to update the loot history UI
         function Goals_UpdateLootHistoryUI()
