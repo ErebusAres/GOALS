@@ -1,5 +1,5 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-    <Frame name="GoalsFrame" parent="UIParent" hidden="true" movable="true" enableMouse="true" clampedToScreen="true">
+    <Frame name="GoalsFrame" parent="UIParent" hidden="false" movable="true" enableMouse="true" clampedToScreen="true">
         <Size>
             <AbsDimension x="500" y="400" />
         </Size>
@@ -19,143 +19,23 @@
         </Backdrop>
         <TitleRegion>
             <Size>
-                <AbsDimension x="100" y="32" />
+                <AbsDimension x="500" y="32" />
             </Size>
             <Anchors>
                 <Anchor point="TOP" />
             </Anchors>
         </TitleRegion>
 
-        <!-- Tab Buttons -->
-        <Frames>
-            <Button name="GoalsBossKillsTab" inherits="UIPanelButtonTemplate">
-                <Size>
-                    <AbsDimension x="120" y="30" />
-                </Size>
-                <Anchors>
-                    <Anchor point="TOPLEFT" x="10" y="-10" />
-                </Anchors>
-                <Text>Boss Kills</Text>
-                <NormalFont="GameFontNormal" />
-                <Scripts>
-                    <OnClick>
-                        GoalsFrameBossKillsContent:Show()
-                        GoalsFrameHistoryContent:Hide()
-                    </OnClick>
-                </Scripts>
-            </Button>
-
-            <Button name="GoalsHistoryTab" inherits="UIPanelButtonTemplate">
-                <Size>
-                    <AbsDimension x="120" y="30" />
-                </Size>
-                <Anchors>
-                    <Anchor point="TOPLEFT" x="140" y="-10" />
-                </Anchors>
-                <Text>History</Text>
-                <NormalFont="GameFontNormal" />
-                <Scripts>
-                    <OnClick>
-                        GoalsFrameBossKillsContent:Hide()
-                        GoalsFrameHistoryContent:Show()
-                    </OnClick>
-                </Scripts>
-            </Button>
-        </Frames>
-
-        <!-- Boss Kills Content Frame -->
-        <Frames>
-            <Frame name="GoalsFrameBossKillsContent">
-                <Size>
-                    <AbsDimension x="500" y="350" />
-                </Size>
-                <Anchors>
-                    <Anchor point="TOPLEFT" x="0" y="-50" />
-                </Anchors>
-                <ScrollFrame name="GoalsBossKillsScroll" inherits="UIPanelScrollFrameTemplate">
-                    <Size>
-                        <AbsDimension x="480" y="340" />
-                    </Size>
+        <!-- Simple Title Text -->
+        <Layers>
+            <Layer level="OVERLAY">
+                <FontString name="GoalsTitle" inherits="GameFontNormalLarge">
                     <Anchors>
-                        <Anchor point="TOPLEFT" x="10" y="-10" />
+                        <Anchor point="TOP" x="0" y="-20"/>
                     </Anchors>
-                    <ScrollChild name="GoalsBossKillsScrollChild">
-                        <FontString name="GoalsBossKillsScrollChildText" inherits="GameFontNormal">
-                            <Anchors>
-                                <Anchor point="TOPLEFT" />
-                            </Anchors>
-                            <Text>Player Name | Kills</Text>
-                        </FontString>
-                    </ScrollChild>
-                </ScrollFrame>
-
-                <!-- Test Button to Add Fake Data for Boss Kills -->
-                <Button name="GoalsTestBossKillsButton" inherits="UIPanelButtonTemplate">
-                    <Size>
-                        <AbsDimension x="100" y="25" />
-                    </Size>
-                    <Anchors>
-                        <Anchor point="BOTTOMLEFT" x="10" y="10" />
-                    </Anchors>
-                    <Text>Add Boss Kill Data</Text>
-                    <Scripts>
-                        <OnClick>
-                            Goals_AddTestBossKillsData()
-                        </OnClick>
-                    </Scripts>
-                </Button>
-            </Frame>
-
-            <!-- History Content Frame -->
-            <Frame name="GoalsFrameHistoryContent" hidden="true">
-                <Size>
-                    <AbsDimension x="500" y="350" />
-                </Size>
-                <Anchors>
-                    <Anchor point="TOPLEFT" x="0" y="-50" />
-                </Anchors>
-                <ScrollFrame name="GoalsHistoryScroll" inherits="UIPanelScrollFrameTemplate">
-                    <Size>
-                        <AbsDimension x="480" y="340" />
-                    </Size>
-                    <Anchors>
-                        <Anchor point="TOPLEFT" x="10" y="-10" />
-                    </Anchors>
-                    <ScrollChild name="GoalsHistoryScrollChild">
-                        <FontString name="GoalsHistoryScrollChildText" inherits="GameFontNormal">
-                            <Anchors>
-                                <Anchor point="TOPLEFT" />
-                            </Anchors>
-                            <Text>History of Recent Items</Text>
-                        </FontString>
-                    </ScrollChild>
-                </ScrollFrame>
-
-                <!-- Test Button to Add Fake Data for Loot History -->
-                <Button name="GoalsTestLootHistoryButton" inherits="UIPanelButtonTemplate">
-                    <Size>
-                        <AbsDimension x="100" y="25" />
-                    </Size>
-                    <Anchors>
-                        <Anchor point="BOTTOMLEFT" x="10" y="10" />
-                    </Anchors>
-                    <Text>Add Loot History Data</Text>
-                    <Scripts>
-                        <OnClick>
-                            Goals_AddTestLootHistoryData()
-                        </OnClick>
-                    </Scripts>
-                </Button>
-            </Frame>
-        </Frames>
-
-        <Scripts>
-            <OnLoad>
-                GoalsFrame:RegisterForDrag("LeftButton")
-                GoalsFrame:SetScript("OnDragStart", GoalsFrame.StartMoving)
-                GoalsFrame:SetScript("OnDragStop", GoalsFrame.StopMovingOrSizing)
-                GoalsFrame:Show()
-            </OnLoad>
-        </Scripts>
+                    <Text>Goals Addon</Text>
+                </FontString>
+            </Layer>
+        </Layers>
     </Frame>
 </Ui>
