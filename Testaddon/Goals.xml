@@ -1,7 +1,7 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
     <Frame name="GoalsFrame" parent="UIParent" hidden="true" movable="true" enableMouse="true" clampedToScreen="true">
         <Size>
-            <AbsDimension x="400" y="300" />
+            <AbsDimension x="500" y="400" />
         </Size>
         <Anchors>
             <Anchor point="CENTER" />
@@ -28,92 +28,124 @@
 
         <!-- Tab Buttons -->
         <Frames>
-            <Button name="GoalsMainTab" inherits="UIPanelButtonTemplate">
+            <Button name="GoalsBossKillsTab" inherits="UIPanelButtonTemplate">
                 <Size>
                     <AbsDimension x="120" y="30" />
                 </Size>
                 <Anchors>
                     <Anchor point="TOPLEFT" x="10" y="-10" />
                 </Anchors>
-                <Text>Main</Text>
+                <Text>Boss Kills</Text>
                 <NormalFont="GameFontNormal" />
                 <Scripts>
                     <OnClick>
-                        GoalsFrameMainContent:Show()
-                        GoalsFrameLootHistory:Hide()
+                        GoalsFrameBossKillsContent:Show()
+                        GoalsFrameHistoryContent:Hide()
                     </OnClick>
                 </Scripts>
             </Button>
 
-            <Button name="GoalsLootHistoryTab" inherits="UIPanelButtonTemplate">
+            <Button name="GoalsHistoryTab" inherits="UIPanelButtonTemplate">
                 <Size>
                     <AbsDimension x="120" y="30" />
                 </Size>
                 <Anchors>
                     <Anchor point="TOPLEFT" x="140" y="-10" />
                 </Anchors>
-                <Text>Loot History</Text>
+                <Text>History</Text>
                 <NormalFont="GameFontNormal" />
                 <Scripts>
                     <OnClick>
-                        GoalsFrameMainContent:Hide()
-                        GoalsFrameLootHistory:Show()
+                        GoalsFrameBossKillsContent:Hide()
+                        GoalsFrameHistoryContent:Show()
                     </OnClick>
                 </Scripts>
             </Button>
         </Frames>
 
-        <!-- Main Content Frame -->
+        <!-- Boss Kills Content Frame -->
         <Frames>
-            <Frame name="GoalsFrameMainContent">
+            <Frame name="GoalsFrameBossKillsContent">
                 <Size>
-                    <AbsDimension x="400" y="250" />
+                    <AbsDimension x="500" y="350" />
                 </Size>
                 <Anchors>
-                    <Anchor point="TOPLEFT" x="0" y="-40" />
+                    <Anchor point="TOPLEFT" x="0" y="-50" />
                 </Anchors>
-                <ScrollFrame name="GoalsFrameScroll" inherits="UIPanelScrollFrameTemplate">
+                <ScrollFrame name="GoalsBossKillsScroll" inherits="UIPanelScrollFrameTemplate">
                     <Size>
-                        <AbsDimension x="360" y="250" />
+                        <AbsDimension x="480" y="340" />
                     </Size>
                     <Anchors>
-                        <Anchor point="TOPLEFT" x="20" y="-40" />
+                        <Anchor point="TOPLEFT" x="10" y="-10" />
                     </Anchors>
-                    <ScrollChild name="GoalsFrameScrollChild">
-                        <FontString name="GoalsFrameScrollChildText" inherits="GameFontNormalSmall">
+                    <ScrollChild name="GoalsBossKillsScrollChild">
+                        <FontString name="GoalsBossKillsScrollChildText" inherits="GameFontNormal">
                             <Anchors>
                                 <Anchor point="TOPLEFT" />
                             </Anchors>
-                            <Text>Boss Kill Tracker:</Text>
+                            <Text>Player Name | Kills</Text>
                         </FontString>
                     </ScrollChild>
                 </ScrollFrame>
+
+                <!-- Test Button to Add Fake Data for Boss Kills -->
+                <Button name="GoalsTestBossKillsButton" inherits="UIPanelButtonTemplate">
+                    <Size>
+                        <AbsDimension x="100" y="25" />
+                    </Size>
+                    <Anchors>
+                        <Anchor point="BOTTOMLEFT" x="10" y="10" />
+                    </Anchors>
+                    <Text>Add Boss Kill Data</Text>
+                    <Scripts>
+                        <OnClick>
+                            Goals_AddTestBossKillsData()
+                        </OnClick>
+                    </Scripts>
+                </Button>
             </Frame>
 
-            <!-- Loot History Frame -->
-            <Frame name="GoalsFrameLootHistory" hidden="true">
+            <!-- History Content Frame -->
+            <Frame name="GoalsFrameHistoryContent" hidden="true">
                 <Size>
-                    <AbsDimension x="400" y="250" />
+                    <AbsDimension x="500" y="350" />
                 </Size>
                 <Anchors>
-                    <Anchor point="TOPLEFT" x="0" y="-40" />
+                    <Anchor point="TOPLEFT" x="0" y="-50" />
                 </Anchors>
-                <ScrollFrame name="GoalsLootScroll" inherits="UIPanelScrollFrameTemplate">
+                <ScrollFrame name="GoalsHistoryScroll" inherits="UIPanelScrollFrameTemplate">
                     <Size>
-                        <AbsDimension x="360" y="250" />
+                        <AbsDimension x="480" y="340" />
                     </Size>
                     <Anchors>
-                        <Anchor point="TOPLEFT" x="20" y="-40" />
+                        <Anchor point="TOPLEFT" x="10" y="-10" />
                     </Anchors>
-                    <ScrollChild name="GoalsLootScrollChild">
-                        <FontString name="GoalsLootScrollChildText" inherits="GameFontNormalSmall">
+                    <ScrollChild name="GoalsHistoryScrollChild">
+                        <FontString name="GoalsHistoryScrollChildText" inherits="GameFontNormal">
                             <Anchors>
                                 <Anchor point="TOPLEFT" />
                             </Anchors>
-                            <Text>Loot History:</Text>
+                            <Text>History of Recent Items</Text>
                         </FontString>
                     </ScrollChild>
                 </ScrollFrame>
+
+                <!-- Test Button to Add Fake Data for Loot History -->
+                <Button name="GoalsTestLootHistoryButton" inherits="UIPanelButtonTemplate">
+                    <Size>
+                        <AbsDimension x="100" y="25" />
+                    </Size>
+                    <Anchors>
+                        <Anchor point="BOTTOMLEFT" x="10" y="10" />
+                    </Anchors>
+                    <Text>Add Loot History Data</Text>
+                    <Scripts>
+                        <OnClick>
+                            Goals_AddTestLootHistoryData()
+                        </OnClick>
+                    </Scripts>
+                </Button>
             </Frame>
         </Frames>
 
