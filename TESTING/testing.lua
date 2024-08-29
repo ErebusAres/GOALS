@@ -1,19 +1,18 @@
--- wowprogramming.com ; reference page for api
+SLASH_FRAMESTK1 = "/fs"
+    SlashCmdList.FRAMESTK = function()
+        LoadAddOn('Blizzard_DebugTools')
+        FrameStackTooltip_Toggle()
+    end
 
-local s = 5;
-local myFunc = function() 
-    local s;
-    s = 2;
-    return s;
-end
+local f = CreateFrame("Frame")
 
-s = myFunc();
-print(s) -- returns 2
+f:RegisterEvent("PLAYER_ENTER_COMBAT")
+f:RegisterEvent("PLAYER_LEAVE_COMBAT")
 
-local function counter(a, b, c)
-    local ans = (a * b) + c;
-
-    return ans;
-end
-
-print(counter(15, 3, 600));
+f:SetScript("OnEvent", function(self, event, ...)
+    if event == "PLAYER_ENTER_COMBAT" then
+        print("You're in combat!")
+    elseif event == "PLAYER_LEAVE_COMBAT" then
+        print("You're no longer in combat!")
+    end
+end)
