@@ -36,6 +36,7 @@
                     <Anchor point="TOPLEFT" x="10" y="-10" />
                 </Anchors>
                 <Text>Main</Text>
+                <NormalFont="GameFontNormal" />
                 <Scripts>
                     <OnClick>
                         GoalsFrameMainContent:Show()
@@ -52,6 +53,7 @@
                     <Anchor point="TOPLEFT" x="140" y="-10" />
                 </Anchors>
                 <Text>Loot History</Text>
+                <NormalFont="GameFontNormal" />
                 <Scripts>
                     <OnClick>
                         GoalsFrameMainContent:Hide()
