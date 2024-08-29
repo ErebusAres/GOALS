@@ -98,6 +98,11 @@ function Goals_UpdateUI()
         local info = string.format("%s: %d kills - Participants: %s\n", bossName, data.count, playerInfo)
         GoalsFrameScrollChildText:SetText(GoalsFrameScrollChildText:GetText() .. info)
     end
+
+    -- Display "NO INFORMATION YET" if GoalsDB is empty
+    if GoalsFrameScrollChildText:GetText() == "" then
+        GoalsFrameScrollChildText:SetText("NO INFORMATION YET")
+    end
 end
 
 -- Function to update the loot history UI
@@ -109,6 +114,11 @@ function Goals_UpdateLootHistoryUI()
     for _, entry in ipairs(GoalsLootHistory) do
         local info = string.format("%s received %s from %s\n", entry.player, entry.item, entry.boss)
         GoalsLootScrollChildText:SetText(GoalsLootScrollChildText:GetText() .. info)
+    end
+
+    -- Display "NO INFORMATION YET" if GoalsLootHistory is empty
+    if GoalsLootScrollChildText:GetText() == "" then
+        GoalsLootScrollChildText:SetText("NO INFORMATION YET")
     end
 end
 
