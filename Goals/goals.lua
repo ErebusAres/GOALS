@@ -3,34 +3,44 @@ GoalsDB = GoalsDB or {}
 GoalsLootHistory = GoalsLootHistory or {}
 
 -- Function to handle boss kill event
-local function OnBossKill(self, event, encounterID, encounterName, difficultyID, groupSize, success)
-    if success then
-        -- If this boss has not been killed before, initialize its count
-        if not GoalsDB[encounterName] then
-            GoalsDB[encounterName] = { count = 0, players = {} }
+local function OnBossKill(encounterName)
+    -- If this boss has not been killed before, initialize its count
+    if not GoalsDB[encounterName] then
+        GoalsDB[encounterName] = { count = 0, players = {} }
+    end
+    
+    -- Increment the boss kill count
+    GoalsDB[encounterName].count = GoalsDB[encounterName].count + 1
+    
+    -- Get the list of players in the raid or group
+    local numGroupMembers = GetNumRaidMembers() -- Use GetNumRaidMembers for 3.3.5a
+    GoalsDB[encounterName].players = {} -- Reset the player list
+    
+    for i = 1, numGroupMembers do
+        local name = GetRaidRosterInfo(i)
+        if name then
+            GoalsDB[encounterName].players[name] = GoalsDB[encounterName].players[name] or 0
+            GoalsDB[encounterName].players[name] = GoalsDB[encounterName].players[name] + 1
         end
-        
-        -- Increment the boss kill count
-        GoalsDB[encounterName].count = GoalsDB[encounterName].count + 1
-        
-        -- Get the list of players in the raid or group
-        local numGroupMembers = GetNumGroupMembers()
-        GoalsDB[encounterName].players = {} -- Reset the player list
-        
-        for i = 1, numGroupMembers do
-            local name = GetRaidRosterInfo(i)
-            if name then
-                GoalsDB[encounterName].players[name] = GoalsDB[encounterName].players[name] or 0
-                GoalsDB[encounterName].players[name] = GoalsDB[encounterName].players[name] + 1
-            end
-        end
-        
-        -- Update the UI with the new data
-        Goals_UpdateUI()
+    end
+    
+    -- Update the UI with the new data
+    Goals_UpdateUI()
 
-        -- Print a message to the chat to confirm the boss kill has been recorded
-        print("Boss killed: " .. encounterName .. ". Kill count: " .. GoalsDB[encounterName].count)
-        print("Participants: " .. table.concat(table.keys(GoalsDB[encounterName].players), ", "))
+    -- Print a message to the chat to confirm the boss kill has been recorded
+    print("Boss killed: " .. encounterName .. ". Kill count: " .. GoalsDB[encounterName].count)
+    print("Participants: " .. table.concat(table.keys(GoalsDB[encounterName].players), ", "))
+end
+
+-- Function to handle combat log event
+local function OnCombatLogEvent(self, event, ...)
+    local timestamp, subEvent, _, _, _, _, _, destGUID, destName, destFlags, _, spellID, spellName = ...
+    
+    if subEvent == "UNIT_DIED" then
+        local isBoss = UnitClassification(destName) == "worldboss"
+        if isBoss then
+            OnBossKill(destName)
+        end
     end
 end
 
@@ -62,13 +72,13 @@ local function OnLootReceived(self, event, message)
     end
 end
 
--- Register the event handler to listen for the ENCOUNTER_END and CHAT_MSG_LOOT events
+-- Register the event handler to listen for the COMBAT_LOG_EVENT_UNFILTERED and CHAT_MSG_LOOT events
 local f = CreateFrame("Frame")
-f:RegisterEvent("ENCOUNTER_END")
+f:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
 f:RegisterEvent("CHAT_MSG_LOOT")
 f:SetScript("OnEvent", function(self, event, ...)
-    if event == "ENCOUNTER_END" then
-        OnBossKill(self, event, ...)
+    if event == "COMBAT_LOG_EVENT_UNFILTERED" then
+        OnCombatLogEvent(self, event, ...)
     elseif event == "CHAT_MSG_LOOT" then
         OnLootReceived(self, event, ...)
     end
@@ -114,8 +124,8 @@ f:RegisterEvent("ADDON_LOADED")
 f:SetScript("OnEvent", function(self, event, ...)
     if event == "ADDON_LOADED" then
         OnAddonLoaded(self, event, ...)
-    elseif event == "ENCOUNTER_END" then
-        OnBossKill(self, event, ...)
+    elseif event == "COMBAT_LOG_EVENT_UNFILTERED" then
+        OnCombatLogEvent(self, event, ...)
     elseif event == "CHAT_MSG_LOOT" then
         OnLootReceived(self, event, ...)
     end
