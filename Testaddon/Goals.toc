@@ -9,5 +9,5 @@
 
 ## libs ##
 
-goals.xml
-goals.lua
+Goals.xml
+Goals.lua
