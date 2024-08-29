@@ -86,6 +86,12 @@ end)
 
 -- Function to update the main UI
 function Goals_UpdateUI()
+    -- Ensure GoalsFrameScrollChildText is initialized
+    if not GoalsFrameScrollChildText then
+        print("Error: GoalsFrameScrollChildText is not initialized.")
+        return
+    end
+
     -- Clear the existing list
     GoalsFrameScrollChildText:SetText("")
 
@@ -107,6 +113,12 @@ end
 
 -- Function to update the loot history UI
 function Goals_UpdateLootHistoryUI()
+    -- Ensure GoalsLootScrollChildText is initialized
+    if not GoalsLootScrollChildText then
+        print("Error: GoalsLootScrollChildText is not initialized.")
+        return
+    end
+
     -- Clear the existing list
     GoalsLootScrollChildText:SetText("")
 
