@@ -87,11 +87,23 @@ local function OnLootReceived(self, event, message)
             end
         end
         
+        -- Function to handle button click
+        function GoalsMainTab_OnClick()
+            -- Ensure GoalsFrameMainContent is initialized
+            if not GoalsFrameMainContent then
+                print("Error: GoalsFrameMainContent is not initialized.")
+                return
+            end
+            -- Your existing code to handle the button click
+            GoalsFrameMainContent:SetText("Button clicked!")
+        end
+        
         -- Initialize the UI when the addon is loaded
         local function OnAddonLoaded(self, event, name)
             if name == "Goals" then
                 Goals_UpdateUI()
                 Goals_UpdateLootHistoryUI()
+                GoalsMainTab_OnClick() -- Call the new function
             end
         end
         
