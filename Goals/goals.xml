@@ -1,5 +1,5 @@
-<Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-    <Frame name="GoalsFrame" parent="UIParent" hidden="true" movable="true" enableMouse="true" clampedToScreen="true">
+<Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/ C:\Projects\WoW\Bin\Interface\FrameXML\UI.xsd">
+    <Frame name="GoalsFrame" parent="UIParent" hidden="false" movable="true" enableMouse="true" clampedToScreen="true">
         <Size>
             <AbsDimension x="400" y="300" />
         </Size>
@@ -28,7 +28,7 @@
 
         <!-- Tab Buttons -->
         <Frames>
-            <Button name="GoalsMainTab" inherits="UIPanelButtonTemplate">
+            <Button name="GoalsMainTab" text="Main" inherits="UIPanelButtonTemplate">
                 <Size>
                     <AbsDimension x="120" y="30" />
                 </Size>
@@ -41,7 +41,6 @@
                             <Anchors>
                                 <Anchor point="CENTER" />
                             </Anchors>
-                            <Text>Main</Text>
                         </FontString>
                     </Layer>
                 </Layers>
@@ -53,7 +52,7 @@
                 </Scripts>
             </Button>
 
-            <Button name="GoalsLootHistoryTab" inherits="UIPanelButtonTemplate">
+            <Button name="GoalsLootHistoryTab" text="Loot History" inherits="UIPanelButtonTemplate">
                 <Size>
                     <AbsDimension x="120" y="30" />
                 </Size>
@@ -66,7 +65,6 @@
                             <Anchors>
                                 <Anchor point="CENTER" />
                             </Anchors>
-                            <Text>Loot History</Text>
                         </FontString>
                     </Layer>
                 </Layers>
@@ -77,34 +75,32 @@
                     </OnClick>
                 </Scripts>
             </Button>
-        </Frames>
-
-        <!-- Main Content Frame -->
-        <Frames>
-            <Frame name="GoalsFrameMainContent">
+        
+            <ScrollFrame name="GoalsFrameMainContent" hidden="false">
                 <Size>
                     <AbsDimension x="400" y="250" />
                 </Size>
                 <Anchors>
                     <Anchor point="TOPLEFT" x="0" y="-40" />
                 </Anchors>
-                <ScrollFrame name="GoalsFrameScroll" inherits="UIPanelScrollFrameTemplate">
-                    <Size>
+                <Size>
                         <AbsDimension x="360" y="250" />
                     </Size>
                     <Anchors>
                         <Anchor point="TOPLEFT" x="20" y="-40" />
                     </Anchors>
                     <ScrollChild name="GoalsFrameScrollChild">
-                        <FontString name="GoalsFrameScrollChildText" inherits="GameFontNormalSmall">
+                        <FontString name="GoalsFrameScrollChildText" text="Boss Kill Tracker:" hidden="false" inherits="GameFontNormalSmall">
                             <Anchors>
                                 <Anchor point="TOPLEFT" />
                             </Anchors>
-                            <Text>Boss Kill Tracker:</Text>
                         </FontString>
                     </ScrollChild>
-                </ScrollFrame>
-            </Frame>
+
+                <!--<ScrollFrame name="GoalsFrameScroll" inherits="UIPanelScrollFrameTemplate">
+                    
+                </ScrollFrame>-->
+            </ScrollFrame>
 
             <!-- Loot History Frame -->
             <Frame name="GoalsFrameLootHistory" hidden="true">
