@@ -3,6 +3,7 @@ SLASH_FRAMESTK1 = "/fs"
         LoadAddOn('Blizzard_DebugTools')
         FrameStackTooltip_Toggle()
     end
+    
 -- Define a table with creature names
 local creatureNames = {
     "Creature1",
