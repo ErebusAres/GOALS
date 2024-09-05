@@ -6,9 +6,13 @@ SLASH_FRAMESTK1 = "/fs"
     
 -- Define a table with creature names
 local creatureNames = {
-    "Creature1",
-    "Creature2",
-    "Creature3",
+    "Garryowen Boar",
+    -- AQ40
+    "C'thun",
+    -- BWL
+    "Nefarian", "Vaelastrasz the Corrupt", "Firemaw", "Ebonroc", "Flamegor", "Chromaggus", "Broodlord Lashlayer",
+    -- MC
+    "Ragnaros",
     -- Add more creature names as needed
 }
 
