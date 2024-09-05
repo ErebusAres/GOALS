@@ -15,6 +15,8 @@ local bossCreatures = {
     --[[Test "Bosses"]]
     -- Test "Bosses"
     ["Garryowen Boar"] = true,
+    ["Deranged Helboar"] = true,
+    ["Starving Helboar"] = true,
     --[[Wrath of the Lich King Raids]]
     -- Naxxramas Bosses
     ["Anub'Rekhan"] = true,
