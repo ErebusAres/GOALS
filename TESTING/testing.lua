@@ -15,7 +15,8 @@ local bossCreatures = {
     --[[Test "Bosses"]]
     -- Test "Bosses"
     ["Garryowen Boar"] = true,
-    ["Test Duo"] = true,
+    ["Deranged Helboar"] = true,
+    ["Starving Helboar"] = true,
     --[[Wrath of the Lich King Raids]]
     -- Naxxramas Bosses
     ["Anub'Rekhan"] = true,
@@ -180,37 +181,39 @@ local bossCreatures = {
     -- Add more creature names as needed
 }
 
+-- Multi-boss encounters
 local multiBossEncounters = {
     ["Twin Emperors"] = { "Emperor Vek'lor", "Emperor Vek'nilash" },
-    ["Bug Trio"] = { "Yauj", "Vem", "Kri" },
-    ["Test Duo"] = { "Deranged Helboar", "Starving Helboar"}
+    -- Add more multi-boss encounters as needed
 }
 
-local encounterStatus = {
-    ["Twin Emperors"] = { ["Emperor Vek'lor"] = false, ["Emperor Vek'nilash"] = false },
-    ["Bug Trio"] = { ["Yauj"] = false, ["Vem"] = false, ["Kri"] = false }
-    ["Test Duo"] = { ["Deranged Helboar"] = false, ["Starving Helboar"] = false }
-}
-
-local function checkEncounterComplete(encounter)
-    for _, boss in ipairs(multiBossEncounters[encounter]) do
-        if not encounterStatus[encounter][boss] then
-            return false
-        end
-    end
-    return true
-end
+-- Track kill status of multi-boss encounters
+local multiBossStatus = {}
 
 local function OnEvent(self, event, ...)
     local _, subevent, _, _, _, _, destName, _ = ...
     if (subevent == "UNIT_DIED") then
         if bossCreatures[destName] then
             print("Killed: ["..destName.."], a boss unit.")
+            
+            -- Check if the boss is part of a multi-boss encounter
             for encounter, bosses in pairs(multiBossEncounters) do
-                if encounterStatus[encounter][destName] ~= nil then
-                    encounterStatus[encounter][destName] = true
-                    if checkEncounterComplete(encounter) then
-                        print("All bosses in encounter ["..encounter.."] have been killed. Encounter complete.")
+                for _, boss in ipairs(bosses) do
+                    if destName == boss then
+                        multiBossStatus[encounter] = multiBossStatus[encounter] or {}
+                        multiBossStatus[encounter][boss] = true
+                        
+                        -- Check if all bosses in the encounter are killed
+                        local allKilled = true
+                        for _, bossName in ipairs(bosses) do
+                            if not multiBossStatus[encounter][bossName] then
+                                allKilled = false
+                                break
+                            end
+                        
+                        if allKilled then
+                            print("All bosses in the encounter ["..encounter.."] have been killed.")
+                        end
                     end
                 end
             end
@@ -218,21 +221,6 @@ local function OnEvent(self, event, ...)
             print("Killed: ["..destName.."], not on the boss list.")
         end
     end
-end
-
-local f = CreateFrame("Frame")
-f:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
-f:SetScript("OnEvent", OnEvent)
-
-local function OnEvent(self, event, ...)
-   local _, subevent, _, _, _, _, destName, _ = ...
-   if (subevent == "UNIT_DIED") then
-       if bossCreatures[destName] then
-           print("Killed: ["..destName.."], a boss unit.")
-       else
-           print("Killed: ["..destName.."], not on the boss list.")
-       end
-   end
 end
 
 local f = CreateFrame("Frame")
