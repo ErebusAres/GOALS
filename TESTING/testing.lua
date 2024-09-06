@@ -15,8 +15,7 @@ local bossCreatures = {
     --[[Test "Bosses"]]
     -- Test "Bosses"
     ["Garryowen Boar"] = true,
-    ["Deranged Helboar"] = true,
-    ["Starving Helboar"] = true,
+    ["Test Duo"] = true,
     --[[Wrath of the Lich King Raids]]
     -- Naxxramas Bosses
     ["Anub'Rekhan"] = true,
@@ -161,7 +160,7 @@ local bossCreatures = {
     ["Ossirian the Unscarred"] = true,
     -- Temple of Ahn'Qiraj Bosses
     ["The Prophet Skeram"] = true,
-    ["Silithid Royalty"] = true,
+    ["Bug Trio"] = true,
     ["Battleguard Sartura"] = true,
     ["Fankriss the Unyielding"] = true,
     ["Viscidus"] = true,
@@ -180,6 +179,50 @@ local bossCreatures = {
     ["Onyxia"] = true,
     -- Add more creature names as needed
 }
+
+local multiBossEncounters = {
+    ["Twin Emperors"] = { "Emperor Vek'lor", "Emperor Vek'nilash" },
+    ["Bug Trio"] = { "Yauj", "Vem", "Kri" },
+    ["Test Duo"] = { "Deranged Helboar", "Starving Helboar"}
+}
+
+local encounterStatus = {
+    ["Twin Emperors"] = { ["Emperor Vek'lor"] = false, ["Emperor Vek'nilash"] = false },
+    ["Bug Trio"] = { ["Yauj"] = false, ["Vem"] = false, ["Kri"] = false }
+    ["Test Duo"] = { ["Deranged Helboar"] = false, ["Starving Helboar"] = false }
+}
+
+local function checkEncounterComplete(encounter)
+    for _, boss in ipairs(multiBossEncounters[encounter]) do
+        if not encounterStatus[encounter][boss] then
+            return false
+        end
+    end
+    return true
+end
+
+local function OnEvent(self, event, ...)
+    local _, subevent, _, _, _, _, destName, _ = ...
+    if (subevent == "UNIT_DIED") then
+        if bossCreatures[destName] then
+            print("Killed: ["..destName.."], a boss unit.")
+            for encounter, bosses in pairs(multiBossEncounters) do
+                if encounterStatus[encounter][destName] ~= nil then
+                    encounterStatus[encounter][destName] = true
+                    if checkEncounterComplete(encounter) then
+                        print("All bosses in encounter ["..encounter.."] have been killed. Encounter complete.")
+                    end
+                end
+            end
+        else
+            print("Killed: ["..destName.."], not on the boss list.")
+        end
+    end
+end
+
+local f = CreateFrame("Frame")
+f:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+f:SetScript("OnEvent", OnEvent)
 
 local function OnEvent(self, event, ...)
    local _, subevent, _, _, _, _, destName, _ = ...
