@@ -1,8 +1,13 @@
 -- Table of boss creatures, including multi-boss encounters
 local bossEncounters = {
+    --[[Test Encounters]]
+    ["The Boars"] = { "Deranged Helboar", "Starving Helboar" },
+    ["Garryowen Boar"] = { "Garryowen Boar" },
+    --[[Vanilla WoW Raids]]
+    --Ahn'Qiraj Bosses
+    ["The Prophet Skeram"] = { "The Prophet Skeram" },
     ["Twin Emperors"] = { "Vek'lor", "Vek'nilash" },
     ["Bug Trio"] = { "Yauj", "Vem", "Kri" },
-    ["The Boars"] = { "Deranged Helboar", "Starving Helboar" },
     ["The Prophet Skeram"] = { "The Prophet Skeram" },
     ["Battleguard Sartura"] = { "Battleguard Sartura" },
     ["Fankriss the Unyielding"] = { "Fankriss the Unyielding" },
