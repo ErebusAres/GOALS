@@ -15,8 +15,7 @@ local bossCreatures = {
     --[[Test "Bosses"]]
     -- Test "Bosses"
     ["Garryowen Boar"] = true,
-    ["Deranged Helboar"] = true,
-    ["Starving Helboar"] = true,
+    ["Test Duo"] = true,
     --[[Wrath of the Lich King Raids]]
     -- Naxxramas Bosses
     ["Anub'Rekhan"] = true,
@@ -184,6 +183,7 @@ local bossCreatures = {
 -- Multi-boss encounters
 local multiBossEncounters = {
     ["Twin Emperors"] = { "Emperor Vek'lor", "Emperor Vek'nilash" },
+    ["Test Duo"] = { "Deranged Helboar", "Starving Helboar" },
     -- Add more multi-boss encounters as needed
 }
 
