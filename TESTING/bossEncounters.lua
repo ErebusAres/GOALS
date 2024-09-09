@@ -221,3 +221,5 @@ local bossEncounters = {
     ["Highlord Kruul"] = { "Highlord Kruul" } -- This Boss can be found in Searing Gorge, and many other locations.
     -- Add more creature names as needed
 }
+
+return bossEncounters
