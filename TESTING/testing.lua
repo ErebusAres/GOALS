@@ -1,3 +1,4 @@
+local bossEncounters = require("TESTING/bossEncounters")
 -- Table to track which bosses from multi-boss encounters have been killed
 local bossesKilled = {}
 
