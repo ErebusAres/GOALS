@@ -1,7 +1,7 @@
 -- testing.lua
 
 -- Function to load the bossEncounters table from an external file
-local bossEncounters = dofile("Interface\\AddOns\\Testing\\bossEncounter.lua")
+local bossEncounters = assert(loadfile("Interface\\AddOns\\Testing\\bossEncounter.lua"))()
 
 -- Table to track which bosses from multi-boss encounters have been killed
 local bossesKilled = {}
