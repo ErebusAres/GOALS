@@ -4,9 +4,24 @@ local bossesKilled = {}
 local function OnEvent(self, event, ...)
     local _, subevent, _, _, _, _, destName, _ = ...
 
+    -- Debug print to check if bossEncounters is loaded
+    if not bossEncounters then
+        print("Error: bossEncounters table is nil")
+        return
+    end
+
     -- Check if the event is UNIT_DIED
     if (subevent == "UNIT_DIED") then
         local found = false
+
+        -- Debug print to check the content of bossEncounters
+        print("bossEncounters content:")
+        for encounter, bosses in pairs(bossEncounters) do
+            print("Encounter:", encounter)
+            for i, bossName in ipairs(bosses) do
+                print("  Boss:", bossName)
+            end
+        end
 
         -- Check if the killed unit belongs to any multi-boss encounter
         for encounter, bosses in pairs(bossEncounters) do
@@ -46,15 +61,10 @@ local function OnEvent(self, event, ...)
                 end
             end
         end
-
-        -- If destName doesn't match any boss, print it was not a boss
-        if not found then
-            print("Killed: ["..destName.."], not on the boss list.")
-        end
     end
 end
 
--- Event registration
+-- Register the event
 local f = CreateFrame("Frame")
 f:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
 f:SetScript("OnEvent", OnEvent)
