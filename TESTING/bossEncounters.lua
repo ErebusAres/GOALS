@@ -1,5 +1,5 @@
 -- Table of boss creatures, including multi-boss encounters
-local bossEncounters = {
+_G.bossEncounters = {
     --[[Test Encounters]]
     ["The Boars"] = { "Deranged Helboar", "Starving Helboar" }, --These boars are in HFP, Just North of Honor Hold.
     ["Garryowen Boar"] = { "Garryowen Boar" }, --These boars are in GarryOwen.
