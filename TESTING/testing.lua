@@ -1,3 +1,4 @@
+local bossEncounters = dofile("Interface\\AddOns\\TESTING\\bossEncounters.lua")
 -- Table to track which bosses from multi-boss encounters have been killed
 local bossesKilled = {}
 
