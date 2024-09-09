@@ -1,23 +1,7 @@
 -- testing.lua
 
 -- Function to load the bossEncounters table from an external file
-local function LoadBossEncounters()
-    local loaded, reason = LoadAddOn("bossEncounters")
-    if not loaded then
-        print("Failed to load bossEncounters: " .. reason)
-        return nil
-    end
-
-    local bossEncounters = GetAddOnMetadata("bossEncounters", "X-BossEncounters")
-    if not bossEncounters then
-        print("Failed to retrieve bossEncounters table")
-        return nil
-    end
-
-    return bossEncounters
-end
-
-local bossEncounters = LoadBossEncounters()
+local bossEncounters = dofile("Interface\\AddOns\\Testing\\bossEncounter.lua")
 
 -- Table to track which bosses from multi-boss encounters have been killed
 local bossesKilled = {}
