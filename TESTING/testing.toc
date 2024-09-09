@@ -9,6 +9,6 @@
 
 ## libs ##
 
-testing.lua
 bossEncounters.lua
+testing.lua
 testing.xml
