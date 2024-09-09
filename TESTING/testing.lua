@@ -1,4 +1,6 @@
-local bossEncounters = dofile("Interface\\AddOns\\TESTING\\bossEncounters.lua")
+-- testing.lua
+local bossEncounters = require("bossEncounters")
+
 -- Table to track which bosses from multi-boss encounters have been killed
 local bossesKilled = {}
 
