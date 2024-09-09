@@ -13,10 +13,10 @@ _G.bossEncounters = {
     ["Hakkar"] = { "Hakkar" },
     --Optional Zul'Gurub Bosses
     ["Bloodlord Encounter"] = { "Bloodlord Mandokir", "Ohgan" },
-    ["Edge of Madness"] = { "Gri'lek" },
-    ["Edge of Madness"] = { "Hazza'rah" },
-    ["Edge of Madness"] = { "Renataki" },
-    ["Edge of Madness"] = { "Wushoolay" },
+    ["Edge of Madness: Gri'lek"] = { "Gri'lek" },
+    ["Edge of Madness: Hazza'rah"] = { "Hazza'rah" },
+    ["Edge of Madness: Renataki"] = { "Renataki" },
+    ["Edge of Madness: Wushoolay"] = { "Wushoolay" },
     ["Gahz'ranka"] = { "Gahz'ranka" },
     ["Jin'do the Hexxer"] = { "Jin'do the Hexxer" },
     --T1 Molten Core Bosses
@@ -52,7 +52,6 @@ _G.bossEncounters = {
     ["Fankriss the Unyielding"] = { "Fankriss the Unyielding" },
     ["Princess Huhuran"] = { "Princess Huhuran" },
     ["Twin Emperors"] = { "Emperor Vek'lor", "Emperor Vek'nilash" },
-    ["Ouro"] = { "Ouro" },
     ["C'Thun"] = { "C'Thun" },
     --Optional Ahn'Qiraj Bosses
     ["Bug Trio"] = { "Lord Kri", "Princess Yauj", "Vem" },
@@ -192,8 +191,8 @@ _G.bossEncounters = {
     ["Lady Deathwhisper"] = { "Lady Deathwhisper" },
     --["Icecrown Gunship Battle"] = { "Horde Gunship" },
     --["Icecrown Gunship Battle"] = { "Alliance Gunship" },
-    ["Icecrown Gunship Battle"] = { "Muradin Bronzebeard" }, --Alliance Gunship; Muradin Bronzebeard is Technically an Elite. 
-    ["Icecrown Gunship Battle"] = { "High Overlord Saurfang" }, --Horde Gunship; High Overlord Saurfang is Technically an Elite. 
+    ["Icecrown Gunship Battle: Horde"] = { "Muradin Bronzebeard" }, --Alliance Gunship; Muradin Bronzebeard is Technically an Elite. 
+    ["Icecrown Gunship Battle: Alliance"] = { "High Overlord Saurfang" }, --Horde Gunship; High Overlord Saurfang is Technically an Elite. 
     ["Deathbringer Saurfang"] = { "Deathbringer Saurfang" },
     -- The Plagueworks
     ["Festergut"] = { "Festergut" },
