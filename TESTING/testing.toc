@@ -8,6 +8,6 @@
 ## OptionalDeps:
 
 ## libs ##
-
+bossEncounters.lua
 testing.lua
 testing.xml
