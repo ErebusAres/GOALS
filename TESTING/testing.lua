@@ -1,9 +1,10 @@
--- Desc: Testing AddOn for multi-boss encounter tracking.
--- This AddOn is intended to be used for testing purposes only.
+-- Declare tables for boss kills, encounters, and raid points
 local bossesKilled = {}
 local encounterActive = {}
 local encounterCompleted = {}
+local playerPoints = {}  -- Player points table
 
+-- Function to reset an encounter after completion
 local function ResetEncounter(encounter)
     bossesKilled[encounter] = nil
     encounterActive[encounter] = nil
@@ -11,37 +12,43 @@ local function ResetEncounter(encounter)
     print("Resetting encounter: ["..encounter.."]")
 end
 
+-- Function to track and add points to raid members
+local function AwardPointsToRaid()
+    local numRaidMembers = GetNumGroupMembers()
+    
+    -- Loop through all raid members
+    for i = 1, numRaidMembers do
+        local name = GetRaidRosterInfo(i)
+
+        -- Ensure the player is in the database, if not add them
+        if name and name ~= "" then
+            if not playerPoints[name] then
+                playerPoints[name] = 0
+            end
+
+            -- Award 1 point for successful encounter
+            playerPoints[name] = playerPoints[name] + 1
+            print("Awarded 1 point to: " .. name .. ". Total points: " .. playerPoints[name])
+        end
+    end
+end
+
+-- Function to handle events
 local function OnEvent(self, event, ...)
     local _, subevent, _, _, _, _, destName, _ = ...
 
-    -- Debugging output for specific cases
-    if subevent == "UNIT_DIED" then
-        print("UNIT_DIED Event:", destName)
-    elseif event == "PLAYER_REGEN_ENABLED" then
-        print("PLAYER_REGEN_ENABLED Event")
-    end
-
     if event == "COMBAT_LOG_EVENT_UNFILTERED" then
-        -- Check if the subevent is UNIT_DIED
         if (subevent == "UNIT_DIED") then
             local found = false
 
-            -- Check if the killed unit belongs to any multi-boss encounter
             for encounter, bosses in pairs(bossEncounters) do
-                if not bosses then
-                    print("Warning: No bosses defined for encounter ["..encounter.."]")
-                    break
-                end
-
                 for i, bossName in ipairs(bosses) do
                     if destName == bossName then
-                        -- Mark the boss as killed
                         bossesKilled[encounter] = bossesKilled[encounter] or {}
                         bossesKilled[encounter][bossName] = true
                         found = true
-                        encounterActive[encounter] = true  -- Mark encounter as active
+                        encounterActive[encounter] = true
 
-                        -- Check if all bosses in the encounter are dead
                         local allBossesDead = true
                         for _, boss in ipairs(bosses) do
                             if not bossesKilled[encounter][boss] then
@@ -50,39 +57,36 @@ local function OnEvent(self, event, ...)
                             end
                         end
 
-                        -- Print appropriate message and reset encounter if completed
                         if allBossesDead and not encounterCompleted[encounter] then
-                            print("Completed encounter: ["..encounter.."], all bosses killed.")
-                            encounterCompleted[encounter] = true  -- Mark encounter as completed
-                            ResetEncounter(encounter)  -- Reset after completion
+                            print("Completed encounter: [" .. encounter .. "], all bosses killed.")
+                            encounterCompleted[encounter] = true
+                            AwardPointsToRaid()  -- Award points to raid members
+                            ResetEncounter(encounter)
                         elseif not allBossesDead then
-                            print("Killed: ["..destName.."], still more bosses in ["..encounter.."].")
+                            print("Killed: [" .. destName .. "], still more bosses in [" .. encounter .. "].")
                         end
                     end
                 end
             end
 
-            -- If not part of a multi-boss encounter, check if it's a single boss
             if not found then
                 for encounter, bosses in pairs(bossEncounters) do
                     if #bosses == 1 and bosses[1] == destName then
-                        print("Killed: ["..destName.."], a boss unit.")
+                        print("Killed: [" .. destName .. "], a boss unit.")
                         found = true
                         encounterActive[encounter] = true
-                        ResetEncounter(encounter)  -- Reset after single boss kill
+                        AwardPointsToRaid()  -- Award points for single boss encounter
+                        ResetEncounter(encounter)
                         break
                     end
                 end
             end
 
-            -- If destName doesn't match any boss, print it was not a boss
             if not found then
-                print("Killed: ["..destName.."], not on the boss list.")
+                print("Killed: [" .. destName .. "], not on the boss list.")
             end
         end
-
     elseif event == "PLAYER_REGEN_ENABLED" then
-        -- Combat has ended, check if the encounter was a success or failure and reset
         for encounter, bosses in pairs(bossEncounters) do
             if encounterActive[encounter] and not encounterCompleted[encounter] then
                 local allBossesDead = true
@@ -94,7 +98,7 @@ local function OnEvent(self, event, ...)
                 end
 
                 if not allBossesDead then
-                    print("Encounter failed: ["..encounter.."]. Resetting.")
+                    print("Encounter failed: [" .. encounter .. "]. Resetting.")
                 end
                 ResetEncounter(encounter)
             end
@@ -102,8 +106,20 @@ local function OnEvent(self, event, ...)
     end
 end
 
+-- Function to print the list of raid members and their points
+local function PrintPoints()
+    print("Raid Points Summary:")
+    for name, points in pairs(playerPoints) do
+        print(name .. ": " .. points .. " points")
+    end
+end
+
+-- Command to display player points
+SLASH_SHOWPOINTS1 = '/showpoints'
+SlashCmdList["SHOWPOINTS"] = PrintPoints
+
 -- Event registration
 local f = CreateFrame("Frame")
 f:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
-f:RegisterEvent("PLAYER_REGEN_ENABLED")  -- Fires when combat ends
+f:RegisterEvent("PLAYER_REGEN_ENABLED")
 f:SetScript("OnEvent", OnEvent)
