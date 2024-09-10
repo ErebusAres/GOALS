@@ -1,5 +1,5 @@
--- Desc: Testing script for multi-boss encounter tracking
--- This script is intended to be used for testing purposes only.
+-- Desc: Testing AddOn for multi-boss encounter tracking.
+-- This AddOn is intended to be used for testing purposes only.
 local bossesKilled = {}
 local encounterActive = {}
 local encounterCompleted = {}
