@@ -22,7 +22,7 @@ local function OnEvent(self, event, ...)
     end
 
     if event == "COMBAT_LOG_EVENT_UNFILTERED" then
-        -- Check if the event is UNIT_DIED
+        -- Check if the subevent is UNIT_DIED
         if (subevent == "UNIT_DIED") then
             local found = false
 
