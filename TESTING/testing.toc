@@ -4,6 +4,7 @@
 ## Version: v0.0.1beta
 ## Notes: Boss and Loot Tracker for GO
 ## DefaultState: enabled
+## SavedVariables: PlayerPointsDB
 ## Dependencies:
 ## OptionalDeps:
 

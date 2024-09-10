@@ -1,37 +1,65 @@
--- Table to keep track of bosses killed in multi-boss encounters
 local bossesKilled = {}
+local playerPoints = {} -- Will hold the in-game session data for player points
 
--- Table to store player data with their points
-local playerData = {}
-
--- Function to save player data to a file
-local function SavePlayerData()
-    local file = io.open("player_data.txt", "w")  -- Open a file in write mode
-    for playerName, points in pairs(playerData) do  -- Iterate through player data
-        file:write(playerName .. ":" .. points .. "\n")  -- Write player name and points to the file
+-- Function to initialize or load the database
+local function InitializeDatabase()
+    -- Check if PlayerPointsDB exists, if not, initialize it
+    if not PlayerPointsDB then
+        PlayerPointsDB = {}
     end
-    file:close()  -- Close the file
+
+    -- Copy the saved points into the local playerPoints table
+    playerPoints = PlayerPointsDB
 end
 
--- Function to edit player data by adding points
-local function EditPlayerData(playerName, points)
-    playerData[playerName] = (playerData[playerName] or 0) + points  -- Add points to the player's current points
-    SavePlayerData()  -- Save the updated player data
+-- Function to save points to the SavedVariables
+local function SavePointsToDatabase()
+    -- Save the local playerPoints table to the SavedVariables
+    PlayerPointsDB = playerPoints
 end
 
--- Function to get the list of raid members
+-- Function to get the list of all players in the raid group
 local function GetRaidMembers()
-    local raidMembers = {}  -- Table to store raid members
-    for i = 1, GetNumRaidMembers() do  -- Loop through all raid members
-        local name = GetRaidRosterInfo(i)  -- Get the name of the raid member
+    local members = {}
+    local numRaidMembers = GetNumGroupMembers()
+
+    for i = 1, numRaidMembers do
+        local name = GetRaidRosterInfo(i)
         if name then
-            table.insert(raidMembers, name)  -- Add the name to the raid members table
+            table.insert(members, name)
         end
     end
-    return raidMembers  -- Return the list of raid members
+
+    return members
 end
 
--- Function to handle events
+-- Function to add points to players present in the raid
+local function AwardPointsToRaid()
+    local raidMembers = GetRaidMembers()
+
+    for _, playerName in ipairs(raidMembers) do
+        -- Initialize player points if not already done
+        if not playerPoints[playerName] then
+            playerPoints[playerName] = 0
+        end
+
+        -- Add a point to the player's total
+        playerPoints[playerName] = playerPoints[playerName] + 1
+    end
+
+    -- Save updated points to the database
+    SavePointsToDatabase()
+end
+
+-- Function to print players and their current points
+local function PrintPlayerPoints()
+    print("Raid members and their points:")
+
+    for playerName, points in pairs(playerPoints) do
+        print(playerName .. ": " .. points .. " points")
+    end
+end
+
 local function OnEvent(self, event, ...)
     local _, subevent, _, _, _, _, destName, _ = ...
 
@@ -57,13 +85,11 @@ local function OnEvent(self, event, ...)
                         end
                     end
 
-                    -- If all bosses are dead, print a message and save player data
+                    -- If all bosses in the encounter are dead, award points
                     if allDead then
                         print("Completed encounter: ["..encounter.."], all bosses killed.")
-                        local raidMembers = GetRaidMembers()  -- Get the list of raid members
-                        for _, playerName in ipairs(raidMembers) do
-                            EditPlayerData(playerName, 1)  -- Add 1 point to each player's data
-                        end
+                        AwardPointsToRaid() -- Award points to the raid group
+                        PrintPlayerPoints() -- Print player points to the chat
                     else
                         print("Killed: ["..destName.."], still more bosses in ["..encounter.."].")
                     end
@@ -76,6 +102,8 @@ local function OnEvent(self, event, ...)
             for encounter, bosses in pairs(bossEncounters) do
                 if #bosses == 1 and bosses[1] == destName then
                     print("Killed: ["..destName.."], a boss unit.")
+                    AwardPointsToRaid() -- Award points to the raid group
+                    PrintPlayerPoints() -- Print player points to the chat
                     found = true
                     break
                 end
@@ -92,4 +120,11 @@ end
 -- Event registration
 local f = CreateFrame("Frame")
 f:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
-f:SetScript("OnEvent", OnEvent)
+f:RegisterEvent("ADDON_LOADED") -- Event for when the addon is loaded
+f:SetScript("OnEvent", function(self, event, arg1, ...)
+    if event == "ADDON_LOADED" and arg1 == "MyAddon" then
+        InitializeDatabase() -- Load player points when addon is loaded
+    else
+        OnEvent(self, event, ...)
+    end
+end)
