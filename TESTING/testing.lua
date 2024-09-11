@@ -12,14 +12,40 @@ local function ResetEncounter(encounter)
     print("Resetting encounter: ["..encounter.."]")
 end
 
+-- Function to get the number of group members, with a debug message for when not in a raid or party
+local function GetGroupSize()
+    local inInstance, instanceType = IsInInstance()
+    if instanceType == "raid" then
+        -- Use the correct API function based on the context
+        if GetNumGroupMembers then
+            return GetNumGroupMembers()
+        else
+            print("Error: GetNumGroupMembers is not available.")
+            return 0
+        end
+    elseif instanceType == "party" then
+        if GetNumPartyMembers then
+            return GetNumPartyMembers() + 1  -- Include the player themselves
+        else
+            print("Error: GetNumPartyMembers is not available.")
+            return 0
+        end
+    else
+        -- Debug message for when not in a raid or party
+        print("You are not in a raid or party.")
+        return 1  -- Default to 1 if not in a raid or party (player only)
+    end
+end
+
+
 -- Function to track and add points to raid members
 local function AwardPointsToRaid()
-    local numRaidMembers = GetNumGroupMembers()
-    
-    -- Loop through all raid members
-    for i = 1, numRaidMembers do
-        local name = GetRaidRosterInfo(i)
+    local numGroupMembers = GetGroupSize()
 
+    -- Loop through all group members
+    for i = 1, numGroupMembers do
+        local name, _, subgroup, _, _, _, _, _, _, _, _ = GetRaidRosterInfo(i)
+        
         -- Ensure the player is in the database, if not add them
         if name and name ~= "" then
             if not playerPoints[name] then
@@ -29,9 +55,12 @@ local function AwardPointsToRaid()
             -- Award 1 point for successful encounter
             playerPoints[name] = playerPoints[name] + 1
             print("Awarded 1 point to: " .. name .. ". Total points: " .. playerPoints[name])
+        else
+            print("Error retrieving info for index " .. i)
         end
     end
 end
+
 
 -- Function to handle events
 local function OnEvent(self, event, ...)
