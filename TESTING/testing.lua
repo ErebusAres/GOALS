@@ -67,20 +67,15 @@ end
 -- Function to handle events
 local function OnEvent(self, event, ...)
     local _, subevent, _, _, _, _, destName, _ = ... -- Extract event arguments for WoW 3.3.5a
+
     if event == "COMBAT_LOG_EVENT_UNFILTERED" then
-
-        -- Debug messages to track the event and details
-        print("Combat Log Event: ", subevent)
-        print("Unit Name: ", destName)
-
-        -- Check if the event is UNIT_DIED (which happens when a unit dies)
         if subevent == "UNIT_DIED" then
             print("Unit died: ", destName)
 
             -- Now check if the unit that died is a boss
             local found = false
             for encounter, bosses in pairs(bossEncounters) do
-                for _, bossName in ipairs(bosses) do
+                for i, bossName in ipairs(bosses) do
                     if destName == bossName then
                         print("Boss killed: ", bossName)
                         bossesKilled[encounter] = bossesKilled[encounter] or {}
