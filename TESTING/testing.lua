@@ -66,12 +66,10 @@ end
 
 -- Function to handle events
 local function OnEvent(self, event, ...)
-    local _, subevent, _, _, _, _, destName, _ = ... -- Extract event arguments for WoW 3.3.5a
-
+    local _, subevent, _, _, _, _, destName, _ = ...
     if event == "COMBAT_LOG_EVENT_UNFILTERED" then
-        if subevent == "UNIT_DIED" then
+        if (subevent == "UNIT_DIED") then
             local found = false
-
             for encounter, bosses in pairs(bossEncounters) do
                 for i, bossName in ipairs(bosses) do
                     if destName == bossName then
@@ -79,8 +77,6 @@ local function OnEvent(self, event, ...)
                         bossesKilled[encounter][bossName] = true
                         found = true
                         encounterActive[encounter] = true
-
-                        -- Check if all bosses in the encounter are dead
                         local allBossesDead = true
                         for _, boss in ipairs(bosses) do
                             if not bossesKilled[encounter][boss] then
@@ -88,12 +84,10 @@ local function OnEvent(self, event, ...)
                                 break
                             end
                         end
-
-                        -- If all bosses are dead, mark the encounter as completed
                         if allBossesDead and not encounterCompleted[encounter] then
                             print("Completed encounter: [" .. encounter .. "], all bosses killed.")
                             encounterCompleted[encounter] = true
-                            AwardPointsToRaid()  -- Award points for a successful encounter
+                            AwardPointsToRaid()  -- Award points to raid members
                             ResetEncounter(encounter)
                         elseif not allBossesDead then
                             print("Killed: [" .. destName .. "], still more bosses in [" .. encounter .. "].")
@@ -104,22 +98,20 @@ local function OnEvent(self, event, ...)
             if not found then
                 for encounter, bosses in pairs(bossEncounters) do
                     if #bosses == 1 and bosses[1] == destName then
-                        print ("Killed: [".. destName .."], a boss unit.")
+                        print("Killed: [" .. destName .. "], a boss unit.")
                         found = true
                         encounterActive[encounter] = true
-                        AwardPointsToRaid() -- Award points for a single boss kill
+                        AwardPointsToRaid()  -- Award points for single boss encounter
                         ResetEncounter(encounter)
                         break
-                   end 
+                    end
                 end
             end
-            -- If the boss was not found in the main list, print a debug message
             if not found then
                 print("Killed: [" .. destName .. "], not on the boss list.")
             end
         end
     elseif event == "PLAYER_REGEN_ENABLED" then
-        -- Handle the case when combat ends, reset encounters if needed
         for encounter, bosses in pairs(bossEncounters) do
             if encounterActive[encounter] and not encounterCompleted[encounter] then
                 local allBossesDead = true
@@ -129,7 +121,6 @@ local function OnEvent(self, event, ...)
                         break
                     end
                 end
-
                 if not allBossesDead then
                     print("Encounter failed: [" .. encounter .. "]. Resetting.")
                 end
