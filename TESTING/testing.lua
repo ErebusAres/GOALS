@@ -66,9 +66,7 @@ end
 
 -- Function to handle events
 local function OnEvent(self, event, ...)
-    if event == "COMBAT_LOG_EVENT_UNFILTERED" then
-        local _, subevent, _, _, _, _, _, _, destName, _ = ...
-
+    local _, subevent, _, _, _, _, destName, _ = ...
         if (subevent == "UNIT_DIED") then
             local found = false
             for encounter, bosses in pairs(bossEncounters) do
