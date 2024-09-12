@@ -23,35 +23,36 @@ local function ResetEncounter(encounter)
     print("Resetting encounter: [" .. encounter .. "]")
 end
 
--- Function to get the number of group members, with a debug message for when not in a raid or party
+-- Function to get the number of group members
 local function GetGroupSize()
-    local inInstance, instanceType = IsInInstance()
-    if instanceType == "raid" then
-        if GetNumGroupMembers then
-            return GetNumGroupMembers()
-        else
-            print("Error: GetNumGroupMembers is not available.")
-            return 0
-        end
-    elseif instanceType == "party" then
-        if GetNumPartyMembers then
-            return GetNumPartyMembers() + 1
-        else
-            print("Error: GetNumPartyMembers is not available.")
-            return 0
-        end
+    if IsInRaid() then
+        return GetNumGroupMembers()
+    elseif GetNumPartyMembers() > 0 then
+        return GetNumPartyMembers() + 1  -- +1 includes the player
     else
         print("You are not in a raid or party.")
         return 1
     end
 end
 
--- Function to track and add points to raid members
-local function AwardPointsToRaid()
+-- Function to get the name of a group member based on index
+local function GetGroupMemberName(index)
+    if IsInRaid() then
+        local name, _, _, _, _, _, _, _, _, _ = GetRaidRosterInfo(index)
+        return name
+    elseif index == 1 then
+        return UnitName("player")  -- For the player themselves
+    else
+        return UnitName("party" .. (index - 1))  -- For party members (party1, party2, etc.)
+    end
+end
+
+-- Function to track and add points to raid/party members
+local function AwardPointsToGroup()
     local numGroupMembers = GetGroupSize()
 
     for i = 1, numGroupMembers do
-        local name = GetRaidRosterInfo(i)
+        local name = GetGroupMemberName(i)
         if name and name ~= "" then
             if not playerPoints[name] then
                 playerPoints[name] = 0
@@ -94,7 +95,7 @@ local function OnEvent(self, event, ...)
                         if allBossesDead and not encounterCompleted[encounter] then
                             print("Completed encounter: [" .. encounter .. "], all bosses killed.")
                             encounterCompleted[encounter] = true
-                            AwardPointsToRaid()  -- Award points to raid members
+                            AwardPointsToGroup()  -- Award points to all raid/party members
                             ResetEncounter(encounter)
                         elseif not allBossesDead then
                             print("Killed: [" .. destName .. "], still more bosses in [" .. encounter .. "].")
@@ -108,7 +109,7 @@ local function OnEvent(self, event, ...)
                         print("Killed: [" .. destName .. "], a boss unit.")
                         found = true
                         encounterActive[encounter] = true
-                        AwardPointsToRaid()  -- Award points for single boss encounter
+                        AwardPointsToGroup()  -- Award points for single boss encounter
                         ResetEncounter(encounter)
                         break
                     end
