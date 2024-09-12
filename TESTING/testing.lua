@@ -139,7 +139,6 @@ local function OnEvent(self, event, ...)
     end
 end
 
-
 -- Function to print the list of raid members and their points
 local function PrintPoints()
     print("Raid Points Summary:")
