@@ -188,6 +188,7 @@ f:SetScript("OnEvent", function(self, event, addonName)
     if addonName == "Testing" then  -- Replace with the actual addon name, later.
         InitializePlayerPoints()
         self:UnregisterEvent("ADDON_LOADED")
+        print("Addon: ["..addonName.."] loaded.")
     else
         OnEvent(self, event, ...)
     end
