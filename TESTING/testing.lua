@@ -65,12 +65,10 @@ local function AwardPointsToRaid()
 end
 
 -- Function to handle events
--- Function to handle events
 local function OnEvent(self, event, ...)
     if event == "COMBAT_LOG_EVENT_UNFILTERED" then
         -- Extract event arguments for WoW 3.3.5a
-        local timestamp, subevent, hideCaster, sourceGUID, sourceName, sourceFlags, sourceRaidFlags,
-              destGUID, destName, destFlags, destRaidFlags = ...
+        local _, subevent, _, _, _, _, destName, _ = ...
 
         -- Debug messages to track the event and details
         print("Combat Log Event: ", subevent)
