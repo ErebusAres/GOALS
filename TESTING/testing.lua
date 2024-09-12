@@ -180,16 +180,15 @@ SlashCmdList["SHOWPOINTS"] = PrintPoints
 local f = CreateFrame("Frame")
 f:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
 f:RegisterEvent("PLAYER_REGEN_ENABLED")
-f:SetScript("OnEvent", OnEvent)
-
--- Initialize saved data on addon load
 f:RegisterEvent("ADDON_LOADED")
-f:SetScript("OnEvent", function(self, event, addonName)
-    if addonName == "Testing" then  -- Replace with the actual addon name, later.
+
+-- Event handler function
+f:SetScript("OnEvent", function(self, event, addonName, ...)
+    if event == "ADDON_LOADED" and addonName == "Testing" then  -- Replace with the actual addon folder name (Case sensitive)
         InitializePlayerPoints()
         self:UnregisterEvent("ADDON_LOADED")
-        print("Addon: ["..addonName.."] loaded.")
     else
-        OnEvent(self, event, ...)
+        OnEvent(self, event, ...)  -- Pass the vararg '...' only if it's a different event
     end
 end)
+
