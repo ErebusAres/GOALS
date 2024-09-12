@@ -20,7 +20,7 @@ local function ResetEncounter(encounter)
     bossesKilled[encounter] = nil
     encounterActive[encounter] = nil
     encounterCompleted[encounter] = nil
-    print("Resetting encounter: ["..encounter.."]")
+    print("Resetting encounter: [" .. encounter .. "]")
 end
 
 -- Function to get the number of group members, with a debug message for when not in a raid or party
@@ -66,8 +66,15 @@ end
 
 -- Function to handle events
 local function OnEvent(self, event, ...)
-    local _, subevent, _, _, _, _, destName, _ = ...
-    if event == "COMBAT_LOG_EVENT_UNFILTERED" then
+    if event == "ADDON_LOADED" then
+        local addonName = ...
+        if addonName == "Testing" then  -- Replace with the actual addon folder name (Case sensitive)
+            InitializePlayerPoints()
+            self:UnregisterEvent("ADDON_LOADED")
+            print("Addon: [" .. addonName .. "] loaded.")
+        end
+    elseif event == "COMBAT_LOG_EVENT_UNFILTERED" then
+        local _, subevent, _, _, _, _, destName, _ = CombatLogGetCurrentEventInfo()
         if (subevent == "UNIT_DIED") then
             local found = false
             for encounter, bosses in pairs(bossEncounters) do
@@ -176,8 +183,5 @@ f:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
 f:RegisterEvent("PLAYER_REGEN_ENABLED")
 f:RegisterEvent("ADDON_LOADED")
 
--- Event handler function
+-- Use SetScript to directly bind OnEvent
 f:SetScript("OnEvent", OnEvent)
-
-
-
