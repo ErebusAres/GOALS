@@ -67,7 +67,7 @@ end
 -- Function to handle events
 local function OnEvent(self, event, ...)
     local _, subevent, _, _, _, _, destName, _ = ...
-    if (event == "COMBAT_LOG_EVENT_UNFILTERED") then
+    if event == "COMBAT_LOG_EVENT_UNFILTERED" then
         if (subevent == "UNIT_DIED") then
             local found = false
             for encounter, bosses in pairs(bossEncounters) do
@@ -111,7 +111,7 @@ local function OnEvent(self, event, ...)
                 print("Killed: [" .. destName .. "], not on the boss list.")
             end
         end
-    elseif (event == "PLAYER_REGEN_ENABLED") then
+    elseif event == "PLAYER_REGEN_ENABLED" then
         for encounter, bosses in pairs(bossEncounters) do
             if encounterActive[encounter] and not encounterCompleted[encounter] then
                 local allBossesDead = true
