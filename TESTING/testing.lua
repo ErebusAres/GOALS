@@ -187,6 +187,7 @@ f:SetScript("OnEvent", function(self, event, addonName, ...)
     if event == "ADDON_LOADED" and addonName == "Testing" then  -- Replace with the actual addon folder name (Case sensitive)
         InitializePlayerPoints()
         self:UnregisterEvent("ADDON_LOADED")
+        print("Addon: ["..addonName.."] loaded.")
     else
         OnEvent(self, event, ...)  -- Pass the vararg '...' only if it's a different event
     end
