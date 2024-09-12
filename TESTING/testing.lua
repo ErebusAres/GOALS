@@ -70,14 +70,11 @@ local function OnEvent(self, event, ...)
 
     if event == "COMBAT_LOG_EVENT_UNFILTERED" then
         if subevent == "UNIT_DIED" then
-            print("Unit died: ", destName)
-
-            -- Now check if the unit that died is a boss
             local found = false
+
             for encounter, bosses in pairs(bossEncounters) do
                 for i, bossName in ipairs(bosses) do
                     if destName == bossName then
-                        print("Boss killed: ", bossName)
                         bossesKilled[encounter] = bossesKilled[encounter] or {}
                         bossesKilled[encounter][bossName] = true
                         found = true
@@ -104,7 +101,18 @@ local function OnEvent(self, event, ...)
                     end
                 end
             end
-
+            if not found then
+                for encounter, bosses in pairs(bossEncounters) do
+                    if #bosses == 1 and bosses[1] == destName then
+                        print ("Killed: [".. destName .."], a boss unit.")
+                        found = true
+                        encounterActive[encounter] = true
+                        AwardPointsToRaid() -- Award points for a single boss kill
+                        ResetEncounter(encounter)
+                        break
+                   end 
+                end
+            end
             -- If the boss was not found in the main list, print a debug message
             if not found then
                 print("Killed: [" .. destName .. "], not on the boss list.")
