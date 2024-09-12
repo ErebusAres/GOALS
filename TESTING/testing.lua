@@ -25,8 +25,8 @@ end
 
 -- Function to get the number of group members
 local function GetGroupSize()
-    if IsInRaid() then
-        return GetNumGroupMembers()
+    if UnitInRaid("player") then
+        return GetNumRaidMembers()  -- Correct function for raids in 3.3.5a
     elseif GetNumPartyMembers() > 0 then
         return GetNumPartyMembers() + 1  -- +1 includes the player
     else
@@ -37,7 +37,7 @@ end
 
 -- Function to get the name of a group member based on index
 local function GetGroupMemberName(index)
-    if IsInRaid() then
+    if UnitInRaid("player") then
         local name, _, _, _, _, _, _, _, _, _ = GetRaidRosterInfo(index)
         return name
     elseif index == 1 then
@@ -49,10 +49,15 @@ end
 
 -- Function to track and add points to raid/party members
 local function AwardPointsToGroup()
+    print("Awarding points to group...")  -- Debugging line
+
     local numGroupMembers = GetGroupSize()
+    print("Number of group members: " .. numGroupMembers)  -- Debugging line
 
     for i = 1, numGroupMembers do
         local name = GetGroupMemberName(i)
+        print("Processing group member: " .. (name or "nil"))  -- Debugging line
+
         if name and name ~= "" then
             if not playerPoints[name] then
                 playerPoints[name] = 0
@@ -81,6 +86,7 @@ local function OnEvent(self, event, ...)
             for encounter, bosses in pairs(bossEncounters) do
                 for i, bossName in ipairs(bosses) do
                     if destName == bossName then
+                        print("Boss found: " .. bossName)  -- Debugging line
                         bossesKilled[encounter] = bossesKilled[encounter] or {}
                         bossesKilled[encounter][bossName] = true
                         found = true
