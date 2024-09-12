@@ -66,9 +66,8 @@ end
 
 -- Function to handle events
 local function OnEvent(self, event, ...)
+    local _, subevent, _, _, _, _, destName, _ = ... -- Extract event arguments for WoW 3.3.5a
     if event == "COMBAT_LOG_EVENT_UNFILTERED" then
-        -- Extract event arguments for WoW 3.3.5a
-        local _, subevent, _, _, _, _, destName, _ = ...
 
         -- Debug messages to track the event and details
         print("Combat Log Event: ", subevent)
