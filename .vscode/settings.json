@@ -17,6 +17,7 @@
     "Lua.diagnostics.globals": [
         "SlashCmdList",
         "ReloadUI",
-        "FrameStackTooltip_Toggle"
+        "FrameStackTooltip_Toggle",
+        "GetNumPartyMembers"
     ]
 }

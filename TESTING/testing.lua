@@ -16,7 +16,6 @@ end
 local function GetGroupSize()
     local inInstance, instanceType = IsInInstance()
     if instanceType == "raid" then
-        -- Use the correct API function based on the context
         if GetNumGroupMembers then
             return GetNumGroupMembers()
         else
@@ -25,34 +24,27 @@ local function GetGroupSize()
         end
     elseif instanceType == "party" then
         if GetNumPartyMembers then
-            return GetNumPartyMembers() + 1  -- Include the player themselves
+            return GetNumPartyMembers() + 1
         else
             print("Error: GetNumPartyMembers is not available.")
             return 0
         end
     else
-        -- Debug message for when not in a raid or party
         print("You are not in a raid or party.")
-        return 1  -- Default to 1 if not in a raid or party (player only)
+        return 1
     end
 end
-
 
 -- Function to track and add points to raid members
 local function AwardPointsToRaid()
     local numGroupMembers = GetGroupSize()
 
-    -- Loop through all group members
     for i = 1, numGroupMembers do
-        local name, _, subgroup, _, _, _, _, _, _, _, _ = GetRaidRosterInfo(i)
-        
-        -- Ensure the player is in the database, if not add them
+        local name = GetRaidRosterInfo(i)
         if name and name ~= "" then
             if not playerPoints[name] then
                 playerPoints[name] = 0
             end
-
-            -- Award 1 point for successful encounter
             playerPoints[name] = playerPoints[name] + 1
             print("Awarded 1 point to: " .. name .. ". Total points: " .. playerPoints[name])
         else
@@ -61,15 +53,13 @@ local function AwardPointsToRaid()
     end
 end
 
-
 -- Function to handle events
 local function OnEvent(self, event, ...)
-    local _, subevent, _, _, _, _, destName, _ = ...
+    local _, subevent, _, _, _, _, destName = ...
 
     if event == "COMBAT_LOG_EVENT_UNFILTERED" then
-        if (subevent == "UNIT_DIED") then
+        if subevent == "UNIT_DIED" then
             local found = false
-
             for encounter, bosses in pairs(bossEncounters) do
                 for i, bossName in ipairs(bosses) do
                     if destName == bossName then
@@ -89,7 +79,7 @@ local function OnEvent(self, event, ...)
                         if allBossesDead and not encounterCompleted[encounter] then
                             print("Completed encounter: [" .. encounter .. "], all bosses killed.")
                             encounterCompleted[encounter] = true
-                            AwardPointsToRaid()  -- Award points to raid members
+                            AwardPointsToRaid()
                             ResetEncounter(encounter)
                         elseif not allBossesDead then
                             print("Killed: [" .. destName .. "], still more bosses in [" .. encounter .. "].")
@@ -104,7 +94,7 @@ local function OnEvent(self, event, ...)
                         print("Killed: [" .. destName .. "], a boss unit.")
                         found = true
                         encounterActive[encounter] = true
-                        AwardPointsToRaid()  -- Award points for single boss encounter
+                        AwardPointsToRaid()
                         ResetEncounter(encounter)
                         break
                     end
@@ -146,6 +136,34 @@ end
 -- Command to display player points
 SLASH_SHOWPOINTS1 = '/showpoints'
 SlashCmdList["SHOWPOINTS"] = PrintPoints
+
+-- Function to set points for a specific player (used for testing/debugging)
+local function SetPlayerPoints(name, points)
+    if not name or name == "" then
+        print("Invalid player name.")
+        return
+    end
+    
+    points = tonumber(points)
+    if not points then
+        print("Invalid points value. It must be a number.")
+        return
+    end
+    
+    if not playerPoints[name] then
+        playerPoints[name] = 0
+    end
+    
+    playerPoints[name] = points
+    print("Set " .. name .. "'s points to: " .. points)
+end
+
+-- Slash command handler for /goalset
+SLASH_GOALSET1 = '/goalset'
+SlashCmdList["GOALSET"] = function(msg)
+    local name, points = strsplit(" ", msg, 2)
+    SetPlayerPoints(name, points)
+end
 
 -- Event registration
 local f = CreateFrame("Frame")
