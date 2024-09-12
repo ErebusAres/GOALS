@@ -65,20 +65,33 @@ local function AwardPointsToRaid()
 end
 
 -- Function to handle events
+-- Function to handle events
 local function OnEvent(self, event, ...)
-    local _, subevent, _, _, _, _, destName = ...
-
     if event == "COMBAT_LOG_EVENT_UNFILTERED" then
+        -- Extract event arguments for WoW 3.3.5a
+        local timestamp, subevent, hideCaster, sourceGUID, sourceName, sourceFlags, sourceRaidFlags,
+              destGUID, destName, destFlags, destRaidFlags = ...
+
+        -- Debug messages to track the event and details
+        print("Combat Log Event: ", subevent)
+        print("Unit Name: ", destName)
+
+        -- Check if the event is UNIT_DIED (which happens when a unit dies)
         if subevent == "UNIT_DIED" then
+            print("Unit died: ", destName)
+
+            -- Now check if the unit that died is a boss
             local found = false
             for encounter, bosses in pairs(bossEncounters) do
-                for i, bossName in ipairs(bosses) do
+                for _, bossName in ipairs(bosses) do
                     if destName == bossName then
+                        print("Boss killed: ", bossName)
                         bossesKilled[encounter] = bossesKilled[encounter] or {}
                         bossesKilled[encounter][bossName] = true
                         found = true
                         encounterActive[encounter] = true
 
+                        -- Check if all bosses in the encounter are dead
                         local allBossesDead = true
                         for _, boss in ipairs(bosses) do
                             if not bossesKilled[encounter][boss] then
@@ -87,10 +100,11 @@ local function OnEvent(self, event, ...)
                             end
                         end
 
+                        -- If all bosses are dead, mark the encounter as completed
                         if allBossesDead and not encounterCompleted[encounter] then
                             print("Completed encounter: [" .. encounter .. "], all bosses killed.")
                             encounterCompleted[encounter] = true
-                            AwardPointsToRaid()
+                            AwardPointsToRaid()  -- Award points for a successful encounter
                             ResetEncounter(encounter)
                         elseif not allBossesDead then
                             print("Killed: [" .. destName .. "], still more bosses in [" .. encounter .. "].")
@@ -99,24 +113,13 @@ local function OnEvent(self, event, ...)
                 end
             end
 
-            if not found then
-                for encounter, bosses in pairs(bossEncounters) do
-                    if #bosses == 1 and bosses[1] == destName then
-                        print("Killed: [" .. destName .. "], a boss unit.")
-                        found = true
-                        encounterActive[encounter] = true
-                        AwardPointsToRaid()
-                        ResetEncounter(encounter)
-                        break
-                    end
-                end
-            end
-
+            -- If the boss was not found in the main list, print a debug message
             if not found then
                 print("Killed: [" .. destName .. "], not on the boss list.")
             end
         end
     elseif event == "PLAYER_REGEN_ENABLED" then
+        -- Handle the case when combat ends, reset encounters if needed
         for encounter, bosses in pairs(bossEncounters) do
             if encounterActive[encounter] and not encounterCompleted[encounter] then
                 local allBossesDead = true
@@ -135,6 +138,7 @@ local function OnEvent(self, event, ...)
         end
     end
 end
+
 
 -- Function to print the list of raid members and their points
 local function PrintPoints()
