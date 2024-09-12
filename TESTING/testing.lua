@@ -74,7 +74,7 @@ local function OnEvent(self, event, ...)
             print("Addon: [" .. addonName .. "] loaded.")
         end
     elseif event == "COMBAT_LOG_EVENT_UNFILTERED" then
-        local _, subevent, _, _, _, _, destName, _ = CombatLogGetCurrentEventInfo()
+        local _, subevent, _, _, _, _, destName, _ = ...
         if (subevent == "UNIT_DIED") then
             local found = false
             for encounter, bosses in pairs(bossEncounters) do
