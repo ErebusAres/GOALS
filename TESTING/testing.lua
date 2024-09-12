@@ -2,7 +2,18 @@
 local bossesKilled = {}
 local encounterActive = {}
 local encounterCompleted = {}
-local playerPoints = {}  -- Player points table
+local playerPoints = {}  -- Local table to temporarily hold player points
+
+-- Function to initialize the playerPoints table from saved data
+local function InitializePlayerPoints()
+    -- If PlayerPointsDB doesn't exist, initialize it as an empty table
+    if not PlayerPointsDB then
+        PlayerPointsDB = {}
+    end
+
+    -- Map the local playerPoints table to the saved PlayerPointsDB
+    playerPoints = PlayerPointsDB
+end
 
 -- Function to reset an encounter after completion
 local function ResetEncounter(encounter)
@@ -133,10 +144,6 @@ local function PrintPoints()
     end
 end
 
--- Command to display player points
-SLASH_SHOWPOINTS1 = '/showpoints'
-SlashCmdList["SHOWPOINTS"] = PrintPoints
-
 -- Function to set points for a specific player (used for testing/debugging)
 local function SetPlayerPoints(name, points)
     if not name or name == "" then
@@ -165,8 +172,23 @@ SlashCmdList["GOALSET"] = function(msg)
     SetPlayerPoints(name, points)
 end
 
+-- Command to display player points
+SLASH_SHOWPOINTS1 = '/showpoints'
+SlashCmdList["SHOWPOINTS"] = PrintPoints
+
 -- Event registration
 local f = CreateFrame("Frame")
 f:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
 f:RegisterEvent("PLAYER_REGEN_ENABLED")
 f:SetScript("OnEvent", OnEvent)
+
+-- Initialize saved data on addon load
+f:RegisterEvent("ADDON_LOADED")
+f:SetScript("OnEvent", function(self, event, addonName)
+    if addonName == "Testing" then  -- Replace with the actual addon name, later.
+        InitializePlayerPoints()
+        self:UnregisterEvent("ADDON_LOADED")
+    else
+        OnEvent(self, event, ...)
+    end
+end)
