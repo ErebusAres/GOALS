@@ -181,7 +181,21 @@ local function OnEvent(self, event, ...)
             PrintPointsSummary()  -- Award points to all raid/party members
         end
     elseif event == "PLAYER_REGEN_ENABLED" then
-        -- Handle any logic for player regeneration if needed
+        for encounter, bosses in pairs(bossEncounters) do
+            if encounterActive[encounter] and not encounterCompleted[encounter] then
+                local allBossesDead = true
+                for _, bossName in ipairs(bosses) do
+                    if not bossesKilled[encounter] or not bossesKilled[encounter][bossName] then
+                        allBossesDead = false
+                        break
+                    end
+                end
+                if not allBossesDead then
+                    print("Encounter failed: [" .. encounter .. "]. Resetting.")
+                end
+                ResetEncounter(encounter)
+            end
+        end
     end
 end
 
