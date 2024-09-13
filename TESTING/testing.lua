@@ -184,6 +184,26 @@ end
 SLASH_SHOWPOINTS1 = '/showpoints'
 SlashCmdList["SHOWPOINTS"] = PrintPoints
 
+-- Add this at the beginning or after declaring variables in the original code
+local function ToggleGoalsFrame()
+    if not GoalsFrame then
+        CreateGoalsFrame()  -- Call the frame creation function from FrameCode.lua
+    end
+    
+    if GoalsFrame:IsShown() then
+        GoalsFrame:Hide()
+    else
+        GoalsFrame:Show()
+    end
+end
+
+-- Slash command to toggle GoalsFrame
+SLASH_TOGGLEGOALS1 = '/togglegoals'
+SlashCmdList["TOGGLEGOALS"] = ToggleGoalsFrame
+
+-- Now you can toggle the GoalsFrame using the /togglegoals command in-game
+
+
 -- Event registration
 local f = CreateFrame("Frame")
 f:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
