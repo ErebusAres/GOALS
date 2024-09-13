@@ -25,8 +25,8 @@ end
 
 -- Function to get the number of group members
 local function GetGroupSize()
-    if IsInRaid() then
-        return GetNumGroupMembers()
+    if UnitInRaid("player") then
+        return GetNumRaidMembers()  -- Correct function for raids in 3.3.5a
     elseif GetNumPartyMembers() > 0 then
         return GetNumPartyMembers() + 1  -- +1 includes the player
     else
@@ -37,7 +37,7 @@ end
 
 -- Function to get the name of a group member based on index
 local function GetGroupMemberName(index)
-    if IsInRaid() then
+    if UnitInRaid("player") then
         local name, _, _, _, _, _, _, _, _, _ = GetRaidRosterInfo(index)
         return name
     elseif index == 1 then
@@ -47,10 +47,64 @@ local function GetGroupMemberName(index)
     end
 end
 
--- Function to track and add points to raid/party members
-local function AwardPointsToGroup()
-    local numGroupMembers = GetGroupSize()
+-- Define PrintPointsSummary at the top of the file before it's used elsewhere
+local function PrintPointsSummary()
+    if not GoalsFrame then
+        print("Error: GoalsFrame does not exist. Creating it now.")
+        GoalsFrame = CreateGoalsFrame()
+    end
 
+    -- Access the text objects directly from the frame object
+    local playerText = GoalsFrame.playerText
+    local pointsText = GoalsFrame.pointsText
+
+    if not playerText or not pointsText then
+        print("Error: FontStrings [playerText/pointsText] are not available in GoalsFrame. Cannot update text.")
+        return
+    end
+
+    -- Clear previous text
+    playerText:SetText("")
+    pointsText:SetText("")
+
+    -- Sort the players by points
+    local sortedPlayers = {}
+    for name, points in pairs(playerPoints) do
+        table.insert(sortedPlayers, { name = name, points = points })
+    end
+    table.sort(sortedPlayers, function(a, b)
+        if a.points == b.points then
+            return a.name < b.name  -- Alphabetical if points are equal
+        else
+            return a.points > b.points  -- Higher points first
+        end
+    end)
+
+    -- Initialize empty strings for playerText and pointsText
+    local playersTextValue = ""
+    local pointsTextValue = ""
+
+    -- Update the sorted list of players and points
+    for _, entry in ipairs(sortedPlayers) do
+        local playerName = entry.name or "Unknown"
+        local playerPointsValue = entry.points or 0
+
+        -- Append to playerText and pointsText strings
+        playersTextValue = playersTextValue .. playerName .. "\n"
+        pointsTextValue = pointsTextValue .. tostring(playerPointsValue) .. "\n"
+    end
+
+    -- Update the frame text with the concatenated strings
+    playerText:SetText(playersTextValue)
+    pointsText:SetText(pointsTextValue)
+end
+
+-- Now you can define the other functions like AwardPointsToGroup, OnEvent, etc.
+
+local function AwardPointsToGroup()
+    print("Awarding points to group...")
+
+    local numGroupMembers = GetGroupSize()
     for i = 1, numGroupMembers do
         local name = GetGroupMemberName(i)
         if name and name ~= "" then
@@ -59,9 +113,12 @@ local function AwardPointsToGroup()
             end
             playerPoints[name] = playerPoints[name] + 1
             print("Awarded 1 point to: " .. name .. ". Total points: " .. playerPoints[name])
-        else
-            print("Error retrieving info for index " .. i)
         end
+    end
+
+    -- Always update the frame if it's shown
+    if GoalsFrame and GoalsFrame:IsShown() then
+        PrintPointsSummary()  -- Update points display in the frame
     end
 end
 
@@ -81,6 +138,7 @@ local function OnEvent(self, event, ...)
             for encounter, bosses in pairs(bossEncounters) do
                 for i, bossName in ipairs(bosses) do
                     if destName == bossName then
+                        print("Boss found: " .. bossName)  -- Debugging line
                         bossesKilled[encounter] = bossesKilled[encounter] or {}
                         bossesKilled[encounter][bossName] = true
                         found = true
@@ -96,6 +154,7 @@ local function OnEvent(self, event, ...)
                             print("Completed encounter: [" .. encounter .. "], all bosses killed.")
                             encounterCompleted[encounter] = true
                             AwardPointsToGroup()  -- Award points to all raid/party members
+                            PrintPointsSummary()  -- Update the frame with the new points
                             ResetEncounter(encounter)
                         elseif not allBossesDead then
                             print("Killed: [" .. destName .. "], still more bosses in [" .. encounter .. "].")
@@ -110,6 +169,7 @@ local function OnEvent(self, event, ...)
                         found = true
                         encounterActive[encounter] = true
                         AwardPointsToGroup()  -- Award points for single boss encounter
+                        PrintPointsSummary()  -- Update the frame with the new points
                         ResetEncounter(encounter)
                         break
                     end
@@ -118,23 +178,10 @@ local function OnEvent(self, event, ...)
             if not found then
                 print("Killed: [" .. destName .. "], not on the boss list.")
             end
+            PrintPointsSummary()  -- Award points to all raid/party members
         end
     elseif event == "PLAYER_REGEN_ENABLED" then
-        for encounter, bosses in pairs(bossEncounters) do
-            if encounterActive[encounter] and not encounterCompleted[encounter] then
-                local allBossesDead = true
-                for _, bossName in ipairs(bosses) do
-                    if not bossesKilled[encounter] or not bossesKilled[encounter][bossName] then
-                        allBossesDead = false
-                        break
-                    end
-                end
-                if not allBossesDead then
-                    print("Encounter failed: [" .. encounter .. "]. Resetting.")
-                end
-                ResetEncounter(encounter)
-            end
-        end
+        -- Handle any logic for player regeneration if needed
     end
 end
 
@@ -172,11 +219,32 @@ SLASH_GOALSET1 = '/goalset'
 SlashCmdList["GOALSET"] = function(msg)
     local name, points = strsplit(" ", msg, 2)
     SetPlayerPoints(name, points)
+    PrintPointsSummary()  -- Update the frame with the new points
 end
 
 -- Command to display player points
 SLASH_SHOWPOINTS1 = '/showpoints'
 SlashCmdList["SHOWPOINTS"] = PrintPoints
+
+local function ToggleGoalsFrame()
+    print("ToggleGoalsFrame called")  -- Debugging statement
+    if not GoalsFrame then
+        CreateGoalsFrame()
+    end
+    
+    if GoalsFrame:IsShown() then
+        GoalsFrame:Hide()
+    else
+        GoalsFrame:Show()
+        PrintPointsSummary()  -- Update points when showing the frame
+    end
+end
+
+
+SLASH_TOGGLEGOALS1 = '/togglegoals'
+SlashCmdList["TOGGLEGOALS"] = ToggleGoalsFrame
+
+
 
 -- Event registration
 local f = CreateFrame("Frame")
