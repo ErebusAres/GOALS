@@ -1,0 +1,15 @@
+## Interface: 30300
+## Author: Adam and Corey
+## Title: |cff00ccffTesting|r - Gen1
+## Version: v0.0.1beta
+## Notes: Boss and Loot Tracker for GO
+## DefaultState: enabled
+## SavedVariables: PlayerPointsDB
+## Dependencies:
+## OptionalDeps:
+
+## libs ##
+
+FrameCode.lua
+bossEncounters.lua
+testing.lua
