@@ -1,3 +1,20 @@
+local scroll = nil;
+local rowCount = 0;
+
+local classColors = { 
+    deathKnight = {r = 0.77, g = 0.12, b = 0.23},
+    druid       = {r = 1.0, g = 0.49, b = 0.04},
+    hunter      = {r = 0.67, g = 0.83, b = 0.45},
+    mage        = {r = 0.25, g = 0.78, b = 0.92},
+    paladin     = {r = 0.96, g = 0.55, b = 0.73},
+    priest      = {r = 1.0, g = 1.0, b = 1.0},
+    rogue       = {r = 1.0, g = 0.96, b = 0.41},
+    shaman      = {r = 0.0, g = 0.44, b = 0.87},
+    warlock     = {r = 0.53, g = 0.53, b = 0.93},
+    warrior     = {r = 0.78, g = 0.63, b = 0.43}
+}
+
+
 -- Ensure the function is globally accessible
 function _G.CreateGoalsFrame()
     if GoalsFrame then
@@ -70,6 +87,10 @@ function _G.CreateGoalsFrame()
     scrollChild:SetSize(360, 250)
     scrollFrame:SetScrollChild(scrollChild)
 
+    scroll = scrollChild;
+
+    
+
     -- Headers for Players and Points
     local playersHeader = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     playersHeader:SetPoint("TOPLEFT", 20, -5)
@@ -92,20 +113,21 @@ function _G.CreateGoalsFrame()
     underlinePoints:SetPoint("TOPRIGHT", pointsHeader, "BOTTOMRIGHT", 0, -2)
     underlinePoints:SetTexture(1, 1, 1)  -- Use SetTexture with color values (1, 1, 1) for white
 
+    -- This is the previous way of showing values, in the concatenated string method. Leaving this here in case we need to go back
     -- Create FontStrings for displaying players and points
-    local playerText = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    playerText:SetPoint("TOPLEFT", 20, -30)
-    playerText:SetJustifyH("LEFT")
-    playerText:SetFont("Fonts\\FRIZQT__.TTF", 12)
+    --local playerText = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    --playerText:SetPoint("TOPLEFT", 20, -30)
+    --playerText:SetJustifyH("LEFT")
+    --playerText:SetFont("Fonts\\FRIZQT__.TTF", 12)
 
-    local pointsText = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    pointsText:SetPoint("TOPRIGHT", -20, -30)
-    pointsText:SetJustifyH("RIGHT")
-    pointsText:SetFont("Fonts\\FRIZQT__.TTF", 12)
+    --local pointsText = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    --pointsText:SetPoint("TOPRIGHT", -20, -30)
+    --pointsText:SetJustifyH("RIGHT")
+    --pointsText:SetFont("Fonts\\FRIZQT__.TTF", 12)
 
     -- Save FontStrings to the frame for later access
-    frame.playerText = playerText
-    frame.pointsText = pointsText
+    --frame.playerText = playerText
+    --frame.pointsText = pointsText
 
     -- Credits Frame (Bottom)
     local creditsFrame = CreateFrame("Frame", "GoalsFrameCredits", frame)
@@ -143,4 +165,44 @@ function _G.CreateGoalsFrame()
     frame:Hide()
 
     return frame
+end
+
+-- Adds a row to the table view of the point tracker
+function addRow(player, point, class)
+    local tableRow = CreateFrame("Frame", "GoalsFrameScrollChildRow" .. rowCount, scroll)
+    tableRow:SetSize(150, 20);
+    tableRow:SetPoint("TOPLEFT", 0, rowCount * -20)
+
+    local playerText = tableRow:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    playerText:SetPoint("TOPLEFT", 20, -30)
+    playerText:SetJustifyH("LEFT")
+    playerText:SetFont("Fonts\\FRIZQT__.TTF", 12)
+    playerText:SetTextColor(classColors[class]["r"],classColors[class]["g"], classColors[class]["b"], 1.0)
+
+    local pointsText = tableRow:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    pointsText:SetPoint("TOP", 75, -30)
+    pointsText:SetJustifyH("MIDDLE")
+    pointsText:SetFont("Fonts\\FRIZQT__.TTF", 12)
+
+    -- Buttons in each row. Currently don't want them, but leaving this here for now in case we change our minds.
+    --local awardButton = CreateFrame("Button", "GoalsFrameScrollChildAwardButton" .. rowCount, tableRow, "UIPanelButtonTemplate")
+    --awardButton:SetText("Award")
+    --awardButton:SetSize(75, 20)
+    --awardButton:SetPoint("TOPRIGHT", 150, -30)
+    
+    --local plusButton = CreateFrame("Button", "GoalsFrameScrollChildPlusButton" .. rowCount, tableRow, "UIPanelButtonTemplate")
+    --awardButton:SetText("+")
+    --awardButton:SetSize(20, 20)
+    --awardButton:SetPoint("TOPRIGHT", 170, -30)
+
+    --local minusButton = CreateFrame("Button", "GoalsFrameScrollChildMinusButton" .. rowCount, tableRow, "UIPanelButtonTemplate")
+    --awardButton:SetText("-")
+    --awardButton:SetSize(20, 20)
+    --awardButton:SetPoint("TOPRIGHT", 190, -30)
+
+
+    playerText:SetText(player)
+    pointsText:SetText(point)
+
+    rowCount = rowCount + 1;
 end

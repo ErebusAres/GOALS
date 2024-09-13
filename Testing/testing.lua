@@ -55,17 +55,17 @@ local function PrintPointsSummary()
     end
 
     -- Access the text objects directly from the frame object
-    local playerText = GoalsFrame.playerText
-    local pointsText = GoalsFrame.pointsText
+    --local playerText = GoalsFrame.playerText
+    --local pointsText = GoalsFrame.pointsText
 
-    if not playerText or not pointsText then
-        print("Error: FontStrings [playerText/pointsText] are not available in GoalsFrame. Cannot update text.")
-        return
-    end
+    --if not playerText or not pointsText then
+        --print("Error: FontStrings [playerText/pointsText] are not available in GoalsFrame. Cannot update text.")
+        --return
+    --end
 
     -- Clear previous text
-    playerText:SetText("")
-    pointsText:SetText("")
+    --playerText:SetText("")
+    --pointsText:SetText("")
 
     -- Sort the players by points
     local sortedPlayers = {}
@@ -95,8 +95,16 @@ local function PrintPointsSummary()
     end
 
     -- Update the frame text with the concatenated strings
-    playerText:SetText(playersTextValue)
-    pointsText:SetText(pointsTextValue)
+    --playerText:SetText(playersTextValue)
+    --pointsText:SetText(pointsTextValue)
+    addRow("Bolgen", "3", "shaman")
+    addRow("Mythylo", "4", "paladin")
+    addRow("Alexella", "7", "mage")
+    addRow("Sarah", "10", "druid")
+    addRow("Locky", "8", "warlock")
+    addRow("Adriatorix", "10", "paladin")
+    addRow("Taffer", "5", "rogue")
+
 end
 
 -- Now you can define the other functions like AwardPointsToGroup, OnEvent, etc.
