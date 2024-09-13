@@ -1,6 +1,8 @@
 local scroll = nil;
 local rowCount = 0;
 
+local rows = {}
+
 local classColors = { 
     deathKnight = {r = 0.77, g = 0.12, b = 0.23},
     druid       = {r = 1.0, g = 0.49, b = 0.04},
@@ -168,41 +170,113 @@ function _G.CreateGoalsFrame()
 end
 
 -- Adds a row to the table view of the point tracker
-function addRow(player, point, class)
-    local tableRow = CreateFrame("Frame", "GoalsFrameScrollChildRow" .. rowCount, scroll)
-    tableRow:SetSize(150, 20);
-    tableRow:SetPoint("TOPLEFT", 0, rowCount * -20)
+function makeRows()
 
-    local playerText = tableRow:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    playerText:SetPoint("TOPLEFT", 20, -30)
-    playerText:SetJustifyH("LEFT")
-    playerText:SetFont("Fonts\\FRIZQT__.TTF", 12)
-    playerText:SetTextColor(classColors[class]["r"],classColors[class]["g"], classColors[class]["b"], 1.0)
-
-    local pointsText = tableRow:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    pointsText:SetPoint("TOP", 75, -30)
-    pointsText:SetJustifyH("MIDDLE")
-    pointsText:SetFont("Fonts\\FRIZQT__.TTF", 12)
-
-    -- Buttons in each row. Currently don't want them, but leaving this here for now in case we change our minds.
-    --local awardButton = CreateFrame("Button", "GoalsFrameScrollChildAwardButton" .. rowCount, tableRow, "UIPanelButtonTemplate")
-    --awardButton:SetText("Award")
-    --awardButton:SetSize(75, 20)
-    --awardButton:SetPoint("TOPRIGHT", 150, -30)
+    for i = 0, 24 do
+        local tableRow = CreateFrame("Frame", "GoalsFrameScrollChildRow" .. i, scroll)
+        tableRow:SetSize(150, 20);
+        tableRow:SetPoint("TOPLEFT", 0, i * -20)
     
-    --local plusButton = CreateFrame("Button", "GoalsFrameScrollChildPlusButton" .. rowCount, tableRow, "UIPanelButtonTemplate")
-    --awardButton:SetText("+")
-    --awardButton:SetSize(20, 20)
-    --awardButton:SetPoint("TOPRIGHT", 170, -30)
+        local playerText = tableRow:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        playerText:SetPoint("TOPLEFT", 20, -30)
+        playerText:SetJustifyH("LEFT")
+        playerText:SetFont("Fonts\\FRIZQT__.TTF", 12)
+        
+    
+        local pointsText = tableRow:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        pointsText:SetPoint("TOP", 125, -30)
+        pointsText:SetJustifyH("MIDDLE")
+        pointsText:SetFont("Fonts\\FRIZQT__.TTF", 12)
+    
+        -- Buttons in each row. Currently don't want them, but leaving this here for now in case we change our minds.
+        --local awardButton = CreateFrame("Button", "GoalsFrameScrollChildAwardButton" .. rowCount, tableRow, "UIPanelButtonTemplate")
+        --awardButton:SetText("Award")
+        --awardButton:SetSize(75, 20)
+        --awardButton:SetPoint("TOPRIGHT", 150, -30)
+        
+        --local plusButton = CreateFrame("Button", "GoalsFrameScrollChildPlusButton" .. rowCount, tableRow, "UIPanelButtonTemplate")
+        --awardButton:SetText("+")
+        --awardButton:SetSize(20, 20)
+        --awardButton:SetPoint("TOPRIGHT", 170, -30)
+    
+        --local minusButton = CreateFrame("Button", "GoalsFrameScrollChildMinusButton" .. rowCount, tableRow, "UIPanelButtonTemplate")
+        --awardButton:SetText("-")
+        --awardButton:SetSize(20, 20)
+        --awardButton:SetPoint("TOPRIGHT", 190, -30)
+    
+        --set the row and all the relevant frames as an index in the rows table
+        
+        rows[i] = { player = playerText, points = pointsText };
+        --increment the rowCount
+        --rowCount = rowCount + 1;
+    end
+end
 
-    --local minusButton = CreateFrame("Button", "GoalsFrameScrollChildMinusButton" .. rowCount, tableRow, "UIPanelButtonTemplate")
-    --awardButton:SetText("-")
-    --awardButton:SetSize(20, 20)
-    --awardButton:SetPoint("TOPRIGHT", 190, -30)
+function printTable()
+    for index, data in ipairs(rows) do
+        for i, d in pairs(data) do
+            print(d)
+        end
+    end
+end
 
+function setRow(playerName, points, class)
+    local found = false;
 
-    playerText:SetText(player)
-    pointsText:SetText(point)
+    for i = 0,24 do
+        if rows[i].player:GetText() == playerName then
+            found = true;
+        end
+    end
 
-    rowCount = rowCount + 1;
+    if found == false then
+        rows[rowCount].player:SetText(playerName);
+        rows[rowCount].player:SetTextColor(classColors[class]["r"],classColors[class]["g"], classColors[class]["b"], 1.0);
+        rows[rowCount].points:SetText(points);
+
+        rowCount = rowCount + 1;
+    end
+end
+
+function setPointValue(playerName, newPointValue)
+    rows[playerName][pointsText]:SetText(newPointValue);
+end
+
+function incrementPointValue(playerName)
+    for i = 0,24 do
+        if rows[i].player:GetText() == playerName then
+            rows[i].points:SetText(rows[i].points:GetText() + 1);
+        end
+    end
+end
+
+function removeRow(playerName)
+    local found = false;
+
+    for i = 0,24 do
+
+        if found then
+            rows[i - 1].player:SetText(rows[i].player:GetText());
+            rows[i - 1].points:SetText(rows[i].points:GetText());
+            textR, textG, textB, textAlpha = rows[i].player:GetTextColor();
+            rows[i - 1].player:SetTextColor(textR, textG, textB, textAlpha);
+        end
+
+        if rows[i].player:GetText() == playerName then
+            rows[i].player:SetText("");
+            rows[i].points:SetText("");
+
+            rowCount = rowCount - 1;
+            found = true;
+        end
+    end
+end
+
+function clearRows()
+    for i = 0,24 do
+        rows[i].player:SetText("");
+        rows[i].points:SetText("");
+    end
+
+    rowCount = 0;
 end
