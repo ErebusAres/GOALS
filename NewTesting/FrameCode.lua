@@ -268,3 +268,63 @@ function addRow(player, point, class)
 
     rowCount = rowCount + 1;
 end
+
+-- Function to clear all rows before re-adding data
+function ClearAllRows()
+    if GoalsFrame.rows then
+        for i, row in ipairs(GoalsFrame.rows) do
+            row:Hide()  -- Hide each row
+        end
+    end
+    GoalsFrame.rows = {}  -- Ensure rows are initialized  -- Reset rows table
+end
+
+-- Add event listener for group/party changes
+
+GoalsFrame:RegisterEvent("RAID_ROSTER_UPDATE")  -- Correct for raid changes in 3.3.5a
+GoalsFrame:RegisterEvent("PARTY_MEMBERS_CHANGED")  -- Correct for party changes in 3.3.5a
+    
+
+GoalsFrame:SetScript("OnEvent", function(self, event, ...)
+    if event == "GROUP_ROSTER_UPDATE" then
+        ClearAllRows()  -- Clear existing rows
+        UpdatePartyMembers()  -- Custom function to add updated party/raid members
+    end
+end)
+
+-- Function to update party/raid members
+function UpdatePartyMembers()
+    -- Ensure the player is included in the list
+    local name, class = UnitName("player"), UnitClass("player")
+    if name and class then
+        addRow(name, tostring(playerPoints[name] or 0), class)
+    end
+    
+    
+    -- Ensure the player is included in the list
+    local playerName, playerClass = UnitName("player"), UnitClass("player")
+    if playerName and playerClass then
+        addRow(playerName, tostring(playerPoints[playerName] or 0), playerClass)
+    end
+    
+    -- Loop through party/raid members
+    
+    local numGroupMembers = GetNumGroupMembers()
+    for i = 1, numGroupMembers do
+        local memberName, _, _, _, memberClass = GetRaidRosterInfo(i)
+        if memberName and memberClass then
+            addRow(memberName, tostring(playerPoints[memberName] or 0), memberClass)
+        end
+    end
+end
+
+-- Toggle logic for showing and hiding GoalsFrame
+function ToggleGoalsFrame()
+    if GoalsFrame:IsShown() then
+        GoalsFrame:Hide()
+        print("Debug: GoalsFrame is being hidden")
+    else
+        GoalsFrame:Show()
+        print("Debug: GoalsFrame is being shown")
+    end
+end

@@ -100,7 +100,7 @@ local function PrintPointsSummary()
     -- Update the frame text with the concatenated strings
     --playerText:SetText(playersTextValue)
     --pointsText:SetText(pointsTextValue)
-    addRow("ManualAdd", "3", "priest")
+    --addRow("ManualAdd", "3", "priest")
 
 
 end
