@@ -281,6 +281,10 @@ end
 
 -- Add event listener for group/party changes
 
+-- Ensure GoalsFrame is created before registering events
+if not GoalsFrame then
+    CreateGoalsFrame()
+end
 GoalsFrame:RegisterEvent("RAID_ROSTER_UPDATE")  -- Correct for raid changes in 3.3.5a
 GoalsFrame:RegisterEvent("PARTY_MEMBERS_CHANGED")  -- Correct for party changes in 3.3.5a
     
