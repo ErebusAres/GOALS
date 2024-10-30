@@ -1,4 +1,7 @@
--- Combined WoW Addon File (FrameCode and Testing Combined)
+-- Utility function to capitalize the first character of a name
+local function CapitalizeFirstLetter(str)
+    return str:gsub("^%l", string.upper)
+end
 
 -- Class colors configuration
 local classColors = { 
@@ -11,212 +14,355 @@ local classColors = {
     rogue       = {r = 1.0, g = 0.96, b = 0.41},
     shaman      = {r = 0.0, g = 0.44, b = 0.87},
     warlock     = {r = 0.53, g = 0.53, b = 0.93},
-    warrior     = {r = 0.78, g = 0.63, b = 0.43}
+    warrior     = {r = 0.78, g = 0.63, b = 0.43},
+    unknown     = {r = 0.5, g = 0.5, b = 0.5}  -- Default class color for unknown
 }
 
-local scroll = nil
-local rowCount = 0
-local playerPoints = {}  -- Table to store player points
+local playerPoints = {}  -- Table to store player points and class information
+local bossEncounters = {}  -- Table to store boss encounter information
+local bossesKilled = {}  -- Track killed bosses in an encounter
+local encounterCompleted = {}  -- Track completed encounters
 
--- Ensure the function is globally accessible
-function _G.CreateGoalsFrame()
-    if GoalsFrame then
-        print("GoalsFrame already exists.")
+-- Function to ensure playerPoints entry is always properly initialized
+local function EnsurePlayerPointsEntry(playerName, playerClass)
+    if type(playerPoints[playerName]) ~= "table" then
+        playerPoints[playerName] = {points = 0, class = playerClass or "unknown"}
+    else
+        -- Ensure class and points are always set to avoid invalid formats
+        playerPoints[playerName].class = playerPoints[playerName].class or "unknown"
+        playerPoints[playerName].points = playerPoints[playerName].points or 0
+    end
+end
+
+-- Function to get all group members, whether raid or party
+local function GetAllGroupMembers()
+    local members = {}
+
+    -- Add player themselves
+    local playerName, playerClass = UnitName("player"), UnitClass("player")
+    if playerName and playerClass then
+        table.insert(members, {name = playerName, class = playerClass})
+    end
+
+    -- Add raid members if in a raid
+    if GetNumRaidMembers() > 0 then
+        for i = 1, GetNumRaidMembers() do
+            local name, _, _, _, class = GetRaidRosterInfo(i)
+            if name and class then
+                table.insert(members, {name = name, class = class})
+            end
+        end
+    -- Add party members if not in a raid but in a party
+    elseif GetNumPartyMembers() > 0 then
+        for i = 1, GetNumPartyMembers() do
+            local name, class = UnitName("party" .. i), UnitClass("party" .. i)
+            if name and class then
+                table.insert(members, {name = name, class = class})
+            end
+        end
+    end
+
+    return members
+end
+
+-- Function to send messages to the "GOALS" chat tab
+local function SendToGoalsChat(msg)
+    if msg then
+        local chatTabIndex = nil
+        for i = 1, NUM_CHAT_WINDOWS do
+            local name = GetChatWindowInfo(i)
+            if name == "GOALS" then
+                chatTabIndex = i
+                break
+            end
+        end
+
+        -- If "GOALS" chat tab does not exist, create it
+        if not chatTabIndex then
+            FCF_OpenNewWindow("GOALS")
+            chatTabIndex = NUM_CHAT_WINDOWS  -- New chat window is always the last one
+            FCF_SetWindowName(_G["ChatFrame" .. chatTabIndex], "GOALS")
+            SendToGoalsChat("GOALS tab created.")
+        end
+
+        -- Send the message to the "GOALS" chat tab
+        local color = "|cffFFD700"  -- Gold color code for the prefix
+        _G["ChatFrame" .. chatTabIndex]:AddMessage(color .. "[GOALS]:|r " .. msg)
+    end
+end
+
+-- Load the bossEncounters list from the bossEncounters.lua file
+local function LoadBossEncounters()
+    if type(_G.bossEncounters) == "table" then
+        bossEncounters = _G.bossEncounters
+        SendToGoalsChat("Boss encounter data loaded successfully.")
+    else
+        SendToGoalsChat("Error: Failed to load boss encounter data.")
+    end
+end
+
+-- Award points to group members for boss kills
+local function AwardPointsToGroup(encounterName)
+    SendToGoalsChat("Awarding points to group for completing encounter: " .. encounterName)
+
+    local members = GetAllGroupMembers()
+    for _, member in ipairs(members) do
+        EnsurePlayerPointsEntry(member.name, member.class)
+        playerPoints[member.name].points = playerPoints[member.name].points + 1
+        SendToGoalsChat("Awarded 1 point to: " .. member.name .. ". Total points: " .. playerPoints[member.name].points)
+    end
+
+    -- Reset encounter status to allow repeating the encounter
+    bossesKilled[encounterName] = nil
+    encounterCompleted[encounterName] = nil
+
+    -- Update and display points for all members in the group
+    ListPartyOrRaidMembersSorted()  -- Automatically list the players in the party/raid after awarding points
+end
+
+-- Function to list players in the current raid/party, sorted by points (high to low) and alphabetically if tied
+function ListPartyOrRaidMembersSorted()
+    local members = GetAllGroupMembers()
+    local memberList = {}
+
+    -- Collect all group members into a list for sorting
+    for _, member in ipairs(members) do
+        local playerName = member.name
+        EnsurePlayerPointsEntry(playerName, member.class)
+        table.insert(memberList, {name = playerName, points = playerPoints[playerName].points, class = playerPoints[playerName].class})
+    end
+
+    -- Sort the member list: First by points descending, then by name ascending
+    table.sort(memberList, function(a, b)
+        if a.points == b.points then
+            return a.name < b.name  -- Sort alphabetically if points are the same
+        else
+            return a.points > b.points  -- Sort by points (high to low)
+        end
+    end)
+
+    -- Display the sorted list in the "GOALS" chat tab
+    SendToGoalsChat("Listing raid/party members (sorted by points):")
+    for _, playerData in ipairs(memberList) do
+        local classColor = classColors[strlower(playerData.class)] or classColors["unknown"]
+        local colorCode = string.format("|cff%02x%02x%02x", classColor.r * 255, classColor.g * 255, classColor.b * 255)
+        SendToGoalsChat(colorCode .. playerData.name .. "|r: " .. tostring(playerData.points) .. " points")
+    end
+end
+
+-- Toggle logic for showing points in the "GOALS" chat
+function ShowGoalsPoints()
+    ListPartyOrRaidMembersSorted()
+end
+
+SLASH_SHOWGOALS1 = '/gshow'
+SlashCmdList["SHOWGOALS"] = ShowGoalsPoints
+
+-- Slash command to manually set points for a player
+function SetPlayerPoints(player, points)
+    -- Convert player name to lowercase for case-insensitive search
+    local lowerPlayer = strlower(player)
+    local playerFound = false
+    local properCasedName = CapitalizeFirstLetter(player)
+
+    for storedPlayer, info in pairs(playerPoints) do
+        if strlower(storedPlayer) == lowerPlayer then
+            EnsurePlayerPointsEntry(storedPlayer, info.class)
+            playerPoints[storedPlayer].points = points
+            SendToGoalsChat("Set points for " .. storedPlayer .. ": " .. points)
+            playerFound = true
+            ListPartyOrRaidMembersSorted()
+            break
+        end
+    end
+
+    if not playerFound then
+        playerPoints[properCasedName] = {points = points, class = "unknown"}
+        SendToGoalsChat("Added new player: " .. properCasedName .. " with " .. points .. " points")
+        ListPartyOrRaidMembersSorted()
+    end
+end
+
+SLASH_GSETPOINTS1 = '/gsetpoints'
+SlashCmdList["GSETPOINTS"] = function(msg)
+    local player, points = strsplit(" ", msg, 2)
+    points = tonumber(points)
+    if player and points then
+        SetPlayerPoints(player, points)
+    else
+        SendToGoalsChat("Usage: /gsetpoints [player] [points]")
+    end
+end
+
+-- Slash command to manually set class for a player
+function SetPlayerClass(player, class)
+    local lowerPlayer = strlower(player)
+    local lowerClass = strlower(class)
+
+    if not classColors[lowerClass] then
+        SendToGoalsChat("Invalid class specified. Valid classes: DeathKnight, druid, hunter, mage, paladin, priest, rogue, shaman, warlock, warrior, unknown")
         return
     end
 
-    -- Main Frame
-    local frame = CreateFrame("Frame", "GoalsFrame", UIParent, "BasicFrameTemplateWithInset")
-    frame:SetSize(400, 300)
-    frame:SetPoint("CENTER")
-    frame:SetBackdrop({
-        bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
-        edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
-        tile = true, tileSize = 32, edgeSize = 32,
-        insets = { left = 11, right = 12, top = 12, bottom = 11 }
-    })
-    frame:SetBackdropColor(0, 0, 0, 1)
-    frame:EnableMouse(true)
-    frame:SetMovable(true)
-    frame:RegisterForDrag("LeftButton")
-    frame:SetScript("OnDragStart", frame.StartMoving)
-    frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
-    print("Debug: Created GoalsFrame")
-
-    -- Title Box (Frame Title)
-    local titleFrame = CreateFrame("Frame", "GoalsFrameTitle", frame)
-    titleFrame:SetSize(400, 40)
-    titleFrame:SetPoint("BOTTOM", frame, "TOP", 0, -10)
-    titleFrame:SetBackdrop({
-        bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
-        edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
-        tile = true, tileSize = 32, edgeSize = 16,
-        insets = { left = 11, right = 12, top = 12, bottom = 11 }
-    })
-    titleFrame:SetBackdropColor(0.2, 0.2, 0.5, 1)  -- Blueish background for the title
-
-    -- Make the title frame movable
-    titleFrame:EnableMouse(true)
-    titleFrame:SetMovable(true)
-    titleFrame:RegisterForDrag("LeftButton")
-    titleFrame:SetScript("OnDragStart", function(self)
-        frame:StartMoving()
-    end)
-    titleFrame:SetScript("OnDragStop", function(self)
-        frame:StopMovingOrSizing()
-    end)
-
-    -- Title Text
-    local titleText = titleFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-    titleText:SetPoint("CENTER", titleFrame, "CENTER", 0, 0)
-    titleText:SetText("Boss Kill Tracker")
-    titleText:SetFont("Fonts\\FRIZQT__.TTF", 18, "OUTLINE")
-
-    -- Scroll Frame for Main Content
-    local scrollFrame = CreateFrame("ScrollFrame", "GoalsFrameMainContent", frame, "UIPanelScrollFrameTemplate")
-    scrollFrame:SetSize(360, 250)
-    scrollFrame:SetPoint("TOPLEFT", 20, -40)
-
-    -- Scroll Child (Container for the scroll frame)
-    local scrollChild = CreateFrame("Frame", "GoalsFrameScrollChild", scrollFrame)
-    scrollChild:SetSize(360, 250)
-    scrollFrame:SetScrollChild(scrollChild)
-    scroll = scrollChild
-
-    -- Headers for Players and Points
-    local playersHeader = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-    playersHeader:SetPoint("TOPLEFT", 20, -5)
-    playersHeader:SetText("Players")
-    playersHeader:SetFont("Fonts\\FRIZQT__.TTF", 14, "OUTLINE")
-
-    local pointsHeader = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-    pointsHeader:SetPoint("TOPRIGHT", -20, -5)
-    pointsHeader:SetText("Points")
-    pointsHeader:SetFont("Fonts\\FRIZQT__.TTF", 14, "OUTLINE")
-
-    -- Underline for the Headers (Players and Points)
-    local underlinePlayers = scrollChild:CreateTexture(nil, "BACKGROUND")
-    underlinePlayers:SetSize(150, 2)
-    underlinePlayers:SetPoint("TOPLEFT", playersHeader, "BOTTOMLEFT", 0, -2)
-    underlinePlayers:SetTexture(1, 1, 1)
-
-    local underlinePoints = scrollChild:CreateTexture(nil, "BACKGROUND")
-    underlinePoints:SetSize(150, 2)
-    underlinePoints:SetPoint("TOPRIGHT", pointsHeader, "BOTTOMRIGHT", 0, -2)
-    underlinePoints:SetTexture(1, 1, 1)
-
-    -- Credits Frame (Bottom)
-    local creditsFrame = CreateFrame("Frame", "GoalsFrameCredits", frame)
-    creditsFrame:SetSize(400, 30)
-    creditsFrame:SetPoint("TOP", frame, "BOTTOM", 0, 5)
-    creditsFrame:SetBackdrop({
-        bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
-        edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
-        tile = true, tileSize = 32, edgeSize = 16,
-        insets = { left = 11, right = 12, top = 12, bottom = 11 }
-    })
-    creditsFrame:SetBackdropColor(0.2, 0.2, 0.5, 1)
-
-    local creditsText = creditsFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    creditsText:SetPoint("CENTER", creditsFrame, "CENTER", 0, 0)
-    creditsText:SetText("Made By: Adam and Corey.")
-    creditsText:SetFont("Fonts\\FRIZQT__.TTF", 10)
-
-    -- Hide the frame by default
-    frame:Hide()
-    GoalsFrame = frame
-end
-
--- Adds a row to the table view of the point tracker
-function addRow(player, point, class)
-    local tableRow = CreateFrame("Frame", "GoalsFrameScrollChildRow" .. rowCount, scroll)
-    tableRow:SetSize(150, 20)
-    tableRow:SetPoint("TOPLEFT", 0, rowCount * -20)
-
-    local playerText = tableRow:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    playerText:SetPoint("TOPLEFT", 20, 0)
-    playerText:SetJustifyH("LEFT")
-    playerText:SetFont("Fonts\\FRIZQT__.TTF", 12)
-    local classColor = classColors[strlower(class)] or {r = 1, g = 1, b = 1}
-    playerText:SetTextColor(classColor.r, classColor.g, classColor.b, 1.0)
-    playerText:SetText(player)
-
-    local pointsText = tableRow:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    pointsText:SetPoint("TOP", 75, 0)
-    pointsText:SetJustifyH("MIDDLE")
-    pointsText:SetFont("Fonts\\FRIZQT__.TTF", 12)
-    pointsText:SetText(point)
-
-    rowCount = rowCount + 1
-end
-
--- Function to clear all rows before re-adding data
-function ClearAllRows()
-    for i = 1, rowCount do
-        local row = _G["GoalsFrameScrollChildRow" .. (i - 1)]
-        if row then
-            row:Hide()
+    local playerFound = false
+    for storedPlayer, info in pairs(playerPoints) do
+        if strlower(storedPlayer) == lowerPlayer then
+            playerPoints[storedPlayer].class = class
+            SendToGoalsChat("Set class for " .. storedPlayer .. ": " .. class)
+            playerFound = true
+            break
         end
     end
-    rowCount = 0
-end
 
--- Function to update party/raid members
-function UpdatePartyMembers()
-    ClearAllRows()  -- Clear existing rows
-
-    -- Ensure the player is included in the list
-    local playerName, playerClass = UnitName("player"), UnitClass("player")
-    if playerName and playerClass then
-        addRow(playerName, tostring(playerPoints[playerName] or 0), playerClass)
-    end
-
-    -- Loop through party/raid members
-    local numGroupMembers = GetNumGroupMembers()
-    for i = 1, numGroupMembers do
-        local name, _, _, _, class = GetRaidRosterInfo(i)
-        if name and class then
-            addRow(name, tostring(playerPoints[name] or 0), class)
-        end
+    if not playerFound then
+        SendToGoalsChat("Player not found in the database: " .. player)
     end
 end
 
--- Toggle logic for showing and hiding GoalsFrame
-function ToggleGoalsFrame()
-    if not GoalsFrame then
-        CreateGoalsFrame()
-    end
-
-    if GoalsFrame:IsShown() then
-        GoalsFrame:Hide()
-        print("Debug: GoalsFrame is being hidden")
+SLASH_GSETCLASS1 = '/gsetclass'
+SlashCmdList["GSETCLASS"] = function(msg)
+    local player, class = strsplit(" ", msg, 2)
+    if player and class then
+        SetPlayerClass(player, class)
     else
-        GoalsFrame:Show()
-        print("Debug: GoalsFrame is being shown")
-        UpdatePartyMembers()  -- Update data when showing the frame
+        SendToGoalsChat("Usage: /gsetclass [player] [class]")
     end
 end
 
-SLASH_TOGGLEGOALS1 = '/tg'
-SlashCmdList["TOGGLEGOALS"] = ToggleGoalsFrame
+-- Slash command to list all players in the database
+SLASH_GLIST1 = '/glist'
+SlashCmdList["GLIST"] = function()
+    if next(playerPoints) == nil then
+        SendToGoalsChat("No players in the database.")
+    else
+        SendToGoalsChat("Listing all players:")
+        -- Sort players in the database by points and alphabetically
+        local sortedPlayers = {}
+        for player, info in pairs(playerPoints) do
+            if type(info) == "table" then
+                EnsurePlayerPointsEntry(player, info.class)
+                table.insert(sortedPlayers, {name = player, points = info.points, class = info.class})
+            else
+                SendToGoalsChat(player .. ": 0 points (invalid data format)")
+            end
+        end
 
--- Award points to group members
-local function AwardPointsToGroup()
-    print("Awarding points to group...")
+        table.sort(sortedPlayers, function(a, b)
+            if a.points == b.points then
+                return a.name < b.name
+            else
+                return a.points > b.points
+            end
+        end)
 
-    local numGroupMembers = GetNumGroupMembers()
-    for i = 1, numGroupMembers do
-        local name = GetRaidRosterInfo(i)
-        if name and name ~= "" then
-            playerPoints[name] = (playerPoints[name] or 0) + 1
-            print("Awarded 1 point to: " .. name .. ". Total points: " .. playerPoints[name])
+        for _, playerData in ipairs(sortedPlayers) do
+            local classColor = classColors[strlower(playerData.class)] or classColors["unknown"]
+            local colorCode = string.format("|cff%02x%02x%02x", classColor.r * 255, classColor.g * 255, classColor.b * 255)
+            SendToGoalsChat(colorCode .. playerData.name .. "|r: " .. tostring(playerData.points) .. " points")
         end
     end
+end
 
-    -- Update the frame if it's shown
-    if GoalsFrame and GoalsFrame:IsShown() then
-        UpdatePartyMembers()
+-- Slash command to remove a player from the database
+SLASH_GREMOVE1 = '/gremove'
+SlashCmdList["GREMOVE"] = function(msg)
+    local player = strtrim(msg)
+    if player then
+        local lowerPlayer = strlower(player)
+        local removedCount = 0
+
+        for storedPlayer, info in pairs(playerPoints) do
+            if strlower(storedPlayer) == lowerPlayer then
+                playerPoints[storedPlayer] = nil
+                removedCount = removedCount + 1
+            end
+        end
+
+        if removedCount > 0 then
+            SendToGoalsChat("Removed " .. removedCount .. " instance(s) of player: " .. player)
+            ListPartyOrRaidMembersSorted()
+        else
+            SendToGoalsChat("Player not found: " .. player)
+        end
+    else
+        SendToGoalsChat("Usage: /gremove [player]")
     end
+end
+
+-- Function to send raid/party points to chat
+function SendPointsToChat()
+    local members = GetAllGroupMembers()
+    local memberList = {}
+
+    -- Collect all group members into a list for sorting
+    for _, member in ipairs(members) do
+        local playerName = member.name
+        EnsurePlayerPointsEntry(playerName, member.class)
+        table.insert(memberList, {name = playerName, points = playerPoints[playerName].points, class = playerPoints[playerName].class})
+    end
+
+    -- Sort the member list: First by points descending, then by name ascending
+    table.sort(memberList, function(a, b)
+        if a.points == b.points then
+            return a.name < b.name
+        else
+            return a.points > b.points
+        end
+    end)
+
+    -- Determine chat type (raid, party, or say if alone)
+    local chatType
+    if GetNumRaidMembers() > 0 then
+        chatType = "RAID"
+    elseif GetNumPartyMembers() > 0 then
+        chatType = "PARTY"
+    else
+        chatType = "SAY"
+    end
+
+    -- Send points to raid/party chat or say chat if alone
+    if #memberList > 0 then
+        for _, playerData in ipairs(memberList) do
+            local message = playerData.name .. ": " .. playerData.points .. " points"
+            SendChatMessage(message, chatType)
+        end
+    else
+        SendToGoalsChat("No members found to send points for.")
+    end
+end
+
+SLASH_GSEND1 = '/gsend'
+SlashCmdList["GSEND"] = SendPointsToChat
+
+-- Function to update player names in the database with correct casing and class from the game
+local function UpdatePlayerNamesWithProperCasing()
+    local members = GetAllGroupMembers()
+
+    for _, member in ipairs(members) do
+        local lowerMemberName = strlower(member.name)
+
+        -- Check if a player with the same name (ignoring case) exists in the database
+        for storedPlayer, info in pairs(playerPoints) do
+            if strlower(storedPlayer) == lowerMemberName then
+                EnsurePlayerPointsEntry(storedPlayer, info.class)
+                playerPoints[storedPlayer] = nil  -- Remove old entry
+                playerPoints[member.name] = {points = info.points, class = member.class or "unknown"}  -- Add new entry with proper casing and class
+                break
+            end
+        end
+    end
+end
+
+-- Slash command to provide help about all commands
+SLASH_GHELP1 = '/ghelp'
+SlashCmdList["GHELP"] = function()
+    SendToGoalsChat("|cffFFD700GOALS Help|r:")
+    SendToGoalsChat("|cffFFD700/gshow|r - Show raid/party members with their points (sorted by points).")
+    SendToGoalsChat("|cffFFD700/glist|r - List all players in the database with their points.")
+    SendToGoalsChat("|cffFFD700/gsetpoints [player] [points]|r - Manually set points for a player.")
+    SendToGoalsChat("|cffFFD700/gsetclass [player] [class]|r - Manually set the class for a player (valid classes:|cffFFC125 deathKnight|r,|cffFF4500 druid|r,|cffADFF2F hunter|r,|cff40E0D0 mage|r,|cffFFC0CB paladin|r,|cffFFFFFF priest|r,|cffFFFF99 rogue|r,|cff0070DD shaman|r,|cff9370DB warlock|r,|cffC79C6E warrior|r,|cff808080 unknown|r).")
+    SendToGoalsChat("|cffFFD700/gremove [player]|r - Remove a player from the database.")
+    SendToGoalsChat("|cffFFD700/gsend|r - Send the current raid/party members' points to raid or party chat.")
 end
 
 -- Event handling function
@@ -224,14 +370,46 @@ local function OnEvent(self, event, ...)
     if event == "ADDON_LOADED" then
         local addonName = ...
         if addonName == "Testing" then
+            LoadBossEncounters()
+            if PlayerPointsDB then
+                playerPoints = PlayerPointsDB
+            end
             InitializePlayerPoints()
             self:UnregisterEvent("ADDON_LOADED")
-            print("Addon: [" .. addonName .. "] loaded.")
+            SendToGoalsChat("Addon: [" .. addonName .. "] loaded.")
+            SendToGoalsChat("/ghelp - list GOALS commands.")
         end
+    elseif event == "PLAYER_LOGOUT" then
+        PlayerPointsDB = playerPoints
     elseif event == "COMBAT_LOG_EVENT_UNFILTERED" then
-        local _, subevent, _, _, _, _, destName, _ = CombatLogGetCurrentEventInfo()
+        local _, subevent, _, _, _, _, destName, _ = ...
         if subevent == "UNIT_DIED" then
-            AwardPointsToGroup()  -- Award points for boss kills
+            local found = false
+            for encounter, bosses in pairs(bossEncounters) do
+                for i, bossName in ipairs(bosses) do
+                    if destName == bossName then
+                        bossesKilled[encounter] = bossesKilled[encounter] or {}
+                        bossesKilled[encounter][bossName] = true
+                        found = true
+                        local allBossesDead = true
+                        for _, boss in ipairs(bosses) do
+                            if not bossesKilled[encounter][boss] then
+                                allBossesDead = false
+                                break
+                            end
+                        end
+                        if allBossesDead and not encounterCompleted[encounter] then
+                            SendToGoalsChat("Completed encounter: [" .. encounter .. "], all bosses killed.")
+                            encounterCompleted[encounter] = true
+                            AwardPointsToGroup(encounter)
+                            UpdatePlayerNamesWithProperCasing()
+                        end
+                    end
+                end
+            end
+            if not found then
+                SendToGoalsChat("Killed: [" .. destName .. "], not on the boss list.")
+            end
         end
     end
 end
@@ -240,33 +418,13 @@ end
 local f = CreateFrame("Frame")
 f:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
 f:RegisterEvent("ADDON_LOADED")
+f:RegisterEvent("PLAYER_LOGOUT")
 f:SetScript("OnEvent", OnEvent)
-
--- Slash command to manually set points for a player
-function SetPlayerPoints(player, points)
-    playerPoints[player] = points
-    print("Set points for " .. player .. ": " .. points)
-    UpdatePartyMembers()
-end
-
-SLASH_SETPOINTS1 = '/setpoints'
-SlashCmdList["SETPOINTS"] = function(msg)
-    local player, points = strsplit(" ", msg, 2)
-    points = tonumber(points)
-    if player and points then
-        SetPlayerPoints(player, points)
-    else
-        print("Usage: /setpoints [player] [points]")
-    end
-end
 
 -- Initialize player points on addon load
 function InitializePlayerPoints()
-    local numGroupMembers = GetNumGroupMembers()
-    for i = 1, numGroupMembers do
-        local name = GetRaidRosterInfo(i)
-        if name then
-            playerPoints[name] = 0
-        end
+    local members = GetAllGroupMembers()
+    for _, member in ipairs(members) do
+        EnsurePlayerPointsEntry(member.name, member.class)
     end
 end
