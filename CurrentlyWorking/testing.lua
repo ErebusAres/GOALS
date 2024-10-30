@@ -105,26 +105,32 @@ local function PrintPointsSummary()
 
 end
 
--- Updated AwardPointsToGroup() function
-    local function AwardPointsToGroup()
-        print("Awarding points to group...")
+-- Now you can define the other functions like AwardPointsToGroup, OnEvent, etc.
+
+local function AwardPointsToGroup()
+    print("Awarding points to group...")
+
+    local numGroupMembers = GetGroupSize()
+    for i = 1, numGroupMembers do
+        local name = GetGroupMemberName(i)
+        
+    print("Debug: Processing member", name)
+    if name and name ~= "" then
+    print("Debug: Member has valid name", name)
     
-        local numGroupMembers = GetGroupSize()
-        for i = 1, numGroupMembers do
-            local name = GetGroupMemberName(i)
-            
-            if name and name ~= "" then
-                if not playerPoints[name] then
-                    playerPoints[name] = 0
-                end
-                playerPoints[name] = playerPoints[name] + 1
-                print("Awarded 1 point to: " .. name .. ". Total points: " .. playerPoints[name])
+            if not playerPoints[name] then
+                playerPoints[name] = 0
             end
+            playerPoints[name] = playerPoints[name] + 1
+            print("Awarded 1 point to: " .. name .. ". Total points: " .. playerPoints[name])
         end
-    
-        -- Always update the frame, regardless of its visibility
-        PrintPointsSummary()
     end
+
+    -- Always update the frame if it's shown
+    if GoalsFrame and GoalsFrame:IsShown() then
+        PrintPointsSummary()  -- Update points display in the frame
+    end
+end
 
 -- Function to handle events
 local function OnEvent(self, event, ...)
@@ -244,26 +250,15 @@ end
 SLASH_SHOWPOINTS1 = '/showpoints'
 SlashCmdList["SHOWPOINTS"] = PrintPoints
 
--- Updated ToggleGoalsFrame() function
-    local function ToggleGoalsFrame()
-        print("ToggleGoalsFrame called")
+local function ToggleGoalsFrame()
+    print("ToggleGoalsFrame called")  -- Debugging statement
+    if not GoalsFrame then
+        
+    print("Debug: CreateGoalsFrame function called")
+    CreateGoalsFrame()
     
-        if not GoalsFrame then
-            print("Debug: CreateGoalsFrame function called")
-            CreateGoalsFrame()
-        end
+    end
     
-        if GoalsFrame:IsShown() then
-            print("Debug: GoalsFrame is being hidden")
-            GoalsFrame:Hide()
-        else
-            print("Debug: GoalsFrame is being shown")
-            GoalsFrame:Show()
-            
-            -- Call PrintPointsSummary() to update the frame data
-            PrintPointsSummary()
-        end
-    end    
     
     -- Create the GoalsFrame if it doesn't exist
     if not GoalsFrame then
