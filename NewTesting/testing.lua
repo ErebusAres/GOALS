@@ -318,7 +318,6 @@ SlashCmdList["SHOWPOINTS"] = PrintPoints
     
         PrintPointsSummary()  -- Update points when showing the frame
     end
-end
 
 
 SLASH_TOGGLEGOALS1 = '/togglegoals'
