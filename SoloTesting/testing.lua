@@ -3,9 +3,10 @@ local function CapitalizeFirstLetter(str)
     return str:gsub("^%l", string.upper)
 end
 
+
 -- Class colors configuration
 local classColors = { 
-    deathKnight = {r = 0.77, g = 0.12, b = 0.23},
+    deathknight = {r = 0.77, g = 0.12, b = 0.23},
     druid       = {r = 1.0, g = 0.49, b = 0.04},
     hunter      = {r = 0.67, g = 0.83, b = 0.45},
     mage        = {r = 0.25, g = 0.78, b = 0.92},
@@ -238,7 +239,7 @@ function ListPartyOrRaidMembersSorted()
 end
 
 -- Toggle logic for showing points in the "GOALS" chat
-SLASH_GOALS_SHOW1 = "/gshow"
+SLASH_GOALS_SHOW1 = "/goshow"
 SlashCmdList["GOALS_SHOW"] = function()
     RestoreGoalsChatTab(true)
     ListPartyOrRaidMembersSorted()
@@ -270,15 +271,20 @@ function SetPlayerPoints(player, points)
     end
 end
 
-SLASH_GSETPOINTS1 = '/gsetpoints'
+SLASH_GSETPOINTS1 = '/gosetpoints'
 SlashCmdList["GSETPOINTS"] = function(msg)
     local player, points = strsplit(" ", msg, 2)
     points = tonumber(points)
     if player and points then
         SetPlayerPoints(player, points)
     else
-        SendToGoalsChat("Usage: /gsetpoints [player] [points]")
+        SendToGoalsChat("Usage: /gosetpoints [player] [points]")
     end
+end
+
+-- Helper function to convert RGB to hexadecimal color code
+local function RGBToHex(color)
+    return string.format("|cff%02x%02x%02x", color.r * 255, color.g * 255, color.b * 255)
 end
 
 -- Slash command to manually set class for a player
@@ -286,38 +292,50 @@ function SetPlayerClass(player, class)
     local lowerPlayer = strlower(player)
     local lowerClass = strlower(class)
 
+    -- Check if the provided class is valid
     if not classColors[lowerClass] then
-        SendToGoalsChat("Invalid class specified. Valid classes: DeathKnight, druid, hunter, mage, paladin, priest, rogue, shaman, warlock, warrior, unknown")
+        local validClassList = ""
+        for className, color in pairs(classColors) do
+            local hexColor = RGBToHex(color)
+            validClassList = validClassList .. hexColor .. className .. "|r, "
+        end
+        validClassList = validClassList:sub(1, -3)  -- Remove the trailing comma and space
+        SendToGoalsChat("Invalid class specified. Valid classes: " .. validClassList .. ".")
         return
     end
 
+    -- Set the class for the player in the database
     local playerFound = false
     for storedPlayer, info in pairs(playerPoints) do
         if strlower(storedPlayer) == lowerPlayer then
-            playerPoints[storedPlayer].class = class
-            SendToGoalsChat("Set class for " .. storedPlayer .. ": " .. class)
+            playerPoints[storedPlayer].class = lowerClass
+            local hexColor = RGBToHex(classColors[lowerClass])
+            SendToGoalsChat("Set class for " .. storedPlayer .. ": " .. hexColor .. lowerClass .. "|r")
             playerFound = true
             break
         end
     end
 
+    -- If player is not found in the database
     if not playerFound then
         SendToGoalsChat("Player not found in the database: " .. player)
     end
 end
 
-SLASH_GSETCLASS1 = '/gsetclass'
+-- Registering the slash command to set player class
+SLASH_GSETCLASS1 = '/gosetclass'
 SlashCmdList["GSETCLASS"] = function(msg)
     local player, class = strsplit(" ", msg, 2)
     if player and class then
         SetPlayerClass(player, class)
     else
-        SendToGoalsChat("Usage: /gsetclass [player] [class]")
+        SendToGoalsChat("Usage: /gosetclass [player] [class]")
     end
 end
 
+
 -- Slash command to list all players in the database
-SLASH_GLIST1 = '/glist'
+SLASH_GLIST1 = '/golist'
 SlashCmdList["GLIST"] = function()
     if next(playerPoints) == nil then
         SendToGoalsChat("No players in the database.")
@@ -351,7 +369,7 @@ SlashCmdList["GLIST"] = function()
 end
 
 -- Slash command to remove a player from the database
-SLASH_GREMOVE1 = '/gremove'
+SLASH_GREMOVE1 = '/goremove'
 SlashCmdList["GREMOVE"] = function(msg)
     local player = strtrim(msg)
     if player then
@@ -372,7 +390,7 @@ SlashCmdList["GREMOVE"] = function(msg)
             SendToGoalsChat("Player not found: " .. player)
         end
     else
-        SendToGoalsChat("Usage: /gremove [player]")
+        SendToGoalsChat("Usage: /goremove [player]")
     end
 end
 
@@ -418,7 +436,7 @@ function SendPointsToChat()
     end
 end
 
-SLASH_GSEND1 = '/gsend'
+SLASH_GSEND1 = '/gosend'
 SlashCmdList["GSEND"] = SendPointsToChat
 
 -- Function to update player names in the database with correct casing and class from the game
@@ -441,16 +459,28 @@ local function UpdatePlayerNamesWithProperCasing()
 end
 
 -- Slash command to provide help about all commands
-SLASH_GHELP1 = '/ghelp'
+SLASH_GHELP1 = '/gohelp'
 SlashCmdList["GHELP"] = function()
     SendToGoalsChat("|cffFFD700GOALS Help|r:")
-    SendToGoalsChat("|cffFFD700/gshow|r - Show raid/party members with their points (sorted by points).")
-    SendToGoalsChat("|cffFFD700/glist|r - List all players in the database with their points.")
-    SendToGoalsChat("|cffFFD700/gsetpoints [player] [points]|r - Manually set points for a player.")
-    SendToGoalsChat("|cffFFD700/gsetclass [player] [class]|r - Manually set the class for a player (valid classes:|cffFFC125 deathKnight|r,|cffFF4500 druid|r,|cffADFF2F hunter|r,|cff40E0D0 mage|r,|cffFFC0CB paladin|r,|cffFFFFFF priest|r,|cffFFFF99 rogue|r,|cff0070DD shaman|r,|cff9370DB warlock|r,|cffC79C6E warrior|r,|cff808080 unknown|r).")
-    SendToGoalsChat("|cffFFD700/gremove [player]|r - Remove a player from the database.")
-    SendToGoalsChat("|cffFFD700/gsend|r - Send the current raid/party members' points to raid or party chat.")
+    SendToGoalsChat("|cffFFD700/goshow|r - Show raid/party members with their points (sorted by points).")
+    SendToGoalsChat("|cffFFD700/golist|r - List all players in the database with their points.")
+    SendToGoalsChat("|cffFFD700/gosetpoints [player] [points]|r - Manually set points for a player.")
+    SendToGoalsChat("|cffFFD700/gosetclass [player] [class]|r - Manually set the class for a player (valid classes: " ..
+        "|cffc41e3a deathknight|r, " ..  -- Correct color for Death Knight
+        "|cffff7d0a druid|r, " ..        -- Correct color for Druid
+        "|cffabd473 hunter|r, " ..       -- Correct color for Hunter
+        "|cff69ccf0 mage|r, " ..         -- Correct color for Mage
+        "|cfff58cba paladin|r, " ..      -- Correct color for Paladin
+        "|cffffffff priest|r, " ..       -- Correct color for Priest
+        "|cfffff569 rogue|r, " ..        -- Correct color for Rogue
+        "|cff0070de shaman|r, " ..       -- Correct color for Shaman
+        "|cff9482c9 warlock|r, " ..      -- Correct color for Warlock
+        "|cffc79c6e warrior|r, " ..      -- Correct color for Warrior
+        "|cff808080 unknown|r).")        -- Correct color for Unknown
+    SendToGoalsChat("|cffFFD700/goremove [player]|r - Remove a player from the database.")
+    SendToGoalsChat("|cffFFD700/gosend|r - Send the current raid/party members' points to raid or party chat.")
 end
+
 
 -- Function to reset an encounter
 local function ResetEncounter(encounter)
@@ -479,7 +509,7 @@ local function OnEvent(self, event, ...)
             RestoreGoalsChatTab()  -- Restore or create the "GOALS" chat tab
             self:UnregisterEvent("ADDON_LOADED")
             SendToGoalsChat("Addon: [" .. addonName .. "] loaded.")
-            SendToGoalsChat("/ghelp - list GOALS commands.")
+            SendToGoalsChat("/gohelp - list GOALS commands.")
         end
 
     elseif event == "PLAYER_ENTERING_WORLD" then
