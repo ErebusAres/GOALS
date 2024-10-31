@@ -1,14 +1,13 @@
 ## Interface: 30300
 ## Author: Adam and Corey
-## Title: |cff00ccffTestingSF|r - Gen1
+## Title: |cff00ccffGOALS|r - Gen1
 ## Version: v0.0.1beta
 ## Notes: Boss and Loot Tracker for GO
 ## DefaultState: enabled
-## SavedVariables: PlayerPointsDB
 ## Dependencies:
 ## OptionalDeps:
 
 ## libs ##
 
-testing.lua
-bossEncounters.lua
+goals.xml
+goals.lua
