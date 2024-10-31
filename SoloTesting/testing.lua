@@ -65,10 +65,12 @@ local function GetAllGroupMembers()
     return members
 end
 
--- Function to send messages to the "GOALS" chat tab
+
 local function SendToGoalsChat(msg)
     if msg then
         local chatTabIndex = nil
+
+        -- Find existing "GOALS" tab
         for i = 1, NUM_CHAT_WINDOWS do
             local name = GetChatWindowInfo(i)
             if name == "GOALS" then
@@ -77,19 +79,77 @@ local function SendToGoalsChat(msg)
             end
         end
 
-        -- If "GOALS" chat tab does not exist, create it
+        -- Create "GOALS" tab if it does not exist
         if not chatTabIndex then
-            FCF_OpenNewWindow("GOALS")
-            chatTabIndex = NUM_CHAT_WINDOWS  -- New chat window is always the last one
-            FCF_SetWindowName(_G["ChatFrame" .. chatTabIndex], "GOALS")
-            SendToGoalsChat("GOALS tab created.")
+            local chatFrame = FCF_OpenNewWindow("GOALS")
+            chatTabIndex = chatFrame:GetID()
+
+            -- Assign default settings to avoid errors
+            FCF_SetWindowColor(chatFrame, 0, 0, 0)  -- Black background color
+            FCF_SetWindowAlpha(chatFrame, 0.5)      -- 50% transparency
+            FCF_DockFrame(chatFrame)                -- Dock the frame to the chat
+            FCF_SetLocked(chatFrame, true)          -- Lock the frame
+
+            -- Send confirmation message
+            chatFrame:AddMessage("|cffFFD700[GOALS]:|r GOALS tab created.")
         end
 
-        -- Send the message to the "GOALS" chat tab
-        local color = "|cffFFD700"  -- Gold color code for the prefix
-        _G["ChatFrame" .. chatTabIndex]:AddMessage(color .. "[GOALS]:|r " .. msg)
+        -- Send the message to the "GOALS" chat tab if it exists
+        if chatTabIndex and _G["ChatFrame" .. chatTabIndex] then
+            local color = "|cffFFD700"  -- Gold color code for the prefix
+            _G["ChatFrame" .. chatTabIndex]:AddMessage(color .. "[GOALS]:|r " .. msg)
+        else
+            print("[ERROR]: Unable to send message to 'GOALS' chat tab.")
+        end
     end
 end
+
+-- Function to restore or create the "GOALS" chat tab
+local function RestoreGoalsChatTab(shouldFocus)
+    local chatTabIndex = nil
+
+    -- Check if "GOALS" chat tab already exists
+    for i = 1, NUM_CHAT_WINDOWS do
+        local name = GetChatWindowInfo(i)
+        if name == "GOALS" then
+            chatTabIndex = i
+            break
+        end
+    end
+
+    -- If "GOALS" tab does not exist, create it
+    if not chatTabIndex then
+        local success, err = pcall(function()
+            FCF_OpenNewWindow("GOALS")
+        end)
+
+        -- Handle error if the creation fails
+        if not success then
+            print("Error creating GOALS tab: " .. tostring(err))
+            return
+        end
+
+        -- Update chatTabIndex to the new window
+        chatTabIndex = NUM_CHAT_WINDOWS
+        FCF_SetWindowName(_G["ChatFrame" .. chatTabIndex], "GOALS")
+        SendToGoalsChat("GOALS tab created.")
+    end
+
+    -- Ensure the tab is docked properly
+    local chatFrame = _G["ChatFrame" .. chatTabIndex]
+    if chatFrame then
+        FCF_DockFrame(chatFrame)
+        if not chatFrame:IsVisible() then
+            chatFrame:Show()
+        end
+        if shouldFocus then
+            FCF_SelectDockFrame(chatFrame)  -- Focus on the tab only if specified
+        end
+    else
+        print("Error: GOALS chat frame not found.")
+    end
+end
+
 
 -- Load the bossEncounters list from the bossEncounters.lua file
 local function LoadBossEncounters()
@@ -98,6 +158,32 @@ local function LoadBossEncounters()
         SendToGoalsChat("Boss encounter data loaded successfully.")
     else
         SendToGoalsChat("Error: Failed to load boss encounter data.")
+    end
+end
+
+local function LoadPlayerPoints()
+    if PlayerPointsDB then
+        playerPoints = PlayerPointsDB
+        SendToGoalsChat("Player points loaded from saved data.")
+    else
+        SendToGoalsChat("No saved data found, starting fresh.")
+    end
+end
+
+local function SavePlayerPoints()
+    PlayerPointsDB = playerPoints
+end
+
+local function HandleLoot(msg)
+    local player, itemLink = msg:match("^(%S+) receives (.+)%.$")
+    if player and itemLink then
+        local _, _, itemRarity = GetItemInfo(itemLink)
+        if itemRarity and itemRarity >= 4 then  -- Check for Epic or higher quality (4 is Epic)
+            player = CapitalizeFirstLetter(player)
+            EnsurePlayerPointsEntry(player)
+            playerPoints[player].points = 0
+            SendToGoalsChat(player .. " received " .. itemLink .. " and has reset to 0 points.")
+        end
     end
 end
 
@@ -151,12 +237,12 @@ function ListPartyOrRaidMembersSorted()
 end
 
 -- Toggle logic for showing points in the "GOALS" chat
-function ShowGoalsPoints()
+SLASH_GOALS_SHOW1 = "/gshow"
+SlashCmdList["GOALS_SHOW"] = function()
+    RestoreGoalsChatTab(true)
     ListPartyOrRaidMembersSorted()
 end
 
-SLASH_SHOWGOALS1 = '/gshow'
-SlashCmdList["SHOWGOALS"] = ShowGoalsPoints
 
 -- Slash command to manually set points for a player
 function SetPlayerPoints(player, points)
@@ -375,14 +461,33 @@ local function OnEvent(self, event, ...)
                 playerPoints = PlayerPointsDB
             end
             InitializePlayerPoints()
+            RestoreGoalsChatTab()  -- Restore or create the "GOALS" chat tab
             self:UnregisterEvent("ADDON_LOADED")
             SendToGoalsChat("Addon: [" .. addonName .. "] loaded.")
             SendToGoalsChat("/ghelp - list GOALS commands.")
         end
+
+    elseif event == "PLAYER_ENTERING_WORLD" then
+        -- Ensure player points are loaded when re-entering the world
+        if not playerPoints or next(playerPoints) == nil then
+            if PlayerPointsDB then
+                playerPoints = PlayerPointsDB
+                SendToGoalsChat("Player points loaded from saved data.")
+            else
+                SendToGoalsChat("No saved data found. Starting fresh.")
+            end
+        end
+        InitializePlayerPoints()
+
+        -- Register the combat log event only after entering the world
+        self:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+
     elseif event == "PLAYER_LOGOUT" then
         PlayerPointsDB = playerPoints
+
     elseif event == "COMBAT_LOG_EVENT_UNFILTERED" then
         local _, subevent, _, _, _, _, destName, _ = ...
+
         if subevent == "UNIT_DIED" then
             local found = false
             for encounter, bosses in pairs(bossEncounters) do
@@ -411,15 +516,22 @@ local function OnEvent(self, event, ...)
                 SendToGoalsChat("Killed: [" .. destName .. "], not on the boss list.")
             end
         end
+
+    elseif event == "CHAT_MSG_LOOT" then
+        local msg = ...
+        HandleLootMessage(msg)
     end
 end
 
--- Event registration
-local f = CreateFrame("Frame")
-f:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
-f:RegisterEvent("ADDON_LOADED")
-f:RegisterEvent("PLAYER_LOGOUT")
-f:SetScript("OnEvent", OnEvent)
+
+-- Creating the frame for event handling
+local eventFrame = CreateFrame("Frame")
+eventFrame:RegisterEvent("ADDON_LOADED")
+eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+eventFrame:RegisterEvent("PLAYER_LOGOUT")
+eventFrame:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+eventFrame:RegisterEvent("CHAT_MSG_LOOT")
+eventFrame:SetScript("OnEvent", OnEvent)
 
 -- Initialize player points on addon load
 function InitializePlayerPoints()
