@@ -20,6 +20,7 @@ local classColors = {
 
 local playerPoints = {}  -- Table to store player points and class information
 local bossEncounters = {}  -- Table to store boss encounter information
+local encounterActive = {}
 local bossesKilled = {}  -- Track killed bosses in an encounter
 local encounterCompleted = {}  -- Track completed encounters
 
@@ -451,7 +452,21 @@ SlashCmdList["GHELP"] = function()
     SendToGoalsChat("|cffFFD700/gsend|r - Send the current raid/party members' points to raid or party chat.")
 end
 
--- Event handling function
+-- Function to reset an encounter
+local function ResetEncounter(encounter)
+    if bossesKilled[encounter] then
+        bossesKilled[encounter] = nil
+    end
+    if encounterCompleted[encounter] then
+        encounterCompleted[encounter] = nil
+    end
+    if encounterActive[encounter] then
+        encounterActive[encounter] = nil
+    end
+    SendToGoalsChat("Encounter reset: [" .. encounter .. "].")
+end
+
+-- Main event handler function
 local function OnEvent(self, event, ...)
     if event == "ADDON_LOADED" then
         local addonName = ...
@@ -496,6 +511,8 @@ local function OnEvent(self, event, ...)
                         bossesKilled[encounter] = bossesKilled[encounter] or {}
                         bossesKilled[encounter][bossName] = true
                         found = true
+                        encounterActive[encounter] = true
+
                         local allBossesDead = true
                         for _, boss in ipairs(bosses) do
                             if not bossesKilled[encounter][boss] then
@@ -503,23 +520,66 @@ local function OnEvent(self, event, ...)
                                 break
                             end
                         end
+
                         if allBossesDead and not encounterCompleted[encounter] then
                             SendToGoalsChat("Completed encounter: [" .. encounter .. "], all bosses killed.")
                             encounterCompleted[encounter] = true
                             AwardPointsToGroup(encounter)
                             UpdatePlayerNamesWithProperCasing()
+                            ResetEncounter(encounter)
+                        elseif not allBossesDead then
+                            SendToGoalsChat("Killed: [" .. destName .. "], still more bosses in [" .. encounter .. "].")
                         end
                     end
                 end
             end
+
+            -- Handle single boss encounters
+            if not found then
+                for encounter, bosses in pairs(bossEncounters) do
+                    if #bosses == 1 and bosses[1] == destName then
+                        SendToGoalsChat("Killed: [" .. destName .. "], a boss unit.")
+                        found = true
+                        encounterActive[encounter] = true
+                        AwardPointsToGroup(encounter)  -- Award points for single boss encounter
+                        UpdatePlayerNamesWithProperCasing()
+                        ResetEncounter(encounter)
+                        break
+                    end
+                end
+            end
+
+            -- If not found, log that the unit was not on the boss list
             if not found then
                 SendToGoalsChat("Killed: [" .. destName .. "], not on the boss list.")
             end
         end
 
+    elseif event == "PLAYER_REGEN_ENABLED" then
+        -- Handle encounter failure if the player leaves combat without completing an encounter
+        for encounter, bosses in pairs(bossEncounters) do
+            if encounterActive[encounter] and not encounterCompleted[encounter] then
+                SendToGoalsChat("Checking encounter failure for: [" .. encounter .. "].")
+                
+                local allBossesDead = true
+                for _, bossName in ipairs(bosses) do
+                    if not bossesKilled[encounter] or not bossesKilled[encounter][bossName] then
+                        allBossesDead = false
+                        break
+                    end
+                end
+
+                if not allBossesDead then
+                    SendToGoalsChat("Encounter failed: [" .. encounter .. "]. Resetting.")
+                    ResetEncounter(encounter)
+                else
+                    SendToGoalsChat("All bosses already dead in encounter: [" .. encounter .. "], skipping reset.")
+                end
+            end
+        end
     elseif event == "CHAT_MSG_LOOT" then
         local msg = ...
-        HandleLootMessage(msg)
+        HandleLoot(msg)
     end
 end
 
@@ -531,7 +591,9 @@ eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
 eventFrame:RegisterEvent("PLAYER_LOGOUT")
 eventFrame:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
 eventFrame:RegisterEvent("CHAT_MSG_LOOT")
+eventFrame:RegisterEvent("PLAYER_REGEN_ENABLED") -- Register for encounter failure handling
 eventFrame:SetScript("OnEvent", OnEvent)
+
 
 -- Initialize player points on addon load
 function InitializePlayerPoints()
