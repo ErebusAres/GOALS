@@ -1,0 +1,8 @@
+{
+    "Lua.diagnostics.globals": [
+        "SlashCmdList",
+        "NUM_CHAT_WINDOWS",
+        "FCF_OpenNewWindow",
+        "FCF_SetWindowName"
+    ]
+}
