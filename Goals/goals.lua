@@ -24,6 +24,21 @@ local bossEncounters = {}  -- Table to store boss encounter information
 local encounterActive = {}
 local bossesKilled = {}  -- Track killed bosses in an encounter
 local encounterCompleted = {}  -- Track completed encounters
+local recentlyAwarded = {}
+
+-- Custom delay function to avoid C_Timer issues
+local function Delay(seconds, func)
+    local delayFrame = CreateFrame("Frame")
+    local elapsed = 0
+    delayFrame:SetScript("OnUpdate", function(self, delta)
+        elapsed = elapsed + delta
+        if elapsed >= seconds then
+            self:SetScript("OnUpdate", nil)
+            func()
+            delayFrame = nil
+        end
+    end)
+end
 
 -- Function to ensure playerPoints entry is always properly initialized
 local function EnsurePlayerPointsEntry(playerName, playerClass)
@@ -176,16 +191,75 @@ local function SavePlayerPoints()
     PlayerPointsDB = playerPoints
 end
 
+-- Function to handle loot messages
 local function HandleLoot(msg)
     local player, itemLink = msg:match("^(%S+) receives (.+)%.$")
     if player and itemLink then
-        local _, _, itemRarity = GetItemInfo(itemLink)
-        if itemRarity and itemRarity >= 4 then  -- Check for Epic or higher quality (4 is Epic)
+        local itemName, _, itemRarity = GetItemInfo(itemLink)
+
+        -- Ignore Badge of Justice and Void Crystal
+        if itemName == "Badge of Justice" or itemName == "Void Crystal" then
+            return
+        end
+
+        -- Check for Epic or higher quality (4 is Epic)
+        if itemRarity and itemRarity >= 4 then
             player = CapitalizeFirstLetter(player)
             EnsurePlayerPointsEntry(player)
             playerPoints[player].points = 0
             SendToGoalsChat(player .. " received " .. itemLink .. " and has reset to 0 points.")
         end
+    end
+end
+
+-- Function to list current raid or party members along with their points (sorted by points, then alphabetically)
+local function ListPartyOrRaidMembersSorted()
+    local players = {}
+
+    -- If in a raid, get raid members
+    if GetNumRaidMembers and GetNumRaidMembers() > 0 then
+        for i = 1, GetNumRaidMembers() do
+            local name = GetRaidRosterInfo(i)
+            if name then
+                table.insert(players, {name = name, points = playerPoints[name] and playerPoints[name].points or 0, class = playerPoints[name] and playerPoints[name].class or "unknown"})
+            end
+        end
+    elseif GetNumPartyMembers and GetNumPartyMembers() > 0 then
+        -- If in a party but not a raid, get party members
+        for i = 1, GetNumPartyMembers() do
+            local unit = "party" .. i
+            local name = UnitName(unit)
+            if name then
+                table.insert(players, {name = name, points = playerPoints[name] and playerPoints[name].points or 0, class = playerPoints[name] and playerPoints[name].class or "unknown"})
+            end
+        end
+        -- Include the player themselves
+        local playerName = UnitName("player")
+        if playerName then
+            table.insert(players, {name = playerName, points = playerPoints[playerName] and playerPoints[playerName].points or 0, class = playerPoints[playerName] and playerPoints[playerName].class or "unknown"})
+        end
+    else
+        -- If not in a group, only include the player themselves
+        local playerName = UnitName("player")
+        if playerName then
+            table.insert(players, {name = playerName, points = playerPoints[playerName] and playerPoints[playerName].points or 0, class = playerPoints[playerName] and playerPoints[playerName].class or "unknown"})
+        end
+    end
+
+    -- Sort the player list by points (descending) and name (ascending)
+    table.sort(players, function(a, b)
+        if a.points == b.points then
+            return a.name < b.name
+        end
+        return a.points > b.points
+    end)
+
+    -- Display the sorted list with colors and numbering
+    SendToGoalsChat("Current Raid/Party Members:")
+    for index, player in ipairs(players) do
+        local classColor = classColors[strlower(player.class or "unknown")] or {r = 1, g = 1, b = 1}
+        local output = string.format("|cff%02x%02x%02x%d. %s: %d|r", classColor.r * 255, classColor.g * 255, classColor.b * 255, index, player.name, player.points)
+        SendToGoalsChat(output)
     end
 end
 
@@ -195,9 +269,13 @@ local function AwardPointsToGroup(encounterName)
 
     local members = GetAllGroupMembers()
     for _, member in ipairs(members) do
-        EnsurePlayerPointsEntry(member.name, member.class)
-        playerPoints[member.name].points = playerPoints[member.name].points + 1
-        SendToGoalsChat("Awarded 1 point to: " .. member.name .. ". Total points: " .. playerPoints[member.name].points)
+        -- Prevent duplicate awarding within the same encounter
+        if not recentlyAwarded[member.name] then
+            recentlyAwarded[member.name] = true
+            EnsurePlayerPointsEntry(member.name, member.class)
+            playerPoints[member.name].points = playerPoints[member.name].points + 1
+            SendToGoalsChat("Awarded 1 point to: " .. member.name .. ". Total points: " .. playerPoints[member.name].points)
+        end
     end
 
     -- Reset encounter status to allow repeating the encounter
@@ -208,35 +286,13 @@ local function AwardPointsToGroup(encounterName)
     ListPartyOrRaidMembersSorted()  -- Automatically list the players in the party/raid after awarding points
 end
 
--- Function to list players in the current raid/party, sorted by points (high to low) and alphabetically if tied
-function ListPartyOrRaidMembersSorted()
-    local members = GetAllGroupMembers()
-    local memberList = {}
-
-    -- Collect all group members into a list for sorting
-    for _, member in ipairs(members) do
-        local playerName = member.name
-        EnsurePlayerPointsEntry(playerName, member.class)
-        table.insert(memberList, {name = playerName, points = playerPoints[playerName].points, class = playerPoints[playerName].class})
-    end
-
-    -- Sort the member list: First by points descending, then by name ascending
-    table.sort(memberList, function(a, b)
-        if a.points == b.points then
-            return a.name < b.name  -- Sort alphabetically if points are the same
-        else
-            return a.points > b.points  -- Sort by points (high to low)
-        end
-    end)
-
-    -- Display the sorted list in the "GOALS" chat tab
-    SendToGoalsChat("Listing raid/party members (sorted by points):")
-    for _, playerData in ipairs(memberList) do
-        local classColor = classColors[strlower(playerData.class)] or classColors["unknown"]
-        local colorCode = string.format("|cff%02x%02x%02x", classColor.r * 255, classColor.g * 255, classColor.b * 255)
-        SendToGoalsChat(colorCode .. playerData.name .. "|r: " .. tostring(playerData.points) .. " points")
-    end
+-- Clear `recentlyAwarded` table after some time (e.g., 5 minutes) to prevent lingering data
+local function ClearRecentlyAwarded()
+    recentlyAwarded = {}
 end
+
+-- Clear `recentlyAwarded` table after some time (e.g., 5 minutes) to prevent lingering data
+Delay(300, ClearRecentlyAwarded)
 
 -- Toggle logic for showing points in the "GOALS" chat
 SLASH_GOALS_SHOW1 = "/goshow"
@@ -394,50 +450,49 @@ SlashCmdList["GREMOVE"] = function(msg)
     end
 end
 
--- Function to send raid/party points to chat
-function SendPointsToChat()
-    local members = GetAllGroupMembers()
-    local memberList = {}
+-- Function to send the current raid/party members' points to raid or party chat
+SLASH_GOSEND1 = '/gosend'
+SlashCmdList["GOSEND"] = function()
+    local playerList = {}
 
-    -- Collect all group members into a list for sorting
-    for _, member in ipairs(members) do
-        local playerName = member.name
-        EnsurePlayerPointsEntry(playerName, member.class)
-        table.insert(memberList, {name = playerName, points = playerPoints[playerName].points, class = playerPoints[playerName].class})
+    if GetNumRaidMembers() > 0 then
+        for i = 1, GetNumRaidMembers() do
+            local name = GetRaidRosterInfo(i)
+            if name and playerPoints[name] then
+                table.insert(playerList, {name = name, points = playerPoints[name].points or 0})
+            end
+        end
+    elseif GetNumPartyMembers() > 0 then
+        for i = 1, GetNumPartyMembers() do
+            local name = UnitName("party" .. i)
+            if name and playerPoints[name] then
+                table.insert(playerList, {name = name, points = playerPoints[name].points or 0})
+            end
+        end
+        local playerName = UnitName("player")
+        if playerPoints[playerName] then
+            table.insert(playerList, {name = playerName, points = playerPoints[playerName].points or 0})
+        end
+    else
+        local playerName = UnitName("player")
+        if playerPoints[playerName] then
+            table.insert(playerList, {name = playerName, points = playerPoints[playerName].points or 0})
+        end
     end
 
-    -- Sort the member list: First by points descending, then by name ascending
-    table.sort(memberList, function(a, b)
+    -- Sort the player list by points (descending) and name (ascending)
+    table.sort(playerList, function(a, b)
         if a.points == b.points then
             return a.name < b.name
-        else
-            return a.points > b.points
         end
+        return a.points > b.points
     end)
 
-    -- Determine chat type (raid, party, or say if alone)
-    local chatType
-    if GetNumRaidMembers() > 0 then
-        chatType = "RAID"
-    elseif GetNumPartyMembers() > 0 then
-        chatType = "PARTY"
-    else
-        chatType = "SAY"
-    end
-
-    -- Send points to raid/party chat or say chat if alone
-    if #memberList > 0 then
-        for _, playerData in ipairs(memberList) do
-            local message = playerData.name .. ": " .. playerData.points .. " points"
-            SendChatMessage(message, chatType)
-        end
-    else
-        SendToGoalsChat("No members found to send points for.")
+    for _, player in ipairs(playerList) do
+        local output = player.name .. ": " .. player.points
+        SendChatMessage(output, GetNumRaidMembers() > 0 and "RAID" or GetNumPartyMembers() > 0 and "PARTY" or "SAY")
     end
 end
-
-SLASH_GSEND1 = '/gosend'
-SlashCmdList["GSEND"] = SendPointsToChat
 
 -- Function to update player names in the database with correct casing and class from the game
 local function UpdatePlayerNamesWithProperCasing()
@@ -482,21 +537,18 @@ SlashCmdList["GHELP"] = function()
 end
 
 
--- Function to reset an encounter
+-- Function to reset encounter data and ensure points reset properly
 local function ResetEncounter(encounter)
-    if bossesKilled[encounter] then
-        bossesKilled[encounter] = nil
+    if encounter then
+        bossesKilled[encounter] = {}
+        encounterActive[encounter] = false
+        encounterCompleted[encounter] = false
+        recentlyAwarded = {}  -- Reset recently awarded points
+        SendToGoalsChat("Encounter: [" .. encounter .. "] has been reset.")
     end
-    if encounterCompleted[encounter] then
-        encounterCompleted[encounter] = nil
-    end
-    if encounterActive[encounter] then
-        encounterActive[encounter] = nil
-    end
-    SendToGoalsChat("Encounter reset: [" .. encounter .. "].")
 end
 
--- Main event handler function
+
 local function OnEvent(self, event, ...)
     if event == "ADDON_LOADED" then
         local addonName = ...
@@ -528,6 +580,7 @@ local function OnEvent(self, event, ...)
         self:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
 
     elseif event == "PLAYER_LOGOUT" then
+        -- Save player points when logging out
         PlayerPointsDB = playerPoints
 
     elseif event == "COMBAT_LOG_EVENT_UNFILTERED" then
@@ -536,7 +589,7 @@ local function OnEvent(self, event, ...)
         if subevent == "UNIT_DIED" then
             local found = false
             for encounter, bosses in pairs(bossEncounters) do
-                for i, bossName in ipairs(bosses) do
+                for _, bossName in ipairs(bosses) do
                     if destName == bossName then
                         bossesKilled[encounter] = bossesKilled[encounter] or {}
                         bossesKilled[encounter][bossName] = true
@@ -564,24 +617,23 @@ local function OnEvent(self, event, ...)
                 end
             end
 
-            -- Handle single boss encounters
+            -- Handle single boss encounters (only one boss in the encounter)
             if not found then
                 for encounter, bosses in pairs(bossEncounters) do
                     if #bosses == 1 and bosses[1] == destName then
-                        SendToGoalsChat("Killed: [" .. destName .. "], a boss unit.")
                         found = true
                         encounterActive[encounter] = true
-                        AwardPointsToGroup(encounter)  -- Award points for single boss encounter
-                        UpdatePlayerNamesWithProperCasing()
-                        ResetEncounter(encounter)
+
+                        -- Prevent awarding multiple points for the same kill
+                        if not recentlyAwarded[destName] then
+                            recentlyAwarded[destName] = true
+                            AwardPointsToGroup(encounter)
+                            UpdatePlayerNamesWithProperCasing()
+                            ResetEncounter(encounter)
+                        end
                         break
                     end
                 end
-            end
-
-            -- If not found, log that the unit was not on the boss list
-            if not found then
-                SendToGoalsChat("Killed: [" .. destName .. "], not on the boss list.")
             end
         end
 
@@ -607,12 +659,12 @@ local function OnEvent(self, event, ...)
                 end
             end
         end
+
     elseif event == "CHAT_MSG_LOOT" then
         local msg = ...
         HandleLoot(msg)
     end
 end
-
 
 -- Creating the frame for event handling
 local eventFrame = CreateFrame("Frame")

@@ -59,11 +59,12 @@ _G.bossEncounters = {
     ["Ouro"] = { "Ouro" },
     --[[The Burning Crusade Raids]]
     --T4 Karazhan Bosses
-    ["Attumen the Huntsman"] = { "Attumen the Huntsman", "Midnight" },
+    ["Attumen the Huntsman"] = { "Attumen the Huntsman" },
+    ["Prince Tenris Mirkblood"] = { "Prince Tenris Mirkblood" },
     ["Moroes"] = { "Moroes" },
     ["Maiden of Virtue"] = { "Maiden of Virtue" },
-    ["Opera Event, Romulo and Julianne"] = { "Romulo", "Julianne" },
-    ["Opera Event, Wizard of Oz"] = { "Dorothee", "Roar", "The Crone" },
+    ["Opera Event, Romulo and Julianne"] = { "Romulo", "Julianne", "Romulo", "Julianne" },
+    ["Opera Event, Wizard of Oz"] = { "The Crone" },
     ["Opera Event, Big Bad Wolf"] = { "The Big Bad Wolf" },
     ["The Curator"] = { "The Curator" },
     ["Chess Event"] = { "Chess Event" },
