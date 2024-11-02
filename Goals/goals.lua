@@ -25,6 +25,7 @@ local encounterActive = {}
 local bossesKilled = {}  -- Track killed bosses in an encounter
 local encounterCompleted = {}  -- Track completed encounters
 local recentlyAwarded = {}
+local disenchanters = {}  -- Table to store disenchanter status for players
 
 -- Custom delay function to avoid C_Timer issues
 local function Delay(seconds, func)
@@ -50,6 +51,22 @@ local function EnsurePlayerPointsEntry(playerName, playerClass)
         playerPoints[playerName].points = playerPoints[playerName].points or 0
     end
 end
+
+local function SetDisenchanter(playerName, isDisenchanter)
+    local properCasedName = CapitalizeFirstLetter(playerName)
+
+    -- Ensure player points entry is initialized before setting disenchanter status
+    EnsurePlayerPointsEntry(properCasedName)
+
+    if isDisenchanter then
+        disenchanters[properCasedName] = true
+        SendToGoalsChat(properCasedName .. " is now marked as a disenchanter.")
+    else
+        disenchanters[properCasedName] = nil
+        SendToGoalsChat(properCasedName .. " is no longer marked as a disenchanter.")
+    end
+end
+
 
 -- Function to get all group members, whether raid or party
 local function GetAllGroupMembers()
@@ -81,7 +98,6 @@ local function GetAllGroupMembers()
 
     return members
 end
-
 
 local function SendToGoalsChat(msg)
     if msg then
@@ -167,7 +183,6 @@ local function RestoreGoalsChatTab(shouldFocus)
     end
 end
 
-
 -- Load the bossEncounters list from the bossEncounters.lua file
 local function LoadBossEncounters()
     if type(_G.bossEncounters) == "table" then
@@ -208,6 +223,11 @@ local function HandleLoot(msg)
             EnsurePlayerPointsEntry(player)
             playerPoints[player].points = 0
             SendToGoalsChat(player .. " received " .. itemLink .. " and has reset to 0 points.")
+
+            -- Check if the player is a disenchanter and notify
+            if disenchanters[player] then
+                SendToGoalsChat(player .. " (Disenchanter) received " .. itemLink .. ".")
+            end
         end
     end
 end
@@ -301,7 +321,6 @@ SlashCmdList["GOALS_SHOW"] = function()
     ListPartyOrRaidMembersSorted()
 end
 
-
 -- Slash command to manually set points for a player
 function SetPlayerPoints(player, points)
     -- Convert player name to lowercase for case-insensitive search
@@ -327,8 +346,8 @@ function SetPlayerPoints(player, points)
     end
 end
 
-SLASH_GSETPOINTS1 = '/gosetpoints'
-SlashCmdList["GSETPOINTS"] = function(msg)
+SLASH_GOSETPOINTS1 = '/gosetpoints'
+SlashCmdList["GOSETPOINTS"] = function(msg)
     local player, points = strsplit(" ", msg, 2)
     points = tonumber(points)
     if player and points then
@@ -379,8 +398,8 @@ function SetPlayerClass(player, class)
 end
 
 -- Registering the slash command to set player class
-SLASH_GSETCLASS1 = '/gosetclass'
-SlashCmdList["GSETCLASS"] = function(msg)
+SLASH_GOSETCLASS1 = '/gosetclass'
+SlashCmdList["GOSETCLASS"] = function(msg)
     local player, class = strsplit(" ", msg, 2)
     if player and class then
         SetPlayerClass(player, class)
@@ -389,15 +408,23 @@ SlashCmdList["GSETCLASS"] = function(msg)
     end
 end
 
+SLASH_GODISENCHANTER1 = '/gode'
+SlashCmdList["GODISENCHANTER"] = function(msg)
+    local player, value = strsplit(" ", msg, 2)
+    if player and (value == "true" or value == "false") then
+        SetDisenchanter(player, value == "true")
+    else
+        SendToGoalsChat("Usage: /gode [player] [true/false]")
+    end
+end
 
 -- Slash command to list all players in the database
-SLASH_GLIST1 = '/golist'
-SlashCmdList["GLIST"] = function()
+SLASH_GOLIST1 = '/golist'
+SlashCmdList["GOLIST"] = function()
     if next(playerPoints) == nil then
         SendToGoalsChat("No players in the database.")
     else
         SendToGoalsChat("Listing all players:")
-        -- Sort players in the database by points and alphabetically
         local sortedPlayers = {}
         for player, info in pairs(playerPoints) do
             if type(info) == "table" then
@@ -424,9 +451,10 @@ SlashCmdList["GLIST"] = function()
     end
 end
 
+
 -- Slash command to remove a player from the database
-SLASH_GREMOVE1 = '/goremove'
-SlashCmdList["GREMOVE"] = function(msg)
+SLASH_GOREMOVE1 = '/goremove'
+SlashCmdList["GOREMOVE"] = function(msg)
     local player = strtrim(msg)
     if player then
         local lowerPlayer = strlower(player)
@@ -449,6 +477,7 @@ SlashCmdList["GREMOVE"] = function(msg)
         SendToGoalsChat("Usage: /goremove [player]")
     end
 end
+
 
 -- Function to send the current raid/party members' points to raid or party chat
 SLASH_GOSEND1 = '/gosend'
@@ -480,7 +509,6 @@ SlashCmdList["GOSEND"] = function()
         end
     end
 
-    -- Sort the player list by points (descending) and name (ascending)
     table.sort(playerList, function(a, b)
         if a.points == b.points then
             return a.name < b.name
@@ -521,21 +549,21 @@ SlashCmdList["GHELP"] = function()
     SendToGoalsChat("|cffFFD700/golist|r - List all players in the database with their points.")
     SendToGoalsChat("|cffFFD700/gosetpoints [player] [points]|r - Manually set points for a player.")
     SendToGoalsChat("|cffFFD700/gosetclass [player] [class]|r - Manually set the class for a player (valid classes: " ..
-        "|cffc41e3a deathknight|r, " ..  -- Correct color for Death Knight
-        "|cffff7d0a druid|r, " ..        -- Correct color for Druid
-        "|cffabd473 hunter|r, " ..       -- Correct color for Hunter
-        "|cff69ccf0 mage|r, " ..         -- Correct color for Mage
-        "|cfff58cba paladin|r, " ..      -- Correct color for Paladin
-        "|cffffffff priest|r, " ..       -- Correct color for Priest
-        "|cfffff569 rogue|r, " ..        -- Correct color for Rogue
-        "|cff0070de shaman|r, " ..       -- Correct color for Shaman
-        "|cff9482c9 warlock|r, " ..      -- Correct color for Warlock
-        "|cffc79c6e warrior|r, " ..      -- Correct color for Warrior
-        "|cff808080 unknown|r).")        -- Correct color for Unknown
+        "|cffc41e3a deathknight|r, " ..
+        "|cffff7d0a druid|r, " ..
+        "|cffabd473 hunter|r, " ..
+        "|cff69ccf0 mage|r, " ..
+        "|cfff58cba paladin|r, " ..
+        "|cffffffff priest|r, " ..
+        "|cfffff569 rogue|r, " ..
+        "|cff0070de shaman|r, " ..
+        "|cff9482c9 warlock|r, " ..
+        "|cffc79c6e warrior|r, " ..
+        "|cff808080 unknown|r).")
     SendToGoalsChat("|cffFFD700/goremove [player]|r - Remove a player from the database.")
     SendToGoalsChat("|cffFFD700/gosend|r - Send the current raid/party members' points to raid or party chat.")
+    SendToGoalsChat("|cffFFD700/gode [player] [true/false]|r - Set or unset a player as a disenchanter.")
 end
-
 
 -- Function to reset encounter data and ensure points reset properly
 local function ResetEncounter(encounter)
@@ -547,7 +575,6 @@ local function ResetEncounter(encounter)
         SendToGoalsChat("Encounter: [" .. encounter .. "] has been reset.")
     end
 end
-
 
 local function OnEvent(self, event, ...)
     if event == "ADDON_LOADED" then
@@ -650,16 +677,20 @@ local function OnEvent(self, event, ...)
                         break
                     end
                 end
-
-                if not allBossesDead then
+    
+                if allBossesDead then
+                    -- If all bosses are dead but the encounter hasn't been marked complete, mark it as completed
+                    SendToGoalsChat("All bosses already dead in encounter: [" .. encounter .. "], skipping reset.")
+                    encounterCompleted[encounter] = true
+                else
+                    -- If not all bosses are dead, treat it as a failure and reset the encounter
                     SendToGoalsChat("Encounter failed: [" .. encounter .. "]. Resetting.")
                     ResetEncounter(encounter)
-                else
-                    SendToGoalsChat("All bosses already dead in encounter: [" .. encounter .. "], skipping reset.")
                 end
             end
         end
-
+    end
+    
     elseif event == "CHAT_MSG_LOOT" then
         local msg = ...
         HandleLoot(msg)
@@ -675,7 +706,6 @@ eventFrame:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
 eventFrame:RegisterEvent("CHAT_MSG_LOOT")
 eventFrame:RegisterEvent("PLAYER_REGEN_ENABLED") -- Register for encounter failure handling
 eventFrame:SetScript("OnEvent", OnEvent)
-
 
 -- Initialize player points on addon load
 function InitializePlayerPoints()
