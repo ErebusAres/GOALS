@@ -5,10 +5,10 @@ end
 
 -- Checks if the player is the raid/party leader or is solo
 local function IsLeader()
-return (IsInRaid() and UnitIsGroupLeader("player")) or (IsInGroup() and UnitIsGroupLeader("player")) or not IsInGroup()
+    return (IsInRaid() and UnitIsGroupLeader("player")) or (IsInGroup() and UnitIsGroupLeader("player")) or not IsInGroup()
 end
 
--- Class colors configuration
+-- Class colors configuration (used for colored display in chat messages)
 local classColors = { 
     deathknight = {r = 0.77, g = 0.12, b = 0.23},
     druid       = {r = 1.0, g = 0.49, b = 0.04},
@@ -23,18 +23,19 @@ local classColors = {
     unknown     = {r = 0.5, g = 0.5, b = 0.5}  -- Default class color for unknown
 }
 
-local playerPoints = {}  -- Table to store player points and class information
-local bossEncounters = {}  -- Table to store boss encounter information
-local encounterActive = {}
-local bossesKilled = {}  -- Track killed bosses in an encounter
-local encounterCompleted = {}  -- Track completed encounters
-local recentlyAwarded = {}
-local disenchanters = {}  -- Table to store disenchanter status for players
+-- Global tables for tracking players, encounters, points, and disenchanter roles
+local playerPoints = {}  -- Stores player points and class information
+local bossEncounters = {}  -- Stores boss encounter data
+local encounterActive = {}  -- Tracks active encounters
+local bossesKilled = {}  -- Tracks killed bosses in encounters
+local encounterCompleted = {}  -- Tracks completed encounters
+local recentlyAwarded = {}  -- Tracks recent awards to prevent duplicates
+local disenchanters = {}  -- Tracks players marked as disenchanters
 
-local ADDON_PREFIX = "GoalsAddon" -- PallyPower style Send/Receive Prefix.
+local ADDON_PREFIX = "GoalsAddon"  -- Prefix for addon messages
 C_ChatInfo.RegisterAddonMessagePrefix(ADDON_PREFIX)
 
--- Custom delay function to avoid C_Timer issues
+-- Delay function to handle timed actions without C_Timer
 local function Delay(seconds, func)
     local delayFrame = CreateFrame("Frame")
     local elapsed = 0
@@ -48,7 +49,7 @@ local function Delay(seconds, func)
     end)
 end
 
--- Parses and applies player points data from received messages
+-- Parses and applies player points from addon messages
 local function ParseAndApplyPlayerPoints(data)
     for entry in string.gmatch(data, "([^;]+)") do
         local playerName, points, class = string.match(entry, "([^:]+):([^:]+):([^:]+)")
@@ -57,24 +58,23 @@ local function ParseAndApplyPlayerPoints(data)
             playerPoints[playerName].points = tonumber(points)
         end
     end
-    ListPartyOrRaidMembersSorted()  -- Update the display after receiving new data
+    ListPartyOrRaidMembersSorted()  -- Refreshes display after receiving data
 end
 
--- Function to ensure playerPoints entry is always properly initialized
+-- Ensures a player entry exists in playerPoints with defaults
 local function EnsurePlayerPointsEntry(playerName, playerClass)
     if type(playerPoints[playerName]) ~= "table" then
         playerPoints[playerName] = {points = 0, class = playerClass or "unknown"}
     else
-        -- Ensure class and points are always set to avoid invalid formats
+        -- Ensure valid class and points values
         playerPoints[playerName].class = playerPoints[playerName].class or "unknown"
         playerPoints[playerName].points = playerPoints[playerName].points or 0
     end
 end
 
+-- Set or remove a player's disenchanter role
 local function SetDisenchanter(playerName, isDisenchanter)
     local properCasedName = CapitalizeFirstLetter(playerName)
-
-    -- Ensure player points entry is initialized before setting disenchanter status
     EnsurePlayerPointsEntry(properCasedName)
 
     if isDisenchanter then
@@ -86,12 +86,9 @@ local function SetDisenchanter(playerName, isDisenchanter)
     end
 end
 
-
--- Function to get all group members, whether raid or party
+-- Retrieves all group members (raid or party)
 local function GetAllGroupMembers()
     local members = {}
-
-    -- Add player themselves
     local playerName, playerClass = UnitName("player"), UnitClass("player")
     if playerName and playerClass then
         table.insert(members, {name = playerName, class = playerClass})
@@ -105,8 +102,8 @@ local function GetAllGroupMembers()
                 table.insert(members, {name = name, class = class})
             end
         end
-    -- Add party members if not in a raid but in a party
     elseif GetNumPartyMembers() > 0 then
+        -- Add party members if in a party but not a raid
         for i = 1, GetNumPartyMembers() do
             local name, class = UnitName("party" .. i), UnitClass("party" .. i)
             if name and class then
@@ -118,6 +115,7 @@ local function GetAllGroupMembers()
     return members
 end
 
+-- Sends a message to the "GOALS" chat tab, creating it if necessary
 local function SendToGoalsChat(msg)
     if msg then
         local chatTabIndex = nil
@@ -131,24 +129,22 @@ local function SendToGoalsChat(msg)
             end
         end
 
-        -- Create "GOALS" tab if it does not exist
+        -- Create "GOALS" tab if not found
         if not chatTabIndex then
             local chatFrame = FCF_OpenNewWindow("GOALS")
             chatTabIndex = chatFrame:GetID()
+            FCF_SetWindowColor(chatFrame, 0, 0, 0)  -- Set background color to black
+            FCF_SetWindowAlpha(chatFrame, 0.5)      -- Set transparency to 50%
+            FCF_DockFrame(chatFrame)                -- Dock the chat frame
+            FCF_SetLocked(chatFrame, true)          -- Lock the chat frame
 
-            -- Assign default settings to avoid errors
-            FCF_SetWindowColor(chatFrame, 0, 0, 0)  -- Black background color
-            FCF_SetWindowAlpha(chatFrame, 0.5)      -- 50% transparency
-            FCF_DockFrame(chatFrame)                -- Dock the frame to the chat
-            FCF_SetLocked(chatFrame, true)          -- Lock the frame
-
-            -- Send confirmation message
+            -- Confirmation message for new tab
             chatFrame:AddMessage("|cffFFD700[GOALS]:|r GOALS tab created.")
         end
 
-        -- Send the message to the "GOALS" chat tab if it exists
+        -- Display the message in "GOALS" tab or print an error if not found
         if chatTabIndex and _G["ChatFrame" .. chatTabIndex] then
-            local color = "|cffFFD700"  -- Gold color code for the prefix
+            local color = "|cffFFD700"  -- Gold color for prefix
             _G["ChatFrame" .. chatTabIndex]:AddMessage(color .. "[GOALS]:|r " .. msg)
         else
             print("[ERROR]: Unable to send message to 'GOALS' chat tab.")
@@ -156,11 +152,11 @@ local function SendToGoalsChat(msg)
     end
 end
 
--- Function to restore or create the "GOALS" chat tab
+-- Function to restore or create the "GOALS" chat tab and focus if needed
 local function RestoreGoalsChatTab(shouldFocus)
     local chatTabIndex = nil
 
-    -- Check if "GOALS" chat tab already exists
+    -- Check for existing "GOALS" tab
     for i = 1, NUM_CHAT_WINDOWS do
         local name = GetChatWindowInfo(i)
         if name == "GOALS" then
@@ -169,25 +165,21 @@ local function RestoreGoalsChatTab(shouldFocus)
         end
     end
 
-    -- If "GOALS" tab does not exist, create it
+    -- Create "GOALS" tab if not found
     if not chatTabIndex then
         local success, err = pcall(function()
             FCF_OpenNewWindow("GOALS")
         end)
-
-        -- Handle error if the creation fails
         if not success then
             print("Error creating GOALS tab: " .. tostring(err))
             return
         end
 
-        -- Update chatTabIndex to the new window
         chatTabIndex = NUM_CHAT_WINDOWS
         FCF_SetWindowName(_G["ChatFrame" .. chatTabIndex], "GOALS")
         SendToGoalsChat("GOALS tab created.")
     end
 
-    -- Ensure the tab is docked properly
     local chatFrame = _G["ChatFrame" .. chatTabIndex]
     if chatFrame then
         FCF_DockFrame(chatFrame)
@@ -195,14 +187,14 @@ local function RestoreGoalsChatTab(shouldFocus)
             chatFrame:Show()
         end
         if shouldFocus then
-            FCF_SelectDockFrame(chatFrame)  -- Focus on the tab only if specified
+            FCF_SelectDockFrame(chatFrame)
         end
     else
         print("Error: GOALS chat frame not found.")
     end
 end
 
--- Load the bossEncounters list from the bossEncounters.lua file
+-- Load the bossEncounters table from the environment, if available
 local function LoadBossEncounters()
     if type(_G.bossEncounters) == "table" then
         bossEncounters = _G.bossEncounters
@@ -212,38 +204,25 @@ local function LoadBossEncounters()
     end
 end
 
-local function LoadPlayerPoints()
-    if PlayerPointsDB then
-        playerPoints = PlayerPointsDB
-        SendToGoalsChat("Player points loaded from saved data.")
-    else
-        SendToGoalsChat("No saved data found, starting fresh.")
-    end
-end
-
-local function SavePlayerPoints()
-    PlayerPointsDB = playerPoints
-end
-
--- Function to handle loot messages
+-- Handles loot messages to reset points and notify for Epic+ items
 local function HandleLoot(msg)
     local player, itemLink = msg:match("^(%S+) receives (.+)%.$")
     if player and itemLink then
         local itemName, _, itemRarity = GetItemInfo(itemLink)
 
-        -- Ignore Badge of Justice and Void Crystal
+        -- Skip items that don't affect points
         if itemName == "Badge of Justice" or itemName == "Void Crystal" then
             return
         end
 
-        -- Check for Epic or higher quality (4 is Epic)
+        -- Check for Epic quality or higher (4 is Epic)
         if itemRarity and itemRarity >= 4 then
             player = CapitalizeFirstLetter(player)
             EnsurePlayerPointsEntry(player)
             playerPoints[player].points = 0
             SendToGoalsChat(player .. " received " .. itemLink .. " and has reset to 0 points.")
 
-            -- Check if the player is a disenchanter and notify
+            -- Notify if player is a disenchanter
             if disenchanters[player] then
                 SendToGoalsChat(player .. " (Disenchanter) received " .. itemLink .. ".")
             end
@@ -251,7 +230,7 @@ local function HandleLoot(msg)
     end
 end
 
--- Serializes player points data to a string
+-- Serializes player points to a string format
 local function SerializePlayerPoints(playerPoints)
     local serialized = ""
     for playerName, info in pairs(playerPoints) do
@@ -260,7 +239,7 @@ local function SerializePlayerPoints(playerPoints)
     return serialized
 end
 
--- Sends serialized player points data to the group if the player is the leader
+-- Broadcasts player points to the group if the player is the leader
 local function SendPlayerPointsToGroup()
     if not IsLeader() then
         SendToGoalsChat("Only the raid/party leader can broadcast points.")
@@ -275,11 +254,10 @@ local function SendPlayerPointsToGroup()
     end
 end
 
--- Function to list current raid or party members along with their points (sorted by points, then alphabetically)
+-- Lists and sorts current raid or party members by points
 local function ListPartyOrRaidMembersSorted()
     local players = {}
 
-    -- If in a raid, get raid members
     if GetNumRaidMembers and GetNumRaidMembers() > 0 then
         for i = 1, GetNumRaidMembers() do
             local name = GetRaidRosterInfo(i)
@@ -288,7 +266,6 @@ local function ListPartyOrRaidMembersSorted()
             end
         end
     elseif GetNumPartyMembers and GetNumPartyMembers() > 0 then
-        -- If in a party but not a raid, get party members
         for i = 1, GetNumPartyMembers() do
             local unit = "party" .. i
             local name = UnitName(unit)
@@ -296,20 +273,17 @@ local function ListPartyOrRaidMembersSorted()
                 table.insert(players, {name = name, points = playerPoints[name] and playerPoints[name].points or 0, class = playerPoints[name] and playerPoints[name].class or "unknown"})
             end
         end
-        -- Include the player themselves
         local playerName = UnitName("player")
         if playerName then
             table.insert(players, {name = playerName, points = playerPoints[playerName] and playerPoints[playerName].points or 0, class = playerPoints[playerName] and playerPoints[playerName].class or "unknown"})
         end
     else
-        -- If not in a group, only include the player themselves
         local playerName = UnitName("player")
         if playerName then
             table.insert(players, {name = playerName, points = playerPoints[playerName] and playerPoints[playerName].points or 0, class = playerPoints[playerName] and playerPoints[playerName].class or "unknown"})
         end
     end
 
-    -- Sort the player list by points (descending) and name (ascending)
     table.sort(players, function(a, b)
         if a.points == b.points then
             return a.name < b.name
@@ -317,7 +291,6 @@ local function ListPartyOrRaidMembersSorted()
         return a.points > b.points
     end)
 
-    -- Display the sorted list with colors and numbering
     SendToGoalsChat("Current Raid/Party Members:")
     for index, player in ipairs(players) do
         local classColor = classColors[strlower(player.class or "unknown")] or {r = 1, g = 1, b = 1}
@@ -326,13 +299,12 @@ local function ListPartyOrRaidMembersSorted()
     end
 end
 
--- Award points to group members for boss kills
+-- Awards points to group members and resets the encounter state
 local function AwardPointsToGroup(encounterName)
     SendToGoalsChat("Awarding points to group for completing encounter: " .. encounterName)
 
     local members = GetAllGroupMembers()
     for _, member in ipairs(members) do
-        -- Prevent duplicate awarding within the same encounter
         if not recentlyAwarded[member.name] then
             recentlyAwarded[member.name] = true
             EnsurePlayerPointsEntry(member.name, member.class)
@@ -341,32 +313,26 @@ local function AwardPointsToGroup(encounterName)
         end
     end
 
-    -- Reset encounter status to allow repeating the encounter
     bossesKilled[encounterName] = nil
     encounterCompleted[encounterName] = nil
-
-    -- Update and display points for all members in the group
-    ListPartyOrRaidMembersSorted()  -- Automatically list the players in the party/raid after awarding points
+    ListPartyOrRaidMembersSorted()  -- Display players after awarding points
 end
 
--- Clear `recentlyAwarded` table after some time (e.g., 5 minutes) to prevent lingering data
+-- Clears recently awarded entries after 5 minutes
 local function ClearRecentlyAwarded()
     recentlyAwarded = {}
 end
-
--- Clear `recentlyAwarded` table after some time (e.g., 5 minutes) to prevent lingering data
 Delay(300, ClearRecentlyAwarded)
 
--- Toggle logic for showing points in the "GOALS" chat
+-- Slash command to toggle showing points in "GOALS" chat
 SLASH_GOALS_SHOW1 = "/goshow"
 SlashCmdList["GOALS_SHOW"] = function()
     RestoreGoalsChatTab(true)
     ListPartyOrRaidMembersSorted()
 end
 
--- Slash command to manually set points for a player
+-- Slash command to set points for a player
 function SetPlayerPoints(player, points)
-    -- Convert player name to lowercase for case-insensitive search
     local lowerPlayer = strlower(player)
     local playerFound = false
     local properCasedName = CapitalizeFirstLetter(player)
@@ -400,29 +366,27 @@ SlashCmdList["GOSETPOINTS"] = function(msg)
     end
 end
 
--- Helper function to convert RGB to hexadecimal color code
+-- Converts RGB color to hex format
 local function RGBToHex(color)
     return string.format("|cff%02x%02x%02x", color.r * 255, color.g * 255, color.b * 255)
 end
 
--- Slash command to manually set class for a player
+-- Slash command to manually set a player’s class
 function SetPlayerClass(player, class)
     local lowerPlayer = strlower(player)
     local lowerClass = strlower(class)
 
-    -- Check if the provided class is valid
     if not classColors[lowerClass] then
         local validClassList = ""
         for className, color in pairs(classColors) do
             local hexColor = RGBToHex(color)
             validClassList = validClassList .. hexColor .. className .. "|r, "
         end
-        validClassList = validClassList:sub(1, -3)  -- Remove the trailing comma and space
+        validClassList = validClassList:sub(1, -3)  -- Remove trailing comma and space
         SendToGoalsChat("Invalid class specified. Valid classes: " .. validClassList .. ".")
         return
     end
 
-    -- Set the class for the player in the database
     local playerFound = false
     for storedPlayer, info in pairs(playerPoints) do
         if strlower(storedPlayer) == lowerPlayer then
@@ -434,13 +398,11 @@ function SetPlayerClass(player, class)
         end
     end
 
-    -- If player is not found in the database
     if not playerFound then
         SendToGoalsChat("Player not found in the database: " .. player)
     end
 end
 
--- Registering the slash command to set player class
 SLASH_GOSETCLASS1 = '/gosetclass'
 SlashCmdList["GOSETCLASS"] = function(msg)
     local player, class = strsplit(" ", msg, 2)
@@ -451,6 +413,7 @@ SlashCmdList["GOSETCLASS"] = function(msg)
     end
 end
 
+-- Slash command to set or remove disenchanter status
 SLASH_GODISENCHANTER1 = '/gode'
 SlashCmdList["GODISENCHANTER"] = function(msg)
     local player, value = strsplit(" ", msg, 2)
@@ -461,7 +424,7 @@ SlashCmdList["GODISENCHANTER"] = function(msg)
     end
 end
 
--- Slash command to list all players in the database
+-- Lists all players in the database
 SLASH_GOLIST1 = '/golist'
 SlashCmdList["GOLIST"] = function()
     if next(playerPoints) == nil then
@@ -494,8 +457,7 @@ SlashCmdList["GOLIST"] = function()
     end
 end
 
-
--- Slash command to remove a player from the database
+-- Removes a player from the database
 SLASH_GOREMOVE1 = '/goremove'
 SlashCmdList["GOREMOVE"] = function(msg)
     local player = strtrim(msg)
@@ -521,8 +483,7 @@ SlashCmdList["GOREMOVE"] = function(msg)
     end
 end
 
-
--- Function to send the current raid/party members' points to raid or party chat
+-- Sends the current raid/party members' points to raid or party chat
 SLASH_GOSEND1 = '/gosend'
 SlashCmdList["GOSEND"] = function()
     local playerList = {}
@@ -565,19 +526,18 @@ SlashCmdList["GOSEND"] = function()
     end
 end
 
--- Function to update player names in the database with correct casing and class from the game
+-- Updates player names in the database to proper casing and class
 local function UpdatePlayerNamesWithProperCasing()
     local members = GetAllGroupMembers()
 
     for _, member in ipairs(members) do
         local lowerMemberName = strlower(member.name)
 
-        -- Check if a player with the same name (ignoring case) exists in the database
         for storedPlayer, info in pairs(playerPoints) do
             if strlower(storedPlayer) == lowerMemberName then
                 EnsurePlayerPointsEntry(storedPlayer, info.class)
-                playerPoints[storedPlayer] = nil  -- Remove old entry
-                playerPoints[member.name] = {points = info.points, class = member.class or "unknown"}  -- Add new entry with proper casing and class
+                playerPoints[storedPlayer] = nil
+                playerPoints[member.name] = {points = info.points, class = member.class or "unknown"}
                 break
             end
         end
@@ -589,7 +549,7 @@ SlashCmdList["GOBROADCAST"] = function()
     SendPlayerPointsToGroup()
 end
 
--- Slash command to provide help about all commands
+-- Slash command to display help information for all commands
 SLASH_GHELP1 = '/gohelp'
 SlashCmdList["GHELP"] = function()
     SendToGoalsChat("|cffFFD700GOALS Help|r:")
@@ -614,7 +574,7 @@ SlashCmdList["GHELP"] = function()
     SendToGoalsChat("|cffFFD700/gobroadcast|r - (Raid Leader only) Broadcasts player points to other players using the addon.")
 end
 
--- Function to reset encounter data and ensure points reset properly
+-- Resets the encounter data for a specified encounter
 local function ResetEncounter(encounter)
     if encounter then
         bossesKilled[encounter] = {}
@@ -625,6 +585,7 @@ local function ResetEncounter(encounter)
     end
 end
 
+-- Primary event handler
 local function OnEvent(self, event, ...)
     if event == "ADDON_LOADED" then
         local addonName = ...
@@ -752,8 +713,7 @@ local function OnEvent(self, event, ...)
     end
 end
 
-
--- Creating the frame for event handling
+-- Create event handler frame
 local eventFrame = CreateFrame("Frame")
 eventFrame:RegisterEvent("ADDON_LOADED")
 eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
