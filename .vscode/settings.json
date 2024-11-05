@@ -18,6 +18,14 @@
         "SlashCmdList",
         "ReloadUI",
         "FrameStackTooltip_Toggle",
-        "GetNumPartyMembers"
+        "GetNumPartyMembers",
+        "NUM_CHAT_WINDOWS",
+        "FCF_SetWindowName",
+        "FCF_DockFrame",
+        "FCF_SetWindowColor",
+        "FCF_SetWindowAlpha",
+        "FCF_SetLocked",
+        "FCF_SelectDockFrame",
+        "FCF_OpenNewWindow"
     ]
 }
