@@ -41,6 +41,44 @@ local function Delay(seconds, func)
     end)
 end
 
+local function SendToGoalsChat(msg)
+    if msg then
+        local chatTabIndex = nil
+
+        -- Find existing "GOALS" tab
+        for i = 1, NUM_CHAT_WINDOWS do
+            local name = GetChatWindowInfo(i)
+            if name == "GOALS" then
+                chatTabIndex = i
+                break
+            end
+        end
+
+        -- Create "GOALS" tab if it does not exist
+        if not chatTabIndex then
+            local chatFrame = FCF_OpenNewWindow("GOALS")
+            chatTabIndex = chatFrame:GetID()
+
+            -- Assign default settings to avoid errors
+            FCF_SetWindowColor(chatFrame, 0, 0, 0)  -- Black background color
+            FCF_SetWindowAlpha(chatFrame, 0.5)      -- 50% transparency
+            FCF_DockFrame(chatFrame)                -- Dock the frame to the chat
+            FCF_SetLocked(chatFrame, true)          -- Lock the frame
+
+            -- Send confirmation message
+            chatFrame:AddMessage("|cffFFD700[GOALS]:|r GOALS tab created.")
+        end
+
+        -- Send the message to the "GOALS" chat tab if it exists
+        if chatTabIndex and _G["ChatFrame" .. chatTabIndex] then
+            local color = "|cffFFD700"  -- Gold color code for the prefix
+            _G["ChatFrame" .. chatTabIndex]:AddMessage(color .. "[GOALS]:|r " .. msg)
+        else
+            print("[ERROR]: Unable to send message to 'GOALS' chat tab.")
+        end
+    end
+end
+
 -- Function to ensure playerPoints entry is always properly initialized
 local function EnsurePlayerPointsEntry(playerName, playerClass)
     if type(playerPoints[playerName]) ~= "table" then
@@ -97,44 +135,6 @@ local function GetAllGroupMembers()
     end
 
     return members
-end
-
-local function SendToGoalsChat(msg)
-    if msg then
-        local chatTabIndex = nil
-
-        -- Find existing "GOALS" tab
-        for i = 1, NUM_CHAT_WINDOWS do
-            local name = GetChatWindowInfo(i)
-            if name == "GOALS" then
-                chatTabIndex = i
-                break
-            end
-        end
-
-        -- Create "GOALS" tab if it does not exist
-        if not chatTabIndex then
-            local chatFrame = FCF_OpenNewWindow("GOALS")
-            chatTabIndex = chatFrame:GetID()
-
-            -- Assign default settings to avoid errors
-            FCF_SetWindowColor(chatFrame, 0, 0, 0)  -- Black background color
-            FCF_SetWindowAlpha(chatFrame, 0.5)      -- 50% transparency
-            FCF_DockFrame(chatFrame)                -- Dock the frame to the chat
-            FCF_SetLocked(chatFrame, true)          -- Lock the frame
-
-            -- Send confirmation message
-            chatFrame:AddMessage("|cffFFD700[GOALS]:|r GOALS tab created.")
-        end
-
-        -- Send the message to the "GOALS" chat tab if it exists
-        if chatTabIndex and _G["ChatFrame" .. chatTabIndex] then
-            local color = "|cffFFD700"  -- Gold color code for the prefix
-            _G["ChatFrame" .. chatTabIndex]:AddMessage(color .. "[GOALS]:|r " .. msg)
-        else
-            print("[ERROR]: Unable to send message to 'GOALS' chat tab.")
-        end
-    end
 end
 
 -- Function to restore or create the "GOALS" chat tab
@@ -208,27 +208,64 @@ end
 
 -- Function to handle loot messages
 local function HandleLoot(msg)
-    local player, itemLink = msg:match("^(%S+) receives (.+)%.$")
-    if player and itemLink then
-        local itemName, _, itemRarity = GetItemInfo(itemLink)
+    local player, itemLink
 
-        -- Ignore Badge of Justice and Void Crystal
-        if itemName == "Badge of Justice" or itemName == "Void Crystal" then
-            return
+    -- Try parsing loot message with multiple patterns
+    if msg:match("^(%S+) receives (.+)%.$") then
+        player, itemLink = msg:match("^(%S+) receives (.+)%.$")
+    elseif msg:match("^You receive loot: (.+)$") then
+        player, itemLink = UnitName("player"), msg:match("^You receive loot: (.+)$")
+    end
+
+    -- If no player or itemLink is found, log and return
+    if not player or not itemLink then
+        SendToGoalsChat("DEBUG: Loot message not parsed correctly: " .. tostring(msg))
+        return
+    end
+
+    local itemName, _, itemRarity = GetItemInfo(itemLink)
+    if not itemName then
+        SendToGoalsChat("DEBUG: Item info not retrieved for: " .. itemLink)
+        return
+    end
+
+    -- Ignore patterns for specific items
+    local ignorePatterns = {
+        "Badge of Justice",
+        "Void Crystal",
+        "Design:",
+        "Formula:",
+        "Pattern:",
+        "Schematic:",
+        "Plans:",
+        "Recipe:"
+    }
+
+    -- Check if the item matches any ignore pattern
+    for _, pattern in ipairs(ignorePatterns) do
+        if itemName:find(pattern) then
+            SendToGoalsChat("DEBUG: Item ignored due to pattern: " .. itemName)
+            return  -- Ignore this item
         end
+    end
 
-        -- Check for Epic or higher quality (4 is Epic)
-        if itemRarity and itemRarity >= 4 then
-            player = CapitalizeFirstLetter(player)
-            EnsurePlayerPointsEntry(player)
-            playerPoints[player].points = 0
-            SendToGoalsChat(player .. " received " .. itemLink .. " and has reset to 0 points.")
+    -- Check for Epic or higher quality (4 is Epic)
+    if itemRarity and itemRarity >= 4 then
+        player = CapitalizeFirstLetter(player)
 
-            -- Check if the player is a disenchanter and notify
-            if disenchanters[player] then
-                SendToGoalsChat(player .. " (Disenchanter) received " .. itemLink .. ".")
-            end
+        -- Ensure player points entry exists
+        EnsurePlayerPointsEntry(player)
+
+        -- Reset points to 0
+        playerPoints[player].points = 0
+        SendToGoalsChat(player .. " received " .. itemLink .. " and has reset to 0 points.")
+
+        -- Notify if the player is a disenchanter
+        if disenchanters[player] then
+            SendToGoalsChat(player .. " (Disenchanter) received " .. itemLink .. ".")
         end
+    else
+        SendToGoalsChat("DEBUG: Item is not Epic or higher: " .. itemName)
     end
 end
 
@@ -669,7 +706,7 @@ local function OnEvent(self, event, ...)
         for encounter, bosses in pairs(bossEncounters) do
             if encounterActive[encounter] and not encounterCompleted[encounter] then
                 SendToGoalsChat("Checking encounter failure for: [" .. encounter .. "].")
-                
+
                 local allBossesDead = true
                 for _, bossName in ipairs(bosses) do
                     if not bossesKilled[encounter] or not bossesKilled[encounter][bossName] then
@@ -677,7 +714,7 @@ local function OnEvent(self, event, ...)
                         break
                     end
                 end
-    
+
                 if allBossesDead then
                     -- If all bosses are dead but the encounter hasn't been marked complete, mark it as completed
                     SendToGoalsChat("All bosses already dead in encounter: [" .. encounter .. "], skipping reset.")
@@ -689,8 +726,7 @@ local function OnEvent(self, event, ...)
                 end
             end
         end
-    end
-    
+
     elseif event == "CHAT_MSG_LOOT" then
         local msg = ...
         HandleLoot(msg)
