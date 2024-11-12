@@ -3,7 +3,6 @@ local function CapitalizeFirstLetter(str)
     return str:gsub("^%l", string.upper)
 end
 
-
 -- Class colors configuration
 local classColors = { 
     deathknight = {r = 0.77, g = 0.12, b = 0.23},
@@ -225,7 +224,7 @@ local function HandleLoot(msg)
 
     local itemName, _, itemRarity = GetItemInfo(itemLink)
     if not itemName then
-        SendToGoalsChat("DEBUG: Item info not retrieved for: " .. itemLink)
+        SendToGoalsChat("DEBUG: Item info not retrieved for: " .. tostring(itemLink))
         return
     end
 
@@ -244,7 +243,7 @@ local function HandleLoot(msg)
     -- Check if the item matches any ignore pattern
     for _, pattern in ipairs(ignorePatterns) do
         if itemName:find(pattern) then
-            SendToGoalsChat("DEBUG: Item ignored due to pattern: " .. itemName)
+            SendToGoalsChat("DEBUG: Item ignored due to Ignore List: " .. itemName)
             return  -- Ignore this item
         end
     end
@@ -256,13 +255,13 @@ local function HandleLoot(msg)
         -- Ensure player points entry exists
         EnsurePlayerPointsEntry(player)
 
-        -- Reset points to 0
-        playerPoints[player].points = 0
-        SendToGoalsChat(player .. " received " .. itemLink .. " and has reset to 0 points.")
-
-        -- Notify if the player is a disenchanter
         if disenchanters[player] then
-            SendToGoalsChat(player .. " (Disenchanter) received " .. itemLink .. ".")
+            -- If the player is a disenchanter, log the event but do not reset their points
+            SendToGoalsChat(player .. " (Disenchanter) received " .. itemLink .. ". Points not reset.")
+        else
+            -- Reset points to 0 for non-disenchanters
+            playerPoints[player].points = 0
+            SendToGoalsChat(player .. " received " .. itemLink .. " and has reset to 0 points.")
         end
     else
         SendToGoalsChat("DEBUG: Item is not Epic or higher: " .. itemName)
