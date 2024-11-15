@@ -63,7 +63,10 @@ _G.bossEncounters = {
     ["Prince Tenris Mirkblood"] = { "Prince Tenris Mirkblood" },
     ["Moroes"] = { "Moroes" },
     ["Maiden of Virtue"] = { "Maiden of Virtue" },
-    ["Opera Event, Romulo and Julianne"] = { "Romulo", "Julianne", "Romulo", "Julianne" },
+    ["Opera Event, Romulo and Julianne"] = { 
+        { "Romulo", "Julianne" },  -- Phase 1
+        { "Romulo", "Julianne" }   -- Phase 2
+    },    
     ["Opera Event, Wizard of Oz"] = { "The Crone" },
     ["Opera Event, Big Bad Wolf"] = { "The Big Bad Wolf" },
     ["The Curator"] = { "The Curator" },

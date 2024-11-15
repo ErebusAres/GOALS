@@ -652,32 +652,87 @@ local function OnEvent(self, event, ...)
         if subevent == "UNIT_DIED" then
             local found = false
             for encounter, bosses in pairs(bossEncounters) do
-                for _, bossName in ipairs(bosses) do
-                    if destName == bossName then
-                        bossesKilled[encounter] = bossesKilled[encounter] or {}
-                        bossesKilled[encounter][bossName] = true
-                        found = true
-                        encounterActive[encounter] = true
+                -- Check if the encounter is multi-phase
+                if type(bosses[1]) == "table" then
+                    -- Multi-phase encounter handling
+                    encounterActive[encounter] = encounterActive[encounter] or {}
+                    bossesKilled[encounter] = bossesKilled[encounter] or {}
+                    for phaseIndex, phaseBosses in ipairs(bosses) do
+                        bossesKilled[encounter][phaseIndex] = bossesKilled[encounter][phaseIndex] or {}
+                        for _, bossName in ipairs(phaseBosses) do
+                            if destName == bossName then
+                                bossesKilled[encounter][phaseIndex][bossName] = true
+                                found = true
+                                encounterActive[encounter][phaseIndex] = true
 
-                        local allBossesDead = true
-                        for _, boss in ipairs(bosses) do
-                            if not bossesKilled[encounter][boss] then
-                                allBossesDead = false
+                                -- Check if all bosses in the current phase are dead
+                                local allBossesInPhaseDead = true
+                                for _, phaseBoss in ipairs(phaseBosses) do
+                                    if not bossesKilled[encounter][phaseIndex][phaseBoss] then
+                                        allBossesInPhaseDead = false
+                                        break
+                                    end
+                                end
+
+                                -- If all bosses in this phase are dead, mark the phase as complete
+                                if allBossesInPhaseDead then
+                                    SendToGoalsChat("Completed phase " .. phaseIndex .. " of encounter: [" .. encounter .. "].")
+                                    encounterActive[encounter][phaseIndex] = false
+                                end
+
+                                -- Check if all phases are complete
+                                local allPhasesComplete = true
+                                for idx, _ in ipairs(bosses) do
+                                    if encounterActive[encounter][idx] ~= false then
+                                        allPhasesComplete = false
+                                        break
+                                    end
+                                end
+
+                                -- If all phases are complete, mark the encounter as complete
+                                if allPhasesComplete and not encounterCompleted[encounter] then
+                                    SendToGoalsChat("Completed encounter: [" .. encounter .. "], all phases finished.")
+                                    encounterCompleted[encounter] = true
+                                    AwardPointsToGroup(encounter)
+                                    UpdatePlayerNamesWithProperCasing()
+                                    ResetEncounter(encounter)
+                                end
                                 break
                             end
                         end
+                        if found then break end
+                    end
+                else
+                    -- Single-phase encounter handling
+                    bossesKilled[encounter] = bossesKilled[encounter] or {}
+                    for _, bossName in ipairs(bosses) do
+                        if destName == bossName then
+                            bossesKilled[encounter][bossName] = true
+                            found = true
+                            encounterActive[encounter] = true
 
-                        if allBossesDead and not encounterCompleted[encounter] then
-                            SendToGoalsChat("Completed encounter: [" .. encounter .. "], all bosses killed.")
-                            encounterCompleted[encounter] = true
-                            AwardPointsToGroup(encounter)
-                            UpdatePlayerNamesWithProperCasing()
-                            ResetEncounter(encounter)
-                        elseif not allBossesDead then
-                            SendToGoalsChat("Killed: [" .. destName .. "], still more bosses in [" .. encounter .. "].")
+                            local allBossesDead = true
+                            for _, boss in ipairs(bosses) do
+                                if not bossesKilled[encounter][boss] then
+                                    allBossesDead = false
+                                    break
+                                end
+                            end
+
+                            if allBossesDead and not encounterCompleted[encounter] then
+                                SendToGoalsChat("Completed encounter: [" .. encounter .. "], all bosses killed.")
+                                encounterCompleted[encounter] = true
+                                AwardPointsToGroup(encounter)
+                                UpdatePlayerNamesWithProperCasing()
+                                ResetEncounter(encounter)
+                            elseif not allBossesDead then
+                                SendToGoalsChat("Killed: [" .. destName .. "], still more bosses in [" .. encounter .. "].")
+                            end
+                            break
                         end
                     end
                 end
+                if found then break end
             end
 
             -- Handle single boss encounters (only one boss in the encounter)
