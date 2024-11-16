@@ -647,92 +647,45 @@ local function OnEvent(self, event, ...)
         PlayerPointsDB = playerPoints
 
     elseif event == "COMBAT_LOG_EVENT_UNFILTERED" then
-        local _, subevent, _, _, _, _, destName, _ = ...
+        -- Unpack parameters manually for WoW 3.3.5a
+        local timeStamp, subevent, sourceGUID, sourceName, sourceFlags, destGUID, destName, destFlags, spellID, spellName, _, _ = ...
 
+        -- Filter only relevant events (e.g., UNIT_DIED)
         if subevent == "UNIT_DIED" then
+            -- Debug: Check if destName is nil
+            if not destName then
+                SendToGoalsChat("DEBUG: destName is nil. Ignoring this UNIT_DIED event.")
+                return
+            end
+
             local found = false
             for encounter, bosses in pairs(bossEncounters) do
-                -- Check if the encounter is multi-phase
-                if type(bosses[1]) == "table" then
-                    -- Multi-phase encounter handling
-                    encounterActive[encounter] = encounterActive[encounter] or {}
-                    bossesKilled[encounter] = bossesKilled[encounter] or {}
-                    for phaseIndex, phaseBosses in ipairs(bosses) do
-                        bossesKilled[encounter][phaseIndex] = bossesKilled[encounter][phaseIndex] or {}
-                        for _, bossName in ipairs(phaseBosses) do
-                            if destName == bossName then
-                                bossesKilled[encounter][phaseIndex][bossName] = true
-                                found = true
-                                encounterActive[encounter][phaseIndex] = true
+                for _, bossName in ipairs(bosses) do
+                    if destName == bossName then
+                        bossesKilled[encounter] = bossesKilled[encounter] or {}
+                        bossesKilled[encounter][bossName] = true
+                        found = true
+                        encounterActive[encounter] = true
 
-                                -- Check if all bosses in the current phase are dead
-                                local allBossesInPhaseDead = true
-                                for _, phaseBoss in ipairs(phaseBosses) do
-                                    if not bossesKilled[encounter][phaseIndex][phaseBoss] then
-                                        allBossesInPhaseDead = false
-                                        break
-                                    end
-                                end
-
-                                -- If all bosses in this phase are dead, mark the phase as complete
-                                if allBossesInPhaseDead then
-                                    SendToGoalsChat("Completed phase " .. phaseIndex .. " of encounter: [" .. encounter .. "].")
-                                    encounterActive[encounter][phaseIndex] = false
-                                end
-
-                                -- Check if all phases are complete
-                                local allPhasesComplete = true
-                                for idx, _ in ipairs(bosses) do
-                                    if encounterActive[encounter][idx] ~= false then
-                                        allPhasesComplete = false
-                                        break
-                                    end
-                                end
-
-                                -- If all phases are complete, mark the encounter as complete
-                                if allPhasesComplete and not encounterCompleted[encounter] then
-                                    SendToGoalsChat("Completed encounter: [" .. encounter .. "], all phases finished.")
-                                    encounterCompleted[encounter] = true
-                                    AwardPointsToGroup(encounter)
-                                    UpdatePlayerNamesWithProperCasing()
-                                    ResetEncounter(encounter)
-                                end
+                        local allBossesDead = true
+                        for _, boss in ipairs(bosses) do
+                            if not bossesKilled[encounter][boss] then
+                                allBossesDead = false
                                 break
                             end
                         end
-                        if found then break end
-                    end
-                else
-                    -- Single-phase encounter handling
-                    bossesKilled[encounter] = bossesKilled[encounter] or {}
-                    for _, bossName in ipairs(bosses) do
-                        if destName == bossName then
-                            bossesKilled[encounter][bossName] = true
-                            found = true
-                            encounterActive[encounter] = true
 
-                            local allBossesDead = true
-                            for _, boss in ipairs(bosses) do
-                                if not bossesKilled[encounter][boss] then
-                                    allBossesDead = false
-                                    break
-                                end
-                            end
-
-                            if allBossesDead and not encounterCompleted[encounter] then
-                                SendToGoalsChat("Completed encounter: [" .. encounter .. "], all bosses killed.")
-                                encounterCompleted[encounter] = true
-                                AwardPointsToGroup(encounter)
-                                UpdatePlayerNamesWithProperCasing()
-                                ResetEncounter(encounter)
-                            elseif not allBossesDead then
-                                SendToGoalsChat("Killed: [" .. destName .. "], still more bosses in [" .. encounter .. "].")
-                            end
-                            break
+                        if allBossesDead and not encounterCompleted[encounter] then
+                            SendToGoalsChat("Completed encounter: [" .. encounter .. "], all bosses killed.")
+                            encounterCompleted[encounter] = true
+                            AwardPointsToGroup(encounter)
+                            UpdatePlayerNamesWithProperCasing()
+                            ResetEncounter(encounter)
+                        elseif not allBossesDead then
+                            SendToGoalsChat("Killed: [" .. destName .. "], still more bosses in [" .. encounter .. "].")
                         end
                     end
                 end
-                if found then break end
             end
 
             -- Handle single boss encounters (only one boss in the encounter)
@@ -753,6 +706,11 @@ local function OnEvent(self, event, ...)
                     end
                 end
             end
+
+        -- Filter out irrelevant events
+        elseif subevent == "SPELL_CAST_SUCCESS" or subevent == "SPELL_CAST_START" or subevent == "SPELL_AURA_APPLIED" then
+            -- These are ignored events; do nothing
+            return
         end
 
     elseif event == "PLAYER_REGEN_ENABLED" then
