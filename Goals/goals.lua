@@ -612,6 +612,52 @@ local function ResetEncounter(encounter)
     end
 end
 
+-- Function to give 1 point to all players in the database
+local function GivePointsToEveryone()
+    if next(playerPoints) == nil then
+        SendToGoalsChat("No players in the database to award points.")
+        return
+    end
+
+    for playerName, info in pairs(playerPoints) do
+        EnsurePlayerPointsEntry(playerName, info.class)
+        playerPoints[playerName].points = playerPoints[playerName].points + 1
+        SendToGoalsChat("Gave 1 point to: " .. playerName .. ". Total points: " .. playerPoints[playerName].points)
+    end
+
+    -- Show the updated list
+    ListPartyOrRaidMembersSorted()
+end
+
+-- Function to take 1 point from all players in the database
+local function TakePointsFromEveryone()
+    if next(playerPoints) == nil then
+        SendToGoalsChat("No players in the database to take points from.")
+        return
+    end
+
+    for playerName, info in pairs(playerPoints) do
+        EnsurePlayerPointsEntry(playerName, info.class)
+        playerPoints[playerName].points = math.max(0, playerPoints[playerName].points - 1) -- Ensure points don't go below 0
+        SendToGoalsChat("Took 1 point from: " .. playerName .. ". Total points: " .. playerPoints[playerName].points)
+    end
+
+    -- Show the updated list
+    ListPartyOrRaidMembersSorted()
+end
+
+-- Slash command to give everyone 1 point
+SLASH_GOGIVE1 = "/gogive"
+SlashCmdList["GOGIVE"] = function()
+    GivePointsToEveryone()
+end
+
+-- Slash command to take 1 point from everyone
+SLASH_GOTAKE1 = "/gotake"
+SlashCmdList["GOTAKE"] = function()
+    TakePointsFromEveryone()
+end
+
 local function OnEvent(self, event, ...)
     if event == "ADDON_LOADED" then
         local addonName = ...
