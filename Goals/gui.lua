@@ -409,7 +409,7 @@ function UI:CreateOverviewTab(page)
     end)
     self.presentCheck = presentCheck
 
-    local rosterInset = CreateFrame("Frame", nil, page, "InsetFrameTemplate")
+    local rosterInset = CreateFrame("Frame", "GoalsOverviewRosterInset", page, "InsetFrameTemplate")
     rosterInset:SetPoint("TOPLEFT", page, "TOPLEFT", 2, -30)
     rosterInset:SetPoint("BOTTOMLEFT", page, "BOTTOMLEFT", 2, 2)
     rosterInset:SetWidth(360)
@@ -418,7 +418,7 @@ function UI:CreateOverviewTab(page)
     local pointsLabel = createLabel(rosterInset, L.LABEL_POINTS, "GameFontNormal")
     pointsLabel:SetPoint("TOPLEFT", rosterInset, "TOPLEFT", 6, -6)
 
-    local rosterScroll = CreateFrame("ScrollFrame", nil, rosterInset, "FauxScrollFrameTemplate")
+    local rosterScroll = CreateFrame("ScrollFrame", "GoalsRosterScroll", rosterInset, "FauxScrollFrameTemplate")
     rosterScroll:SetPoint("TOPLEFT", rosterInset, "TOPLEFT", 0, -22)
     rosterScroll:SetPoint("BOTTOMRIGHT", rosterInset, "BOTTOMRIGHT", -26, 4)
     rosterScroll:SetScript("OnVerticalScroll", function(selfScroll, offset)
@@ -500,7 +500,7 @@ function UI:CreateOverviewTab(page)
         self.rosterRows[i] = row
     end
 
-    local rightInset = CreateFrame("Frame", nil, page, "InsetFrameTemplate")
+    local rightInset = CreateFrame("Frame", "GoalsOverviewRightInset", page, "InsetFrameTemplate")
     rightInset:SetPoint("TOPLEFT", rosterInset, "TOPRIGHT", 12, 0)
     rightInset:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -2, 2)
     self.overviewRightInset = rightInset
@@ -620,7 +620,7 @@ function UI:CreateLootTab(page)
     end)
     self.resetMountPetCheck = resetCheck
 
-    local historyInset = CreateFrame("Frame", nil, page, "InsetFrameTemplate")
+    local historyInset = CreateFrame("Frame", "GoalsLootHistoryInset", page, "InsetFrameTemplate")
     historyInset:SetPoint("TOPLEFT", page, "TOPLEFT", 2, -60)
     historyInset:SetPoint("BOTTOMLEFT", page, "BOTTOMLEFT", 2, 2)
     historyInset:SetWidth(350)
@@ -628,7 +628,7 @@ function UI:CreateLootTab(page)
     local historyLabel = createLabel(historyInset, L.LABEL_LOOT_HISTORY, "GameFontNormal")
     historyLabel:SetPoint("TOPLEFT", historyInset, "TOPLEFT", 6, -6)
 
-    local historyScroll = CreateFrame("ScrollFrame", nil, historyInset, "FauxScrollFrameTemplate")
+    local historyScroll = CreateFrame("ScrollFrame", "GoalsLootHistoryScroll", historyInset, "FauxScrollFrameTemplate")
     historyScroll:SetPoint("TOPLEFT", historyInset, "TOPLEFT", 0, -22)
     historyScroll:SetPoint("BOTTOMRIGHT", historyInset, "BOTTOMRIGHT", -26, 4)
     historyScroll:SetScript("OnVerticalScroll", function(selfScroll, offset)
@@ -678,7 +678,7 @@ function UI:CreateLootTab(page)
         self.lootHistoryRows[i] = row
     end
 
-    local foundInset = CreateFrame("Frame", nil, page, "InsetFrameTemplate")
+    local foundInset = CreateFrame("Frame", "GoalsFoundLootInset", page, "InsetFrameTemplate")
     foundInset:SetPoint("TOPLEFT", historyInset, "TOPRIGHT", 12, 0)
     foundInset:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -2, 2)
 
@@ -693,7 +693,7 @@ function UI:CreateLootTab(page)
     foundLocked:SetPoint("TOPLEFT", foundLabel, "BOTTOMLEFT", 0, -2)
     self.foundLockedLabel = foundLocked
 
-    local foundScroll = CreateFrame("ScrollFrame", nil, foundInset, "FauxScrollFrameTemplate")
+    local foundScroll = CreateFrame("ScrollFrame", "GoalsFoundLootScroll", foundInset, "FauxScrollFrameTemplate")
     foundScroll:SetPoint("TOPLEFT", foundInset, "TOPLEFT", 0, -36)
     foundScroll:SetPoint("BOTTOMRIGHT", foundInset, "BOTTOMRIGHT", -26, 4)
     foundScroll:SetScript("OnVerticalScroll", function(selfScroll, offset)
@@ -745,7 +745,7 @@ function UI:CreateLootTab(page)
 end
 
 function UI:CreateHistoryTab(page)
-    local inset = CreateFrame("Frame", nil, page, "InsetFrameTemplate")
+    local inset = CreateFrame("Frame", "GoalsHistoryInset", page, "InsetFrameTemplate")
     inset:SetPoint("TOPLEFT", page, "TOPLEFT", 2, -8)
     inset:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -2, 2)
     self.historyInset = inset
@@ -753,7 +753,7 @@ function UI:CreateHistoryTab(page)
     local label = createLabel(inset, L.LABEL_HISTORY, "GameFontNormal")
     label:SetPoint("TOPLEFT", inset, "TOPLEFT", 6, -6)
 
-    local scroll = CreateFrame("ScrollFrame", nil, inset, "FauxScrollFrameTemplate")
+    local scroll = CreateFrame("ScrollFrame", "GoalsHistoryScroll", inset, "FauxScrollFrameTemplate")
     scroll:SetPoint("TOPLEFT", inset, "TOPLEFT", 0, -22)
     scroll:SetPoint("BOTTOMRIGHT", inset, "BOTTOMRIGHT", -26, 4)
     scroll:SetScript("OnVerticalScroll", function(selfScroll, offset)
@@ -787,7 +787,7 @@ function UI:CreateHistoryTab(page)
 end
 
 function UI:CreateSettingsTab(page)
-    local inset = CreateFrame("Frame", nil, page, "InsetFrameTemplate")
+    local inset = CreateFrame("Frame", "GoalsSettingsInset", page, "InsetFrameTemplate")
     inset:SetPoint("TOPLEFT", page, "TOPLEFT", 2, -8)
     inset:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -2, 2)
     self.settingsInset = inset
@@ -830,7 +830,7 @@ function UI:CreateSettingsTab(page)
 end
 
 function UI:CreateDevTab(page)
-    local inset = CreateFrame("Frame", nil, page, "InsetFrameTemplate")
+    local inset = CreateFrame("Frame", "GoalsDevInset", page, "InsetFrameTemplate")
     inset:SetPoint("TOPLEFT", page, "TOPLEFT", 2, -8)
     inset:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -2, 2)
 
@@ -871,7 +871,7 @@ function UI:CreateDevTab(page)
 end
 
 function UI:CreateDebugTab(page)
-    local inset = CreateFrame("Frame", nil, page, "InsetFrameTemplate")
+    local inset = CreateFrame("Frame", "GoalsDebugInset", page, "InsetFrameTemplate")
     inset:SetPoint("TOPLEFT", page, "TOPLEFT", 2, -8)
     inset:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -2, 2)
 
