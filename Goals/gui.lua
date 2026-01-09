@@ -74,7 +74,8 @@ function UI:CreateMainFrame()
     end
 
     for i, name in ipairs(tabNames) do
-        local tab = CreateFrame("Button", "GoalsTab" .. i, frame, "CharacterFrameTabButtonTemplate")
+        local tabName = frame:GetName() .. "Tab" .. i
+        local tab = CreateFrame("Button", tabName, frame, "CharacterFrameTabButtonTemplate")
         tab:SetID(i)
         tab:SetText(name)
         tab:SetScript("OnClick", function()

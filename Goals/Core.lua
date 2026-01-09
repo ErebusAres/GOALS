@@ -459,6 +459,7 @@ function Goals:Init()
     if self.InitDB then
         self:InitDB()
     end
+    self:InitSlashCommands()
     self:CheckBuild()
     if self.Dev and self.Dev.Init then
         self.Dev:Init()
@@ -475,7 +476,6 @@ function Goals:Init()
     if self.UI and self.UI.Init then
         self.UI:Init()
     end
-    self:InitSlashCommands()
     self:UpdateSyncStatus()
     self:Print("Loaded v" .. self.version)
 end
