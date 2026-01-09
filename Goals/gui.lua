@@ -335,7 +335,8 @@ function UI:CreateMainFrame()
     end
 
     for i, def in ipairs(tabDefs) do
-        local tab = CreateFrame("Button", nil, frame, "CharacterFrameTabButtonTemplate")
+        local tabName = frame:GetName() .. "Tab" .. i
+        local tab = CreateFrame("Button", tabName, frame, "CharacterFrameTabButtonTemplate")
         tab:SetID(i)
         tab:SetText(def.text)
         PanelTemplates_TabResize(tab, 0)
