@@ -51,7 +51,6 @@ function Dev:SimulateLoot()
         assignedTo = nil,
     })
     Goals:RecordLootFound(exampleItem)
-    Goals:HandleLootAssignment(Goals:GetPlayerName(), exampleItem, true, true)
     if not itemName then
         Goals:Delay(0.5, function()
             Goals:ProcessPendingLoot()

@@ -98,9 +98,6 @@ function Goals:GetSelfLootIndex()
         end
         return nil
     end
-    if self:IsInParty() then
-        return 0
-    end
     return nil
 end
 
@@ -112,11 +109,15 @@ function Goals:SetLootMethod(method)
         return false, "You must be in a party or raid."
     end
     if method == "master" then
-        local index = self:GetSelfLootIndex()
-        if index == nil then
-            return false, "Unable to determine loot master index."
+        if self:IsInRaid() then
+            local index = self:GetSelfLootIndex()
+            if index == nil then
+                return false, "Unable to determine loot master index."
+            end
+            SetLootMethod("master", index)
+            return true
         end
-        SetLootMethod("master", index)
+        SetLootMethod("master")
         return true
     end
     SetLootMethod(method)

@@ -346,9 +346,9 @@ function UI:CreateOverviewTab(parent)
     self.presentOnlyCheck = presentCheck
 
     local rosterFrame = CreateFrame("Frame", nil, parent, "InsetFrameTemplate")
-    local rosterHeight = 24 + (ROSTER_ROWS * ROW_HEIGHT) + 8
-    rosterFrame:SetSize(420, rosterHeight)
+    rosterFrame:SetWidth(420)
     rosterFrame:SetPoint("TOPLEFT", filterFrame, "BOTTOMLEFT", 0, -8)
+    rosterFrame:SetPoint("BOTTOMLEFT", parent, "BOTTOMLEFT", 6, 12)
     local rosterTitle = createLabel(rosterFrame, L.LABEL_POINTS, "GameFontNormal")
     rosterTitle:SetPoint("TOPLEFT", 8, -8)
 
@@ -428,33 +428,30 @@ function UI:CreateOverviewTab(parent)
         self.rosterRows[i] = row
     end
 
-    local statusFrame = CreateFrame("Frame", nil, parent, "InsetFrameTemplate")
-    statusFrame:SetSize(300, 120)
-    statusFrame:SetPoint("TOPLEFT", rosterFrame, "TOPRIGHT", 12, 0)
-    local statusTitle = createLabel(statusFrame, L.LABEL_SYNC, "GameFontNormal")
-    statusTitle:SetPoint("TOPLEFT", 8, -8)
-    self.syncStatus = createLabel(statusFrame, "", "GameFontHighlight")
+    local rightFrame = CreateFrame("Frame", nil, parent, "InsetFrameTemplate")
+    rightFrame:SetPoint("TOPLEFT", rosterFrame, "TOPRIGHT", 12, 0)
+    rightFrame:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -12, 12)
+    local statusTitle = createLabel(rightFrame, L.LABEL_SYNC, "GameFontNormal")
+    statusTitle:SetPoint("TOPLEFT", 10, -10)
+    self.syncStatus = createLabel(rightFrame, "", "GameFontHighlight")
     self.syncStatus:SetPoint("TOPLEFT", statusTitle, "BOTTOMLEFT", 0, -6)
-    self.disenchanterLabel = createLabel(statusFrame, "", "GameFontHighlight")
+    self.disenchanterLabel = createLabel(rightFrame, "", "GameFontHighlight")
     self.disenchanterLabel:SetPoint("TOPLEFT", self.syncStatus, "BOTTOMLEFT", 0, -6)
 
-    local manualFrame = CreateFrame("Frame", nil, parent)
-    manualFrame:SetSize(300, 220)
-    manualFrame:SetPoint("TOPLEFT", statusFrame, "BOTTOMLEFT", 0, -12)
-    local manualTitle = createLabel(manualFrame, L.LABEL_MANUAL, "GameFontNormal")
-    manualTitle:SetPoint("TOPLEFT", 8, -8)
+    local manualTitle = createLabel(rightFrame, L.LABEL_MANUAL, "GameFontNormal")
+    manualTitle:SetPoint("TOPLEFT", self.disenchanterLabel, "BOTTOMLEFT", 0, -16)
 
-    local nameLabel = createLabel(manualFrame, L.LABEL_PLAYER, "GameFontHighlightSmall")
+    local nameLabel = createLabel(rightFrame, L.LABEL_PLAYER, "GameFontHighlightSmall")
     nameLabel:SetPoint("TOPLEFT", manualTitle, "BOTTOMLEFT", 0, -8)
-    local nameDropDown = self:CreatePlayerDropdown(manualFrame, 140, function(name)
+    local nameDropDown = self:CreatePlayerDropdown(rightFrame, 140, function(name)
         UI.adjustSelectedName = name
     end)
     nameDropDown:SetPoint("TOPLEFT", nameLabel, "BOTTOMLEFT", -10, -2)
     self.adjustNameDropDown = nameDropDown
 
-    local amountLabel = createLabel(manualFrame, L.LABEL_AMOUNT, "GameFontHighlightSmall")
+    local amountLabel = createLabel(rightFrame, L.LABEL_AMOUNT, "GameFontHighlightSmall")
     amountLabel:SetPoint("LEFT", nameDropDown, "RIGHT", 10, 4)
-    local amountBox = CreateFrame("EditBox", nil, manualFrame, "InputBoxTemplate")
+    local amountBox = CreateFrame("EditBox", nil, rightFrame, "InputBoxTemplate")
     amountBox:SetSize(60, 20)
     amountBox:SetPoint("TOPLEFT", amountLabel, "BOTTOMLEFT", -2, -4)
     amountBox:SetAutoFocus(false)
@@ -464,7 +461,7 @@ function UI:CreateOverviewTab(parent)
     end)
     self.adjustAmountBox = amountBox
 
-    local addButton = createButton(manualFrame, L.BUTTON_ADD, 80, 22)
+    local addButton = createButton(rightFrame, L.BUTTON_ADD, 80, 22)
     addButton:SetPoint("TOPLEFT", nameLabel, "BOTTOMLEFT", 0, -46)
     addButton:SetScript("OnClick", function()
         if not Goals:HasLeaderAccess() then
@@ -478,7 +475,7 @@ function UI:CreateOverviewTab(parent)
     end)
     self.adjustAddButton = addButton
 
-    local setButton = createButton(manualFrame, L.BUTTON_SET, 80, 22)
+    local setButton = createButton(rightFrame, L.BUTTON_SET, 80, 22)
     setButton:SetPoint("LEFT", addButton, "RIGHT", 12, 0)
     setButton:SetScript("OnClick", function()
         if not Goals:HasLeaderAccess() then
@@ -497,8 +494,7 @@ function UI:CreateLootTab(parent)
     local header = createLabel(parent, L.TAB_LOOT, "GameFontHighlightLarge")
     header:SetPoint("TOPLEFT", 6, -6)
 
-    local columnWidth = 340
-    local columnHeight = 360
+    local columnWidth = 350
 
     local controlFrame = CreateFrame("Frame", nil, parent)
     controlFrame:SetSize(720, 56)
@@ -551,8 +547,9 @@ function UI:CreateLootTab(parent)
     }
 
     local historyFrame = CreateFrame("Frame", nil, parent, "InsetFrameTemplate")
-    historyFrame:SetSize(columnWidth, columnHeight)
+    historyFrame:SetWidth(columnWidth)
     historyFrame:SetPoint("TOPLEFT", controlFrame, "BOTTOMLEFT", 0, -8)
+    historyFrame:SetPoint("BOTTOMLEFT", parent, "BOTTOMLEFT", 6, 12)
     local historyLabel = createLabel(historyFrame, L.LABEL_LOOT_HISTORY or "Loot History", "GameFontNormal")
     historyLabel:SetPoint("TOPLEFT", 10, -10)
 
@@ -568,8 +565,9 @@ function UI:CreateLootTab(parent)
     self.lootHistoryRows = {}
     for i = 1, LOOT_HISTORY_ROWS do
         local row = CreateFrame("Button", nil, historyFrame)
-        row:SetSize(columnWidth - 24, ROW_HEIGHT)
+        row:SetHeight(ROW_HEIGHT)
         row:SetPoint("TOPLEFT", 8, -((i - 1) * ROW_HEIGHT) - 30)
+        row:SetPoint("TOPRIGHT", -8, -((i - 1) * ROW_HEIGHT) - 30)
         row.text = createLabel(row, "", "GameFontHighlightSmall")
         row.text:SetPoint("LEFT", 4, 0)
         row.hover = row:CreateTexture(nil, "BACKGROUND")
@@ -613,8 +611,8 @@ function UI:CreateLootTab(parent)
     end
 
     local foundFrame = CreateFrame("Frame", nil, parent, "InsetFrameTemplate")
-    foundFrame:SetSize(columnWidth, columnHeight)
     foundFrame:SetPoint("TOPLEFT", historyFrame, "TOPRIGHT", 12, 0)
+    foundFrame:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -6, 12)
     local foundLabel = createLabel(foundFrame, L.LABEL_FOUND_LOOT, "GameFontNormal")
     foundLabel:SetPoint("TOPLEFT", 10, -10)
     local foundHint = createLabel(foundFrame, L.LABEL_FOUND_LOOT_HINT or "Right-click to assign loot.", "GameFontHighlightSmall")
@@ -637,8 +635,9 @@ function UI:CreateLootTab(parent)
     self.foundLootRows = {}
     for i = 1, LOOT_ROWS do
         local row = CreateFrame("Button", nil, foundFrame)
-        row:SetSize(columnWidth - 24, ROW_HEIGHT)
+        row:SetHeight(ROW_HEIGHT)
         row:SetPoint("TOPLEFT", 8, -((i - 1) * ROW_HEIGHT) - 46)
+        row:SetPoint("TOPRIGHT", -8, -((i - 1) * ROW_HEIGHT) - 46)
         row.text = createLabel(row, "", "GameFontHighlightSmall")
         row.text:SetPoint("LEFT", 4, 0)
         row.hover = row:CreateTexture(nil, "BACKGROUND")
@@ -685,8 +684,8 @@ function UI:CreateHistoryTab(parent)
     header:SetPoint("TOPLEFT", 6, -6)
 
     local listFrame = CreateFrame("Frame", nil, parent, "InsetFrameTemplate")
-    listFrame:SetSize(700, 380)
     listFrame:SetPoint("TOPLEFT", 6, -36)
+    listFrame:SetPoint("BOTTOMRIGHT", -6, 12)
 
     local scroll = CreateFrame("ScrollFrame", "GoalsHistoryScroll", listFrame, "FauxScrollFrameTemplate")
     scroll:SetPoint("TOPLEFT", 6, -6)
@@ -700,8 +699,9 @@ function UI:CreateHistoryTab(parent)
     self.historyRows = {}
     for i = 1, HISTORY_ROWS do
         local row = CreateFrame("Frame", nil, listFrame)
-        row:SetSize(640, ROW_HEIGHT)
+        row:SetHeight(ROW_HEIGHT)
         row:SetPoint("TOPLEFT", 8, -((i - 1) * ROW_HEIGHT) - 8)
+        row:SetPoint("TOPRIGHT", -8, -((i - 1) * ROW_HEIGHT) - 8)
         row.time = createLabel(row, "", "GameFontHighlightSmall")
         row.time:SetPoint("LEFT", 4, 0)
         row.text = createLabel(row, "", "GameFontHighlightSmall")
@@ -715,8 +715,8 @@ function UI:CreateSettingsTab(parent)
     header:SetPoint("TOPLEFT", 6, -6)
 
     local settingsFrame = CreateFrame("Frame", nil, parent, "InsetFrameTemplate")
-    settingsFrame:SetSize(700, 360)
     settingsFrame:SetPoint("TOPLEFT", 6, -36)
+    settingsFrame:SetPoint("BOTTOMRIGHT", -6, 12)
 
     local combineCheck = CreateFrame("CheckButton", "GoalsCombineHistoryCheck", settingsFrame, "UICheckButtonTemplate")
     combineCheck:SetPoint("TOPLEFT", 10, -18)
@@ -816,28 +816,27 @@ end
 
 function UI:CreateMinimapButton()
     local button = CreateFrame("Button", "GoalsMinimapButton", Minimap)
-    button:SetSize(31, 31)
+    button:SetSize(32, 32)
     button:SetFrameStrata("MEDIUM")
     button:SetFrameLevel(8)
     button:EnableMouse(true)
     button.background = button:CreateTexture(nil, "BACKGROUND")
     button.background:SetTexture("Interface\\Minimap\\UI-Minimap-Background")
     button.background:SetSize(20, 20)
-    button.background:SetPoint("TOPLEFT", button, "TOPLEFT", 5, -5)
+    button.background:SetPoint("CENTER", button, "CENTER", 0, 0)
     button.icon = button:CreateTexture(nil, "ARTWORK")
     button.icon:SetTexture("Interface\\Icons\\INV_Misc_Note_01")
     button.icon:SetTexCoord(0.1, 0.9, 0.1, 0.9)
     button.icon:SetSize(18, 18)
-    button.icon:SetPoint("TOPLEFT", button, "TOPLEFT", 7, -6)
+    button.icon:SetPoint("CENTER", button, "CENTER", 0, 0)
     button.border = button:CreateTexture(nil, "OVERLAY")
     button.border:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
     button.border:SetSize(54, 54)
-    button.border:SetPoint("TOPLEFT", button, "TOPLEFT", -6, 6)
+    button.border:SetPoint("CENTER", button, "CENTER", 0, 0)
     button.highlight = button:CreateTexture(nil, "HIGHLIGHT")
     button.highlight:SetTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
     button.highlight:SetBlendMode("ADD")
-    button.highlight:SetPoint("TOPLEFT", button, "TOPLEFT", -6, 6)
-    button.highlight:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", 6, -6)
+    button.highlight:SetAllPoints(button)
     button:RegisterForDrag("LeftButton")
     button:SetScript("OnDragStart", function(self)
         self:SetScript("OnUpdate", function()
