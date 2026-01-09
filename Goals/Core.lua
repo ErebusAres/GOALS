@@ -88,6 +88,41 @@ function Goals:IsGroupLeader()
     return false
 end
 
+function Goals:GetSelfLootIndex()
+    if self:IsInRaid() then
+        for i = 1, GetNumRaidMembers() do
+            local name = GetRaidRosterInfo(i)
+            if self:NormalizeName(name) == self:GetPlayerName() then
+                return i
+            end
+        end
+        return nil
+    end
+    if self:IsInParty() then
+        return 0
+    end
+    return nil
+end
+
+function Goals:SetLootMethod(method)
+    if not SetLootMethod then
+        return false, "Loot method API unavailable."
+    end
+    if not self:IsInRaid() and not self:IsInParty() then
+        return false, "You must be in a party or raid."
+    end
+    if method == "master" then
+        local index = self:GetSelfLootIndex()
+        if index == nil then
+            return false, "Unable to determine loot master index."
+        end
+        SetLootMethod("master", index)
+        return true
+    end
+    SetLootMethod(method)
+    return true
+end
+
 function Goals:IsMasterLooter()
     if not GetLootMethod then
         return false

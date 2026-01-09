@@ -204,6 +204,12 @@ function UI:CreateMainFrame()
     frame:SetMovable(true)
     frame:SetClampedToScreen(true)
     frame:EnableMouse(true)
+    if frame.Inset then
+        frame.Inset:Hide()
+    end
+    if frame.InsetBg then
+        frame.InsetBg:Hide()
+    end
     frame:RegisterForDrag("LeftButton")
     frame:SetScript("OnDragStart", frame.StartMoving)
     frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
@@ -504,12 +510,9 @@ function UI:CreateLootTab(parent)
         if not Goals:HasLeaderAccess() then
             return
         end
-        if SetLootMethod then
-            if method == "master" then
-                SetLootMethod("master", 0)
-            else
-                SetLootMethod(method)
-            end
+        local ok, err = Goals:SetLootMethod(method)
+        if not ok and err then
+            Goals:Print(err)
         end
     end
 
@@ -813,26 +816,28 @@ end
 
 function UI:CreateMinimapButton()
     local button = CreateFrame("Button", "GoalsMinimapButton", Minimap)
-    button:SetSize(32, 32)
+    button:SetSize(31, 31)
     button:SetFrameStrata("MEDIUM")
+    button:SetFrameLevel(8)
     button:EnableMouse(true)
     button.background = button:CreateTexture(nil, "BACKGROUND")
     button.background:SetTexture("Interface\\Minimap\\UI-Minimap-Background")
-    button.background:SetSize(24, 24)
-    button.background:SetPoint("CENTER", button, "CENTER", 0, 0)
+    button.background:SetSize(20, 20)
+    button.background:SetPoint("TOPLEFT", button, "TOPLEFT", 5, -5)
     button.icon = button:CreateTexture(nil, "ARTWORK")
     button.icon:SetTexture("Interface\\Icons\\INV_Misc_Note_01")
     button.icon:SetTexCoord(0.1, 0.9, 0.1, 0.9)
-    button.icon:SetSize(20, 20)
-    button.icon:SetPoint("CENTER", button, "CENTER", 0, 0)
+    button.icon:SetSize(18, 18)
+    button.icon:SetPoint("TOPLEFT", button, "TOPLEFT", 7, -6)
     button.border = button:CreateTexture(nil, "OVERLAY")
     button.border:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
     button.border:SetSize(54, 54)
-    button.border:SetPoint("CENTER", button, "CENTER", 0, 0)
+    button.border:SetPoint("TOPLEFT", button, "TOPLEFT", -6, 6)
     button.highlight = button:CreateTexture(nil, "HIGHLIGHT")
     button.highlight:SetTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
     button.highlight:SetBlendMode("ADD")
-    button.highlight:SetAllPoints(button)
+    button.highlight:SetPoint("TOPLEFT", button, "TOPLEFT", -6, 6)
+    button.highlight:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", 6, -6)
     button:RegisterForDrag("LeftButton")
     button:SetScript("OnDragStart", function(self)
         self:SetScript("OnUpdate", function()
