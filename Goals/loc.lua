@@ -26,6 +26,7 @@ Goals.L = {
     LABEL_ASSIGN_LOOT = "Assign Loot",
     LABEL_SORT = "Sort",
     LABEL_FOUND_LOOT = "Found Loot",
+    LABEL_LOOT_HISTORY = "Loot History",
     BUTTON_ADD = "Add",
     BUTTON_SET = "Set",
     BUTTON_RESET = "Reset",
@@ -47,5 +48,6 @@ Goals.L = {
     DEV_SIM_KILL = "Simulate Boss Kill",
     DEV_SIM_WIPE = "Simulate Wipe",
     DEV_SIM_LOOT = "Simulate Loot",
+    DEV_TEST_BOSS = "Treat Garryowen Boar as boss",
     DEV_TOGGLE_DEBUG = "Toggle Debug",
 }

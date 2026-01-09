@@ -47,6 +47,11 @@ function Events:BuildBossLookup()
             self.bossToEncounter[bossName] = encounterName
         end
     end
+    local allowTestBoss = Goals.Dev and Goals.Dev.enabled and Goals.db and Goals.db.settings and Goals.db.settings.devTestBoss
+    if not allowTestBoss then
+        self.bossToEncounter["Garryowen Boar"] = nil
+        self.encounterBosses["Garryowen Boar"] = nil
+    end
 end
 
 function Events:CollectBossNames(data, set)
@@ -146,8 +151,12 @@ function Events:HandleCombatLog(...)
     if destName and self.bossToEncounter[destName] then
         self:StartEncounter(self.bossToEncounter[destName], destName)
     end
-    if eventType == "UNIT_DIED" and destName and self.bossToEncounter[destName] then
-        self:MarkBossDead(destName)
+    if eventType == "UNIT_DIED" and destName then
+        if self.bossToEncounter[destName] then
+            self:MarkBossDead(destName)
+        elseif Goals.Dev and Goals.Dev.enabled and Goals.db.settings.devTestBoss and destName == "Garryowen Boar" then
+            Goals:AwardBossKill("Garryowen Boar")
+        end
     end
 end
 

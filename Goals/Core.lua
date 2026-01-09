@@ -16,6 +16,7 @@ Goals.encounter = Goals.encounter or { active = false, name = nil, remaining = n
 Goals.state = Goals.state or { lastLoot = nil, lootFound = {} }
 Goals.state.lootFound = Goals.state.lootFound or {}
 Goals.pendingLoot = Goals.pendingLoot or {}
+Goals.pendingItemInfo = Goals.pendingItemInfo or {}
 Goals.undo = Goals.undo or {}
 
 local function prefixMessage(msg)
@@ -421,6 +422,7 @@ function Goals:HandleLootAssignment(playerName, itemLink, skipSync, forceRecord)
     if not itemName then
         self.pendingLoot[itemLink] = self.pendingLoot[itemLink] or {}
         self.pendingLoot[itemLink][playerName] = { skipSync = skipSync, forceRecord = forceRecord }
+        self:RequestItemInfo(itemLink)
         return
     end
     local shouldTrack = self:ShouldTrackLoot(quality, itemType, itemSubType, equipSlot)
@@ -444,6 +446,29 @@ function Goals:HandleLootAssignment(playerName, itemLink, skipSync, forceRecord)
     if forceRecord or shouldTrack then
         self:NotifyDataChanged()
     end
+end
+
+function Goals:RequestItemInfo(itemLink)
+    if not itemLink then
+        return
+    end
+    self.pendingItemInfo = self.pendingItemInfo or {}
+    if self.pendingItemInfo[itemLink] then
+        return
+    end
+    self.pendingItemInfo[itemLink] = true
+    if not self.itemInfoTooltip then
+        self.itemInfoTooltip = CreateFrame("GameTooltip", "GoalsItemInfoTooltip", UIParent, "GameTooltipTemplate")
+    end
+    local tooltip = self.itemInfoTooltip
+    tooltip:SetOwner(UIParent, "ANCHOR_NONE")
+    tooltip:ClearLines()
+    tooltip:SetHyperlink(itemLink)
+    tooltip:Hide()
+    self:Delay(0.5, function()
+        self.pendingItemInfo[itemLink] = nil
+        self:ProcessPendingLoot()
+    end)
 end
 
 function Goals:AddFoundLoot(playerName, itemLink)

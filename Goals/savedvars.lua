@@ -13,6 +13,7 @@ Goals.defaults = {
         combineBossHistory = true,
         disenchanter = "",
         debug = false,
+        devTestBoss = false,
         showPresentOnly = false,
         sortMode = "POINTS",
         minimap = {

@@ -11,9 +11,10 @@ local UI = Goals.UI
 
 local ROW_HEIGHT = 20
 local ROSTER_ROWS = 16
-local HISTORY_ROWS = 14
+local HISTORY_ROWS = 16
 local ROSTER_BUTTON_SIZE = 18
-local LOOT_ROWS = 8
+local LOOT_ROWS = 10
+local LOOT_HISTORY_ROWS = 12
 
 local function formatTime(ts)
     return date("%H:%M:%S", ts or time())
@@ -30,6 +31,39 @@ local function createButton(parent, text, width, height)
     button:SetText(text)
     button:SetSize(width, height)
     return button
+end
+
+local function styleDropdown(dropdown)
+    if dropdown._goalsStyled then
+        return
+    end
+    dropdown._goalsStyled = true
+    local name = dropdown:GetName()
+    local left = _G[name .. "Left"]
+    local middle = _G[name .. "Middle"]
+    local right = _G[name .. "Right"]
+    if left then
+        left:Hide()
+    end
+    if middle then
+        middle:Hide()
+    end
+    if right then
+        right:Hide()
+    end
+    local text = _G[name .. "Text"]
+    if text then
+        text:ClearAllPoints()
+        text:SetPoint("LEFT", dropdown, "LEFT", 6, 2)
+        text:SetPoint("RIGHT", dropdown, "RIGHT", -22, 2)
+        text:SetJustifyH("LEFT")
+    end
+    local button = _G[name .. "Button"]
+    if button then
+        button:ClearAllPoints()
+        button:SetPoint("RIGHT", dropdown, "RIGHT", -6, 1)
+    end
+    dropdown:SetHeight(22)
 end
 
 function UI:GetAllPlayerNames()
@@ -58,6 +92,7 @@ function UI:CreatePlayerDropdown(parent, width, onSelect, optionsFunc)
     UIDropDownMenu_SetWidth(dropdown, width)
     UIDropDownMenu_SetButtonWidth(dropdown, width)
     UIDropDownMenu_JustifyText(dropdown, "LEFT")
+    styleDropdown(dropdown)
     dropdown.onSelect = onSelect
     dropdown.optionsFunc = optionsFunc
     UIDropDownMenu_Initialize(dropdown, function(_, level)
@@ -66,6 +101,9 @@ function UI:CreatePlayerDropdown(parent, width, onSelect, optionsFunc)
             local info = UIDropDownMenu_CreateInfo()
             info.text = name
             info.value = name
+            info.notCheckable = true
+            info.isNotRadio = true
+            info.highlightTexture = "Interface\\QuestFrame\\UI-QuestTitleHighlight"
             info.func = function()
                 dropdown.selectedValue = name
                 UIDropDownMenu_SetText(dropdown, name)
@@ -157,7 +195,7 @@ function UI:CreateMainFrame()
     frame:Hide()
 
     local title = createLabel(frame, L.TITLE, "GameFontHighlightLarge")
-    title:SetPoint("TOPLEFT", 16, -12)
+    title:SetPoint("TOPLEFT", 16, -8)
     local minimizeButton = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
     minimizeButton:SetSize(20, 20)
     minimizeButton:SetText("-")
@@ -235,17 +273,18 @@ function UI:CreateOverviewTab(parent)
     header:SetPoint("TOPLEFT", 6, -6)
 
     local filterFrame = CreateFrame("Frame", nil, parent)
-    filterFrame:SetSize(420, 24)
+    filterFrame:SetSize(420, 32)
     filterFrame:SetPoint("TOPLEFT", 6, -36)
 
     local sortLabel = createLabel(filterFrame, L.LABEL_SORT, "GameFontHighlightSmall")
     sortLabel:SetPoint("LEFT", 0, 0)
     local sortDropDown = CreateFrame("Frame", "GoalsSortDropDown", filterFrame, "UIDropDownMenuTemplate")
-    sortDropDown:SetPoint("LEFT", sortLabel, "RIGHT", -4, -4)
+    sortDropDown:SetPoint("LEFT", sortLabel, "RIGHT", -4, -2)
     UIDropDownMenu_SetWidth(sortDropDown, 100)
     UIDropDownMenu_SetButtonWidth(sortDropDown, 100)
     UIDropDownMenu_SetButtonWidth(sortDropDown, 100)
     UIDropDownMenu_JustifyText(sortDropDown, "LEFT")
+    styleDropdown(sortDropDown)
     UIDropDownMenu_Initialize(sortDropDown, function(_, level)
         local options = {
             { value = "POINTS", text = L.SORT_POINTS },
@@ -256,7 +295,9 @@ function UI:CreateOverviewTab(parent)
             local info = UIDropDownMenu_CreateInfo()
             info.text = option.text
             info.value = option.value
-            info.checked = Goals.db.settings.sortMode == option.value
+            info.notCheckable = true
+            info.isNotRadio = true
+            info.highlightTexture = "Interface\\QuestFrame\\UI-QuestTitleHighlight"
             info.func = function()
                 Goals.db.settings.sortMode = option.value
                 UIDropDownMenu_SetText(sortDropDown, option.text)
@@ -278,7 +319,7 @@ function UI:CreateOverviewTab(parent)
 
     local rosterFrame = CreateFrame("Frame", nil, parent, "InsetFrameTemplate")
     rosterFrame:SetSize(420, 330)
-    rosterFrame:SetPoint("TOPLEFT", filterFrame, "BOTTOMLEFT", 0, -4)
+    rosterFrame:SetPoint("TOPLEFT", filterFrame, "BOTTOMLEFT", 0, -8)
     local rosterTitle = createLabel(rosterFrame, L.LABEL_POINTS, "GameFontNormal")
     rosterTitle:SetPoint("TOPLEFT", 8, -8)
 
@@ -427,23 +468,82 @@ function UI:CreateLootTab(parent)
     local header = createLabel(parent, L.TAB_LOOT, "GameFontHighlightLarge")
     header:SetPoint("TOPLEFT", 6, -6)
 
-    local infoFrame = CreateFrame("Frame", nil, parent, "InsetFrameTemplate")
-    infoFrame:SetSize(700, 120)
-    infoFrame:SetPoint("TOPLEFT", 6, -36)
-    local infoLabel = createLabel(infoFrame, L.LABEL_LAST_LOOT, "GameFontNormal")
-    infoLabel:SetPoint("TOPLEFT", 10, -10)
-    self.lastLootLabel = createLabel(infoFrame, "", "GameFontHighlight")
-    self.lastLootLabel:SetPoint("TOPLEFT", infoLabel, "BOTTOMLEFT", 0, -6)
+    local columnWidth = 340
+    local columnHeight = 360
+
+    local historyFrame = CreateFrame("Frame", nil, parent, "InsetFrameTemplate")
+    historyFrame:SetSize(columnWidth, columnHeight)
+    historyFrame:SetPoint("TOPLEFT", 6, -36)
+    local historyLabel = createLabel(historyFrame, L.LABEL_LOOT_HISTORY or "Loot History", "GameFontNormal")
+    historyLabel:SetPoint("TOPLEFT", 10, -10)
+
+    local historyScroll = CreateFrame("ScrollFrame", "GoalsLootHistoryScroll", historyFrame, "FauxScrollFrameTemplate")
+    historyScroll:SetPoint("TOPLEFT", 6, -30)
+    historyScroll:SetPoint("BOTTOMRIGHT", -26, 6)
+    historyScroll:SetScript("OnVerticalScroll", function(_, offset)
+        FauxScrollFrame_OnVerticalScroll(historyScroll, offset, ROW_HEIGHT, function()
+            UI:UpdateLootHistoryList()
+        end)
+    end)
+    self.lootHistoryScroll = historyScroll
+    self.lootHistoryRows = {}
+    for i = 1, LOOT_HISTORY_ROWS do
+        local row = CreateFrame("Button", nil, historyFrame)
+        row:SetSize(columnWidth - 24, ROW_HEIGHT)
+        row:SetPoint("TOPLEFT", 8, -((i - 1) * ROW_HEIGHT) - 30)
+        row.text = createLabel(row, "", "GameFontHighlightSmall")
+        row.text:SetPoint("LEFT", 4, 0)
+        row.hover = row:CreateTexture(nil, "BACKGROUND")
+        row.hover:SetTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight")
+        row.hover:SetBlendMode("ADD")
+        row.hover:SetAlpha(0.25)
+        row.hover:SetPoint("LEFT", 2, 0)
+        row.hover:SetPoint("RIGHT", -2, 0)
+        row.hover:SetPoint("TOP", 0, 1)
+        row.hover:SetPoint("BOTTOM", 0, -1)
+        row.hover:Hide()
+        row:SetScript("OnEnter", function(self)
+            if self.itemLink then
+                GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+                GameTooltip:SetHyperlink(self.itemLink)
+                GameTooltip_ShowCompareItem()
+                GameTooltip:Show()
+            end
+            if self.hover then
+                self.hover:Show()
+            end
+        end)
+        row:SetScript("OnLeave", function(self)
+            if self.hover then
+                self.hover:Hide()
+            end
+            GameTooltip_HideShoppingTooltips()
+            GameTooltip:Hide()
+        end)
+        row:SetScript("OnClick", function(self)
+            if not self.itemLink then
+                return
+            end
+            if IsModifiedClick("CHATLINK") then
+                ChatEdit_InsertLink(self.itemLink)
+            elseif IsModifiedClick("DRESSUP") then
+                DressUpItemLink(self.itemLink)
+            else
+                SetItemRef(self.itemLink, self.itemLink, "LeftButton")
+            end
+        end)
+        self.lootHistoryRows[i] = row
+    end
 
     local foundFrame = CreateFrame("Frame", nil, parent, "InsetFrameTemplate")
-    foundFrame:SetSize(700, 230)
-    foundFrame:SetPoint("TOPLEFT", infoFrame, "BOTTOMLEFT", 0, -12)
+    foundFrame:SetSize(columnWidth, columnHeight)
+    foundFrame:SetPoint("TOPLEFT", historyFrame, "TOPRIGHT", 12, 0)
     local foundLabel = createLabel(foundFrame, L.LABEL_FOUND_LOOT, "GameFontNormal")
     foundLabel:SetPoint("TOPLEFT", 10, -10)
 
     local scroll = CreateFrame("ScrollFrame", "GoalsFoundLootScroll", foundFrame, "FauxScrollFrameTemplate")
     scroll:SetPoint("TOPLEFT", 6, -30)
-    scroll:SetPoint("BOTTOMRIGHT", -26, 34)
+    scroll:SetPoint("BOTTOMRIGHT", -26, 40)
     scroll:SetScript("OnVerticalScroll", function(_, offset)
         FauxScrollFrame_OnVerticalScroll(scroll, offset, ROW_HEIGHT, function()
             UI:UpdateFoundLootList()
@@ -453,18 +553,57 @@ function UI:CreateLootTab(parent)
     self.foundLootRows = {}
     for i = 1, LOOT_ROWS do
         local row = CreateFrame("Button", nil, foundFrame)
-        row:SetSize(640, ROW_HEIGHT)
+        row:SetSize(columnWidth - 24, ROW_HEIGHT)
         row:SetPoint("TOPLEFT", 8, -((i - 1) * ROW_HEIGHT) - 30)
         row.text = createLabel(row, "", "GameFontHighlightSmall")
         row.text:SetPoint("LEFT", 4, 0)
-        row.highlight = row:CreateTexture(nil, "BACKGROUND")
+        row.hover = row:CreateTexture(nil, "BACKGROUND")
+        row.hover:SetTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight")
+        row.hover:SetBlendMode("ADD")
+        row.hover:SetAlpha(0.25)
+        row.hover:SetPoint("LEFT", 2, 0)
+        row.hover:SetPoint("RIGHT", -2, 0)
+        row.hover:SetPoint("TOP", 0, 1)
+        row.hover:SetPoint("BOTTOM", 0, -1)
+        row.hover:Hide()
+        row.highlight = row:CreateTexture(nil, "ARTWORK")
         row.highlight:SetTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight")
         row.highlight:SetBlendMode("ADD")
-        row.highlight:SetAllPoints()
+        row.highlight:SetPoint("LEFT", 2, 0)
+        row.highlight:SetPoint("RIGHT", -2, 0)
+        row.highlight:SetPoint("TOP", 0, 1)
+        row.highlight:SetPoint("BOTTOM", 0, -1)
         row.highlight:Hide()
         row:SetScript("OnClick", function()
             UI.selectedFoundIndex = row.index
+            if row.itemLink then
+                if IsModifiedClick("CHATLINK") then
+                    ChatEdit_InsertLink(row.itemLink)
+                elseif IsModifiedClick("DRESSUP") then
+                    DressUpItemLink(row.itemLink)
+                else
+                    SetItemRef(row.itemLink, row.itemLink, "LeftButton")
+                end
+            end
             UI:UpdateFoundLootList()
+        end)
+        row:SetScript("OnEnter", function(self)
+            if self.itemLink then
+                GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+                GameTooltip:SetHyperlink(self.itemLink)
+                GameTooltip_ShowCompareItem()
+                GameTooltip:Show()
+            end
+            if self.hover and not self.isSelected then
+                self.hover:Show()
+            end
+        end)
+        row:SetScript("OnLeave", function(self)
+            if self.hover then
+                self.hover:Hide()
+            end
+            GameTooltip_HideShoppingTooltips()
+            GameTooltip:Hide()
         end)
         self.foundLootRows[i] = row
     end
@@ -501,13 +640,13 @@ function UI:CreateHistoryTab(parent)
     local header = createLabel(parent, L.TAB_HISTORY, "GameFontHighlightLarge")
     header:SetPoint("TOPLEFT", 6, -6)
 
-    local listFrame = CreateFrame("Frame", nil, parent)
-    listFrame:SetSize(700, 360)
+    local listFrame = CreateFrame("Frame", nil, parent, "InsetFrameTemplate")
+    listFrame:SetSize(700, 380)
     listFrame:SetPoint("TOPLEFT", 6, -36)
 
     local scroll = CreateFrame("ScrollFrame", "GoalsHistoryScroll", listFrame, "FauxScrollFrameTemplate")
-    scroll:SetPoint("TOPLEFT", 0, 0)
-    scroll:SetPoint("BOTTOMRIGHT", -28, -4)
+    scroll:SetPoint("TOPLEFT", 6, -6)
+    scroll:SetPoint("BOTTOMRIGHT", -26, 6)
     scroll:SetScript("OnVerticalScroll", function(_, offset)
         FauxScrollFrame_OnVerticalScroll(scroll, offset, ROW_HEIGHT, function()
             UI:UpdateHistoryList()
@@ -518,7 +657,7 @@ function UI:CreateHistoryTab(parent)
     for i = 1, HISTORY_ROWS do
         local row = CreateFrame("Frame", nil, listFrame)
         row:SetSize(640, ROW_HEIGHT)
-        row:SetPoint("TOPLEFT", 2, -((i - 1) * ROW_HEIGHT))
+        row:SetPoint("TOPLEFT", 8, -((i - 1) * ROW_HEIGHT) - 8)
         row.time = createLabel(row, "", "GameFontHighlightSmall")
         row.time:SetPoint("LEFT", 4, 0)
         row.text = createLabel(row, "", "GameFontHighlightSmall")
@@ -536,7 +675,7 @@ function UI:CreateSettingsTab(parent)
     settingsFrame:SetPoint("TOPLEFT", 6, -36)
 
     local combineCheck = CreateFrame("CheckButton", "GoalsCombineHistoryCheck", settingsFrame, "UICheckButtonTemplate")
-    combineCheck:SetPoint("TOPLEFT", 10, -10)
+    combineCheck:SetPoint("TOPLEFT", 10, -18)
     _G[combineCheck:GetName() .. "Text"]:SetText(L.CHECK_COMBINE_HISTORY)
     combineCheck:SetScript("OnClick", function(self)
         if not Goals:HasLeaderAccess() then
@@ -600,8 +739,19 @@ function UI:CreateDevTab(parent)
         Goals.Dev:SimulateLoot()
     end)
 
+    local testBossCheck = CreateFrame("CheckButton", "GoalsDevTestBossCheck", parent, "UICheckButtonTemplate")
+    testBossCheck:SetPoint("TOPLEFT", lootButton, "BOTTOMLEFT", 0, -10)
+    _G[testBossCheck:GetName() .. "Text"]:SetText(L.DEV_TEST_BOSS)
+    testBossCheck:SetScript("OnClick", function(self)
+        Goals.db.settings.devTestBoss = self:GetChecked() == 1
+        if Goals.Events and Goals.Events.BuildBossLookup then
+            Goals.Events:BuildBossLookup()
+        end
+    end)
+    self.devTestBossCheck = testBossCheck
+
     local info = createLabel(parent, "Dev tools are active.", "GameFontHighlightSmall")
-    info:SetPoint("TOPLEFT", lootButton, "BOTTOMLEFT", 0, -12)
+    info:SetPoint("TOPLEFT", testBossCheck, "BOTTOMLEFT", 0, -12)
 end
 
 function UI:CreateDebugTab(parent)
@@ -637,7 +787,7 @@ function UI:CreateMinimapButton()
     button.border = button:CreateTexture(nil, "OVERLAY")
     button.border:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
     button.border:SetSize(54, 54)
-    button.border:SetPoint("TOPLEFT", -11, 11)
+    button.border:SetPoint("CENTER", 0, 0)
     button.highlight = button:CreateTexture(nil, "HIGHLIGHT")
     button.highlight:SetTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
     button.highlight:SetBlendMode("ADD")
@@ -854,17 +1004,55 @@ function UI:UpdateFoundLootList()
         if entry then
             row:Show()
             row.index = index
+            row.itemLink = entry.link
             local assigned = entry.assignedTo and (" -> " .. entry.assignedTo) or ""
             row.text:SetText(string.format("%s (looted by %s)%s", entry.link, entry.player or "?", assigned))
-            if UI.selectedFoundIndex == index then
+            row.isSelected = UI.selectedFoundIndex == index
+            if row.isSelected then
                 row.highlight:Show()
+                if row.hover then
+                    row.hover:Hide()
+                end
             else
                 row.highlight:Hide()
             end
         else
             row:Hide()
             row.index = nil
+            row.itemLink = nil
+            row.isSelected = nil
             row.highlight:Hide()
+            if row.hover then
+                row.hover:Hide()
+            end
+        end
+    end
+end
+
+function UI:UpdateLootHistoryList()
+    if not self.lootHistoryScroll then
+        return
+    end
+    local lootEntries = {}
+    local history = Goals.db.history or {}
+    for _, entry in ipairs(history) do
+        if entry.kind == "LOOT" then
+            table.insert(lootEntries, entry)
+        end
+    end
+    self.lootHistoryEntries = lootEntries
+    FauxScrollFrame_Update(self.lootHistoryScroll, #lootEntries, #self.lootHistoryRows, ROW_HEIGHT)
+    local offset = FauxScrollFrame_GetOffset(self.lootHistoryScroll)
+    for i, row in ipairs(self.lootHistoryRows) do
+        local index = i + offset
+        local entry = lootEntries[index]
+        if entry then
+            row:Show()
+            row.text:SetText(entry.text or "")
+            row.itemLink = entry.data and entry.data.item or nil
+        else
+            row:Hide()
+            row.itemLink = nil
         end
     end
 end
@@ -932,6 +1120,9 @@ function UI:Refresh()
         end
         UIDropDownMenu_SetText(self.sortDropDown, label)
     end
+    if self.devTestBossCheck then
+        self.devTestBossCheck:SetChecked(Goals.db.settings.devTestBoss and 1 or 0)
+    end
     if self.adjustNameDropDown then
         self:SyncDropdownSelection(self.adjustNameDropDown, self.adjustSelectedName)
     end
@@ -968,5 +1159,6 @@ function UI:Refresh()
     end
     self:UpdateRosterList()
     self:UpdateHistoryList()
+    self:UpdateLootHistoryList()
     self:UpdateFoundLootList()
 end
