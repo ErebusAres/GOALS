@@ -1,14 +1,19 @@
 ## Interface: 30300
 ## Author: Adam and Corey
-## Title: |cff00ccffGOALS|r - Gen1
-## Version: v0.0.1beta
-## Notes: Boss and Loot Tracker for GO
+## Title: |cff00ccffGOALS|r - Gen2
+## Version: v0.1.0
+## Notes: DKP-style boss and loot tracker for Wrath 3.3.5a
 ## DefaultState: enabled
-## SavedVariables: PlayerPointsDB
+## SavedVariables: GoalsDB
 ## Dependencies:
 ## OptionalDeps:
 
-## libs ##
-
-goals.lua
+Core.lua
+loc.lua
+savedvars.lua
+history.lua
+dev.lua
+comm.lua
 bossEncounters.lua
+events.lua
+gui.lua

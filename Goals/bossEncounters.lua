@@ -1,3 +1,6 @@
+-- Goals: bossEncounters.lua
+-- Boss list used for encounter detection.
+-- Usage: _G.bossEncounters["Encounter Name"] = { "Boss Name", "Boss Name 2" }
 -- Table of boss creatures, including multi-boss encounters
 _G.bossEncounters = {
     --[[Test Encounters]]

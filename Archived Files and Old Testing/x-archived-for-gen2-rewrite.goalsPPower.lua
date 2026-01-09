@@ -1,3 +1,4 @@
+-- Archived: superseded by Gen2 rewrite.
 -- Utility function to capitalize the first character of a name
 local function CapitalizeFirstLetter(str)
     return str:gsub("^%l", string.upper)
