@@ -383,7 +383,7 @@ function UI:CreateOverviewTab(page)
     local sortLabel = createLabel(page, L.LABEL_SORT, "GameFontNormal")
     sortLabel:SetPoint("TOPLEFT", page, "TOPLEFT", 2, -4)
 
-    local sortDrop = CreateFrame("Frame", nil, page, "UIDropDownMenuTemplate")
+    local sortDrop = CreateFrame("Frame", "GoalsSortDropdown", page, "UIDropDownMenuTemplate")
     sortDrop:SetPoint("LEFT", sortLabel, "RIGHT", -6, 0)
     styleDropdown(sortDrop, 110)
     self.sortDropdown = sortDrop
@@ -511,7 +511,7 @@ function UI:CreateOverviewTab(page)
 
     local playerLabel = createLabel(rightInset, L.LABEL_PLAYER, "GameFontNormal")
     playerLabel:SetPoint("TOPLEFT", manualTitle, "BOTTOMLEFT", 0, -10)
-    local playerDrop = CreateFrame("Frame", nil, rightInset, "UIDropDownMenuTemplate")
+    local playerDrop = CreateFrame("Frame", "GoalsManualPlayerDropdown", rightInset, "UIDropDownMenuTemplate")
     playerDrop:SetPoint("TOPLEFT", playerLabel, "BOTTOMLEFT", -10, -2)
     styleDropdown(playerDrop, 140)
     self.manualPlayerDropdown = playerDrop
@@ -801,7 +801,7 @@ function UI:CreateSettingsTab(page)
     local disLabel = createLabel(inset, L.SETTINGS_DISENCHANTER, "GameFontNormal")
     disLabel:SetPoint("TOPLEFT", minimapCheck, "BOTTOMLEFT", 0, -12)
 
-    local disDrop = CreateFrame("Frame", nil, inset, "UIDropDownMenuTemplate")
+    local disDrop = CreateFrame("Frame", "GoalsDisenchanterDropdown", inset, "UIDropDownMenuTemplate")
     disDrop:SetPoint("TOPLEFT", disLabel, "BOTTOMLEFT", -10, -2)
     styleDropdown(disDrop, 160)
     self.disenchanterDropdown = disDrop
