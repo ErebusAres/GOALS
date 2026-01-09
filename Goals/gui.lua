@@ -41,7 +41,9 @@ function UI:GetAllPlayerNames()
 end
 
 function UI:CreatePlayerDropdown(parent, width, onSelect)
-    local dropdown = CreateFrame("Frame", nil, parent, "UIDropDownMenuTemplate")
+    self.dropdownId = (self.dropdownId or 0) + 1
+    local dropdownName = "GoalsPlayerDropDown" .. self.dropdownId
+    local dropdown = CreateFrame("Frame", dropdownName, parent, "UIDropDownMenuTemplate")
     UIDropDownMenu_SetWidth(dropdown, width)
     UIDropDownMenu_JustifyText(dropdown, "LEFT")
     dropdown.onSelect = onSelect
@@ -223,7 +225,7 @@ function UI:CreateOverviewTab(parent)
 
     local sortLabel = createLabel(filterFrame, L.LABEL_SORT, "GameFontHighlightSmall")
     sortLabel:SetPoint("LEFT", 0, 0)
-    local sortDropDown = CreateFrame("Frame", nil, filterFrame, "UIDropDownMenuTemplate")
+    local sortDropDown = CreateFrame("Frame", "GoalsSortDropDown", filterFrame, "UIDropDownMenuTemplate")
     sortDropDown:SetPoint("LEFT", sortLabel, "RIGHT", -6, -4)
     UIDropDownMenu_SetWidth(sortDropDown, 100)
     UIDropDownMenu_JustifyText(sortDropDown, "LEFT")
