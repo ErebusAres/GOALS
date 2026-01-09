@@ -43,7 +43,14 @@ function Dev:SimulateLoot()
     end
     local exampleItem = "|cffa335ee|Hitem:40395::::::::80:::::::::|h[Torch of Holy Fire]|h|r"
     local itemName = GetItemInfo(exampleItem)
-    Goals:AddFoundLoot(Goals:GetPlayerName(), exampleItem)
+    Goals.state.lootFound = Goals.state.lootFound or {}
+    table.insert(Goals.state.lootFound, 1, {
+        slot = 0,
+        link = exampleItem,
+        ts = time(),
+        assignedTo = nil,
+    })
+    Goals:RecordLootFound(exampleItem)
     Goals:HandleLootAssignment(Goals:GetPlayerName(), exampleItem, true, true)
     if not itemName then
         Goals:Delay(0.5, function()

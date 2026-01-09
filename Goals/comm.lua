@@ -219,6 +219,7 @@ function Comm:SerializeSettings()
         "combineBossHistory=" .. (settings.combineBossHistory and "1" or "0"),
         "disenchanter=" .. (settings.disenchanter or ""),
         "debug=" .. (settings.debug and "1" or "0"),
+        "resetMountPet=" .. (settings.resetMountPet and "1" or "0"),
     }
     return table.concat(parts, ";")
 end
@@ -244,6 +245,10 @@ function Comm:ApplySetting(key, value)
     end
     if key == "debug" then
         Goals.db.settings.debug = value == "1" or value == "true"
+        return
+    end
+    if key == "resetMountPet" then
+        Goals.db.settings.resetMountPet = value == "1" or value == "true"
         return
     end
 end

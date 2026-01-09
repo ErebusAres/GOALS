@@ -61,17 +61,29 @@ function History:AddSetPoints(playerName, before, after, reason)
     )
 end
 
-function History:AddLootAssignment(playerName, itemLink, resetPoints)
+function History:AddLootFound(itemLink)
+    self:AddEntry(
+        "LOOT_FOUND",
+        string.format("Found %s", itemLink),
+        { item = itemLink }
+    )
+end
+
+function History:AddLootAssigned(playerName, itemLink, resetPoints)
     local suffix = resetPoints and " (points set to 0)" or ""
     self:AddEntry(
-        "LOOT",
-        string.format("%s: received %s%s", playerName, itemLink, suffix),
+        "LOOT_ASSIGN",
+        string.format("Assigned to %s: %s%s", playerName, itemLink, suffix),
         { player = playerName, item = itemLink, reset = resetPoints or false }
     )
 end
 
+function History:AddLootAssignment(playerName, itemLink, resetPoints)
+    self:AddLootAssigned(playerName, itemLink, resetPoints)
+end
+
 function History:AddLootReset(playerName, itemLink)
-    self:AddLootAssignment(playerName, itemLink, true)
+    self:AddLootAssigned(playerName, itemLink, true)
 end
 
 function History:AddWipe(encounterName)

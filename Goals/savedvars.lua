@@ -14,6 +14,7 @@ Goals.defaults = {
         disenchanter = "",
         debug = false,
         devTestBoss = false,
+        resetMountPet = false,
         showPresentOnly = false,
         sortMode = "POINTS",
         minimap = {

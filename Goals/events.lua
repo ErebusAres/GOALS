@@ -20,6 +20,9 @@ function Events:Init()
     end)
     self.frame:RegisterEvent("CHAT_MSG_LOOT")
     self.frame:RegisterEvent("GET_ITEM_INFO_RECEIVED")
+    self.frame:RegisterEvent("LOOT_OPENED")
+    self.frame:RegisterEvent("LOOT_SLOT_CLEARED")
+    self.frame:RegisterEvent("LOOT_CLOSED")
     self.frame:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
     self.frame:RegisterEvent("PLAYER_REGEN_DISABLED")
     self.frame:RegisterEvent("PLAYER_REGEN_ENABLED")
@@ -73,6 +76,18 @@ function Events:OnEvent(event, ...)
     end
     if event == "GET_ITEM_INFO_RECEIVED" then
         Goals:ProcessPendingLoot()
+        return
+    end
+    if event == "LOOT_OPENED" then
+        Goals:UpdateLootSlots(true)
+        return
+    end
+    if event == "LOOT_SLOT_CLEARED" then
+        Goals:UpdateLootSlots(false)
+        return
+    end
+    if event == "LOOT_CLOSED" then
+        Goals:ClearFoundLoot()
         return
     end
     if event == "COMBAT_LOG_EVENT_UNFILTERED" then
@@ -137,8 +152,7 @@ function Events:HandleLootMessage(message)
     if not playerName then
         return
     end
-    Goals:AddFoundLoot(playerName, itemLink)
-    Goals:HandleLoot(Goals:NormalizeName(playerName), itemLink)
+    Goals:HandleLootAssignment(Goals:NormalizeName(playerName), itemLink, false, true)
 end
 
 function Events:HandleCombatLog(...)

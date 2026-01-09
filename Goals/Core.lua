@@ -13,8 +13,15 @@ Goals.version = GetAddOnMetadata(Goals.name, "Version") or "dev"
 Goals.db = Goals.db or nil
 Goals.sync = Goals.sync or { isMaster = false, masterName = nil, status = "Solo" }
 Goals.encounter = Goals.encounter or { active = false, name = nil, remaining = nil, startTime = 0 }
-Goals.state = Goals.state or { lastLoot = nil, lootFound = {} }
+Goals.state = Goals.state or {
+    lastLoot = nil,
+    lootFound = {},
+    lootFoundSeen = {},
+    recentAssignments = {},
+}
 Goals.state.lootFound = Goals.state.lootFound or {}
+Goals.state.lootFoundSeen = Goals.state.lootFoundSeen or {}
+Goals.state.recentAssignments = Goals.state.recentAssignments or {}
 Goals.pendingLoot = Goals.pendingLoot or {}
 Goals.pendingItemInfo = Goals.pendingItemInfo or {}
 Goals.undo = Goals.undo or {}
@@ -79,6 +86,33 @@ function Goals:IsGroupLeader()
         return GetPartyLeaderIndex() == 0
     end
     return false
+end
+
+function Goals:IsMasterLooter()
+    if not GetLootMethod then
+        return false
+    end
+    local method, partyID, raidID = GetLootMethod()
+    if method ~= "master" then
+        return false
+    end
+    local playerName = self:GetPlayerName()
+    if raidID and raidID > 0 then
+        local name = GetRaidRosterInfo(raidID)
+        return self:NormalizeName(name) == playerName
+    end
+    if partyID and partyID > 0 then
+        local name = UnitName("party" .. partyID)
+        return self:NormalizeName(name) == playerName
+    end
+    return true
+end
+
+function Goals:HasLootAccess()
+    if self.Dev and self.Dev.enabled then
+        return true
+    end
+    return self:IsGroupLeader() or self:IsMasterLooter()
 end
 
 function Goals:GetLeaderName()
@@ -388,7 +422,7 @@ function Goals:ShouldResetForLoot(itemType, itemSubType, equipSlot)
     local armorType = ARMOR or "Armor"
     local weaponType = WEAPON or "Weapon"
     if self:IsMountOrPet(itemType, itemSubType) then
-        return false
+        return self.db and self.db.settings and self.db.settings.resetMountPet and true or false
     end
     if itemType == armorType or itemType == weaponType then
         return true
@@ -405,6 +439,26 @@ function Goals:ShouldResetForLoot(itemType, itemSubType, equipSlot)
     return false
 end
 
+function Goals:ShouldSkipLootAssignment(playerName, itemLink)
+    local key = playerName .. "|" .. itemLink
+    local now = time()
+    local recent = self.state.recentAssignments or {}
+    local last = recent[key]
+    if last and (now - last) < 3 then
+        return true
+    end
+    recent[key] = now
+    if next(recent) then
+        for k, ts in pairs(recent) do
+            if (now - ts) > 60 then
+                recent[k] = nil
+            end
+        end
+    end
+    self.state.recentAssignments = recent
+    return false
+end
+
 function Goals:HandleLoot(playerName, itemLink, skipSync)
     self:HandleLootAssignment(playerName, itemLink, skipSync, false)
 end
@@ -415,6 +469,9 @@ function Goals:HandleLootAssignment(playerName, itemLink, skipSync, forceRecord)
     end
     playerName = self:NormalizeName(playerName)
     self:EnsurePlayer(playerName)
+    if self:ShouldSkipLootAssignment(playerName, itemLink) then
+        return
+    end
     if not self:IsInRaid() and not (self.Dev and self.Dev.enabled) then
         return
     end
@@ -471,24 +528,50 @@ function Goals:RequestItemInfo(itemLink)
     end)
 end
 
-function Goals:AddFoundLoot(playerName, itemLink)
-    if not playerName or not itemLink then
+function Goals:RecordLootFound(itemLink)
+    if not itemLink then
         return
     end
-    if not self:IsInRaid() and not self:IsInParty() and not (self.Dev and self.Dev.enabled) then
+    if self.History then
+        self.History:AddLootFound(itemLink)
+    end
+end
+
+function Goals:UpdateLootSlots(resetSeen)
+    if not self:HasLootAccess() then
         return
     end
-    self:EnsurePlayer(playerName)
-    self.state.lootFound = self.state.lootFound or {}
-    table.insert(self.state.lootFound, 1, {
-        player = self:NormalizeName(playerName),
-        link = itemLink,
-        ts = time(),
-        assignedTo = nil,
-    })
-    if #self.state.lootFound > 50 then
-        table.remove(self.state.lootFound)
+    if resetSeen then
+        self.state.lootFoundSeen = {}
     end
+    local seen = self.state.lootFoundSeen or {}
+    local list = {}
+    local count = GetNumLootItems and GetNumLootItems() or 0
+    for slot = 1, count do
+        if GetLootSlotType and GetLootSlotType(slot) == 1 then
+            local link = GetLootSlotLink(slot)
+            if link then
+                table.insert(list, {
+                    slot = slot,
+                    link = link,
+                    ts = time(),
+                    assignedTo = nil,
+                })
+                if seen[slot] ~= link then
+                    seen[slot] = link
+                    self:RecordLootFound(link)
+                end
+            end
+        end
+    end
+    self.state.lootFound = list
+    self.state.lootFoundSeen = seen
+    self:NotifyDataChanged()
+end
+
+function Goals:ClearFoundLoot()
+    self.state.lootFound = {}
+    self.state.lootFoundSeen = {}
     self:NotifyDataChanged()
 end
 
@@ -497,20 +580,65 @@ function Goals:GetFoundLoot()
     return self.state.lootFound
 end
 
-function Goals:AssignFoundLoot(index, targetName)
-    local list = self:GetFoundLoot()
-    local entry = list[index]
-    if not entry or not targetName or targetName == "" then
+function Goals:GetLootTargetIndex(name)
+    local target = self:NormalizeName(name)
+    if target == "" then
+        return nil
+    end
+    if target == self:GetPlayerName() then
+        return 0
+    end
+    if self:IsInRaid() then
+        for i = 1, GetNumRaidMembers() do
+            local raidName = GetRaidRosterInfo(i)
+            if self:NormalizeName(raidName) == target then
+                return i
+            end
+        end
+    elseif self:IsInParty() then
+        for i = 1, GetNumPartyMembers() do
+            local partyName = UnitName("party" .. i)
+            if self:NormalizeName(partyName) == target then
+                return i
+            end
+        end
+    end
+    return nil
+end
+
+function Goals:AssignLootSlot(slot, targetName, itemLink)
+    if not slot or not targetName or targetName == "" then
         return
     end
-    entry.assignedTo = self:NormalizeName(targetName)
-    self:HandleLootAssignment(entry.assignedTo, entry.link, false, true)
+    if not self:IsMasterLooter() and not (self.Dev and self.Dev.enabled) then
+        return
+    end
+    local index = self:GetLootTargetIndex(targetName)
+    if index == nil then
+        return
+    end
+    if GiveMasterLoot and slot > 0 then
+        GiveMasterLoot(slot, index)
+    end
+    local link = itemLink or (GetLootSlotLink and GetLootSlotLink(slot) or nil)
+    if self.state.lootFound then
+        for _, entry in ipairs(self.state.lootFound) do
+            if entry.slot == slot then
+                entry.assignedTo = self:NormalizeName(targetName)
+                break
+            end
+        end
+    end
+    if link then
+        self:HandleLootAssignment(targetName, link, false, true)
+    end
+    self:NotifyDataChanged()
 end
 
 function Goals:RecordLootAssignment(playerName, itemLink, resetApplied)
     self.state.lastLoot = { name = playerName, link = itemLink, ts = time() }
     if self.History then
-        self.History:AddLootAssignment(playerName, itemLink, resetApplied)
+        self.History:AddLootAssigned(playerName, itemLink, resetApplied)
     end
 end
 
