@@ -23,7 +23,18 @@ local function setCheckText(check, text)
     if not check then
         return
     end
-    local label = check.Text or _G[check:GetName() .. "Text"]
+    local label = check.Text
+    if not label then
+        local name = check:GetName()
+        if name then
+            label = _G[name .. "Text"]
+        end
+    end
+    if not label then
+        label = check:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+        label:SetPoint("LEFT", check, "RIGHT", 2, 0)
+        check.Text = label
+    end
     if label then
         label:SetText(text or "")
     end
