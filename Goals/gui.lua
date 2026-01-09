@@ -13,6 +13,7 @@ local ROW_HEIGHT = 20
 local ROSTER_ROWS = 16
 local HISTORY_ROWS = 14
 local ROSTER_BUTTON_SIZE = 18
+local LOOT_ROWS = 8
 
 local function formatTime(ts)
     return date("%H:%M:%S", ts or time())
@@ -40,15 +41,27 @@ function UI:GetAllPlayerNames()
     return names
 end
 
-function UI:CreatePlayerDropdown(parent, width, onSelect)
+function UI:GetPresentPlayerNames()
+    local present = Goals:GetPresenceMap()
+    local names = {}
+    for name in pairs(present) do
+        table.insert(names, name)
+    end
+    table.sort(names)
+    return names
+end
+
+function UI:CreatePlayerDropdown(parent, width, onSelect, optionsFunc)
     self.dropdownId = (self.dropdownId or 0) + 1
     local dropdownName = "GoalsPlayerDropDown" .. self.dropdownId
     local dropdown = CreateFrame("Frame", dropdownName, parent, "UIDropDownMenuTemplate")
     UIDropDownMenu_SetWidth(dropdown, width)
+    UIDropDownMenu_SetButtonWidth(dropdown, width)
     UIDropDownMenu_JustifyText(dropdown, "LEFT")
     dropdown.onSelect = onSelect
+    dropdown.optionsFunc = optionsFunc
     UIDropDownMenu_Initialize(dropdown, function(_, level)
-        local options = UI:GetAllPlayerNames()
+        local options = dropdown.optionsFunc and dropdown.optionsFunc() or UI:GetAllPlayerNames()
         for _, name in ipairs(options) do
             local info = UIDropDownMenu_CreateInfo()
             info.text = name
@@ -64,7 +77,7 @@ function UI:CreatePlayerDropdown(parent, width, onSelect)
             UIDropDownMenu_AddButton(info, level)
         end
     end)
-    UIDropDownMenu_SetText(dropdown, "")
+    UIDropDownMenu_SetText(dropdown, L.SELECT_OPTION or "")
     return dropdown
 end
 
@@ -85,7 +98,7 @@ function UI:SyncDropdownSelection(dropdown, selectedName)
         UIDropDownMenu_SetText(dropdown, selectedName)
     elseif dropdown.selectedValue and dropdown.selectedValue ~= "" then
         dropdown.selectedValue = nil
-        UIDropDownMenu_SetText(dropdown, "")
+        UIDropDownMenu_SetText(dropdown, L.SELECT_OPTION or "")
     end
 end
 
@@ -173,6 +186,7 @@ function UI:CreateMainFrame()
     local tabNames = { L.TAB_OVERVIEW, L.TAB_LOOT, L.TAB_HISTORY, L.TAB_SETTINGS }
     if Goals.Dev and Goals.Dev.enabled then
         table.insert(tabNames, L.TAB_DEV)
+        table.insert(tabNames, L.TAB_DEBUG)
     end
 
     for i, name in ipairs(tabNames) do
@@ -204,6 +218,7 @@ function UI:CreateMainFrame()
     self:CreateSettingsTab(self.pages[4])
     if Goals.Dev and Goals.Dev.enabled then
         self:CreateDevTab(self.pages[5])
+        self:CreateDebugTab(self.pages[6])
     end
     self:SelectTab(1)
 end
@@ -220,14 +235,16 @@ function UI:CreateOverviewTab(parent)
     header:SetPoint("TOPLEFT", 6, -6)
 
     local filterFrame = CreateFrame("Frame", nil, parent)
-    filterFrame:SetSize(420, 26)
+    filterFrame:SetSize(420, 24)
     filterFrame:SetPoint("TOPLEFT", 6, -36)
 
     local sortLabel = createLabel(filterFrame, L.LABEL_SORT, "GameFontHighlightSmall")
     sortLabel:SetPoint("LEFT", 0, 0)
     local sortDropDown = CreateFrame("Frame", "GoalsSortDropDown", filterFrame, "UIDropDownMenuTemplate")
-    sortDropDown:SetPoint("LEFT", sortLabel, "RIGHT", -6, -4)
+    sortDropDown:SetPoint("LEFT", sortLabel, "RIGHT", -4, -4)
     UIDropDownMenu_SetWidth(sortDropDown, 100)
+    UIDropDownMenu_SetButtonWidth(sortDropDown, 100)
+    UIDropDownMenu_SetButtonWidth(sortDropDown, 100)
     UIDropDownMenu_JustifyText(sortDropDown, "LEFT")
     UIDropDownMenu_Initialize(sortDropDown, function(_, level)
         local options = {
@@ -251,7 +268,7 @@ function UI:CreateOverviewTab(parent)
     self.sortDropDown = sortDropDown
 
     local presentCheck = CreateFrame("CheckButton", "GoalsPresentOnlyCheck", filterFrame, "UICheckButtonTemplate")
-    presentCheck:SetPoint("LEFT", sortDropDown, "RIGHT", 12, 2)
+    presentCheck:SetPoint("LEFT", sortDropDown, "RIGHT", 8, 2)
     _G[presentCheck:GetName() .. "Text"]:SetText(L.CHECK_PRESENT_ONLY)
     presentCheck:SetScript("OnClick", function(self)
         Goals.db.settings.showPresentOnly = self:GetChecked() == 1
@@ -261,12 +278,12 @@ function UI:CreateOverviewTab(parent)
 
     local rosterFrame = CreateFrame("Frame", nil, parent, "InsetFrameTemplate")
     rosterFrame:SetSize(420, 330)
-    rosterFrame:SetPoint("TOPLEFT", filterFrame, "BOTTOMLEFT", 0, -6)
-    local rosterTitle = createLabel(parent, L.LABEL_POINTS, "GameFontNormal")
-    rosterTitle:SetPoint("BOTTOMLEFT", rosterFrame, "TOPLEFT", 4, 4)
+    rosterFrame:SetPoint("TOPLEFT", filterFrame, "BOTTOMLEFT", 0, -4)
+    local rosterTitle = createLabel(rosterFrame, L.LABEL_POINTS, "GameFontNormal")
+    rosterTitle:SetPoint("TOPLEFT", 8, -8)
 
     local scroll = CreateFrame("ScrollFrame", "GoalsRosterScroll", rosterFrame, "FauxScrollFrameTemplate")
-    scroll:SetPoint("TOPLEFT", 6, -6)
+    scroll:SetPoint("TOPLEFT", 6, -26)
     scroll:SetPoint("BOTTOMRIGHT", -26, 6)
     scroll:SetScript("OnVerticalScroll", function(_, offset)
         FauxScrollFrame_OnVerticalScroll(scroll, offset, ROW_HEIGHT, function()
@@ -278,7 +295,7 @@ function UI:CreateOverviewTab(parent)
     for i = 1, ROSTER_ROWS do
         local row = CreateFrame("Frame", nil, rosterFrame)
         row:SetSize(380, ROW_HEIGHT)
-        row:SetPoint("TOPLEFT", 8, -((i - 1) * ROW_HEIGHT) - 2)
+        row:SetPoint("TOPLEFT", 8, -((i - 1) * ROW_HEIGHT) - 24)
         row.statusIcon = row:CreateTexture(nil, "ARTWORK")
         row.statusIcon:SetSize(10, 10)
         row.statusIcon:SetPoint("LEFT", 2, 0)
@@ -298,36 +315,36 @@ function UI:CreateOverviewTab(parent)
         row.reset:SetPoint("RIGHT", row.undo, "LEFT", -2, 0)
         row.minus:SetPoint("RIGHT", row.reset, "LEFT", -2, 0)
         row.plus:SetPoint("RIGHT", row.minus, "LEFT", -2, 0)
-        row.plus:SetScript("OnClick", function(self)
+        row.plus:SetScript("OnClick", function()
             if not Goals:HasLeaderAccess() then
                 return
             end
-            if self.playerName then
-                Goals:AdjustPoints(self.playerName, 1, "Roster +1")
+            if row.playerName then
+                Goals:AdjustPoints(row.playerName, 1, "Roster +1")
             end
         end)
-        row.minus:SetScript("OnClick", function(self)
+        row.minus:SetScript("OnClick", function()
             if not Goals:HasLeaderAccess() then
                 return
             end
-            if self.playerName then
-                Goals:AdjustPoints(self.playerName, -1, "Roster -1")
+            if row.playerName then
+                Goals:AdjustPoints(row.playerName, -1, "Roster -1")
             end
         end)
-        row.reset:SetScript("OnClick", function(self)
+        row.reset:SetScript("OnClick", function()
             if not Goals:HasLeaderAccess() then
                 return
             end
-            if self.playerName then
-                Goals:SetPoints(self.playerName, 0, "Roster reset")
+            if row.playerName then
+                Goals:SetPoints(row.playerName, 0, "Roster reset")
             end
         end)
-        row.undo:SetScript("OnClick", function(self)
+        row.undo:SetScript("OnClick", function()
             if not Goals:HasLeaderAccess() then
                 return
             end
-            if self.playerName then
-                Goals:UndoPoints(self.playerName)
+            if row.playerName then
+                Goals:UndoPoints(row.playerName)
             end
         end)
         row.undo:SetScript("OnEnter", function(self)
@@ -362,7 +379,7 @@ function UI:CreateOverviewTab(parent)
     local nameDropDown = self:CreatePlayerDropdown(manualFrame, 140, function(name)
         UI.adjustSelectedName = name
     end)
-    nameDropDown:SetPoint("TOPLEFT", nameLabel, "BOTTOMLEFT", -16, -6)
+    nameDropDown:SetPoint("TOPLEFT", nameLabel, "BOTTOMLEFT", -10, -2)
     self.adjustNameDropDown = nameDropDown
 
     local amountLabel = createLabel(manualFrame, L.LABEL_AMOUNT, "GameFontHighlightSmall")
@@ -418,41 +435,63 @@ function UI:CreateLootTab(parent)
     self.lastLootLabel = createLabel(infoFrame, "", "GameFontHighlight")
     self.lastLootLabel:SetPoint("TOPLEFT", infoLabel, "BOTTOMLEFT", 0, -6)
 
-    local assignFrame = CreateFrame("Frame", nil, parent, "InsetFrameTemplate")
-    assignFrame:SetSize(700, 200)
-    assignFrame:SetPoint("TOPLEFT", infoFrame, "BOTTOMLEFT", 0, -12)
-    local assignLabel = createLabel(assignFrame, L.LABEL_ASSIGN_LOOT, "GameFontNormal")
-    assignLabel:SetPoint("TOPLEFT", 10, -10)
+    local foundFrame = CreateFrame("Frame", nil, parent, "InsetFrameTemplate")
+    foundFrame:SetSize(700, 230)
+    foundFrame:SetPoint("TOPLEFT", infoFrame, "BOTTOMLEFT", 0, -12)
+    local foundLabel = createLabel(foundFrame, L.LABEL_FOUND_LOOT, "GameFontNormal")
+    foundLabel:SetPoint("TOPLEFT", 10, -10)
 
-    local playerLabel = createLabel(assignFrame, L.LABEL_PLAYER, "GameFontHighlightSmall")
-    playerLabel:SetPoint("TOPLEFT", assignLabel, "BOTTOMLEFT", 0, -8)
-    local playerDropDown = self:CreatePlayerDropdown(assignFrame, 160, function(name)
-        UI.assignSelectedName = name
+    local scroll = CreateFrame("ScrollFrame", "GoalsFoundLootScroll", foundFrame, "FauxScrollFrameTemplate")
+    scroll:SetPoint("TOPLEFT", 6, -30)
+    scroll:SetPoint("BOTTOMRIGHT", -26, 34)
+    scroll:SetScript("OnVerticalScroll", function(_, offset)
+        FauxScrollFrame_OnVerticalScroll(scroll, offset, ROW_HEIGHT, function()
+            UI:UpdateFoundLootList()
+        end)
     end)
-    playerDropDown:SetPoint("TOPLEFT", playerLabel, "BOTTOMLEFT", -16, -6)
+    self.foundLootScroll = scroll
+    self.foundLootRows = {}
+    for i = 1, LOOT_ROWS do
+        local row = CreateFrame("Button", nil, foundFrame)
+        row:SetSize(640, ROW_HEIGHT)
+        row:SetPoint("TOPLEFT", 8, -((i - 1) * ROW_HEIGHT) - 30)
+        row.text = createLabel(row, "", "GameFontHighlightSmall")
+        row.text:SetPoint("LEFT", 4, 0)
+        row.highlight = row:CreateTexture(nil, "BACKGROUND")
+        row.highlight:SetTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight")
+        row.highlight:SetBlendMode("ADD")
+        row.highlight:SetAllPoints()
+        row.highlight:Hide()
+        row:SetScript("OnClick", function()
+            UI.selectedFoundIndex = row.index
+            UI:UpdateFoundLootList()
+        end)
+        self.foundLootRows[i] = row
+    end
+
+    local assignPlayerLabel = createLabel(foundFrame, L.LABEL_PLAYER, "GameFontHighlightSmall")
+    assignPlayerLabel:SetPoint("BOTTOMLEFT", 10, 12)
+    local playerDropDown = self:CreatePlayerDropdown(foundFrame, 160, function(name)
+        UI.assignSelectedName = name
+    end, function()
+        return UI:GetPresentPlayerNames()
+    end)
+    playerDropDown:SetPoint("LEFT", assignPlayerLabel, "RIGHT", -6, -4)
     self.assignPlayerDropDown = playerDropDown
 
-    local itemLabel = createLabel(assignFrame, L.LABEL_ITEM, "GameFontHighlightSmall")
-    itemLabel:SetPoint("LEFT", playerDropDown, "RIGHT", 14, 4)
-    local itemBox = CreateFrame("EditBox", nil, assignFrame, "InputBoxTemplate")
-    itemBox:SetSize(360, 20)
-    itemBox:SetPoint("TOPLEFT", itemLabel, "BOTTOMLEFT", -2, -4)
-    itemBox:SetAutoFocus(false)
-    itemBox:SetScript("OnEnterPressed", function(self)
-        self:ClearFocus()
-    end)
-    self.assignItemBox = itemBox
-
-    local assignButton = createButton(assignFrame, L.BUTTON_ASSIGN, 120, 22)
-    assignButton:SetPoint("TOPLEFT", playerLabel, "BOTTOMLEFT", 0, -46)
+    local assignButton = createButton(foundFrame, L.BUTTON_ASSIGN, 120, 22)
+    assignButton:SetPoint("LEFT", playerDropDown, "RIGHT", 10, 4)
     assignButton:SetScript("OnClick", function()
         if not Goals:HasLeaderAccess() then
             return
         end
         local name = UI.assignSelectedName or (UI.assignPlayerDropDown and UI.assignPlayerDropDown.selectedValue)
-        local itemLink = itemBox:GetText()
-        if name ~= "" and itemLink ~= "" then
-            Goals:HandleLoot(name, itemLink)
+        if name == L.NONE_OPTION then
+            name = ""
+        end
+        local index = UI.selectedFoundIndex
+        if name and name ~= "" and index then
+            Goals:AssignFoundLoot(index, name)
         end
     end)
     self.assignButton = assignButton
@@ -519,30 +558,24 @@ function UI:CreateSettingsTab(parent)
 
     local disenchantLabel = createLabel(settingsFrame, L.LABEL_DISENCHANTER, "GameFontNormal")
     disenchantLabel:SetPoint("TOPLEFT", minimapCheck, "BOTTOMLEFT", 0, -12)
-    local disenchantBox = CreateFrame("EditBox", nil, settingsFrame, "InputBoxTemplate")
-    disenchantBox:SetSize(160, 20)
-    disenchantBox:SetPoint("TOPLEFT", disenchantLabel, "BOTTOMLEFT", -2, -4)
-    disenchantBox:SetAutoFocus(false)
-    self.disenchanterBox = disenchantBox
-    local disenchantButton = createButton(settingsFrame, L.SETTINGS_DISENCHANTER, 150, 22)
-    disenchantButton:SetPoint("LEFT", disenchantBox, "RIGHT", 10, 0)
-    disenchantButton:SetScript("OnClick", function()
+    local disenchantDropDown = self:CreatePlayerDropdown(settingsFrame, 160, function(name)
         if not Goals:HasLeaderAccess() then
             return
         end
-        Goals:SetDisenchanter(disenchantBox:GetText())
+        if name == L.NONE_OPTION then
+            Goals:SetDisenchanter("")
+        else
+            Goals:SetDisenchanter(name)
+        end
+    end, function()
+        local options = { L.NONE_OPTION }
+        for _, name in ipairs(UI:GetPresentPlayerNames()) do
+            table.insert(options, name)
+        end
+        return options
     end)
-    self.disenchanterButton = disenchantButton
-
-    if Goals.Dev and Goals.Dev.enabled then
-        local debugCheck = CreateFrame("CheckButton", "GoalsDebugCheck", settingsFrame, "UICheckButtonTemplate")
-        debugCheck:SetPoint("TOPLEFT", disenchantBox, "BOTTOMLEFT", 0, -12)
-        _G[debugCheck:GetName() .. "Text"]:SetText(L.CHECK_DEBUG)
-        debugCheck:SetScript("OnClick", function(self)
-            Goals.db.settings.debug = self:GetChecked() == 1
-        end)
-        self.debugCheck = debugCheck
-    end
+    disenchantDropDown:SetPoint("TOPLEFT", disenchantLabel, "BOTTOMLEFT", -10, -2)
+    self.disenchanterDropDown = disenchantDropDown
 end
 
 function UI:CreateDevTab(parent)
@@ -567,31 +600,44 @@ function UI:CreateDevTab(parent)
         Goals.Dev:SimulateLoot()
     end)
 
-    local debugButton = createButton(parent, L.DEV_TOGGLE_DEBUG, 160, 22)
-    debugButton:SetPoint("TOPLEFT", lootButton, "BOTTOMLEFT", 0, -8)
-    debugButton:SetScript("OnClick", function()
-        Goals.Dev:ToggleDebug()
-        UI:Refresh()
+    local info = createLabel(parent, "Dev tools are active.", "GameFontHighlightSmall")
+    info:SetPoint("TOPLEFT", lootButton, "BOTTOMLEFT", 0, -12)
+end
+
+function UI:CreateDebugTab(parent)
+    local header = createLabel(parent, L.TAB_DEBUG, "GameFontHighlightLarge")
+    header:SetPoint("TOPLEFT", 6, -6)
+
+    local debugCheck = CreateFrame("CheckButton", "GoalsDebugCheck", parent, "UICheckButtonTemplate")
+    debugCheck:SetPoint("TOPLEFT", header, "BOTTOMLEFT", 0, -12)
+    _G[debugCheck:GetName() .. "Text"]:SetText(L.CHECK_DEBUG)
+    debugCheck:SetScript("OnClick", function(self)
+        Goals.db.settings.debug = self:GetChecked() == 1
     end)
+    self.debugToggle = debugCheck
+
+    local info = createLabel(parent, "Debug output prints to chat when enabled.", "GameFontHighlightSmall")
+    info:SetPoint("TOPLEFT", debugCheck, "BOTTOMLEFT", 0, -8)
 end
 
 function UI:CreateMinimapButton()
     local button = CreateFrame("Button", "GoalsMinimapButton", Minimap)
-    button:SetSize(31, 31)
+    button:SetSize(32, 32)
     button:SetFrameStrata("MEDIUM")
     button:EnableMouse(true)
-    button.icon = button:CreateTexture(nil, "ARTWORK")
-    button.icon:SetTexture("Interface\\Icons\\INV_Misc_Note_01")
-    button.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-    button.icon:SetSize(18, 18)
-    button.icon:SetPoint("CENTER", 0, 0)
     button.background = button:CreateTexture(nil, "BACKGROUND")
     button.background:SetTexture("Interface\\Minimap\\UI-Minimap-Background")
-    button.background:SetSize(22, 22)
+    button.background:SetSize(20, 20)
     button.background:SetPoint("CENTER", 0, 0)
+    button.icon = button:CreateTexture(nil, "ARTWORK")
+    button.icon:SetTexture("Interface\\Icons\\INV_Misc_Note_01")
+    button.icon:SetTexCoord(0.1, 0.9, 0.1, 0.9)
+    button.icon:SetSize(20, 20)
+    button.icon:SetPoint("CENTER", 0, 0)
     button.border = button:CreateTexture(nil, "OVERLAY")
     button.border:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
-    button.border:SetAllPoints()
+    button.border:SetSize(54, 54)
+    button.border:SetPoint("TOPLEFT", -11, 11)
     button.highlight = button:CreateTexture(nil, "HIGHLIGHT")
     button.highlight:SetTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
     button.highlight:SetBlendMode("ADD")
@@ -740,8 +786,10 @@ function UI:UpdateRosterList()
             row.points:SetText(entry.points)
             if entry.present then
                 row.statusIcon:SetTexture("Interface\\FriendsFrame\\StatusIcon-Online")
+                row.statusIcon:SetAlpha(1)
             else
                 row.statusIcon:SetTexture("Interface\\FriendsFrame\\StatusIcon-Offline")
+                row.statusIcon:SetAlpha(0.6)
             end
             local color = RAID_CLASS_COLORS and RAID_CLASS_COLORS[entry.class] or nil
             if color then
@@ -793,13 +841,50 @@ function UI:UpdateHistoryList()
     end
 end
 
+function UI:UpdateFoundLootList()
+    if not self.foundLootScroll then
+        return
+    end
+    local loot = Goals:GetFoundLoot()
+    FauxScrollFrame_Update(self.foundLootScroll, #loot, #self.foundLootRows, ROW_HEIGHT)
+    local offset = FauxScrollFrame_GetOffset(self.foundLootScroll)
+    for i, row in ipairs(self.foundLootRows) do
+        local index = i + offset
+        local entry = loot[index]
+        if entry then
+            row:Show()
+            row.index = index
+            local assigned = entry.assignedTo and (" -> " .. entry.assignedTo) or ""
+            row.text:SetText(string.format("%s (looted by %s)%s", entry.link, entry.player or "?", assigned))
+            if UI.selectedFoundIndex == index then
+                row.highlight:Show()
+            else
+                row.highlight:Hide()
+            end
+        else
+            row:Hide()
+            row.index = nil
+            row.highlight:Hide()
+        end
+    end
+end
+
 function UI:RefreshStatus()
     if self.syncStatus then
         self.syncStatus:SetText(Goals.sync.status or "Unknown")
     end
     if self.disenchanterLabel then
-        local name = Goals.db.settings.disenchanter or "None"
-        self.disenchanterLabel:SetText(L.LABEL_DISENCHANTER .. ": " .. name)
+        local name = Goals.db.settings.disenchanter or ""
+        if name == "" then
+            self.disenchanterLabel:SetText(L.LABEL_DISENCHANTER .. ": None set")
+        else
+            local present = Goals:GetPresenceMap()
+            if present[name] then
+                self.disenchanterLabel:SetText(L.LABEL_DISENCHANTER .. ": " .. name)
+            else
+                self.disenchanterLabel:SetText(L.LABEL_DISENCHANTER .. ": Not present")
+            end
+        end
     end
 end
 
@@ -819,8 +904,20 @@ function UI:Refresh()
     if self.minimapCheck then
         self.minimapCheck:SetChecked(Goals.db.settings.minimap.hide and 0 or 1)
     end
-    if self.disenchanterBox then
-        self.disenchanterBox:SetText(Goals.db.settings.disenchanter or "")
+    if self.disenchanterDropDown then
+        local current = Goals.db.settings.disenchanter or ""
+        if current == "" then
+            self.disenchanterDropDown.selectedValue = L.NONE_OPTION
+            UIDropDownMenu_SetText(self.disenchanterDropDown, L.NONE_OPTION)
+        else
+            self.disenchanterDropDown.selectedValue = current
+            UIDropDownMenu_SetText(self.disenchanterDropDown, current)
+        end
+        if Goals:HasLeaderAccess() then
+            UIDropDownMenu_EnableDropDown(self.disenchanterDropDown)
+        else
+            UIDropDownMenu_DisableDropDown(self.disenchanterDropDown)
+        end
     end
     if self.presentOnlyCheck then
         self.presentOnlyCheck:SetChecked(Goals.db.settings.showPresentOnly and 1 or 0)
@@ -841,15 +938,8 @@ function UI:Refresh()
     if self.assignPlayerDropDown then
         self:SyncDropdownSelection(self.assignPlayerDropDown, self.assignSelectedName)
     end
-    if self.disenchanterButton then
-        if Goals:HasLeaderAccess() then
-            self.disenchanterButton:Enable()
-        else
-            self.disenchanterButton:Disable()
-        end
-    end
-    if self.debugCheck then
-        self.debugCheck:SetChecked(Goals.db.settings.debug and 1 or 0)
+    if self.debugToggle then
+        self.debugToggle:SetChecked(Goals.db.settings.debug and 1 or 0)
     end
     if self.adjustAddButton then
         if Goals:HasLeaderAccess() then
@@ -878,4 +968,5 @@ function UI:Refresh()
     end
     self:UpdateRosterList()
     self:UpdateHistoryList()
+    self:UpdateFoundLootList()
 end

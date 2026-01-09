@@ -132,6 +132,7 @@ function Events:HandleLootMessage(message)
     if not playerName then
         return
     end
+    Goals:AddFoundLoot(playerName, itemLink)
     Goals:HandleLoot(Goals:NormalizeName(playerName), itemLink)
 end
 

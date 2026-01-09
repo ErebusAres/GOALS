@@ -13,7 +13,8 @@ Goals.version = GetAddOnMetadata(Goals.name, "Version") or "dev"
 Goals.db = Goals.db or nil
 Goals.sync = Goals.sync or { isMaster = false, masterName = nil, status = "Solo" }
 Goals.encounter = Goals.encounter or { active = false, name = nil, remaining = nil, startTime = 0 }
-Goals.state = Goals.state or { lastLoot = nil }
+Goals.state = Goals.state or { lastLoot = nil, lootFound = {} }
+Goals.state.lootFound = Goals.state.lootFound or {}
 Goals.pendingLoot = Goals.pendingLoot or {}
 Goals.undo = Goals.undo or {}
 
@@ -404,29 +405,35 @@ function Goals:ShouldResetForLoot(itemType, itemSubType, equipSlot)
 end
 
 function Goals:HandleLoot(playerName, itemLink, skipSync)
+    self:HandleLootAssignment(playerName, itemLink, skipSync, false)
+end
+
+function Goals:HandleLootAssignment(playerName, itemLink, skipSync, forceRecord)
     if not playerName or not itemLink then
         return
     end
+    playerName = self:NormalizeName(playerName)
+    self:EnsurePlayer(playerName)
     if not self:IsInRaid() and not (self.Dev and self.Dev.enabled) then
         return
     end
     local itemName, _, quality, _, _, itemType, itemSubType, _, equipSlot = GetItemInfo(itemLink)
     if not itemName then
         self.pendingLoot[itemLink] = self.pendingLoot[itemLink] or {}
-        self.pendingLoot[itemLink][playerName] = { skipSync = skipSync }
+        self.pendingLoot[itemLink][playerName] = { skipSync = skipSync, forceRecord = forceRecord }
         return
     end
-    if not self:ShouldTrackLoot(quality, itemType, itemSubType, equipSlot) then
-        return
-    end
-    local shouldReset = self:ShouldResetForLoot(itemType, itemSubType, equipSlot)
+    local shouldTrack = self:ShouldTrackLoot(quality, itemType, itemSubType, equipSlot)
+    local shouldReset = shouldTrack and self:ShouldResetForLoot(itemType, itemSubType, equipSlot)
     local resetApplied = shouldReset and not self:IsDisenchanter(playerName)
-    self:RecordLootAssignment(playerName, itemLink, resetApplied)
-    if self:IsSyncMaster() and not skipSync and self.Comm then
-        if resetApplied then
-            self.Comm:SendLootReset(playerName, itemLink)
-        else
-            self.Comm:SendLootAssignment(playerName, itemLink)
+    if forceRecord or shouldTrack then
+        self:RecordLootAssignment(playerName, itemLink, resetApplied)
+        if self:IsSyncMaster() and not skipSync and self.Comm then
+            if resetApplied then
+                self.Comm:SendLootReset(playerName, itemLink)
+            else
+                self.Comm:SendLootAssignment(playerName, itemLink)
+            end
         end
     end
     if resetApplied then
@@ -434,7 +441,45 @@ function Goals:HandleLoot(playerName, itemLink, skipSync)
     elseif shouldReset and self:IsDisenchanter(playerName) then
         self:Debug("Disenchanter loot ignored for points: " .. itemName)
     end
+    if forceRecord or shouldTrack then
+        self:NotifyDataChanged()
+    end
+end
+
+function Goals:AddFoundLoot(playerName, itemLink)
+    if not playerName or not itemLink then
+        return
+    end
+    if not self:IsInRaid() and not self:IsInParty() and not (self.Dev and self.Dev.enabled) then
+        return
+    end
+    self:EnsurePlayer(playerName)
+    self.state.lootFound = self.state.lootFound or {}
+    table.insert(self.state.lootFound, 1, {
+        player = self:NormalizeName(playerName),
+        link = itemLink,
+        ts = time(),
+        assignedTo = nil,
+    })
+    if #self.state.lootFound > 50 then
+        table.remove(self.state.lootFound)
+    end
     self:NotifyDataChanged()
+end
+
+function Goals:GetFoundLoot()
+    self.state.lootFound = self.state.lootFound or {}
+    return self.state.lootFound
+end
+
+function Goals:AssignFoundLoot(index, targetName)
+    local list = self:GetFoundLoot()
+    local entry = list[index]
+    if not entry or not targetName or targetName == "" then
+        return
+    end
+    entry.assignedTo = self:NormalizeName(targetName)
+    self:HandleLootAssignment(entry.assignedTo, entry.link, false, true)
 end
 
 function Goals:RecordLootAssignment(playerName, itemLink, resetApplied)
@@ -489,7 +534,8 @@ function Goals:ProcessPendingLoot()
         if itemName then
             for playerName, data in pairs(players) do
                 local skip = data and data.skipSync
-                self:HandleLoot(playerName, itemLink, skip)
+                local forceRecord = data and data.forceRecord
+                self:HandleLootAssignment(playerName, itemLink, skip, forceRecord)
             end
             self.pendingLoot[itemLink] = nil
         end

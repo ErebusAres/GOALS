@@ -33,6 +33,7 @@ function Dev:SimulateWipe()
         return
     end
     Goals.History:AddWipe("Dev Boss")
+    Goals.History:AddEntry("DEV", "Dev: simulated wipe", {})
     Goals:NotifyDataChanged()
 end
 
@@ -42,12 +43,15 @@ function Dev:SimulateLoot()
     end
     local exampleItem = "|cffa335ee|Hitem:40395::::::::80:::::::::|h[Torch of Holy Fire]|h|r"
     local itemName = GetItemInfo(exampleItem)
-    Goals:HandleLoot(Goals:GetPlayerName(), exampleItem, true)
+    Goals:AddFoundLoot(Goals:GetPlayerName(), exampleItem)
+    Goals:HandleLootAssignment(Goals:GetPlayerName(), exampleItem, true, true)
     if not itemName then
         Goals:Delay(0.5, function()
             Goals:ProcessPendingLoot()
         end)
     end
+    Goals.History:AddEntry("DEV", "Dev: simulated loot", {})
+    Goals:NotifyDataChanged()
 end
 
 function Dev:ToggleDebug()
