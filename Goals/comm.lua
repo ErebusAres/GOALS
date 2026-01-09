@@ -122,12 +122,12 @@ function Comm:HandleMessage(msgType, payload, sender, channel)
     end
     if msgType == "ADJUST" then
         local name, delta, reason = payload:match("^(.-)|(-?%d+)|?(.*)$")
-        Goals:AdjustPoints(name, tonumber(delta) or 0, reason or "Sync adjustment", true)
+        Goals:AdjustPoints(name, tonumber(delta) or 0, reason or "Sync adjustment", true, true)
         return
     end
     if msgType == "SETPOINTS" then
         local name, points, reason = payload:match("^(.-)|(-?%d+)|?(.*)$")
-        Goals:SetPoints(name, tonumber(points) or 0, reason or "Sync set", true)
+        Goals:SetPoints(name, tonumber(points) or 0, reason or "Sync set", true, false, true)
         return
     end
     if msgType == "LOOTRESET" then
@@ -202,7 +202,7 @@ function Comm:SerializePoints()
 end
 
 function Comm:ApplyPoints(payload)
-    local players = {}
+    local players = Goals.db.players or {}
     for entry in string.gmatch(payload or "", "([^;]+)") do
         local name, points, class = entry:match("([^,]+),([^,]+),?(.*)")
         if name and points then

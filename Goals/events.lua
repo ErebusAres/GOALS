@@ -100,6 +100,7 @@ function Events:OnEvent(event, ...)
 end
 
 function Events:HandleGroupUpdate()
+    Goals:EnsureGroupMembers()
     local wasMaster = Goals.sync.isMaster
     Goals:UpdateSyncStatus()
     if Goals:IsSyncMaster() and not wasMaster then

@@ -23,7 +23,7 @@ function Dev:SimulateBossKill()
     if not self.enabled then
         return
     end
-    Goals:AwardBossKill("Dev Boss", { { name = Goals:GetPlayerName(), class = select(2, UnitClass("player")) } }, true)
+    Goals:AwardBossKill("Dev Boss", Goals:GetGroupMembers(), true)
     Goals.History:AddEntry("DEV", "Dev: simulated boss kill", {})
     Goals:NotifyDataChanged()
 end
@@ -41,7 +41,13 @@ function Dev:SimulateLoot()
         return
     end
     local exampleItem = "|cffa335ee|Hitem:40395::::::::80:::::::::|h[Torch of Holy Fire]|h|r"
+    local itemName = GetItemInfo(exampleItem)
     Goals:HandleLoot(Goals:GetPlayerName(), exampleItem, true)
+    if not itemName then
+        Goals:Delay(0.5, function()
+            Goals:ProcessPendingLoot()
+        end)
+    end
 end
 
 function Dev:ToggleDebug()

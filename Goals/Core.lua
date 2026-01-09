@@ -15,6 +15,7 @@ Goals.sync = Goals.sync or { isMaster = false, masterName = nil, status = "Solo"
 Goals.encounter = Goals.encounter or { active = false, name = nil, remaining = nil, startTime = 0 }
 Goals.state = Goals.state or { lastLoot = nil }
 Goals.pendingLoot = Goals.pendingLoot or {}
+Goals.undo = Goals.undo or {}
 
 local function prefixMessage(msg)
     DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffGoals|r: " .. msg)
@@ -108,7 +109,13 @@ function Goals:IsSyncMaster()
 end
 
 function Goals:HasLeaderAccess()
-    return self:IsSyncMaster() or (self.Dev and self.Dev.enabled)
+    if self.Dev and self.Dev.enabled then
+        return true
+    end
+    if not self:IsInRaid() and not self:IsInParty() then
+        return true
+    end
+    return self:IsSyncMaster()
 end
 
 function Goals:UpdateSyncStatus()
@@ -152,6 +159,50 @@ function Goals:GetGroupMembers()
         table.insert(members, { name = self:GetPlayerName(), class = select(2, UnitClass("player")) })
     end
     return members
+end
+
+function Goals:GetPresenceMap()
+    local present = {}
+    if self:IsInRaid() then
+        for i = 1, GetNumRaidMembers() do
+            local name, _, _, _, _, _, _, online = GetRaidRosterInfo(i)
+            if name and online then
+                present[self:NormalizeName(name)] = true
+            end
+        end
+    elseif self:IsInParty() then
+        local playerName = self:GetPlayerName()
+        if UnitIsConnected("player") ~= false then
+            present[playerName] = true
+        end
+        for i = 1, GetNumPartyMembers() do
+            local unit = "party" .. i
+            local name = UnitName(unit)
+            if name and UnitIsConnected(unit) ~= false then
+                present[self:NormalizeName(name)] = true
+            end
+        end
+    else
+        local playerName = self:GetPlayerName()
+        if UnitIsConnected("player") ~= false then
+            present[playerName] = true
+        end
+    end
+    return present
+end
+
+function Goals:EnsureGroupMembers()
+    local members = self:GetGroupMembers()
+    local changed = false
+    for _, info in ipairs(members) do
+        local entry = self:EnsurePlayer(info.name, info.class)
+        if entry then
+            changed = true
+        end
+    end
+    if changed then
+        self:NotifyDataChanged()
+    end
 end
 
 function Goals:EnsurePlayer(name, class)
@@ -201,10 +252,13 @@ function Goals:IsDisenchanter(name)
     return self:NormalizeName(name) == self:NormalizeName(current)
 end
 
-function Goals:AdjustPoints(name, delta, reason, skipSync)
+function Goals:AdjustPoints(name, delta, reason, skipSync, skipUndo)
     local entry = self:EnsurePlayer(name)
     if not entry or not delta or delta == 0 then
         return
+    end
+    if not skipUndo then
+        self:RecordUndo(name, entry.points or 0)
     end
     entry.points = (entry.points or 0) + delta
     if self.History then
@@ -216,12 +270,15 @@ function Goals:AdjustPoints(name, delta, reason, skipSync)
     end
 end
 
-function Goals:SetPoints(name, points, reason, skipSync, skipHistory)
+function Goals:SetPoints(name, points, reason, skipSync, skipHistory, skipUndo)
     local entry = self:EnsurePlayer(name)
     if not entry or points == nil then
         return
     end
     local before = entry.points or 0
+    if not skipUndo then
+        self:RecordUndo(name, before)
+    end
     entry.points = points
     if self.History and not skipHistory then
         self.History:AddSetPoints(name, before, points, reason or "Set points")
@@ -397,6 +454,35 @@ function Goals:ApplyLootReset(playerName, itemLink)
     self:SetPoints(playerName, 0, "Loot reset: " .. itemLink, true, true)
 end
 
+function Goals:RecordUndo(name, points)
+    local key = self:NormalizeName(name)
+    if key == "" then
+        return
+    end
+    self.undo[key] = points
+end
+
+function Goals:GetUndoPoints(name)
+    local key = self:NormalizeName(name)
+    if key == "" then
+        return nil
+    end
+    return self.undo[key]
+end
+
+function Goals:UndoPoints(name)
+    local key = self:NormalizeName(name)
+    if key == "" then
+        return
+    end
+    local previous = self.undo[key]
+    if previous == nil then
+        return
+    end
+    self.undo[key] = nil
+    self:SetPoints(key, previous, "Undo", false, false, true)
+end
+
 function Goals:ProcessPendingLoot()
     for itemLink, players in pairs(self.pendingLoot) do
         local itemName = GetItemInfo(itemLink)
@@ -459,6 +545,7 @@ function Goals:Init()
     if self.InitDB then
         self:InitDB()
     end
+    self:EnsureGroupMembers()
     self:InitSlashCommands()
     self:CheckBuild()
     if self.Dev and self.Dev.Init then

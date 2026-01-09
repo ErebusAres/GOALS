@@ -13,6 +13,8 @@ Goals.defaults = {
         combineBossHistory = true,
         disenchanter = "",
         debug = false,
+        showPresentOnly = false,
+        sortMode = "POINTS",
         minimap = {
             hide = false,
             angle = 220,
@@ -20,6 +22,7 @@ Goals.defaults = {
         floatingButton = {
             x = 0,
             y = 0,
+            show = false,
         },
     },
 }

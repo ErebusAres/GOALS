@@ -12,6 +12,7 @@ local UI = Goals.UI
 local ROW_HEIGHT = 20
 local ROSTER_ROWS = 16
 local HISTORY_ROWS = 14
+local ROSTER_BUTTON_SIZE = 18
 
 local function formatTime(ts)
     return date("%H:%M:%S", ts or time())
@@ -30,6 +31,62 @@ local function createButton(parent, text, width, height)
     return button
 end
 
+function UI:GetAllPlayerNames()
+    local names = {}
+    for name in pairs(Goals.db.players) do
+        table.insert(names, name)
+    end
+    table.sort(names)
+    return names
+end
+
+function UI:CreatePlayerDropdown(parent, width, onSelect)
+    local dropdown = CreateFrame("Frame", nil, parent, "UIDropDownMenuTemplate")
+    UIDropDownMenu_SetWidth(dropdown, width)
+    UIDropDownMenu_JustifyText(dropdown, "LEFT")
+    dropdown.onSelect = onSelect
+    UIDropDownMenu_Initialize(dropdown, function(_, level)
+        local options = UI:GetAllPlayerNames()
+        for _, name in ipairs(options) do
+            local info = UIDropDownMenu_CreateInfo()
+            info.text = name
+            info.value = name
+            info.func = function()
+                dropdown.selectedValue = name
+                UIDropDownMenu_SetText(dropdown, name)
+                if dropdown.onSelect then
+                    dropdown.onSelect(name)
+                end
+            end
+            info.checked = dropdown.selectedValue == name
+            UIDropDownMenu_AddButton(info, level)
+        end
+    end)
+    UIDropDownMenu_SetText(dropdown, "")
+    return dropdown
+end
+
+function UI:SyncDropdownSelection(dropdown, selectedName)
+    if not dropdown then
+        return
+    end
+    local names = self:GetAllPlayerNames()
+    local valid = false
+    for _, name in ipairs(names) do
+        if name == selectedName then
+            valid = true
+            break
+        end
+    end
+    if valid then
+        dropdown.selectedValue = selectedName
+        UIDropDownMenu_SetText(dropdown, selectedName)
+    elseif dropdown.selectedValue and dropdown.selectedValue ~= "" then
+        dropdown.selectedValue = nil
+        UIDropDownMenu_SetText(dropdown, "")
+    end
+end
+
 function UI:Init()
     if self.frame then
         return
@@ -41,11 +98,31 @@ function UI:Init()
     self:Refresh()
 end
 
+function UI:ShowFloatingButton(show)
+    if not self.floatingButton then
+        return
+    end
+    Goals.db.settings.floatingButton.show = show and true or false
+    if Goals.db.settings.floatingButton.show then
+        self.floatingButton:Show()
+    else
+        self.floatingButton:Hide()
+    end
+end
+
+function UI:Minimize()
+    if self.frame and self.frame:IsShown() then
+        self.frame:Hide()
+    end
+    self:ShowFloatingButton(true)
+end
+
 function UI:Toggle()
     if self.frame:IsShown() then
         self.frame:Hide()
     else
         self.frame:Show()
+        self:ShowFloatingButton(false)
         self:Refresh()
     end
 end
@@ -59,10 +136,33 @@ function UI:CreateMainFrame()
     frame:RegisterForDrag("LeftButton")
     frame:SetScript("OnDragStart", frame.StartMoving)
     frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
+    frame:SetScript("OnShow", function()
+        UI:ShowFloatingButton(false)
+    end)
     frame:Hide()
 
     local title = createLabel(frame, L.TITLE, "GameFontHighlightLarge")
     title:SetPoint("TOPLEFT", 16, -12)
+    local minimizeButton = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+    minimizeButton:SetSize(20, 20)
+    minimizeButton:SetText("-")
+    if frame.CloseButton then
+        minimizeButton:SetPoint("RIGHT", frame.CloseButton, "LEFT", -4, 0)
+        minimizeButton:SetPoint("TOP", frame.CloseButton, "TOP", 0, 0)
+    else
+        minimizeButton:SetPoint("TOPRIGHT", -32, -6)
+    end
+    minimizeButton:SetScript("OnClick", function()
+        UI:Minimize()
+    end)
+    minimizeButton:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+        GameTooltip:AddLine(L.BUTTON_MINIMIZE or "Minimize")
+        GameTooltip:Show()
+    end)
+    minimizeButton:SetScript("OnLeave", function()
+        GameTooltip:Hide()
+    end)
 
     self.frame = frame
     self.tabs = {}
@@ -81,7 +181,11 @@ function UI:CreateMainFrame()
         tab:SetScript("OnClick", function()
             UI:SelectTab(i)
         end)
-        tab:SetPoint("TOPLEFT", frame, "BOTTOMLEFT", (i - 1) * 110 + 10, 7)
+        if i == 1 then
+            tab:SetPoint("TOPLEFT", frame, "BOTTOMLEFT", 12, 7)
+        else
+            tab:SetPoint("LEFT", self.tabs[i - 1], "RIGHT", -12, 0)
+        end
         PanelTemplates_TabResize(tab, 0)
         self.tabs[i] = tab
         local page = CreateFrame("Frame", nil, frame)
@@ -113,15 +217,55 @@ function UI:CreateOverviewTab(parent)
     local header = createLabel(parent, L.TAB_OVERVIEW, "GameFontHighlightLarge")
     header:SetPoint("TOPLEFT", 6, -6)
 
-    local rosterFrame = CreateFrame("Frame", nil, parent)
-    rosterFrame:SetSize(330, 360)
-    rosterFrame:SetPoint("TOPLEFT", 6, -36)
-    local rosterTitle = createLabel(rosterFrame, L.LABEL_POINTS, "GameFontNormal")
-    rosterTitle:SetPoint("TOPLEFT", 2, 18)
+    local filterFrame = CreateFrame("Frame", nil, parent)
+    filterFrame:SetSize(420, 26)
+    filterFrame:SetPoint("TOPLEFT", 6, -36)
+
+    local sortLabel = createLabel(filterFrame, L.LABEL_SORT, "GameFontHighlightSmall")
+    sortLabel:SetPoint("LEFT", 0, 0)
+    local sortDropDown = CreateFrame("Frame", nil, filterFrame, "UIDropDownMenuTemplate")
+    sortDropDown:SetPoint("LEFT", sortLabel, "RIGHT", -6, -4)
+    UIDropDownMenu_SetWidth(sortDropDown, 100)
+    UIDropDownMenu_JustifyText(sortDropDown, "LEFT")
+    UIDropDownMenu_Initialize(sortDropDown, function(_, level)
+        local options = {
+            { value = "POINTS", text = L.SORT_POINTS },
+            { value = "ALPHA", text = L.SORT_ALPHA },
+            { value = "PRESENCE", text = L.SORT_PRESENCE },
+        }
+        for _, option in ipairs(options) do
+            local info = UIDropDownMenu_CreateInfo()
+            info.text = option.text
+            info.value = option.value
+            info.checked = Goals.db.settings.sortMode == option.value
+            info.func = function()
+                Goals.db.settings.sortMode = option.value
+                UIDropDownMenu_SetText(sortDropDown, option.text)
+                UI:UpdateRosterList()
+            end
+            UIDropDownMenu_AddButton(info, level)
+        end
+    end)
+    self.sortDropDown = sortDropDown
+
+    local presentCheck = CreateFrame("CheckButton", "GoalsPresentOnlyCheck", filterFrame, "UICheckButtonTemplate")
+    presentCheck:SetPoint("LEFT", sortDropDown, "RIGHT", 12, 2)
+    _G[presentCheck:GetName() .. "Text"]:SetText(L.CHECK_PRESENT_ONLY)
+    presentCheck:SetScript("OnClick", function(self)
+        Goals.db.settings.showPresentOnly = self:GetChecked() == 1
+        UI:UpdateRosterList()
+    end)
+    self.presentOnlyCheck = presentCheck
+
+    local rosterFrame = CreateFrame("Frame", nil, parent, "InsetFrameTemplate")
+    rosterFrame:SetSize(420, 330)
+    rosterFrame:SetPoint("TOPLEFT", filterFrame, "BOTTOMLEFT", 0, -6)
+    local rosterTitle = createLabel(parent, L.LABEL_POINTS, "GameFontNormal")
+    rosterTitle:SetPoint("BOTTOMLEFT", rosterFrame, "TOPLEFT", 4, 4)
 
     local scroll = CreateFrame("ScrollFrame", "GoalsRosterScroll", rosterFrame, "FauxScrollFrameTemplate")
-    scroll:SetPoint("TOPLEFT", 0, 0)
-    scroll:SetPoint("BOTTOMRIGHT", -28, -4)
+    scroll:SetPoint("TOPLEFT", 6, -6)
+    scroll:SetPoint("BOTTOMRIGHT", -26, 6)
     scroll:SetScript("OnVerticalScroll", function(_, offset)
         FauxScrollFrame_OnVerticalScroll(scroll, offset, ROW_HEIGHT, function()
             UI:UpdateRosterList()
@@ -131,55 +275,113 @@ function UI:CreateOverviewTab(parent)
     self.rosterRows = {}
     for i = 1, ROSTER_ROWS do
         local row = CreateFrame("Frame", nil, rosterFrame)
-        row:SetSize(300, ROW_HEIGHT)
-        row:SetPoint("TOPLEFT", 2, -((i - 1) * ROW_HEIGHT))
+        row:SetSize(380, ROW_HEIGHT)
+        row:SetPoint("TOPLEFT", 8, -((i - 1) * ROW_HEIGHT) - 2)
+        row.statusIcon = row:CreateTexture(nil, "ARTWORK")
+        row.statusIcon:SetSize(10, 10)
+        row.statusIcon:SetPoint("LEFT", 2, 0)
         row.name = createLabel(row, "", "GameFontHighlightSmall")
-        row.name:SetPoint("LEFT", 4, 0)
+        row.name:SetPoint("LEFT", row.statusIcon, "RIGHT", 6, 0)
         row.points = createLabel(row, "", "GameFontHighlightSmall")
-        row.points:SetPoint("RIGHT", -4, 0)
+        row.points:SetPoint("RIGHT", -90, 0)
+        row.plus = createButton(row, "+", ROSTER_BUTTON_SIZE, ROSTER_BUTTON_SIZE)
+        row.minus = createButton(row, "-", ROSTER_BUTTON_SIZE, ROSTER_BUTTON_SIZE)
+        row.reset = createButton(row, "0", ROSTER_BUTTON_SIZE, ROSTER_BUTTON_SIZE)
+        row.undo = createButton(row, "U", ROSTER_BUTTON_SIZE, ROSTER_BUTTON_SIZE)
+        row.plus:GetFontString():SetFontObject("GameFontHighlightSmall")
+        row.minus:GetFontString():SetFontObject("GameFontHighlightSmall")
+        row.reset:GetFontString():SetFontObject("GameFontHighlightSmall")
+        row.undo:GetFontString():SetFontObject("GameFontHighlightSmall")
+        row.undo:SetPoint("RIGHT", -2, 0)
+        row.reset:SetPoint("RIGHT", row.undo, "LEFT", -2, 0)
+        row.minus:SetPoint("RIGHT", row.reset, "LEFT", -2, 0)
+        row.plus:SetPoint("RIGHT", row.minus, "LEFT", -2, 0)
+        row.plus:SetScript("OnClick", function(self)
+            if not Goals:HasLeaderAccess() then
+                return
+            end
+            if self.playerName then
+                Goals:AdjustPoints(self.playerName, 1, "Roster +1")
+            end
+        end)
+        row.minus:SetScript("OnClick", function(self)
+            if not Goals:HasLeaderAccess() then
+                return
+            end
+            if self.playerName then
+                Goals:AdjustPoints(self.playerName, -1, "Roster -1")
+            end
+        end)
+        row.reset:SetScript("OnClick", function(self)
+            if not Goals:HasLeaderAccess() then
+                return
+            end
+            if self.playerName then
+                Goals:SetPoints(self.playerName, 0, "Roster reset")
+            end
+        end)
+        row.undo:SetScript("OnClick", function(self)
+            if not Goals:HasLeaderAccess() then
+                return
+            end
+            if self.playerName then
+                Goals:UndoPoints(self.playerName)
+            end
+        end)
+        row.undo:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+            GameTooltip:AddLine(L.BUTTON_UNDO or "Undo")
+            GameTooltip:Show()
+        end)
+        row.undo:SetScript("OnLeave", function()
+            GameTooltip:Hide()
+        end)
         self.rosterRows[i] = row
     end
 
-    local statusFrame = CreateFrame("Frame", nil, parent)
-    statusFrame:SetSize(360, 120)
-    statusFrame:SetPoint("TOPLEFT", rosterFrame, "TOPRIGHT", 20, 0)
+    local statusFrame = CreateFrame("Frame", nil, parent, "InsetFrameTemplate")
+    statusFrame:SetSize(300, 120)
+    statusFrame:SetPoint("TOPLEFT", rosterFrame, "TOPRIGHT", 12, 0)
     local statusTitle = createLabel(statusFrame, L.LABEL_SYNC, "GameFontNormal")
-    statusTitle:SetPoint("TOPLEFT", 0, 0)
+    statusTitle:SetPoint("TOPLEFT", 8, -8)
     self.syncStatus = createLabel(statusFrame, "", "GameFontHighlight")
-    self.syncStatus:SetPoint("TOPLEFT", statusTitle, "BOTTOMLEFT", 0, -8)
+    self.syncStatus:SetPoint("TOPLEFT", statusTitle, "BOTTOMLEFT", 0, -6)
     self.disenchanterLabel = createLabel(statusFrame, "", "GameFontHighlight")
-    self.disenchanterLabel:SetPoint("TOPLEFT", self.syncStatus, "BOTTOMLEFT", 0, -8)
+    self.disenchanterLabel:SetPoint("TOPLEFT", self.syncStatus, "BOTTOMLEFT", 0, -6)
 
-    local manualFrame = CreateFrame("Frame", nil, parent)
-    manualFrame:SetSize(360, 220)
+    local manualFrame = CreateFrame("Frame", nil, parent, "InsetFrameTemplate")
+    manualFrame:SetSize(300, 220)
     manualFrame:SetPoint("TOPLEFT", statusFrame, "BOTTOMLEFT", 0, -12)
     local manualTitle = createLabel(manualFrame, L.LABEL_MANUAL, "GameFontNormal")
-    manualTitle:SetPoint("TOPLEFT", 0, 0)
+    manualTitle:SetPoint("TOPLEFT", 8, -8)
 
     local nameLabel = createLabel(manualFrame, L.LABEL_PLAYER, "GameFontHighlightSmall")
-    nameLabel:SetPoint("TOPLEFT", manualTitle, "BOTTOMLEFT", 0, -10)
-    local nameBox = CreateFrame("EditBox", nil, manualFrame, "InputBoxTemplate")
-    nameBox:SetSize(140, 20)
-    nameBox:SetPoint("TOPLEFT", nameLabel, "BOTTOMLEFT", -2, -4)
-    nameBox:SetAutoFocus(false)
-    self.adjustNameBox = nameBox
+    nameLabel:SetPoint("TOPLEFT", manualTitle, "BOTTOMLEFT", 0, -8)
+    local nameDropDown = self:CreatePlayerDropdown(manualFrame, 140, function(name)
+        UI.adjustSelectedName = name
+    end)
+    nameDropDown:SetPoint("TOPLEFT", nameLabel, "BOTTOMLEFT", -16, -6)
+    self.adjustNameDropDown = nameDropDown
 
     local amountLabel = createLabel(manualFrame, L.LABEL_AMOUNT, "GameFontHighlightSmall")
-    amountLabel:SetPoint("LEFT", nameBox, "RIGHT", 20, 2)
+    amountLabel:SetPoint("LEFT", nameDropDown, "RIGHT", 10, 4)
     local amountBox = CreateFrame("EditBox", nil, manualFrame, "InputBoxTemplate")
-    amountBox:SetSize(80, 20)
+    amountBox:SetSize(60, 20)
     amountBox:SetPoint("TOPLEFT", amountLabel, "BOTTOMLEFT", -2, -4)
     amountBox:SetAutoFocus(false)
     amountBox:SetNumeric(true)
+    amountBox:SetScript("OnEnterPressed", function(self)
+        self:ClearFocus()
+    end)
     self.adjustAmountBox = amountBox
 
     local addButton = createButton(manualFrame, L.BUTTON_ADD, 80, 22)
-    addButton:SetPoint("TOPLEFT", nameBox, "BOTTOMLEFT", 0, -12)
+    addButton:SetPoint("TOPLEFT", nameLabel, "BOTTOMLEFT", 0, -46)
     addButton:SetScript("OnClick", function()
         if not Goals:HasLeaderAccess() then
             return
         end
-        local name = nameBox:GetText()
+        local name = UI.adjustSelectedName or (UI.adjustNameDropDown and UI.adjustNameDropDown.selectedValue)
         local value = tonumber(amountBox:GetText()) or 0
         if name ~= "" and value ~= 0 then
             Goals:AdjustPoints(name, value, "Manual award")
@@ -193,7 +395,7 @@ function UI:CreateOverviewTab(parent)
         if not Goals:HasLeaderAccess() then
             return
         end
-        local name = nameBox:GetText()
+        local name = UI.adjustSelectedName or (UI.adjustNameDropDown and UI.adjustNameDropDown.selectedValue)
         local value = tonumber(amountBox:GetText())
         if name ~= "" and value then
             Goals:SetPoints(name, value, "Manual set")
@@ -206,10 +408,52 @@ function UI:CreateLootTab(parent)
     local header = createLabel(parent, L.TAB_LOOT, "GameFontHighlightLarge")
     header:SetPoint("TOPLEFT", 6, -6)
 
-    local infoLabel = createLabel(parent, L.LABEL_LAST_LOOT, "GameFontNormal")
-    infoLabel:SetPoint("TOPLEFT", header, "BOTTOMLEFT", 0, -12)
-    self.lastLootLabel = createLabel(parent, "", "GameFontHighlight")
-    self.lastLootLabel:SetPoint("TOPLEFT", infoLabel, "BOTTOMLEFT", 0, -8)
+    local infoFrame = CreateFrame("Frame", nil, parent, "InsetFrameTemplate")
+    infoFrame:SetSize(700, 120)
+    infoFrame:SetPoint("TOPLEFT", 6, -36)
+    local infoLabel = createLabel(infoFrame, L.LABEL_LAST_LOOT, "GameFontNormal")
+    infoLabel:SetPoint("TOPLEFT", 10, -10)
+    self.lastLootLabel = createLabel(infoFrame, "", "GameFontHighlight")
+    self.lastLootLabel:SetPoint("TOPLEFT", infoLabel, "BOTTOMLEFT", 0, -6)
+
+    local assignFrame = CreateFrame("Frame", nil, parent, "InsetFrameTemplate")
+    assignFrame:SetSize(700, 200)
+    assignFrame:SetPoint("TOPLEFT", infoFrame, "BOTTOMLEFT", 0, -12)
+    local assignLabel = createLabel(assignFrame, L.LABEL_ASSIGN_LOOT, "GameFontNormal")
+    assignLabel:SetPoint("TOPLEFT", 10, -10)
+
+    local playerLabel = createLabel(assignFrame, L.LABEL_PLAYER, "GameFontHighlightSmall")
+    playerLabel:SetPoint("TOPLEFT", assignLabel, "BOTTOMLEFT", 0, -8)
+    local playerDropDown = self:CreatePlayerDropdown(assignFrame, 160, function(name)
+        UI.assignSelectedName = name
+    end)
+    playerDropDown:SetPoint("TOPLEFT", playerLabel, "BOTTOMLEFT", -16, -6)
+    self.assignPlayerDropDown = playerDropDown
+
+    local itemLabel = createLabel(assignFrame, L.LABEL_ITEM, "GameFontHighlightSmall")
+    itemLabel:SetPoint("LEFT", playerDropDown, "RIGHT", 14, 4)
+    local itemBox = CreateFrame("EditBox", nil, assignFrame, "InputBoxTemplate")
+    itemBox:SetSize(360, 20)
+    itemBox:SetPoint("TOPLEFT", itemLabel, "BOTTOMLEFT", -2, -4)
+    itemBox:SetAutoFocus(false)
+    itemBox:SetScript("OnEnterPressed", function(self)
+        self:ClearFocus()
+    end)
+    self.assignItemBox = itemBox
+
+    local assignButton = createButton(assignFrame, L.BUTTON_ASSIGN, 120, 22)
+    assignButton:SetPoint("TOPLEFT", playerLabel, "BOTTOMLEFT", 0, -46)
+    assignButton:SetScript("OnClick", function()
+        if not Goals:HasLeaderAccess() then
+            return
+        end
+        local name = UI.assignSelectedName or (UI.assignPlayerDropDown and UI.assignPlayerDropDown.selectedValue)
+        local itemLink = itemBox:GetText()
+        if name ~= "" and itemLink ~= "" then
+            Goals:HandleLoot(name, itemLink)
+        end
+    end)
+    self.assignButton = assignButton
 end
 
 function UI:CreateHistoryTab(parent)
@@ -246,8 +490,12 @@ function UI:CreateSettingsTab(parent)
     local header = createLabel(parent, L.TAB_SETTINGS, "GameFontHighlightLarge")
     header:SetPoint("TOPLEFT", 6, -6)
 
-    local combineCheck = CreateFrame("CheckButton", "GoalsCombineHistoryCheck", parent, "UICheckButtonTemplate")
-    combineCheck:SetPoint("TOPLEFT", header, "BOTTOMLEFT", 0, -12)
+    local settingsFrame = CreateFrame("Frame", nil, parent, "InsetFrameTemplate")
+    settingsFrame:SetSize(700, 360)
+    settingsFrame:SetPoint("TOPLEFT", 6, -36)
+
+    local combineCheck = CreateFrame("CheckButton", "GoalsCombineHistoryCheck", settingsFrame, "UICheckButtonTemplate")
+    combineCheck:SetPoint("TOPLEFT", 10, -10)
     _G[combineCheck:GetName() .. "Text"]:SetText(L.CHECK_COMBINE_HISTORY)
     combineCheck:SetScript("OnClick", function(self)
         if not Goals:HasLeaderAccess() then
@@ -258,8 +506,8 @@ function UI:CreateSettingsTab(parent)
     end)
     self.combineCheck = combineCheck
 
-    local minimapCheck = CreateFrame("CheckButton", "GoalsMinimapCheck", parent, "UICheckButtonTemplate")
-    minimapCheck:SetPoint("TOPLEFT", combineCheck, "BOTTOMLEFT", 0, -8)
+    local minimapCheck = CreateFrame("CheckButton", "GoalsMinimapCheck", settingsFrame, "UICheckButtonTemplate")
+    minimapCheck:SetPoint("TOPLEFT", combineCheck, "BOTTOMLEFT", 0, -6)
     _G[minimapCheck:GetName() .. "Text"]:SetText(L.CHECK_MINIMAP)
     minimapCheck:SetScript("OnClick", function(self)
         Goals.db.settings.minimap.hide = self:GetChecked() ~= 1
@@ -267,14 +515,14 @@ function UI:CreateSettingsTab(parent)
     end)
     self.minimapCheck = minimapCheck
 
-    local disenchantLabel = createLabel(parent, L.LABEL_DISENCHANTER, "GameFontNormal")
-    disenchantLabel:SetPoint("TOPLEFT", minimapCheck, "BOTTOMLEFT", 0, -16)
-    local disenchantBox = CreateFrame("EditBox", nil, parent, "InputBoxTemplate")
+    local disenchantLabel = createLabel(settingsFrame, L.LABEL_DISENCHANTER, "GameFontNormal")
+    disenchantLabel:SetPoint("TOPLEFT", minimapCheck, "BOTTOMLEFT", 0, -12)
+    local disenchantBox = CreateFrame("EditBox", nil, settingsFrame, "InputBoxTemplate")
     disenchantBox:SetSize(160, 20)
     disenchantBox:SetPoint("TOPLEFT", disenchantLabel, "BOTTOMLEFT", -2, -4)
     disenchantBox:SetAutoFocus(false)
     self.disenchanterBox = disenchantBox
-    local disenchantButton = createButton(parent, L.SETTINGS_DISENCHANTER, 150, 22)
+    local disenchantButton = createButton(settingsFrame, L.SETTINGS_DISENCHANTER, 150, 22)
     disenchantButton:SetPoint("LEFT", disenchantBox, "RIGHT", 10, 0)
     disenchantButton:SetScript("OnClick", function()
         if not Goals:HasLeaderAccess() then
@@ -285,7 +533,7 @@ function UI:CreateSettingsTab(parent)
     self.disenchanterButton = disenchantButton
 
     if Goals.Dev and Goals.Dev.enabled then
-        local debugCheck = CreateFrame("CheckButton", "GoalsDebugCheck", parent, "UICheckButtonTemplate")
+        local debugCheck = CreateFrame("CheckButton", "GoalsDebugCheck", settingsFrame, "UICheckButtonTemplate")
         debugCheck:SetPoint("TOPLEFT", disenchantBox, "BOTTOMLEFT", 0, -12)
         _G[debugCheck:GetName() .. "Text"]:SetText(L.CHECK_DEBUG)
         debugCheck:SetScript("OnClick", function(self)
@@ -327,10 +575,25 @@ end
 
 function UI:CreateMinimapButton()
     local button = CreateFrame("Button", "GoalsMinimapButton", Minimap)
-    button:SetSize(32, 32)
+    button:SetSize(31, 31)
     button:SetFrameStrata("MEDIUM")
-    button:SetNormalTexture("Interface\\Icons\\INV_Misc_Note_01")
-    button:SetHighlightTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
+    button:EnableMouse(true)
+    button.icon = button:CreateTexture(nil, "ARTWORK")
+    button.icon:SetTexture("Interface\\Icons\\INV_Misc_Note_01")
+    button.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    button.icon:SetSize(18, 18)
+    button.icon:SetPoint("CENTER", 0, 0)
+    button.background = button:CreateTexture(nil, "BACKGROUND")
+    button.background:SetTexture("Interface\\Minimap\\UI-Minimap-Background")
+    button.background:SetSize(22, 22)
+    button.background:SetPoint("CENTER", 0, 0)
+    button.border = button:CreateTexture(nil, "OVERLAY")
+    button.border:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
+    button.border:SetAllPoints()
+    button.highlight = button:CreateTexture(nil, "HIGHLIGHT")
+    button.highlight:SetTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
+    button.highlight:SetBlendMode("ADD")
+    button.highlight:SetAllPoints()
     button:RegisterForDrag("LeftButton")
     button:SetScript("OnDragStart", function(self)
         self:SetScript("OnUpdate", function()
@@ -403,6 +666,7 @@ function UI:CreateFloatingButton()
         Goals:ToggleUI()
     end)
     self.floatingButton = button
+    self:ShowFloatingButton(Goals.db.settings.floatingButton.show)
 end
 
 function UI:CreateOptionsPanel()
@@ -422,14 +686,33 @@ end
 
 function UI:GetSortedPlayers()
     local list = {}
+    local presentMap = Goals:GetPresenceMap()
+    local showPresentOnly = Goals.db.settings.showPresentOnly
     for name, data in pairs(Goals.db.players) do
-        table.insert(list, {
-            name = name,
-            points = data.points or 0,
-            class = data.class,
-        })
+        local isPresent = presentMap[name] == true
+        if not showPresentOnly or isPresent then
+            table.insert(list, {
+                name = name,
+                points = data.points or 0,
+                class = data.class,
+                present = isPresent,
+            })
+        end
     end
+    local sortMode = Goals.db.settings.sortMode or "POINTS"
     table.sort(list, function(a, b)
+        if sortMode == "ALPHA" then
+            return a.name < b.name
+        end
+        if sortMode == "PRESENCE" then
+            if a.present ~= b.present then
+                return a.present and not b.present
+            end
+            if a.points == b.points then
+                return a.name < b.name
+            end
+            return a.points > b.points
+        end
         if a.points == b.points then
             return a.name < b.name
         end
@@ -450,16 +733,40 @@ function UI:UpdateRosterList()
         local entry = data[index]
         if entry then
             row:Show()
+            row.playerName = entry.name
             row.name:SetText(entry.name)
             row.points:SetText(entry.points)
+            if entry.present then
+                row.statusIcon:SetTexture("Interface\\FriendsFrame\\StatusIcon-Online")
+            else
+                row.statusIcon:SetTexture("Interface\\FriendsFrame\\StatusIcon-Offline")
+            end
             local color = RAID_CLASS_COLORS and RAID_CLASS_COLORS[entry.class] or nil
             if color then
                 row.name:SetTextColor(color.r, color.g, color.b)
             else
                 row.name:SetTextColor(0.9, 0.9, 0.9)
             end
+            row.name:SetAlpha(entry.present and 1 or 0.6)
+            local canEdit = Goals:HasLeaderAccess()
+            if canEdit then
+                row.plus:Enable()
+                row.minus:Enable()
+                row.reset:Enable()
+            else
+                row.plus:Disable()
+                row.minus:Disable()
+                row.reset:Disable()
+            end
+            local undoPoints = Goals:GetUndoPoints(entry.name)
+            if canEdit and undoPoints ~= nil then
+                row.undo:Enable()
+            else
+                row.undo:Disable()
+            end
         else
             row:Hide()
+            row.playerName = nil
         end
     end
 end
@@ -513,6 +820,25 @@ function UI:Refresh()
     if self.disenchanterBox then
         self.disenchanterBox:SetText(Goals.db.settings.disenchanter or "")
     end
+    if self.presentOnlyCheck then
+        self.presentOnlyCheck:SetChecked(Goals.db.settings.showPresentOnly and 1 or 0)
+    end
+    if self.sortDropDown then
+        local sortMode = Goals.db.settings.sortMode or "POINTS"
+        local label = L.SORT_POINTS
+        if sortMode == "ALPHA" then
+            label = L.SORT_ALPHA
+        elseif sortMode == "PRESENCE" then
+            label = L.SORT_PRESENCE
+        end
+        UIDropDownMenu_SetText(self.sortDropDown, label)
+    end
+    if self.adjustNameDropDown then
+        self:SyncDropdownSelection(self.adjustNameDropDown, self.adjustSelectedName)
+    end
+    if self.assignPlayerDropDown then
+        self:SyncDropdownSelection(self.assignPlayerDropDown, self.assignSelectedName)
+    end
     if self.disenchanterButton then
         if Goals:HasLeaderAccess() then
             self.disenchanterButton:Enable()
@@ -530,6 +856,13 @@ function UI:Refresh()
         else
             self.adjustAddButton:Disable()
             self.adjustSetButton:Disable()
+        end
+    end
+    if self.assignButton then
+        if Goals:HasLeaderAccess() then
+            self.assignButton:Enable()
+        else
+            self.assignButton:Disable()
         end
     end
     if self.lastLootLabel then
