@@ -143,6 +143,9 @@ end
 
 function Events:HandleGroupUpdate()
     Goals:EnsureGroupMembers()
+    if Goals.Comm and Goals.Comm.BroadcastVersion then
+        Goals.Comm:BroadcastVersion()
+    end
     local wasMaster = Goals.sync.isMaster
     Goals:UpdateSyncStatus()
     if Goals:IsSyncMaster() and not wasMaster then

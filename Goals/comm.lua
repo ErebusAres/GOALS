@@ -101,6 +101,12 @@ function Comm:HandleChunk(base, index, total, payload, sender)
 end
 
 function Comm:HandleMessage(msgType, payload, sender, channel)
+    if msgType == "VERSION" then
+        if Goals.HandleRemoteVersion then
+            Goals:HandleRemoteVersion(payload, sender)
+        end
+        return
+    end
     if msgType == "SYNC_REQUEST" then
         if Goals:IsSyncMaster() then
             self:SendSync(sender)
@@ -150,6 +156,19 @@ end
 
 function Comm:RequestSync()
     self:Send("SYNC_REQUEST", Goals.version)
+end
+
+function Comm:SendVersion(target)
+    local version = Goals.GetInstalledUpdateVersion and Goals:GetInstalledUpdateVersion() or 0
+    if not version or version <= 0 then
+        return
+    end
+    local channel = target and "WHISPER" or nil
+    self:Send("VERSION", tostring(version), channel, target)
+end
+
+function Comm:BroadcastVersion()
+    self:SendVersion(nil)
 end
 
 function Comm:SendSync(target)

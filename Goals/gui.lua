@@ -64,18 +64,15 @@ end
 
 local function getUpdateInfo()
     local info = Goals and Goals.UpdateInfo or nil
-    local version = info and tonumber(info.version) or 0
+    local installed = info and tonumber(info.version) or 0
     local url = info and info.url or ""
-    return version, url
+    local available = Goals and Goals.db and Goals.db.settings and Goals.db.settings.updateAvailableVersion or 0
+    return installed, available, url
 end
 
 local function isUpdateAvailable()
-    if not Goals or not Goals.db or not Goals.db.settings then
-        return false
-    end
-    local version = getUpdateInfo()
-    local seenVersion = Goals.db.settings.updateSeenVersion or 0
-    return version > seenVersion
+    local installed, available = getUpdateInfo()
+    return available > installed
 end
 
 local function hasModifyAccess()
@@ -478,6 +475,7 @@ function UI:CreateMainFrame()
         end
         if def.key == "update" then
             self.updateTab = tab
+            self.updateTabId = i
         end
         self.tabs[i] = tab
 
@@ -512,12 +510,16 @@ function UI:SetupUpdateTabGlow(tab)
     end
     local glow = tab:CreateTexture(nil, "OVERLAY")
     glow:SetTexture("Interface\\Buttons\\UI-Panel-Button-Highlight")
-    glow:SetAllPoints(tab)
+    glow:ClearAllPoints()
+    glow:SetPoint("TOPLEFT", tab, "TOPLEFT", 15, 0)
+    glow:SetPoint("BOTTOMRIGHT", tab, "BOTTOMRIGHT", 15, 0)
     glow:SetBlendMode("ADD")
+    glow:SetVertexColor(1, 0.15, 0.15)
+    glow:SetAlpha(1)
     glow:Hide()
     tab.glow = glow
 
-    local anim = tab:CreateAnimationGroup()
+    local anim = glow:CreateAnimationGroup()
     local fadeIn = anim:CreateAnimation("Alpha")
     fadeIn:SetFromAlpha(0.2)
     fadeIn:SetToAlpha(1)
@@ -530,6 +532,20 @@ function UI:SetupUpdateTabGlow(tab)
     fadeOut:SetOrder(2)
     anim:SetLooping("REPEAT")
     tab.glowAnim = anim
+
+    local tabPulse = tab:CreateAnimationGroup()
+    local tabIn = tabPulse:CreateAnimation("Alpha")
+    tabIn:SetFromAlpha(0.6)
+    tabIn:SetToAlpha(1)
+    tabIn:SetDuration(0.8)
+    tabIn:SetOrder(1)
+    local tabOut = tabPulse:CreateAnimation("Alpha")
+    tabOut:SetFromAlpha(1)
+    tabOut:SetToAlpha(0.6)
+    tabOut:SetDuration(0.8)
+    tabOut:SetOrder(2)
+    tabPulse:SetLooping("REPEAT")
+    tab.tabPulse = tabPulse
 end
 
 function UI:UpdateUpdateTabGlow()
@@ -537,13 +553,30 @@ function UI:UpdateUpdateTabGlow()
         return
     end
     local available = isUpdateAvailable()
+    local seenFlag = Goals and Goals.db and Goals.db.settings and Goals.db.settings.updateHasBeenSeen
+    local installed, availableVersion = getUpdateInfo()
     if available then
         self:SetupUpdateTabGlow(self.updateTab)
         if self.updateTab.glow then
             self.updateTab.glow:Show()
         end
-        if self.updateTab.glowAnim and not self.updateTab.glowAnim:IsPlaying() then
-            self.updateTab.glowAnim:Play()
+        if not seenFlag then
+            if self.updateTab.glowAnim then
+                self.updateTab.glowAnim:Stop()
+                self.updateTab.glowAnim:Play()
+            end
+            if self.updateTab.tabPulse then
+                self.updateTab.tabPulse:Stop()
+                self.updateTab.tabPulse:Play()
+            end
+        else
+            if self.updateTab.glowAnim then
+                self.updateTab.glowAnim:Stop()
+            end
+            if self.updateTab.tabPulse then
+                self.updateTab.tabPulse:Stop()
+                self.updateTab:SetAlpha(1)
+            end
         end
     else
         if self.updateTab.glowAnim then
@@ -552,6 +585,57 @@ function UI:UpdateUpdateTabGlow()
         if self.updateTab.glow then
             self.updateTab.glow:Hide()
         end
+        if self.updateTab.tabPulse then
+            self.updateTab.tabPulse:Stop()
+            self.updateTab:SetAlpha(1)
+        end
+    end
+end
+
+function UI:RefreshUpdateTab()
+    if not self.updateStatusText or not self.updateVersionText or not self.updateUrlText then
+        return
+    end
+    local installedVersion, availableVersion, updateUrl = getUpdateInfo()
+    self.updateUrl = updateUrl or ""
+    local available = isUpdateAvailable()
+    if available and availableVersion > 0 then
+        self.updateStatusText:SetText(string.format(L.UPDATE_AVAILABLE, availableVersion))
+        self.updateVersionText:SetText(string.format(L.UPDATE_VERSION_LINE, installedVersion, availableVersion))
+    else
+        self.updateStatusText:SetText(L.UPDATE_NONE)
+        if installedVersion > 0 then
+            self.updateVersionText:SetText(string.format(L.UPDATE_VERSION_CURRENT, installedVersion))
+        else
+            self.updateVersionText:SetText("")
+        end
+    end
+    if updateUrl ~= "" then
+        self.updateUrlText:SetText(updateUrl)
+    else
+        self.updateUrlText:SetText(L.UPDATE_DOWNLOAD_MISSING)
+    end
+    if self.updateDownloadButton then
+        if updateUrl ~= "" then
+            self.updateDownloadButton:Enable()
+        else
+            self.updateDownloadButton:Disable()
+        end
+    end
+    if self.updateDismissButton then
+        if available and availableVersion > installedVersion then
+            self.updateDismissButton:Enable()
+            self.updateDismissButton:Show()
+        else
+            self.updateDismissButton:Disable()
+            self.updateDismissButton:Hide()
+        end
+    end
+    if self.updateDebugText then
+        local settings = Goals and Goals.db and Goals.db.settings or nil
+        local seen = settings and settings.updateSeenVersion or 0
+        local seenFlag = settings and settings.updateHasBeenSeen and "true" or "false"
+        self.updateDebugText:SetText(string.format("Debug: installed v%d, available v%d, seen v%d, seenFlag %s", installedVersion, availableVersion, seen, seenFlag))
     end
 end
 
@@ -1065,39 +1149,38 @@ function UI:CreateUpdateTab(page)
     local title = createLabel(inset, L.UPDATE_TITLE, "GameFontNormalLarge")
     title:SetPoint("TOPLEFT", inset, "TOPLEFT", 12, -12)
 
-    local updateVersion, updateUrl = getUpdateInfo()
-    local statusText = L.UPDATE_NONE
-    if isUpdateAvailable() and updateVersion > 0 then
-        statusText = string.format(L.UPDATE_AVAILABLE, updateVersion)
-    end
-    local status = createLabel(inset, statusText, "GameFontHighlight")
+    local status = createLabel(inset, "", "GameFontHighlight")
     status:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -8)
+    self.updateStatusText = status
+
+    local versionLine = createLabel(inset, "", "GameFontHighlightSmall")
+    versionLine:SetPoint("TOPLEFT", status, "BOTTOMLEFT", 0, -6)
+    self.updateVersionText = versionLine
 
     local urlLabel = createLabel(inset, L.UPDATE_DOWNLOAD_LABEL, "GameFontNormal")
-    urlLabel:SetPoint("TOPLEFT", status, "BOTTOMLEFT", 0, -14)
+    urlLabel:SetPoint("TOPLEFT", versionLine, "BOTTOMLEFT", 0, -12)
 
-    local urlText = createLabel(inset, updateUrl ~= "" and updateUrl or L.UPDATE_DOWNLOAD_MISSING, "GameFontHighlightSmall")
+    local urlText = createLabel(inset, "", "GameFontHighlightSmall")
     urlText:SetPoint("TOPLEFT", urlLabel, "BOTTOMLEFT", 0, -4)
     urlText:SetWidth(520)
     urlText:SetJustifyH("LEFT")
+    self.updateUrlText = urlText
 
     local downloadBtn = CreateFrame("Button", nil, inset, "UIPanelButtonTemplate")
     downloadBtn:SetSize(120, 20)
     downloadBtn:SetText(L.UPDATE_DOWNLOAD_BUTTON)
     downloadBtn:SetPoint("LEFT", urlLabel, "RIGHT", 8, 0)
     downloadBtn:SetScript("OnClick", function()
-        if updateUrl == "" then
+        if not UI.updateUrl or UI.updateUrl == "" then
             return
         end
         if ChatFrame_OpenChat then
-            ChatFrame_OpenChat(updateUrl)
+            ChatFrame_OpenChat(UI.updateUrl)
         else
-            Goals:Print(updateUrl)
+            Goals:Print(UI.updateUrl)
         end
     end)
-    if updateUrl == "" then
-        downloadBtn:Disable()
-    end
+    self.updateDownloadButton = downloadBtn
 
     local copyHint = createLabel(inset, L.UPDATE_COPY_HINT, "GameFontHighlightSmall")
     copyHint:SetPoint("TOPLEFT", urlText, "BOTTOMLEFT", 0, -6)
@@ -1124,6 +1207,26 @@ function UI:CreateUpdateTab(page)
     reloadBtn:SetScript("OnClick", function()
         ReloadUI()
     end)
+
+    local dismissBtn = CreateFrame("Button", nil, inset, "UIPanelButtonTemplate")
+    dismissBtn:SetSize(120, 20)
+    dismissBtn:SetText("Dismiss")
+    dismissBtn:SetPoint("TOPLEFT", step3, "BOTTOMLEFT", 0, -10)
+    dismissBtn:SetScript("OnClick", function()
+        local installed, availableVersion = getUpdateInfo()
+        if availableVersion and availableVersion > installed and Goals and Goals.db and Goals.db.settings then
+            Goals.db.settings.updateSeenVersion = availableVersion
+            Goals.db.settings.updateHasBeenSeen = true
+            if Goals.UI then
+                Goals.UI:RefreshUpdateTab()
+                Goals.UI:UpdateUpdateTabGlow()
+            end
+            Goals:Print("Update dismissed.")
+        end
+    end)
+    self.updateDismissButton = dismissBtn
+
+    self:RefreshUpdateTab()
 end
 
 function UI:CreateDevTab(page)
@@ -1166,8 +1269,48 @@ function UI:CreateDevTab(page)
         end
     end)
 
+    local resetUpdateBtn = CreateFrame("Button", nil, inset, "UIPanelButtonTemplate")
+    resetUpdateBtn:SetSize(160, 20)
+    resetUpdateBtn:SetText("Reset Update Seen")
+    resetUpdateBtn:SetPoint("TOPLEFT", syncBtn, "BOTTOMLEFT", 0, -8)
+    resetUpdateBtn:SetScript("OnClick", function()
+        if Goals.db and Goals.db.settings then
+            Goals.db.settings.updateSeenVersion = 0
+            Goals.db.settings.updateAvailableVersion = 0
+            Goals.db.settings.updateHasBeenSeen = false
+            if Goals.UI then
+                Goals.UI:RefreshUpdateTab()
+                Goals.UI:UpdateUpdateTabGlow()
+            end
+            if Goals and Goals.GetInstalledUpdateVersion then
+                local installed = Goals:GetInstalledUpdateVersion()
+                Goals:Print("Update notice reset. Installed v" .. installed .. ", available v0.")
+            else
+                Goals:Print("Update notice reset.")
+            end
+        end
+    end)
+
+    local simulateUpdateBtn = CreateFrame("Button", nil, inset, "UIPanelButtonTemplate")
+    simulateUpdateBtn:SetSize(160, 20)
+    simulateUpdateBtn:SetText("Simulate Update")
+    simulateUpdateBtn:SetPoint("TOPLEFT", resetUpdateBtn, "BOTTOMLEFT", 0, -8)
+    simulateUpdateBtn:SetScript("OnClick", function()
+        if Goals and Goals.GetInstalledUpdateVersion and Goals.HandleRemoteVersion then
+            local installed = Goals:GetInstalledUpdateVersion()
+            Goals:HandleRemoteVersion(installed + 1, Goals:GetPlayerName())
+            Goals:Print("Simulated update v" .. (installed + 1) .. ".")
+        end
+    end)
+
+    local updateDebug = createLabel(inset, "", "GameFontHighlightSmall")
+    updateDebug:SetPoint("TOPLEFT", simulateUpdateBtn, "BOTTOMLEFT", 0, -8)
+    updateDebug:SetWidth(520)
+    updateDebug:SetJustifyH("LEFT")
+    self.updateDebugText = updateDebug
+
     local devBossCheck = CreateFrame("CheckButton", nil, inset, "UICheckButtonTemplate")
-    devBossCheck:SetPoint("TOPLEFT", syncBtn, "BOTTOMLEFT", 0, -12)
+    devBossCheck:SetPoint("TOPLEFT", updateDebug, "BOTTOMLEFT", 0, -8)
     setCheckText(devBossCheck, L.DEV_TEST_BOSS)
     devBossCheck:SetScript("OnClick", function(selfBtn)
         Goals.db.settings.devTestBoss = selfBtn:GetChecked() and true or false
@@ -1459,6 +1602,7 @@ function UI:RefreshStatus()
     if self.disenchantValue then
         self.disenchantValue:SetText(self:GetDisenchanterStatus())
     end
+    self:RefreshUpdateTab()
     self:UpdateUpdateTabGlow()
 end
 

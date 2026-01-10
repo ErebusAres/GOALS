@@ -94,6 +94,30 @@ function Goals:GetPlayerName()
     return self:NormalizeName(UnitName("player") or "")
 end
 
+function Goals:GetInstalledUpdateVersion()
+    local info = self.UpdateInfo
+    local version = info and tonumber(info.version) or 0
+    return version
+end
+
+function Goals:HandleRemoteVersion(version, sender)
+    if not self.db or not self.db.settings then
+        return
+    end
+    local installed = self:GetInstalledUpdateVersion()
+    local incoming = tonumber(version) or 0
+    if incoming <= installed then
+        return
+    end
+    if (self.db.settings.updateAvailableVersion or 0) < incoming then
+        self.db.settings.updateAvailableVersion = incoming
+        self.db.settings.updateHasBeenSeen = false
+        self:NotifyDataChanged()
+        local who = sender and self:NormalizeName(sender) or "someone"
+        self:Print("Update available (v" .. incoming .. ") from " .. who .. ".")
+    end
+end
+
 function Goals:Delay(seconds, func)
     local frame = CreateFrame("Frame")
     local elapsed = 0
@@ -943,6 +967,18 @@ function Goals:Init()
     self.initialized = true
     if self.InitDB then
         self:InitDB()
+    end
+    if self.db and self.db.settings then
+        local installed = self:GetInstalledUpdateVersion()
+        if (self.db.settings.updateAvailableVersion or 0) < installed then
+            self.db.settings.updateAvailableVersion = 0
+        end
+        if self.db.settings.updateSeenVersion == nil then
+            self.db.settings.updateSeenVersion = installed
+        end
+        if self.db.settings.updateHasBeenSeen == nil then
+            self.db.settings.updateHasBeenSeen = false
+        end
     end
     self:EnsureGroupMembers()
     self:InitSlashCommands()
