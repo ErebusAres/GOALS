@@ -26,6 +26,14 @@ Goals.pendingLoot = Goals.pendingLoot or {}
 Goals.pendingItemInfo = Goals.pendingItemInfo or {}
 Goals.undo = Goals.undo or {}
 
+local wipeMessages = {
+    "%s wiped. Better luck next time!",
+    "%s wiped. Try again!",
+    "%s wiped. Shake it off!",
+    "%s wiped. Clean pull next time!",
+    "%s wiped. Regroup and go again!",
+}
+
 Goals.classColors = Goals.classColors or {
     DEATHKNIGHT = { r = 0.77, g = 0.12, b = 0.23 },
     DRUID = { r = 1.0, g = 0.49, b = 0.04 },
@@ -74,6 +82,27 @@ function Goals:Print(msg)
     if msg then
         prefixMessage(msg)
     end
+end
+
+function Goals:GetGroupChannel()
+    if self:IsInRaid() then
+        return "RAID"
+    end
+    if self:IsInParty() then
+        return "PARTY"
+    end
+    return nil
+end
+
+function Goals:AnnounceWipe(encounterName)
+    local channel = self:GetGroupChannel()
+    if not channel then
+        self:Print(string.format("%s wiped.", encounterName))
+        return
+    end
+    local idx = math.random(1, #wipeMessages)
+    local msg = string.format(wipeMessages[idx], encounterName or "Group")
+    SendChatMessage(msg, channel)
 end
 
 function Goals:Debug(msg)
@@ -563,6 +592,7 @@ function Goals:AwardBossKill(encounterName, members, skipSync)
     if self.History then
         self.History:AddBossKill(encounterName, 1, names, self.db.settings.combineBossHistory)
     end
+    self:Print(encounterName .. " was defeated. +1 Point.")
     self:NotifyDataChanged()
     if self:CanSync() and not skipSync and self.Comm then
         self.Comm:SendBossKill(encounterName, names)

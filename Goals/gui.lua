@@ -1120,8 +1120,16 @@ function UI:CreateSettingsTab(page)
     end)
     self.minimapCheck = minimapCheck
 
+    local autoMinCheck = CreateFrame("CheckButton", nil, inset, "UICheckButtonTemplate")
+    autoMinCheck:SetPoint("TOPLEFT", minimapCheck, "BOTTOMLEFT", 0, -8)
+    setCheckText(autoMinCheck, L.CHECK_AUTO_MINIMIZE_COMBAT)
+    autoMinCheck:SetScript("OnClick", function(selfBtn)
+        Goals.db.settings.autoMinimizeCombat = selfBtn:GetChecked() and true or false
+    end)
+    self.autoMinimizeCheck = autoMinCheck
+
     local disLabel = createLabel(inset, L.SETTINGS_DISENCHANTER, "GameFontNormal")
-    disLabel:SetPoint("TOPLEFT", minimapCheck, "BOTTOMLEFT", 0, -12)
+    disLabel:SetPoint("TOPLEFT", autoMinCheck, "BOTTOMLEFT", 0, -12)
 
     local disDrop = CreateFrame("Frame", "GoalsDisenchanterDropdown", inset, "UIDropDownMenuTemplate")
     disDrop:SetPoint("TOPLEFT", disLabel, "BOTTOMLEFT", -10, -2)
@@ -1634,6 +1642,9 @@ function UI:Refresh()
     end
     if self.minimapCheck then
         self.minimapCheck:SetChecked(not Goals.db.settings.minimap.hide)
+    end
+    if self.autoMinimizeCheck then
+        self.autoMinimizeCheck:SetChecked(Goals.db.settings.autoMinimizeCombat and true or false)
     end
     if self.resetMountPetCheck then
         self.resetMountPetCheck:SetChecked(Goals.db.settings.resetMountPet and true or false)

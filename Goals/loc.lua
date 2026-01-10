@@ -44,6 +44,7 @@ Goals.L = {
     BUTTON_OPEN = "Open Goals",
     CHECK_COMBINE_HISTORY = "Combine boss history entries",
     CHECK_MINIMAP = "Show minimap button",
+    CHECK_AUTO_MINIMIZE_COMBAT = "Auto minimize in combat",
     CHECK_PRESENT_ONLY = "Show present only",
     CHECK_LOOT_EPIC_ONLY = "Epic+ only",
     CHECK_DEBUG = "Enable debug log",

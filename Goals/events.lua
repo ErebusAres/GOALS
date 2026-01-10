@@ -33,6 +33,7 @@ function Events:Init()
     self.frame:RegisterEvent("LOOT_SLOT_CLEARED")
     self.frame:RegisterEvent("LOOT_CLOSED")
     self.frame:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+    self.frame:RegisterEvent("CHAT_MSG_COMBAT_HOSTILE_DEATH")
     self.frame:RegisterEvent("PLAYER_REGEN_DISABLED")
     self.frame:RegisterEvent("PLAYER_REGEN_ENABLED")
     self.frame:RegisterEvent("RAID_ROSTER_UPDATE")
@@ -43,6 +44,9 @@ function Events:Init()
     self.frame:RegisterEvent("PLAYER_ENTERING_WORLD")
     self.frame:RegisterEvent("BOSS_KILL")
     self:BuildBossLookup()
+    if Goals and Goals.Dev and Goals.Dev.enabled then
+        Goals:Print("Events initialized.")
+    end
 end
 
 function Events:BuildBossLookup()
@@ -87,6 +91,12 @@ function Events:CollectBossNames(data, set)
 end
 
 function Events:OnEvent(event, ...)
+    if Goals and Goals.Dev and Goals.Dev.enabled and Goals.db and Goals.db.settings and Goals.db.settings.devTestBoss then
+        if not self.debugEventLogged then
+            self.debugEventLogged = true
+            Goals:Print("Events active: " .. tostring(event))
+        end
+    end
     if event == "CHAT_MSG_LOOT" then
         self:HandleLootMessage(...)
         return
@@ -111,8 +121,17 @@ function Events:OnEvent(event, ...)
         self:HandleCombatLog(...)
         return
     end
+    if event == "CHAT_MSG_COMBAT_HOSTILE_DEATH" then
+        self:HandleHostileDeath(...)
+        return
+    end
+    if event == "PLAYER_REGEN_DISABLED" then
+        self:HandleCombatStart()
+        return
+    end
     if event == "PLAYER_REGEN_ENABLED" then
         self:HandleCombatEnd()
+        self:HandleCombatExit()
         return
     end
     if event == "RAID_ROSTER_UPDATE" or event == "PARTY_MEMBERS_CHANGED" or event == "PARTY_LEADER_CHANGED" then
@@ -184,6 +203,21 @@ function Events:HandleCombatLog(...)
     local eventType = select(2, ...)
     local sourceName = select(5, ...)
     local destName = select(9, ...)
+    if type(sourceName) ~= "string" and type(select(4, ...)) == "string" then
+        sourceName = select(4, ...)
+        destName = select(7, ...)
+    end
+    if Goals and Goals.Dev and Goals.Dev.enabled and Goals.db and Goals.db.settings and Goals.db.settings.devTestBoss then
+        if not self.debugCombatLogged then
+            self.debugCombatLogged = true
+            Goals:Print("Combat log active: " .. tostring(eventType) .. " src=" .. tostring(sourceName) .. " dest=" .. tostring(destName))
+        end
+    end
+    if Goals and Goals.Dev and Goals.Dev.enabled and Goals.db and Goals.db.settings and Goals.db.settings.devTestBoss then
+        if (eventType == "UNIT_DIED" or eventType == "PARTY_KILL") and destName then
+            Goals:Print("Combat log: " .. eventType .. " " .. tostring(destName))
+        end
+    end
     if sourceName then
         local encounterName, canonicalBoss = self:GetEncounterForBossName(sourceName)
         if encounterName then
@@ -196,15 +230,45 @@ function Events:HandleCombatLog(...)
             self:StartEncounter(encounterName, canonicalBoss)
         end
     end
-    if eventType == "UNIT_DIED" and destName then
-        if Goals.Dev and Goals.Dev.enabled and Goals.db.settings.devTestBoss and destName == "Garryowen Boar" then
-            Goals:AwardBossKill("Garryowen Boar")
+    if (eventType == "UNIT_DIED" or eventType == "PARTY_KILL") and destName then
+        if Goals.Dev and Goals.Dev.enabled and Goals.db.settings.devTestBoss then
+            if normalizeBossName(destName) == normalizeBossName("Garryowen Boar") then
+                Goals:AwardBossKill("Garryowen Boar")
+                return
+            end
         else
             local encounterName = self:GetEncounterForBossName(destName)
             if encounterName then
                 self:MarkBossDead(destName)
             end
         end
+    end
+end
+
+function Events:HandleHostileDeath(message)
+    if not message or message == "" then
+        return
+    end
+    if Goals and Goals.Dev and Goals.Dev.enabled and Goals.db and Goals.db.settings and Goals.db.settings.devTestBoss then
+        if not self.debugHostileLogged then
+            self.debugHostileLogged = true
+            Goals:Print("Hostile death msg: " .. tostring(message))
+        end
+    end
+    local name = message:match("^(.+) dies%.$") or message:match("^You have slain (.+)!$")
+    if not name then
+        return
+    end
+    if Goals and Goals.Dev and Goals.Dev.enabled and Goals.db and Goals.db.settings and Goals.db.settings.devTestBoss then
+        Goals:Print("Hostile death: " .. tostring(name))
+        if normalizeBossName(name) == normalizeBossName("Garryowen Boar") then
+            Goals:AwardBossKill("Garryowen Boar")
+            return
+        end
+    end
+    local encounterName = self:GetEncounterForBossName(name)
+    if encounterName then
+        self:MarkBossDead(name)
     end
 end
 
@@ -274,6 +338,29 @@ function Events:HandleCombatEnd()
     end)
 end
 
+function Events:HandleCombatStart()
+    if not Goals or not Goals.db or not Goals.db.settings then
+        return
+    end
+    if not Goals.db.settings.autoMinimizeCombat then
+        return
+    end
+    if not Goals.UI or not Goals.UI.frame or not Goals.UI.frame:IsShown() then
+        return
+    end
+    Goals.state = Goals.state or {}
+    if Goals.state.autoMinimizedThisCombat then
+        return
+    end
+    Goals.state.autoMinimizedThisCombat = true
+    Goals.UI:Minimize()
+end
+
+function Events:HandleCombatExit()
+    Goals.state = Goals.state or {}
+    Goals.state.autoMinimizedThisCombat = false
+end
+
 function Events:FinishEncounter(success)
     local encounterName = Goals.encounter.name or "Encounter"
     Goals.encounter.active = false
@@ -288,6 +375,9 @@ function Events:FinishEncounter(success)
     end
     if Goals:IsSyncMaster() or (Goals.Dev and Goals.Dev.enabled) then
         Goals.History:AddWipe(encounterName)
+        if Goals.AnnounceWipe then
+            Goals:AnnounceWipe(encounterName)
+        end
         Goals:NotifyDataChanged()
     end
 end

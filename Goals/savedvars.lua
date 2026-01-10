@@ -22,6 +22,7 @@ Goals.defaults = {
         updateSeenVersion = 1,
         updateAvailableVersion = 0,
         updateHasBeenSeen = false,
+        autoMinimizeCombat = true,
         minimap = {
             hide = false,
             angle = 220,
