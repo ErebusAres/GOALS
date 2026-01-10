@@ -108,10 +108,36 @@ function Goals:Delay(seconds, func)
 end
 
 function Goals:IsInRaid()
-    return GetNumRaidMembers and GetNumRaidMembers() > 0
+    if IsInRaid and IsInRaid() then
+        return true
+    end
+    if GetNumRaidMembers and GetNumRaidMembers() > 0 then
+        return true
+    end
+    if UnitInRaid and UnitInRaid("player") ~= nil then
+        return true
+    end
+    if UnitExists and UnitExists("raid1") then
+        return true
+    end
+    if GetRaidRosterInfo then
+        for i = 1, 40 do
+            local name = GetRaidRosterInfo(i)
+            if name then
+                return true
+            end
+        end
+    end
+    return false
 end
 
 function Goals:IsInParty()
+    if self:IsInRaid() then
+        return false
+    end
+    if UnitInParty then
+        return UnitInParty("player") ~= nil
+    end
     return GetNumPartyMembers and GetNumPartyMembers() > 0
 end
 
@@ -192,14 +218,26 @@ function Goals:HasLootAccess()
 end
 
 function Goals:GetLeaderName()
-    if self:IsInRaid() then
-        for i = 1, GetNumRaidMembers() do
-            local name, _, rank = GetRaidRosterInfo(i)
-            if rank == 2 then
+    if UnitExists and UnitIsRaidLeader then
+        for i = 1, 40 do
+            local unit = "raid" .. i
+            if UnitExists(unit) and UnitIsRaidLeader(unit) then
+                return self:NormalizeName(UnitName(unit))
+            end
+        end
+    end
+    if GetRaidRosterInfo then
+        for i = 1, 40 do
+            local name, rank = GetRaidRosterInfo(i)
+            if name and (rank == 2 or rank == "leader" or rank == "LEADER") then
                 return self:NormalizeName(name)
             end
         end
-    elseif self:IsInParty() then
+    end
+    if self:IsInRaid() then
+        return "Unknown"
+    end
+    if self:IsInParty() then
         if UnitIsPartyLeader and UnitIsPartyLeader("player") then
             return self:GetPlayerName()
         end
@@ -214,10 +252,18 @@ function Goals:GetLeaderName()
 end
 
 function Goals:IsSyncMaster()
-    if self:IsInRaid() or self:IsInParty() then
+    local raidLeader = self.GetRaidLeaderFromRoster and self:GetRaidLeaderFromRoster() or nil
+    if raidLeader and raidLeader ~= "" then
+        return raidLeader == self:GetPlayerName()
+    end
+    if self:IsInParty() then
         return self:IsGroupLeader()
     end
     return self.Dev and self.Dev.enabled or false
+end
+
+function Goals:CanSync()
+    return self:IsSyncMaster() or (self.Dev and self.Dev.enabled)
 end
 
 function Goals:HasLeaderAccess()
@@ -230,12 +276,23 @@ function Goals:HasLeaderAccess()
     return self:IsSyncMaster()
 end
 
-function Goals:UpdateSyncStatus()
-    if self:IsSyncMaster() then
-        self.sync.isMaster = true
-        self.sync.masterName = self:GetPlayerName()
-        self.sync.status = "Master (You)"
-    elseif self:IsInRaid() or self:IsInParty() then
+function Goals:UpdateSyncStatus(skipUI)
+    local raidLeader = self.GetRaidLeaderFromRoster and self:GetRaidLeaderFromRoster() or nil
+    if raidLeader and raidLeader ~= "" then
+        if raidLeader == self:GetPlayerName() then
+            self.sync.isMaster = true
+            self.sync.masterName = self:GetPlayerName()
+            self.sync.status = "Master (You)"
+        else
+            self.sync.isMaster = false
+            self.sync.masterName = raidLeader
+            self.sync.status = "Following " .. raidLeader
+        end
+    elseif self:IsInRaid() then
+        self.sync.isMaster = false
+        self.sync.masterName = nil
+        self.sync.status = "Following Unknown"
+    elseif self:IsInParty() then
         local leader = self:GetLeaderName() or "Unknown"
         self.sync.isMaster = false
         self.sync.masterName = leader
@@ -245,9 +302,34 @@ function Goals:UpdateSyncStatus()
         self.sync.masterName = nil
         self.sync.status = "Solo"
     end
-    if self.UI and self.UI.RefreshStatus then
+    if not skipUI and self.UI and self.UI.RefreshStatus then
         self.UI:RefreshStatus()
     end
+end
+
+function Goals:GetRaidLeaderFromRoster()
+    if UnitExists and (UnitIsGroupLeader or UnitIsRaidLeader) then
+        for i = 1, 40 do
+            local unit = "raid" .. i
+            if UnitExists(unit) then
+                if UnitIsGroupLeader and UnitIsGroupLeader(unit) then
+                    return self:NormalizeName(UnitName(unit))
+                end
+                if UnitIsRaidLeader and UnitIsRaidLeader(unit) then
+                    return self:NormalizeName(UnitName(unit))
+                end
+            end
+        end
+    end
+    if GetRaidRosterInfo then
+        for i = 1, 40 do
+            local name, rank = GetRaidRosterInfo(i)
+            if name and (rank == 2 or rank == "leader" or rank == "LEADER") then
+                return self:NormalizeName(name)
+            end
+        end
+    end
+    return nil
 end
 
 function Goals:GetGroupMembers()
@@ -342,7 +424,7 @@ function Goals:SetRaidSetting(key, value, skipSync)
     end
     self.db.settings[key] = value
     self:NotifyDataChanged()
-    if self:IsSyncMaster() and not skipSync and self.Comm then
+    if self:CanSync() and not skipSync and self.Comm then
         self.Comm:SendSetting(key, value)
     end
 end
@@ -351,7 +433,7 @@ function Goals:SetDisenchanter(name, skipSync)
     local normalized = self:NormalizeName(name or "")
     self.db.settings.disenchanter = normalized
     self:NotifyDataChanged()
-    if self:IsSyncMaster() and not skipSync and self.Comm then
+    if self:CanSync() and not skipSync and self.Comm then
         self.Comm:SendSetting("disenchanter", normalized)
     end
 end
@@ -377,8 +459,23 @@ function Goals:AdjustPoints(name, delta, reason, skipSync, skipUndo)
         self.History:AddAdjustment(name, delta, reason or "Manual adjustment")
     end
     self:NotifyDataChanged()
-    if self:IsSyncMaster() and not skipSync and self.Comm then
+    if self:CanSync() and not skipSync and self.Comm then
         self.Comm:SendAdjustment(name, delta, reason)
+    end
+end
+
+function Goals:AwardPresentPoints(delta, reason)
+    local amount = tonumber(delta or 0) or 0
+    if amount == 0 then
+        return
+    end
+    local present = self:GetPresenceMap()
+    local members = self:GetGroupMembers()
+    for _, info in ipairs(members) do
+        local name = info.name
+        if name and present[self:NormalizeName(name)] then
+            self:AdjustPoints(name, amount, reason or "Manual group award")
+        end
     end
 end
 
@@ -396,7 +493,7 @@ function Goals:SetPoints(name, points, reason, skipSync, skipHistory, skipUndo)
         self.History:AddSetPoints(name, before, points, reason or "Set points")
     end
     self:NotifyDataChanged()
-    if self:IsSyncMaster() and not skipSync and self.Comm then
+    if self:CanSync() and not skipSync and self.Comm then
         self.Comm:SendSetPoints(name, points, reason)
     end
 end
@@ -421,19 +518,29 @@ function Goals:AwardBossKill(encounterName, members, skipSync)
     if not roster or #roster == 0 then
         return
     end
+    local present = self:GetPresenceMap()
+    local hasPresence = present and next(present) ~= nil
     local names = {}
     for _, info in ipairs(roster) do
-        local entry = self:EnsurePlayer(info.name, info.class)
+        local playerName = info.name
+        if hasPresence and not present[self:NormalizeName(playerName)] then
+            playerName = nil
+        end
+        if not playerName then
+            -- Skip offline/non-present players.
+        else
+        local entry = self:EnsurePlayer(playerName, info.class)
         if entry then
             entry.points = (entry.points or 0) + 1
-            table.insert(names, info.name)
+            table.insert(names, playerName)
+        end
         end
     end
     if self.History then
         self.History:AddBossKill(encounterName, 1, names, self.db.settings.combineBossHistory)
     end
     self:NotifyDataChanged()
-    if self:IsSyncMaster() and not skipSync and self.Comm then
+    if self:CanSync() and not skipSync and self.Comm then
         self.Comm:SendBossKill(encounterName, names)
     end
 end
@@ -578,7 +685,7 @@ function Goals:HandleLootAssignment(playerName, itemLink, skipSync, forceRecord)
     local resetApplied = shouldReset and not self:IsDisenchanter(playerName)
     if forceRecord or shouldTrack then
         self:RecordLootAssignment(playerName, itemLink, resetApplied)
-        if self:IsSyncMaster() and not skipSync and self.Comm then
+        if self:CanSync() and not skipSync and self.Comm then
             if resetApplied then
                 self.Comm:SendLootReset(playerName, itemLink)
             else
@@ -639,8 +746,9 @@ function Goals:UpdateLootSlots(resetSeen)
     local list = {}
     local count = GetNumLootItems and GetNumLootItems() or 0
     for slot = 1, count do
-        if GetLootSlotType and GetLootSlotType(slot) == 1 then
-            local link = GetLootSlotLink(slot)
+        local isItem = GetLootSlotType and GetLootSlotType(slot) == 1
+        local link = GetLootSlotLink and GetLootSlotLink(slot) or nil
+        if isItem or link then
             if link then
                 table.insert(list, {
                     slot = slot,

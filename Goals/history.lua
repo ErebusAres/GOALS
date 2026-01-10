@@ -3,7 +3,8 @@
 -- Usage: Goals.History:AddBossKill("Anub'arak", 1, names, true)
 
 local addonName = ...
-local Goals = _G.Goals
+local Goals = _G.Goals or {}
+_G.Goals = Goals
 
 Goals.History = Goals.History or {}
 local History = Goals.History

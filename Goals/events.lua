@@ -5,10 +5,19 @@
 --   Do NOT use badge tracking; badges can drop without a boss kill.
 
 local addonName = ...
-local Goals = _G.Goals
+local Goals = _G.Goals or {}
+_G.Goals = Goals
 
 Goals.Events = Goals.Events or {}
 local Events = Goals.Events
+
+local function normalizeBossName(name)
+    if not name then
+        return ""
+    end
+    local text = tostring(name)
+    return text:lower():gsub("[^%w]", "")
+end
 
 function Events:Init()
     if self.frame then
@@ -38,6 +47,7 @@ end
 
 function Events:BuildBossLookup()
     self.bossToEncounter = {}
+    self.bossToEncounterNormalized = {}
     self.encounterBosses = {}
     if type(_G.bossEncounters) ~= "table" then
         return
@@ -48,6 +58,13 @@ function Events:BuildBossLookup()
         self.encounterBosses[encounterName] = set
         for bossName in pairs(set) do
             self.bossToEncounter[bossName] = encounterName
+            local normalized = normalizeBossName(bossName)
+            if normalized ~= "" and not self.bossToEncounterNormalized[normalized] then
+                self.bossToEncounterNormalized[normalized] = {
+                    encounter = encounterName,
+                    boss = bossName,
+                }
+            end
         end
     end
     local allowTestBoss = Goals.Dev and Goals.Dev.enabled and Goals.db and Goals.db.settings and Goals.db.settings.devTestBoss
@@ -113,8 +130,13 @@ function Events:OnEvent(event, ...)
         end
         return
     end
-    if event == "ZONE_CHANGED_NEW_AREA" or event == "PLAYER_ENTERING_WORLD" then
+    if event == "ZONE_CHANGED_NEW_AREA" then
         self:ResetEncounter()
+        return
+    end
+    if event == "PLAYER_ENTERING_WORLD" then
+        self:ResetEncounter()
+        self:HandleGroupUpdate()
         return
     end
 end
@@ -159,19 +181,44 @@ function Events:HandleCombatLog(...)
     local eventType = select(2, ...)
     local sourceName = select(5, ...)
     local destName = select(9, ...)
-    if sourceName and self.bossToEncounter[sourceName] then
-        self:StartEncounter(self.bossToEncounter[sourceName], sourceName)
+    if sourceName then
+        local encounterName, canonicalBoss = self:GetEncounterForBossName(sourceName)
+        if encounterName then
+            self:StartEncounter(encounterName, canonicalBoss)
+        end
     end
-    if destName and self.bossToEncounter[destName] then
-        self:StartEncounter(self.bossToEncounter[destName], destName)
+    if destName then
+        local encounterName, canonicalBoss = self:GetEncounterForBossName(destName)
+        if encounterName then
+            self:StartEncounter(encounterName, canonicalBoss)
+        end
     end
     if eventType == "UNIT_DIED" and destName then
         if Goals.Dev and Goals.Dev.enabled and Goals.db.settings.devTestBoss and destName == "Garryowen Boar" then
             Goals:AwardBossKill("Garryowen Boar")
-        elseif self.bossToEncounter[destName] then
-            self:MarkBossDead(destName)
+        else
+            local encounterName = self:GetEncounterForBossName(destName)
+            if encounterName then
+                self:MarkBossDead(destName)
+            end
         end
     end
+end
+
+function Events:GetEncounterForBossName(bossName)
+    if not bossName then
+        return nil
+    end
+    local encounterName = self.bossToEncounter and self.bossToEncounter[bossName] or nil
+    if encounterName then
+        return encounterName, bossName
+    end
+    local normalized = normalizeBossName(bossName)
+    local info = self.bossToEncounterNormalized and self.bossToEncounterNormalized[normalized] or nil
+    if info then
+        return info.encounter, info.boss
+    end
+    return nil
 end
 
 function Events:StartEncounter(encounterName, bossName)
@@ -195,18 +242,18 @@ function Events:StartEncounter(encounterName, bossName)
 end
 
 function Events:MarkBossDead(bossName)
-    local encounterName = self.bossToEncounter[bossName]
+    local encounterName, canonicalBoss = self:GetEncounterForBossName(bossName)
     if not encounterName then
         return
     end
     if not Goals.encounter.active then
-        self:StartEncounter(encounterName, bossName)
+        self:StartEncounter(encounterName, canonicalBoss or bossName)
     end
     if Goals.encounter.name ~= encounterName then
         return
     end
     if Goals.encounter.remaining then
-        Goals.encounter.remaining[bossName] = nil
+        Goals.encounter.remaining[canonicalBoss or bossName] = nil
         if not next(Goals.encounter.remaining) then
             self:FinishEncounter(true)
         end

@@ -3,7 +3,8 @@
 -- Usage: local L = Goals.L; frame.Title:SetText(L.TITLE)
 
 local addonName = ...
-local Goals = _G.Goals
+local Goals = _G.Goals or {}
+_G.Goals = Goals
 
 Goals.L = {
     TITLE = "GOALS v2 - By: ErebusAres",
@@ -32,6 +33,7 @@ Goals.L = {
     LABEL_LOOT_METHOD = "Loot Method",
     LABEL_NO_PLAYERS = "No eligible players",
     BUTTON_ADD = "Add",
+    BUTTON_ADD_ALL = "All +1",
     BUTTON_SET = "Set",
     BUTTON_RESET = "Reset",
     BUTTON_UNDO = "Undo",
@@ -42,6 +44,7 @@ Goals.L = {
     CHECK_COMBINE_HISTORY = "Combine boss history entries",
     CHECK_MINIMAP = "Show minimap button",
     CHECK_PRESENT_ONLY = "Show present only",
+    CHECK_LOOT_EPIC_ONLY = "Epic+ only",
     CHECK_DEBUG = "Enable debug log",
     CHECK_RESET_MOUNT_PET = "Mounts/pets reset points",
     SETTINGS_DISENCHANTER = "Set Disenchanter",

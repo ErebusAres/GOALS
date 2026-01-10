@@ -3,7 +3,8 @@
 -- Usage: Goals.Comm:SendBossKill("Boss", names)
 
 local addonName = ...
-local Goals = _G.Goals
+local Goals = _G.Goals or {}
+_G.Goals = Goals
 
 Goals.Comm = Goals.Comm or {}
 local Comm = Goals.Comm

@@ -93,7 +93,7 @@ _G.bossEncounters = {
     ["Lady Vashj"] = { "Lady Vashj" },
     --T5 Tempest Keep Bosses
     ["Void Reaver"] = { "Void Reaver" },
-    ["Al'ar"] = { "Al'ar" },
+    ["Al'ar"] = { "Al'ar", "Alar" },
     ["High Astromancer Solarian"] = { "High Astromancer Solarian" },
     ["Kael'thas Sunstrider"] = { "Kael'thas Sunstrider" },
     --T6 Hyjal Summit Bosses
@@ -121,11 +121,11 @@ _G.bossEncounters = {
     --["Thurg"] = { "Thurg" }, -- Thurg is classified as a Boss, but is one of 8 possible adds in the Hex Lord Malacrass encounter. 
     ["Daakara"] = { "Daakara" },
     --T6 Sunwell Plateau Bosses
-    ["Sathrovarr the Corruptor"] = { "Sathrovarr the Corruptor" },
+    ["Kalecgos"] = { "Kalecgos", "Sathrovarr the Corruptor" },
     ["Brutallus"] = { "Brutallus" },
     ["Felmyst"] = { "Felmyst" },
     ["Eredar Twins"] = { "Lady Sacrolash", "Grand Warlock Alythess" },
-    ["Entropius"] = { "Entropius" }, --Entropius is the voidwalker form of M'uru ; ["M'uru"] = { "M'uru" }, 
+    ["M'uru"] = { "M'uru", "Entropius" },
     ["Kil'jaeden"] = { "Kil'jaeden" },
     --[[Wrath of the Lich King Raids]]
     --Vault of Archavon Bosses --Vault was added in 3.4.0

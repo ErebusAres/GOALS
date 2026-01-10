@@ -3,7 +3,8 @@
 -- Usage: Goals:InitDB() on PLAYER_LOGIN.
 
 local addonName = ...
-local Goals = _G.Goals
+local Goals = _G.Goals or {}
+_G.Goals = Goals
 
 Goals.defaults = {
     version = 1,
@@ -17,6 +18,7 @@ Goals.defaults = {
         resetMountPet = false,
         showPresentOnly = false,
         sortMode = "POINTS",
+        lootHistoryEpicOnly = false,
         minimap = {
             hide = false,
             angle = 220,

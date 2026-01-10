@@ -3,7 +3,8 @@
 -- Usage: if Goals.Dev.enabled then show Dev tab.
 
 local addonName = ...
-local Goals = _G.Goals
+local Goals = _G.Goals or {}
+_G.Goals = Goals
 
 Goals.Dev = Goals.Dev or {}
 local Dev = Goals.Dev

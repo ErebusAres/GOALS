@@ -2,7 +2,8 @@
 -- UI implementation and layout helpers.
 
 local addonName = ...
-local Goals = _G.Goals
+local Goals = _G.Goals or {}
+_G.Goals = Goals
 
 Goals.UI = Goals.UI or {}
 local UI = Goals.UI
@@ -10,8 +11,11 @@ local L = Goals.L
 
 local ROW_HEIGHT = 20
 local ROSTER_ROWS = 12
-local HISTORY_ROWS = 16
-local LOOT_ROWS = 12
+local HISTORY_ROWS = 18
+local LOOT_HISTORY_ROWS = 16
+local LOOT_HISTORY_ROW_HEIGHT = 28
+local LOOT_HISTORY_ROW_HEIGHT_COMPACT = 20
+local LOOT_ROWS = 18
 
 local function createLabel(parent, text, template)
     local label = parent:CreateFontString(nil, "ARTWORK", template or "GameFontNormal")
@@ -56,6 +60,41 @@ local function colorizeName(name)
         return Goals:ColorizeName(name)
     end
     return name
+end
+
+local function hasModifyAccess()
+    if Goals and Goals.Dev and Goals.Dev.enabled then
+        return true
+    end
+    if not Goals or not Goals.IsGroupLeader then
+        return false
+    end
+    local inRaid = Goals.IsInRaid and Goals:IsInRaid()
+    local inParty = Goals.IsInParty and Goals:IsInParty()
+    return (inRaid or inParty) and Goals:IsGroupLeader()
+end
+
+local function setDropdownEnabled(dropdown, enabled)
+    if not dropdown then
+        return
+    end
+    if UIDropDownMenu_EnableDropDown and UIDropDownMenu_DisableDropDown then
+        if enabled then
+            UIDropDownMenu_EnableDropDown(dropdown)
+        else
+            UIDropDownMenu_DisableDropDown(dropdown)
+        end
+        return
+    end
+    if enabled then
+        if dropdown.Enable then
+            dropdown:Enable()
+        end
+    else
+        if dropdown.Disable then
+            dropdown:Disable()
+        end
+    end
 end
 
 local function styleDropdown(dropdown, width)
@@ -168,9 +207,21 @@ function UI:GetLootHistoryEntries()
     if not Goals.db or not Goals.db.history then
         return list
     end
+    local epicOnly = Goals.db.settings and Goals.db.settings.lootHistoryEpicOnly
     for _, entry in ipairs(Goals.db.history) do
         if entry.kind == "LOOT_FOUND" or entry.kind == "LOOT_ASSIGN" then
-            table.insert(list, entry)
+            if epicOnly then
+                local itemLink = entry.data and entry.data.item or nil
+                if itemLink and GetItemInfo then
+                    local quality = select(3, GetItemInfo(itemLink))
+                    if quality and quality < 4 then
+                        entry = nil
+                    end
+                end
+            end
+            if entry then
+                table.insert(list, entry)
+            end
         end
     end
     return list
@@ -484,7 +535,7 @@ function UI:CreateOverviewTab(page)
 
         local icon = row:CreateTexture(nil, "ARTWORK")
         icon:SetSize(12, 12)
-        icon:SetTexture("Interface\\COMMON\\Indicator-Green")
+        icon:SetTexture("Interface\\FriendsFrame\\StatusIcon-Online")
         icon:SetPoint("LEFT", row, "LEFT", 0, 0)
         row.icon = icon
 
@@ -616,6 +667,11 @@ function UI:CreateOverviewTab(page)
     setButton:SetText(L.BUTTON_SET)
     setButton:SetPoint("LEFT", addButton, "RIGHT", 8, 0)
 
+    local addAllButton = CreateFrame("Button", nil, rightInset, "UIPanelButtonTemplate")
+    addAllButton:SetSize(80, 20)
+    addAllButton:SetText(L.BUTTON_ADD_ALL)
+    addAllButton:SetPoint("LEFT", setButton, "RIGHT", 8, 0)
+
     addButton:SetScript("OnClick", function()
         local name = UI.manualSelected
         local amount = tonumber(amountBox:GetText() or "") or 0
@@ -630,9 +686,13 @@ function UI:CreateOverviewTab(page)
             Goals:SetPoints(name, amount, "Manual set")
         end
     end)
+    addAllButton:SetScript("OnClick", function()
+        Goals:AwardPresentPoints(1, "Manual group +1")
+    end)
 
     self.manualAddButton = addButton
     self.manualSetButton = setButton
+    self.manualAddAllButton = addAllButton
 end
 
 function UI:CreateLootTab(page)
@@ -683,44 +743,63 @@ function UI:CreateLootTab(page)
     historyInset:SetPoint("TOPLEFT", page, "TOPLEFT", 2, -60)
     historyInset:SetPoint("BOTTOMLEFT", page, "BOTTOMLEFT", 2, 2)
     historyInset:SetWidth(350)
+    self.lootHistoryInset = historyInset
 
     local historyLabel = createLabel(historyInset, L.LABEL_LOOT_HISTORY, "GameFontNormal")
     historyLabel:SetPoint("TOPLEFT", historyInset, "TOPLEFT", 6, -6)
+
+    local epicOnlyCheck = CreateFrame("CheckButton", nil, page, "UICheckButtonTemplate")
+    epicOnlyCheck:SetPoint("LEFT", resetCheck, "RIGHT", 160, 0)
+    setCheckText(epicOnlyCheck, L.CHECK_LOOT_EPIC_ONLY)
+    epicOnlyCheck:SetScript("OnClick", function(selfBtn)
+        Goals.db.settings.lootHistoryEpicOnly = selfBtn:GetChecked() and true or false
+        UI:UpdateLootHistoryList()
+    end)
+    self.lootHistoryEpicCheck = epicOnlyCheck
 
     local historyScroll = CreateFrame("ScrollFrame", "GoalsLootHistoryScroll", historyInset, "FauxScrollFrameTemplate")
     historyScroll:SetPoint("TOPLEFT", historyInset, "TOPLEFT", 0, -22)
     historyScroll:SetPoint("BOTTOMRIGHT", historyInset, "BOTTOMRIGHT", -26, 4)
     historyScroll:SetScript("OnVerticalScroll", function(selfScroll, offset)
-        FauxScrollFrame_OnVerticalScroll(selfScroll, offset, ROW_HEIGHT, function()
+        FauxScrollFrame_OnVerticalScroll(selfScroll, offset, LOOT_HISTORY_ROW_HEIGHT, function()
             UI:UpdateLootHistoryList()
         end)
     end)
     self.lootHistoryScroll = historyScroll
 
     self.lootHistoryRows = {}
-    for i = 1, LOOT_ROWS do
+    for i = 1, LOOT_HISTORY_ROWS do
         local row = CreateFrame("Button", nil, historyInset)
-        row:SetHeight(ROW_HEIGHT)
-        row:SetPoint("TOPLEFT", historyInset, "TOPLEFT", 6, -22 - (i - 1) * ROW_HEIGHT)
+        row:SetHeight(LOOT_HISTORY_ROW_HEIGHT)
+        row:SetPoint("TOPLEFT", historyInset, "TOPLEFT", 6, -22 - (i - 1) * LOOT_HISTORY_ROW_HEIGHT)
         row:SetPoint("RIGHT", historyInset, "RIGHT", -6, 0)
 
         local timeText = row:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
-        timeText:SetPoint("LEFT", row, "LEFT", 0, 0)
+        timeText:SetPoint("TOPLEFT", row, "TOPLEFT", 0, -2)
         timeText:SetWidth(50)
         timeText:SetJustifyH("LEFT")
         row.timeText = timeText
 
         local text = row:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-        text:SetPoint("LEFT", timeText, "RIGHT", 8, 0)
+        text:SetPoint("TOPLEFT", timeText, "TOPRIGHT", 8, 0)
         text:SetPoint("RIGHT", row, "RIGHT", -4, 0)
         text:SetJustifyH("LEFT")
+        text:SetWordWrap(false)
         row.text = text
+
+        local resetText = row:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+        resetText:SetPoint("TOPLEFT", text, "BOTTOMLEFT", 0, -2)
+        resetText:SetPoint("RIGHT", row, "RIGHT", -4, 0)
+        resetText:SetJustifyH("LEFT")
+        resetText:SetWordWrap(false)
+        resetText:Hide()
+        row.resetText = resetText
 
         row:SetScript("OnEnter", function(selfRow)
             if selfRow.itemLink then
                 GameTooltip:SetOwner(selfRow, "ANCHOR_CURSOR")
                 GameTooltip:SetHyperlink(selfRow.itemLink)
-                if GameTooltip_ShowCompareItem then
+                if IsShiftKeyDown and IsShiftKeyDown() and GameTooltip_ShowCompareItem then
                     GameTooltip_ShowCompareItem(GameTooltip)
                 end
             end
@@ -729,8 +808,18 @@ function UI:CreateLootTab(page)
             GameTooltip:Hide()
         end)
         row:SetScript("OnMouseUp", function(selfRow, button)
-            if button == "LeftButton" and selfRow.itemLink and HandleModifiedItemClick then
-                HandleModifiedItemClick(selfRow.itemLink)
+            if button == "LeftButton" and selfRow.itemLink then
+                if IsModifiedClick and IsModifiedClick() and HandleModifiedItemClick then
+                    HandleModifiedItemClick(selfRow.itemLink)
+                    return
+                end
+                if ItemRefTooltip then
+                    ItemRefTooltip:SetOwner(UIParent, "ANCHOR_PRESERVE")
+                    ItemRefTooltip:SetHyperlink(selfRow.itemLink)
+                else
+                    GameTooltip:SetOwner(selfRow, "ANCHOR_CURSOR")
+                    GameTooltip:SetHyperlink(selfRow.itemLink)
+                end
             end
         end)
 
@@ -918,8 +1007,19 @@ function UI:CreateDevTab(page)
         Goals.Dev:SimulateLoot()
     end)
 
+    local syncBtn = CreateFrame("Button", nil, inset, "UIPanelButtonTemplate")
+    syncBtn:SetSize(160, 20)
+    syncBtn:SetText("Send Sync")
+    syncBtn:SetPoint("TOPLEFT", lootBtn, "BOTTOMLEFT", 0, -8)
+    syncBtn:SetScript("OnClick", function()
+        if Goals.Comm and Goals.Comm.BroadcastFullSync then
+            Goals.Comm:BroadcastFullSync()
+            Goals:Print("Sync sent.")
+        end
+    end)
+
     local devBossCheck = CreateFrame("CheckButton", nil, inset, "UICheckButtonTemplate")
-    devBossCheck:SetPoint("TOPLEFT", lootBtn, "BOTTOMLEFT", 0, -12)
+    devBossCheck:SetPoint("TOPLEFT", syncBtn, "BOTTOMLEFT", 0, -12)
     setCheckText(devBossCheck, L.DEV_TEST_BOSS)
     devBossCheck:SetScript("OnClick", function(selfBtn)
         Goals.db.settings.devTestBoss = selfBtn:GetChecked() and true or false
@@ -952,7 +1052,7 @@ function UI:UpdateRosterList()
     self.rosterData = data
     local offset = FauxScrollFrame_GetOffset(self.rosterScroll) or 0
     FauxScrollFrame_Update(self.rosterScroll, #data, ROSTER_ROWS, ROW_HEIGHT)
-    local hasAccess = Goals:HasLeaderAccess()
+    local hasAccess = hasModifyAccess()
     for i = 1, ROSTER_ROWS do
         local row = self.rosterRows[i]
         local entry = data[offset + i]
@@ -963,20 +1063,20 @@ function UI:UpdateRosterList()
             row.nameText:SetTextColor(Goals:GetClassColor(entry.class))
             row.pointsText:SetText(entry.points)
             if entry.present then
-                row.icon:SetTexture("Interface\\COMMON\\Indicator-Green")
-                row.icon:SetVertexColor(1, 1, 1)
-                if row.icon.SetDesaturated then
-                    row.icon:SetDesaturated(false)
-                end
+                row.icon:SetTexture("Interface\\FriendsFrame\\StatusIcon-Online")
             else
-                row.icon:SetTexture("Interface\\COMMON\\Indicator-Red")
-                row.icon:SetVertexColor(0.6, 0.6, 0.6)
-                if row.icon.SetDesaturated then
-                    row.icon:SetDesaturated(true)
-                end
+                row.icon:SetTexture("Interface\\FriendsFrame\\StatusIcon-Offline")
             end
+            row.icon:SetVertexColor(1, 1, 1)
             row.icon:Show()
             if hasAccess then
+                row.add:Show()
+                row.sub:Show()
+                row.reset:Show()
+                row.undo:Show()
+                if row.remove then
+                    row.remove:Show()
+                end
                 row.add:Enable()
                 row.sub:Enable()
                 row.reset:Enable()
@@ -984,14 +1084,18 @@ function UI:UpdateRosterList()
                 if row.remove then
                     row.remove:Enable()
                 end
+                row.pointsText:ClearAllPoints()
+                row.pointsText:SetPoint("RIGHT", row.add, "LEFT", -8, 0)
             else
-                row.add:Disable()
-                row.sub:Disable()
-                row.reset:Disable()
-                row.undo:Disable()
+                row.add:Hide()
+                row.sub:Hide()
+                row.reset:Hide()
+                row.undo:Hide()
                 if row.remove then
-                    row.remove:Disable()
+                    row.remove:Hide()
                 end
+                row.pointsText:ClearAllPoints()
+                row.pointsText:SetPoint("RIGHT", row, "RIGHT", -4, 0)
             end
             if Goals:GetUndoPoints(entry.name) == nil then
                 row.undo:Disable()
@@ -1023,8 +1127,15 @@ function UI:FormatHistoryEntry(entry)
         return string.format("%s: %d -> %d (%s)", colorizeName(data.player or ""), data.before or 0, data.after or 0, data.reason or "Set points")
     end
     if entry.kind == "LOOT_ASSIGN" then
-        local suffix = data.reset and " (points set to 0)" or ""
-        return string.format("Assigned to %s: %s%s", colorizeName(data.player or ""), data.item or "", suffix)
+        local itemLink = data.item or ""
+        local quality = itemLink ~= "" and select(3, GetItemInfo(itemLink)) or nil
+        if quality and quality < 4 then
+            return string.format("%s Looted: %s", colorizeName(data.player or ""), itemLink)
+        end
+        if data.reset then
+            return string.format("Gave %s: %s\n%s DKP Reset.", colorizeName(data.player or ""), itemLink, colorizeName(data.player or ""))
+        end
+        return string.format("Gave %s: %s", colorizeName(data.player or ""), itemLink)
     end
     if entry.kind == "LOOT_FOUND" then
         return entry.text or ""
@@ -1059,18 +1170,44 @@ function UI:UpdateLootHistoryList()
     local data = self:GetLootHistoryEntries()
     self.lootHistoryData = data
     local offset = FauxScrollFrame_GetOffset(self.lootHistoryScroll) or 0
-    FauxScrollFrame_Update(self.lootHistoryScroll, #data, LOOT_ROWS, ROW_HEIGHT)
-    for i = 1, LOOT_ROWS do
+    FauxScrollFrame_Update(self.lootHistoryScroll, #data, LOOT_HISTORY_ROWS, LOOT_HISTORY_ROW_HEIGHT_COMPACT)
+    local yOffset = -22
+    for i = 1, LOOT_HISTORY_ROWS do
         local row = self.lootHistoryRows[i]
         local entry = data[offset + i]
         if entry then
             row:Show()
             row.timeText:SetText(formatTime(entry.ts))
-            row.text:SetText(self:FormatHistoryEntry(entry))
+            if entry.kind == "LOOT_ASSIGN" then
+                local playerName = colorizeName(entry.data and entry.data.player or "")
+                local itemLink = entry.data and entry.data.item or ""
+                row.text:SetText(string.format("Gave %s: %s", playerName, itemLink))
+                if entry.data and entry.data.reset then
+                    row.resetText:SetText(string.format("%s DKP Reset.", playerName))
+                    row.resetText:Show()
+                    row:SetHeight(LOOT_HISTORY_ROW_HEIGHT)
+                else
+                    row.resetText:SetText("")
+                    row.resetText:Hide()
+                    row:SetHeight(LOOT_HISTORY_ROW_HEIGHT_COMPACT)
+                end
+            else
+                row.text:SetText(entry.text or "")
+                row.resetText:SetText("")
+                row.resetText:Hide()
+                row:SetHeight(LOOT_HISTORY_ROW_HEIGHT_COMPACT)
+            end
+            row:ClearAllPoints()
+            row:SetPoint("TOPLEFT", self.lootHistoryInset, "TOPLEFT", 6, yOffset)
+            row:SetPoint("RIGHT", self.lootHistoryInset, "RIGHT", -6, 0)
+            yOffset = yOffset - row:GetHeight()
             row.itemLink = entry.data and entry.data.item or nil
         else
             row:Hide()
             row.itemLink = nil
+            if row.resetText then
+                row.resetText:Hide()
+            end
         end
     end
 end
@@ -1079,7 +1216,7 @@ function UI:UpdateFoundLootList()
     if not self.foundLootScroll or not self.foundLootRows then
         return
     end
-    local hasAccess = Goals:HasLootAccess()
+    local hasAccess = hasModifyAccess()
     if self.foundHintLabel then
         self.foundHintLabel:SetShown(hasAccess)
     end
@@ -1122,7 +1259,7 @@ function UI:UpdateFoundLootList()
 end
 
 function UI:ShowFoundLootMenu(row, entry)
-    if not entry or not Goals:HasLootAccess() then
+    if not entry or not hasModifyAccess() then
         return
     end
     self.foundSelected = row
@@ -1157,6 +1294,9 @@ function UI:ShowFoundLootMenu(row, entry)
 end
 
 function UI:RefreshStatus()
+    if Goals and Goals.UpdateSyncStatus then
+        Goals:UpdateSyncStatus(true)
+    end
     if self.syncValue then
         local status = Goals.sync and Goals.sync.status or ""
         if Goals.sync then
@@ -1208,17 +1348,42 @@ function UI:Refresh()
     if self.debugCheck then
         self.debugCheck:SetChecked(Goals.db.settings.debug and true or false)
     end
+    if self.lootHistoryEpicCheck then
+        self.lootHistoryEpicCheck:SetChecked(Goals.db.settings.lootHistoryEpicOnly and true or false)
+    end
     if self.devBossCheck then
         self.devBossCheck:SetChecked(Goals.db.settings.devTestBoss and true or false)
     end
-    local hasAccess = Goals:HasLeaderAccess()
+    local hasAccess = hasModifyAccess()
     if self.manualAddButton then
         if hasAccess then
             self.manualAddButton:Enable()
             self.manualSetButton:Enable()
+            if self.manualAddAllButton then
+                self.manualAddAllButton:Enable()
+            end
+            if self.manualPlayerDropdown then
+                setDropdownEnabled(self.manualPlayerDropdown, true)
+            end
+            if self.amountBox then
+                if self.amountBox.Enable then
+                    self.amountBox:Enable()
+                end
+            end
         else
             self.manualAddButton:Disable()
             self.manualSetButton:Disable()
+            if self.manualAddAllButton then
+                self.manualAddAllButton:Disable()
+            end
+            if self.manualPlayerDropdown then
+                setDropdownEnabled(self.manualPlayerDropdown, false)
+            end
+            if self.amountBox then
+                if self.amountBox.Disable then
+                    self.amountBox:Disable()
+                end
+            end
         end
     end
     self:UpdateRosterList()
@@ -1244,16 +1409,24 @@ function UI:CreateMinimapButton()
             Goals:ToggleUI()
         end
     end)
-
-    local background = button:CreateTexture(nil, "BACKGROUND")
-    background:SetTexture("Interface\\Minimap\\UI-Minimap-Background")
-    background:SetSize(20, 20)
-    background:SetPoint("CENTER", 0, 0)
-    button.background = background
+    button:SetScript("OnEnter", function(selfBtn)
+        GameTooltip:SetOwner(selfBtn, "ANCHOR_LEFT")
+        GameTooltip:SetText("Goals v2")
+        local playerName = Goals and Goals.GetPlayerName and Goals:GetPlayerName() or ""
+        local entry = Goals and Goals.db and Goals.db.players and Goals.db.players[playerName] or nil
+        local points = entry and entry.points or 0
+        if playerName ~= "" then
+            GameTooltip:AddLine(string.format("%s has %d points", colorizeName(playerName), points), 1, 1, 1)
+        end
+        GameTooltip:Show()
+    end)
+    button:SetScript("OnLeave", function()
+        GameTooltip:Hide()
+    end)
 
     local icon = button:CreateTexture(nil, "ARTWORK")
     icon:SetTexture("Interface\\Icons\\INV_Misc_Map_01")
-    icon:SetSize(18, 18)
+    icon:SetSize(16, 16)
     icon:SetPoint("CENTER", 0, 0)
     icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
     button.icon = icon
@@ -1262,6 +1435,7 @@ function UI:CreateMinimapButton()
     border:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
     border:SetSize(54, 54)
     border:SetPoint("CENTER", button, "CENTER", 0, 0)
+    border:Hide()
     button.border = border
 
     button:SetScript("OnDragStart", function(selfBtn)
