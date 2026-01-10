@@ -16,4 +16,5 @@ dev.lua
 comm.lua
 bossEncounters.lua
 events.lua
+updates.lua
 gui.lua

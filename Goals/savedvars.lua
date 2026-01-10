@@ -19,6 +19,7 @@ Goals.defaults = {
         showPresentOnly = false,
         sortMode = "POINTS",
         lootHistoryEpicOnly = false,
+        updateSeenVersion = 1,
         minimap = {
             hide = false,
             angle = 220,

@@ -62,6 +62,22 @@ local function colorizeName(name)
     return name
 end
 
+local function getUpdateInfo()
+    local info = Goals and Goals.UpdateInfo or nil
+    local version = info and tonumber(info.version) or 0
+    local url = info and info.url or ""
+    return version, url
+end
+
+local function isUpdateAvailable()
+    if not Goals or not Goals.db or not Goals.db.settings then
+        return false
+    end
+    local version = getUpdateInfo()
+    local seenVersion = Goals.db.settings.updateSeenVersion or 0
+    return version > seenVersion
+end
+
 local function hasModifyAccess()
     if Goals and Goals.Dev and Goals.Dev.enabled then
         return true
@@ -438,6 +454,9 @@ function UI:CreateMainFrame()
         { key = "history", text = L.TAB_HISTORY, create = "CreateHistoryTab" },
         { key = "settings", text = L.TAB_SETTINGS, create = "CreateSettingsTab" },
     }
+    if self:ShouldShowUpdateTab() then
+        table.insert(tabDefs, { key = "update", text = L.TAB_UPDATE, create = "CreateUpdateTab" })
+    end
     if Goals.Dev and Goals.Dev.enabled then
         table.insert(tabDefs, { key = "dev", text = L.TAB_DEV, create = "CreateDevTab" })
         table.insert(tabDefs, { key = "debug", text = L.TAB_DEBUG, create = "CreateDebugTab" })
@@ -457,6 +476,9 @@ function UI:CreateMainFrame()
         else
             tab:SetPoint("LEFT", self.tabs[i - 1], "RIGHT", -12, 0)
         end
+        if def.key == "update" then
+            self.updateTab = tab
+        end
         self.tabs[i] = tab
 
         local page = CreateFrame("Frame", nil, frame)
@@ -474,6 +496,63 @@ function UI:CreateMainFrame()
     PanelTemplates_SetNumTabs(frame, #tabDefs)
     PanelTemplates_SetTab(frame, 1)
     self:SelectTab(1)
+    self:UpdateUpdateTabGlow()
+end
+
+function UI:ShouldShowUpdateTab()
+    if Goals and Goals.Dev and Goals.Dev.enabled then
+        return true
+    end
+    return isUpdateAvailable()
+end
+
+function UI:SetupUpdateTabGlow(tab)
+    if not tab or tab.glow then
+        return
+    end
+    local glow = tab:CreateTexture(nil, "OVERLAY")
+    glow:SetTexture("Interface\\Buttons\\UI-Panel-Button-Highlight")
+    glow:SetAllPoints(tab)
+    glow:SetBlendMode("ADD")
+    glow:Hide()
+    tab.glow = glow
+
+    local anim = tab:CreateAnimationGroup()
+    local fadeIn = anim:CreateAnimation("Alpha")
+    fadeIn:SetFromAlpha(0.2)
+    fadeIn:SetToAlpha(1)
+    fadeIn:SetDuration(0.8)
+    fadeIn:SetOrder(1)
+    local fadeOut = anim:CreateAnimation("Alpha")
+    fadeOut:SetFromAlpha(1)
+    fadeOut:SetToAlpha(0.2)
+    fadeOut:SetDuration(0.8)
+    fadeOut:SetOrder(2)
+    anim:SetLooping("REPEAT")
+    tab.glowAnim = anim
+end
+
+function UI:UpdateUpdateTabGlow()
+    if not self.updateTab then
+        return
+    end
+    local available = isUpdateAvailable()
+    if available then
+        self:SetupUpdateTabGlow(self.updateTab)
+        if self.updateTab.glow then
+            self.updateTab.glow:Show()
+        end
+        if self.updateTab.glowAnim and not self.updateTab.glowAnim:IsPlaying() then
+            self.updateTab.glowAnim:Play()
+        end
+    else
+        if self.updateTab.glowAnim then
+            self.updateTab.glowAnim:Stop()
+        end
+        if self.updateTab.glow then
+            self.updateTab.glow:Hide()
+        end
+    end
 end
 
 function UI:SelectTab(id)
@@ -978,6 +1057,75 @@ function UI:CreateSettingsTab(page)
     end, L.NONE_OPTION)
 end
 
+function UI:CreateUpdateTab(page)
+    local inset = CreateFrame("Frame", "GoalsUpdateInset", page, "InsetFrameTemplate")
+    inset:SetPoint("TOPLEFT", page, "TOPLEFT", 2, -8)
+    inset:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -2, 2)
+
+    local title = createLabel(inset, L.UPDATE_TITLE, "GameFontNormalLarge")
+    title:SetPoint("TOPLEFT", inset, "TOPLEFT", 12, -12)
+
+    local updateVersion, updateUrl = getUpdateInfo()
+    local statusText = L.UPDATE_NONE
+    if isUpdateAvailable() and updateVersion > 0 then
+        statusText = string.format(L.UPDATE_AVAILABLE, updateVersion)
+    end
+    local status = createLabel(inset, statusText, "GameFontHighlight")
+    status:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -8)
+
+    local urlLabel = createLabel(inset, L.UPDATE_DOWNLOAD_LABEL, "GameFontNormal")
+    urlLabel:SetPoint("TOPLEFT", status, "BOTTOMLEFT", 0, -14)
+
+    local urlText = createLabel(inset, updateUrl ~= "" and updateUrl or L.UPDATE_DOWNLOAD_MISSING, "GameFontHighlightSmall")
+    urlText:SetPoint("TOPLEFT", urlLabel, "BOTTOMLEFT", 0, -4)
+    urlText:SetWidth(520)
+    urlText:SetJustifyH("LEFT")
+
+    local downloadBtn = CreateFrame("Button", nil, inset, "UIPanelButtonTemplate")
+    downloadBtn:SetSize(120, 20)
+    downloadBtn:SetText(L.UPDATE_DOWNLOAD_BUTTON)
+    downloadBtn:SetPoint("LEFT", urlLabel, "RIGHT", 8, 0)
+    downloadBtn:SetScript("OnClick", function()
+        if updateUrl == "" then
+            return
+        end
+        if ChatFrame_OpenChat then
+            ChatFrame_OpenChat(updateUrl)
+        else
+            Goals:Print(updateUrl)
+        end
+    end)
+    if updateUrl == "" then
+        downloadBtn:Disable()
+    end
+
+    local copyHint = createLabel(inset, L.UPDATE_COPY_HINT, "GameFontHighlightSmall")
+    copyHint:SetPoint("TOPLEFT", urlText, "BOTTOMLEFT", 0, -6)
+
+    local step1 = createLabel(inset, L.UPDATE_STEP1, "GameFontHighlight")
+    step1:SetPoint("TOPLEFT", copyHint, "BOTTOMLEFT", 0, -14)
+    step1:SetWidth(520)
+    step1:SetJustifyH("LEFT")
+
+    local step2 = createLabel(inset, L.UPDATE_STEP2, "GameFontHighlight")
+    step2:SetPoint("TOPLEFT", step1, "BOTTOMLEFT", 0, -6)
+    step2:SetWidth(520)
+    step2:SetJustifyH("LEFT")
+
+    local step3 = createLabel(inset, L.UPDATE_STEP3, "GameFontHighlight")
+    step3:SetPoint("TOPLEFT", step2, "BOTTOMLEFT", 0, -6)
+    step3:SetWidth(520)
+    step3:SetJustifyH("LEFT")
+
+    local reloadBtn = CreateFrame("Button", nil, inset, "UIPanelButtonTemplate")
+    reloadBtn:SetSize(120, 20)
+    reloadBtn:SetText(L.UPDATE_RELOAD_BUTTON)
+    reloadBtn:SetPoint("LEFT", step3, "RIGHT", 8, 0)
+    reloadBtn:SetScript("OnClick", function()
+        ReloadUI()
+    end)
+end
+
 function UI:CreateDevTab(page)
     local inset = CreateFrame("Frame", "GoalsDevInset", page, "InsetFrameTemplate")
     inset:SetPoint("TOPLEFT", page, "TOPLEFT", 2, -8)
@@ -1311,6 +1459,7 @@ function UI:RefreshStatus()
     if self.disenchantValue then
         self.disenchantValue:SetText(self:GetDisenchanterStatus())
     end
+    self:UpdateUpdateTabGlow()
 end
 
 function UI:Refresh()
