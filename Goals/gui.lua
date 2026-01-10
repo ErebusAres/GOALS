@@ -344,25 +344,33 @@ function UI:CreateMainFrame()
     local close = _G[frame:GetName() .. "CloseButton"]
     if close then
         close:ClearAllPoints()
-        close:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -2, -2)
+        close:SetPoint("TOPRIGHT", frame, "TOPRIGHT", 5, 5)
     end
 
-    local minimize = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
-    minimize:SetSize(24, 24)
-    if minimize.GetNormalTexture then
-        minimize:GetNormalTexture():SetTexture("Interface\\Buttons\\UI-Panel-MinimizeButton-Up")
-    end
-    if minimize.GetPushedTexture then
-        minimize:GetPushedTexture():SetTexture("Interface\\Buttons\\UI-Panel-MinimizeButton-Down")
-    end
-    if minimize.GetHighlightTexture then
-        minimize:GetHighlightTexture():SetTexture("Interface\\Buttons\\UI-Panel-MinimizeButton-Highlight")
-    end
+    local minimize = CreateFrame("Button", nil, frame)
     if close then
-        minimize:SetPoint("RIGHT", close, "LEFT", -2, 0)
-        minimize:SetPoint("TOP", close, "TOP", 0, 0)
+        minimize:SetSize(close:GetWidth(), close:GetHeight())
+        minimize:SetFrameLevel(close:GetFrameLevel())
     else
-        minimize:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -28, -4)
+        minimize:SetSize(24, 24)
+    end
+    local normal = minimize:CreateTexture(nil, "ARTWORK")
+    normal:SetTexture("Interface\\Buttons\\UI-Panel-HideButton-Up")
+    normal:SetAllPoints(minimize)
+    minimize:SetNormalTexture(normal)
+    local pushed = minimize:CreateTexture(nil, "ARTWORK")
+    pushed:SetTexture("Interface\\Buttons\\UI-Panel-HideButton-Down")
+    pushed:SetAllPoints(minimize)
+    minimize:SetPushedTexture(pushed)
+    local highlight = minimize:CreateTexture(nil, "HIGHLIGHT")
+    highlight:SetTexture("Interface\\Buttons\\UI-Panel-HideButton-Highlight")
+    highlight:SetAllPoints(minimize)
+    minimize:SetHighlightTexture(highlight)
+    if close then
+        minimize:ClearAllPoints()
+        minimize:SetPoint("TOPRIGHT", close, "TOPLEFT", 7, 0)
+    else
+        minimize:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -28, -5)
     end
     minimize:SetScript("OnClick", function()
         UI:Minimize()
@@ -396,7 +404,7 @@ function UI:CreateMainFrame()
         if i == 1 then
             tab:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 12, -4)
         else
-            tab:SetPoint("LEFT", self.tabs[i - 1], "RIGHT", 0, 0)
+            tab:SetPoint("LEFT", self.tabs[i - 1], "RIGHT", -12, 0)
         end
         self.tabs[i] = tab
 
@@ -957,10 +965,17 @@ function UI:UpdateRosterList()
             if entry.present then
                 row.icon:SetTexture("Interface\\COMMON\\Indicator-Green")
                 row.icon:SetVertexColor(1, 1, 1)
+                if row.icon.SetDesaturated then
+                    row.icon:SetDesaturated(false)
+                end
             else
                 row.icon:SetTexture("Interface\\COMMON\\Indicator-Red")
-                row.icon:SetVertexColor(0.7, 0.7, 0.7)
+                row.icon:SetVertexColor(0.6, 0.6, 0.6)
+                if row.icon.SetDesaturated then
+                    row.icon:SetDesaturated(true)
+                end
             end
+            row.icon:Show()
             if hasAccess then
                 row.add:Enable()
                 row.sub:Enable()
