@@ -332,21 +332,32 @@ function UI:CreateMainFrame()
     frame:Hide()
 
     if frame.TitleText then
-        frame.TitleText:SetText(L.TITLE)
-        frame.TitleText:ClearAllPoints()
-        frame.TitleText:SetPoint("TOPLEFT", frame, "TOPLEFT", 16, -6)
-        frame.TitleText:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -70, -6)
-        frame.TitleText:SetJustifyH("LEFT")
+        frame.TitleText:Hide()
     end
+    local titleText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    titleText:SetText(L.TITLE)
+    titleText:SetPoint("TOPLEFT", frame, "TOPLEFT", 16, -6)
+    titleText:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -70, -6)
+    titleText:SetJustifyH("LEFT")
+    frame.titleText = titleText
 
     local close = _G[frame:GetName() .. "CloseButton"]
     if close then
-        close:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -4, -4)
+        close:ClearAllPoints()
+        close:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -2, -2)
     end
 
-    local minimize = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
-    minimize:SetSize(20, 20)
-    minimize:SetText(L.BUTTON_MINIMIZE)
+    local minimize = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
+    minimize:SetSize(24, 24)
+    if minimize.GetNormalTexture then
+        minimize:GetNormalTexture():SetTexture("Interface\\Buttons\\UI-Panel-MinimizeButton-Up")
+    end
+    if minimize.GetPushedTexture then
+        minimize:GetPushedTexture():SetTexture("Interface\\Buttons\\UI-Panel-MinimizeButton-Down")
+    end
+    if minimize.GetHighlightTexture then
+        minimize:GetHighlightTexture():SetTexture("Interface\\Buttons\\UI-Panel-MinimizeButton-Highlight")
+    end
     if close then
         minimize:SetPoint("RIGHT", close, "LEFT", -2, 0)
         minimize:SetPoint("TOP", close, "TOP", 0, 0)
@@ -385,7 +396,7 @@ function UI:CreateMainFrame()
         if i == 1 then
             tab:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 12, -4)
         else
-            tab:SetPoint("LEFT", self.tabs[i - 1], "RIGHT", 4, 0)
+            tab:SetPoint("LEFT", self.tabs[i - 1], "RIGHT", 0, 0)
         end
         self.tabs[i] = tab
 
@@ -464,9 +475,9 @@ function UI:CreateOverviewTab(page)
         row:SetPoint("RIGHT", rosterInset, "RIGHT", -6, 0)
 
         local icon = row:CreateTexture(nil, "ARTWORK")
-        icon:SetSize(8, 8)
+        icon:SetSize(12, 12)
         icon:SetTexture("Interface\\COMMON\\Indicator-Green")
-        icon:SetPoint("LEFT", row, "LEFT", 2, 0)
+        icon:SetPoint("LEFT", row, "LEFT", 0, 0)
         row.icon = icon
 
         local nameText = row:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
@@ -498,7 +509,13 @@ function UI:CreateOverviewTab(page)
         undo:SetText("U")
         row.undo = undo
 
-        undo:SetPoint("RIGHT", row, "RIGHT", -2, 0)
+        local remove = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
+        remove:SetSize(18, 16)
+        remove:SetText("X")
+        row.remove = remove
+
+        remove:SetPoint("RIGHT", row, "RIGHT", -2, 0)
+        undo:SetPoint("RIGHT", remove, "LEFT", -2, 0)
         reset:SetPoint("RIGHT", undo, "LEFT", -2, 0)
         sub:SetPoint("RIGHT", reset, "LEFT", -2, 0)
         add:SetPoint("RIGHT", sub, "LEFT", -2, 0)
@@ -522,6 +539,11 @@ function UI:CreateOverviewTab(page)
         undo:SetScript("OnClick", function()
             if row.playerName then
                 Goals:UndoPoints(row.playerName)
+            end
+        end)
+        remove:SetScript("OnClick", function()
+            if row.playerName then
+                Goals:RemovePlayer(row.playerName)
             end
         end)
 
@@ -933,20 +955,28 @@ function UI:UpdateRosterList()
             row.nameText:SetTextColor(Goals:GetClassColor(entry.class))
             row.pointsText:SetText(entry.points)
             if entry.present then
-                row.icon:SetVertexColor(0.2, 0.9, 0.2)
+                row.icon:SetTexture("Interface\\COMMON\\Indicator-Green")
+                row.icon:SetVertexColor(1, 1, 1)
             else
-                row.icon:SetVertexColor(0.5, 0.5, 0.5)
+                row.icon:SetTexture("Interface\\COMMON\\Indicator-Red")
+                row.icon:SetVertexColor(0.7, 0.7, 0.7)
             end
             if hasAccess then
                 row.add:Enable()
                 row.sub:Enable()
                 row.reset:Enable()
                 row.undo:Enable()
+                if row.remove then
+                    row.remove:Enable()
+                end
             else
                 row.add:Disable()
                 row.sub:Disable()
                 row.reset:Disable()
                 row.undo:Disable()
+                if row.remove then
+                    row.remove:Disable()
+                end
             end
             if Goals:GetUndoPoints(entry.name) == nil then
                 row.undo:Disable()
@@ -1215,8 +1245,8 @@ function UI:CreateMinimapButton()
 
     local border = button:CreateTexture(nil, "OVERLAY")
     border:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
-    border:SetPoint("TOPLEFT", button, "TOPLEFT", -5, 5)
-    border:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", 5, -5)
+    border:SetSize(54, 54)
+    border:SetPoint("CENTER", button, "CENTER", 0, 0)
     button.border = border
 
     button:SetScript("OnDragStart", function(selfBtn)

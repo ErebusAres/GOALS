@@ -166,10 +166,10 @@ function Events:HandleCombatLog(...)
         self:StartEncounter(self.bossToEncounter[destName], destName)
     end
     if eventType == "UNIT_DIED" and destName then
-        if self.bossToEncounter[destName] then
-            self:MarkBossDead(destName)
-        elseif Goals.Dev and Goals.Dev.enabled and Goals.db.settings.devTestBoss and destName == "Garryowen Boar" then
+        if Goals.Dev and Goals.Dev.enabled and Goals.db.settings.devTestBoss and destName == "Garryowen Boar" then
             Goals:AwardBossKill("Garryowen Boar")
+        elseif self.bossToEncounter[destName] then
+            self:MarkBossDead(destName)
         end
     end
 end

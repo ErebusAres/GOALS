@@ -401,6 +401,21 @@ function Goals:SetPoints(name, points, reason, skipSync, skipHistory, skipUndo)
     end
 end
 
+function Goals:RemovePlayer(name)
+    if not self.db or not self.db.players then
+        return
+    end
+    local key = self:NormalizeName(name)
+    if key == "" then
+        return
+    end
+    if self.db.players[key] then
+        self.db.players[key] = nil
+        self.undo[key] = nil
+        self:NotifyDataChanged()
+    end
+end
+
 function Goals:AwardBossKill(encounterName, members, skipSync)
     local roster = members or self:GetGroupMembers()
     if not roster or #roster == 0 then
@@ -698,9 +713,10 @@ function Goals:AssignLootSlot(slot, targetName, itemLink)
     end
     local link = itemLink or (GetLootSlotLink and GetLootSlotLink(slot) or nil)
     if self.state.lootFound then
-        for _, entry in ipairs(self.state.lootFound) do
+        for i, entry in ipairs(self.state.lootFound) do
             if entry.slot == slot then
                 entry.assignedTo = self:NormalizeName(targetName)
+                table.remove(self.state.lootFound, i)
                 break
             end
         end
