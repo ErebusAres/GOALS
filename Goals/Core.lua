@@ -26,8 +26,48 @@ Goals.pendingLoot = Goals.pendingLoot or {}
 Goals.pendingItemInfo = Goals.pendingItemInfo or {}
 Goals.undo = Goals.undo or {}
 
+Goals.classColors = Goals.classColors or {
+    DEATHKNIGHT = { r = 0.77, g = 0.12, b = 0.23 },
+    DRUID = { r = 1.0, g = 0.49, b = 0.04 },
+    HUNTER = { r = 0.67, g = 0.83, b = 0.45 },
+    MAGE = { r = 0.25, g = 0.78, b = 0.92 },
+    PALADIN = { r = 0.96, g = 0.55, b = 0.73 },
+    PRIEST = { r = 1.0, g = 1.0, b = 1.0 },
+    ROGUE = { r = 1.0, g = 0.96, b = 0.41 },
+    SHAMAN = { r = 0.0, g = 0.44, b = 0.87 },
+    WARLOCK = { r = 0.53, g = 0.53, b = 0.93 },
+    WARRIOR = { r = 0.78, g = 0.63, b = 0.43 },
+    UNKNOWN = { r = 0.5, g = 0.5, b = 0.5 },
+}
+
 local function prefixMessage(msg)
     DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffGoals|r: " .. msg)
+end
+
+function Goals:GetClassColor(class)
+    local key = class and strupper(class) or "UNKNOWN"
+    local color = self.classColors[key] or self.classColors.UNKNOWN
+    return color.r, color.g, color.b
+end
+
+function Goals:GetPlayerClass(name)
+    if not self.db or not self.db.players then
+        return nil
+    end
+    local entry = self.db.players[self:NormalizeName(name)]
+    return entry and entry.class
+end
+
+function Goals:GetPlayerColor(name)
+    return self:GetClassColor(self:GetPlayerClass(name))
+end
+
+function Goals:ColorizeName(name)
+    if not name or name == "" then
+        return ""
+    end
+    local r, g, b = self:GetPlayerColor(name)
+    return string.format("|cff%02x%02x%02x%s|r", r * 255, g * 255, b * 255, name)
 end
 
 function Goals:Print(msg)

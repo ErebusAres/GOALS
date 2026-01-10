@@ -51,6 +51,13 @@ local function getDropDownPart(dropdown, part)
     return nil
 end
 
+local function colorizeName(name)
+    if Goals and Goals.ColorizeName then
+        return Goals:ColorizeName(name)
+    end
+    return name
+end
+
 local function styleDropdown(dropdown, width)
     UIDropDownMenu_SetWidth(dropdown, width or 120)
     UIDropDownMenu_JustifyText(dropdown, "LEFT")
@@ -113,7 +120,7 @@ function UI:GetDisenchanterStatus()
     if not present[current] then
         return "Not present"
     end
-    return current
+    return colorizeName(current)
 end
 
 function UI:GetSortedPlayers()
@@ -185,12 +192,20 @@ function UI:SetupDropdown(dropdown, getList, onSelect, fallbackText)
         end
         for _, name in ipairs(list) do
             info = UIDropDownMenu_CreateInfo()
-            info.text = name
+            if dropdown.colorize and name ~= L.NONE_OPTION then
+                info.text = colorizeName(name)
+            else
+                info.text = name
+            end
             info.value = name
             info.func = function()
                 dropdown.selectedValue = name
                 UIDropDownMenu_SetSelectedValue(dropdown, name)
-                UIDropDownMenu_SetText(dropdown, name)
+                if dropdown.colorize and name ~= L.NONE_OPTION then
+                    UIDropDownMenu_SetText(dropdown, colorizeName(name))
+                else
+                    UIDropDownMenu_SetText(dropdown, name)
+                end
                 if dropdown.onSelect then
                     dropdown.onSelect(name)
                 end
@@ -202,7 +217,12 @@ function UI:SetupDropdown(dropdown, getList, onSelect, fallbackText)
 end
 
 function UI:SetDropdownText(dropdown, text)
-    UIDropDownMenu_SetText(dropdown, text or dropdown.fallbackText or L.SELECT_OPTION)
+    local value = text or dropdown.fallbackText or L.SELECT_OPTION
+    if dropdown.colorize and value ~= L.NONE_OPTION and value ~= dropdown.fallbackText then
+        UIDropDownMenu_SetText(dropdown, colorizeName(value))
+    else
+        UIDropDownMenu_SetText(dropdown, value)
+    end
 end
 
 function UI:SetupSortDropdown(dropdown)
@@ -313,18 +333,26 @@ function UI:CreateMainFrame()
 
     if frame.TitleText then
         frame.TitleText:SetText(L.TITLE)
-        frame.TitleText:SetPoint("TOP", 0, -4)
+        frame.TitleText:ClearAllPoints()
+        frame.TitleText:SetPoint("TOPLEFT", frame, "TOPLEFT", 16, -6)
+        frame.TitleText:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -70, -6)
+        frame.TitleText:SetJustifyH("LEFT")
     end
 
     local close = _G[frame:GetName() .. "CloseButton"]
     if close then
-        close:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -6, -6)
+        close:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -4, -4)
     end
 
     local minimize = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
-    minimize:SetSize(70, 18)
+    minimize:SetSize(20, 20)
     minimize:SetText(L.BUTTON_MINIMIZE)
-    minimize:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -84, -6)
+    if close then
+        minimize:SetPoint("RIGHT", close, "LEFT", -2, 0)
+        minimize:SetPoint("TOP", close, "TOP", 0, 0)
+    else
+        minimize:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -28, -4)
+    end
     minimize:SetScript("OnClick", function()
         UI:Minimize()
     end)
@@ -357,7 +385,7 @@ function UI:CreateMainFrame()
         if i == 1 then
             tab:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 12, -4)
         else
-            tab:SetPoint("LEFT", self.tabs[i - 1], "RIGHT", 6, 0)
+            tab:SetPoint("LEFT", self.tabs[i - 1], "RIGHT", 4, 0)
         end
         self.tabs[i] = tab
 
@@ -525,6 +553,7 @@ function UI:CreateOverviewTab(page)
     local playerDrop = CreateFrame("Frame", "GoalsManualPlayerDropdown", rightInset, "UIDropDownMenuTemplate")
     playerDrop:SetPoint("TOPLEFT", playerLabel, "BOTTOMLEFT", -10, -2)
     styleDropdown(playerDrop, 140)
+    playerDrop.colorize = true
     self.manualPlayerDropdown = playerDrop
     self.manualSelected = nil
     self:SetupDropdown(playerDrop, function()
@@ -533,12 +562,9 @@ function UI:CreateOverviewTab(page)
         UI.manualSelected = name
     end, L.SELECT_OPTION)
 
-    local amountLabel = createLabel(rightInset, L.LABEL_AMOUNT, "GameFontNormal")
-    amountLabel:SetPoint("TOPLEFT", playerLabel, "TOPLEFT", 180, 0)
-
     local amountBox = CreateFrame("EditBox", nil, rightInset, "InputBoxTemplate")
     amountBox:SetSize(60, 20)
-    amountBox:SetPoint("TOPLEFT", amountLabel, "BOTTOMLEFT", 0, -2)
+    amountBox:SetPoint("TOPLEFT", playerDrop, "TOPRIGHT", 16, -2)
     amountBox:SetAutoFocus(false)
     amountBox:SetNumeric(true)
     amountBox:SetNumber(1)
@@ -546,6 +572,9 @@ function UI:CreateOverviewTab(page)
         selfBox:ClearFocus()
     end)
     self.amountBox = amountBox
+
+    local amountLabel = createLabel(rightInset, L.LABEL_AMOUNT, "GameFontNormal")
+    amountLabel:SetPoint("BOTTOMLEFT", amountBox, "TOPLEFT", 0, 2)
 
     local addButton = CreateFrame("Button", nil, rightInset, "UIPanelButtonTemplate")
     addButton:SetSize(70, 20)
@@ -815,6 +844,7 @@ function UI:CreateSettingsTab(page)
     local disDrop = CreateFrame("Frame", "GoalsDisenchanterDropdown", inset, "UIDropDownMenuTemplate")
     disDrop:SetPoint("TOPLEFT", disLabel, "BOTTOMLEFT", -10, -2)
     styleDropdown(disDrop, 160)
+    disDrop.colorize = true
     self.disenchanterDropdown = disDrop
     self:SetupDropdown(disDrop, function()
         return UI:GetDisenchanterCandidates()
@@ -900,6 +930,7 @@ function UI:UpdateRosterList()
             row:Show()
             row.playerName = entry.name
             row.nameText:SetText(entry.name)
+            row.nameText:SetTextColor(Goals:GetClassColor(entry.class))
             row.pointsText:SetText(entry.points)
             if entry.present then
                 row.icon:SetVertexColor(0.2, 0.9, 0.2)
@@ -930,6 +961,32 @@ function UI:UpdateRosterList()
     end
 end
 
+function UI:FormatHistoryEntry(entry)
+    if not entry then
+        return ""
+    end
+    local data = entry.data or {}
+    if entry.kind == "BOSSKILL" and data.player then
+        return string.format("%s: %s +%d", data.encounter or "Boss", colorizeName(data.player), data.points or 0)
+    end
+    if entry.kind == "ADJUST" then
+        local delta = data.delta or 0
+        local sign = delta >= 0 and "+" or ""
+        return string.format("%s: %s%d (%s)", colorizeName(data.player or ""), sign, delta, data.reason or "Adjustment")
+    end
+    if entry.kind == "SET" then
+        return string.format("%s: %d -> %d (%s)", colorizeName(data.player or ""), data.before or 0, data.after or 0, data.reason or "Set points")
+    end
+    if entry.kind == "LOOT_ASSIGN" then
+        local suffix = data.reset and " (points set to 0)" or ""
+        return string.format("Assigned to %s: %s%s", colorizeName(data.player or ""), data.item or "", suffix)
+    end
+    if entry.kind == "LOOT_FOUND" then
+        return entry.text or ""
+    end
+    return entry.text or ""
+end
+
 function UI:UpdateHistoryList()
     if not self.historyScroll or not self.historyRows then
         return
@@ -943,7 +1000,7 @@ function UI:UpdateHistoryList()
         if entry then
             row:Show()
             row.timeText:SetText(formatTime(entry.ts))
-            row.text:SetText(entry.text or "")
+            row.text:SetText(self:FormatHistoryEntry(entry))
         else
             row:Hide()
         end
@@ -964,7 +1021,7 @@ function UI:UpdateLootHistoryList()
         if entry then
             row:Show()
             row.timeText:SetText(formatTime(entry.ts))
-            row.text:SetText(entry.text or "")
+            row.text:SetText(self:FormatHistoryEntry(entry))
             row.itemLink = entry.data and entry.data.item or nil
         else
             row:Hide()
@@ -1043,7 +1100,7 @@ function UI:ShowFoundLootMenu(row, entry)
         end
         for _, name in ipairs(players) do
             info = UIDropDownMenu_CreateInfo()
-            info.text = name
+            info.text = colorizeName(name)
             info.value = name
             info.func = function()
                 Goals:AssignLootSlot(entry.slot, name, entry.link)
@@ -1056,7 +1113,15 @@ end
 
 function UI:RefreshStatus()
     if self.syncValue then
-        self.syncValue:SetText(Goals.sync and Goals.sync.status or "")
+        local status = Goals.sync and Goals.sync.status or ""
+        if Goals.sync then
+            if Goals.sync.isMaster then
+                status = "Master (You)"
+            elseif Goals.sync.masterName and Goals.sync.masterName ~= "" then
+                status = "Following " .. colorizeName(Goals.sync.masterName)
+            end
+        end
+        self.syncValue:SetText(status)
     end
     if self.disenchantValue then
         self.disenchantValue:SetText(self:GetDisenchanterStatus())
@@ -1150,8 +1215,8 @@ function UI:CreateMinimapButton()
 
     local border = button:CreateTexture(nil, "OVERLAY")
     border:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
-    border:SetSize(52, 52)
-    border:SetPoint("CENTER", 0, 0)
+    border:SetPoint("TOPLEFT", button, "TOPLEFT", -5, 5)
+    border:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", 5, -5)
     button.border = border
 
     button:SetScript("OnDragStart", function(selfBtn)

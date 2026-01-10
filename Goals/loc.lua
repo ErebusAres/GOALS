@@ -6,7 +6,7 @@ local addonName = ...
 local Goals = _G.Goals
 
 Goals.L = {
-    TITLE = "Goals",
+    TITLE = "GOALS v2 - By: ErebusAres",
     TAB_OVERVIEW = "Overview",
     TAB_LOOT = "Loot",
     TAB_HISTORY = "History",
@@ -35,7 +35,7 @@ Goals.L = {
     BUTTON_SET = "Set",
     BUTTON_RESET = "Reset",
     BUTTON_UNDO = "Undo",
-    BUTTON_MINIMIZE = "Minimize",
+    BUTTON_MINIMIZE = "-",
     BUTTON_ASSIGN = "Assign",
     BUTTON_APPLY = "Apply",
     BUTTON_OPEN = "Open Goals",
