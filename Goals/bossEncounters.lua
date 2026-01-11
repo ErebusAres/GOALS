@@ -3,9 +3,6 @@
 -- Usage: _G.bossEncounters["Encounter Name"] = { "Boss Name", "Boss Name 2" }
 -- Table of boss creatures, including multi-boss encounters
 _G.bossEncounters = {
-    --[[Test Encounters]]
-    ["The Boars"] = { "Deranged Helboar", "Starving Helboar" }, --These boars are in HFP, Just North of Honor Hold.
-    ["Garryowen Boar"] = { "Garryowen Boar" }, --These boars are in GarryOwen.
     --[[Vanilla WoW Raids]]
     --T0 Zul'Gurub Bosses
     ["High Priestess Jeklik"] = { "High Priestess Jeklik" },
@@ -93,7 +90,7 @@ _G.bossEncounters = {
     ["Lady Vashj"] = { "Lady Vashj" },
     --T5 Tempest Keep Bosses
     ["Void Reaver"] = { "Void Reaver" },
-    ["Al'ar"] = { "Al'ar", "Alar" },
+    ["Al'ar"] = { "Al'ar" },
     ["High Astromancer Solarian"] = { "High Astromancer Solarian" },
     ["Kael'thas Sunstrider"] = { "Kael'thas Sunstrider" },
     --T6 Hyjal Summit Bosses
@@ -226,6 +223,21 @@ _G.bossEncounters = {
     ["Taerar"] = { "Taerar" }, -- Ashenvale World Boss
     ["Highlord Kruul"] = { "Highlord Kruul" } -- This Boss can be found in Searing Gorge, and many other locations.
     -- Add more creature names as needed
+}
+
+-- Encounter-specific rules for multi-kill or revive mechanics.
+_G.encounterRules = {
+    ["Opera Event, Romulo and Julianne"] = {
+        type = "pair_revive",
+        bosses = { "Romulo", "Julianne" },
+        requiredKills = 2,
+        reviveWindow = 10,
+    },
+    ["Al'ar"] = {
+        type = "multi_kill",
+        bosses = { "Al'ar" },
+        requiredKills = 2,
+    },
 }
 
 return bossEncounters

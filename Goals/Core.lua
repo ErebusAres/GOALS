@@ -95,18 +95,11 @@ function Goals:GetGroupChannel()
 end
 
 function Goals:AnnounceWipe(encounterName)
-    local channel = self:GetGroupChannel()
-    if not channel then
-        self:Print(string.format("%s wiped.", encounterName))
-        return
-    end
-    local idx = math.random(1, #wipeMessages)
-    local msg = string.format(wipeMessages[idx], encounterName or "Group")
-    SendChatMessage(msg, channel)
+    self:Print(string.format("%s wiped.", encounterName or "Group"))
 end
 
 function Goals:Debug(msg)
-    if self.db and self.db.settings and self.db.settings.debug and msg then
+    if self.Dev and self.Dev.enabled and msg then
         prefixMessage("|cff999999DEBUG|r " .. msg)
     end
 end
@@ -234,6 +227,10 @@ function Goals:SetLootMethod(method)
                 return false, "Unable to determine loot master index."
             end
             SetLootMethod("master", index)
+            return true
+        end
+        if self:IsInParty() then
+            SetLootMethod("master", "player")
             return true
         end
         SetLootMethod("master")
@@ -787,9 +784,49 @@ function Goals:RecordLootFound(itemLink)
     if not itemLink then
         return
     end
+    self.state.lootFoundSeenLinks = self.state.lootFoundSeenLinks or {}
+    local lastSeen = self.state.lootFoundSeenLinks[itemLink] or 0
+    if lastSeen > 0 and (time() - lastSeen) < 120 then
+        return
+    end
+    self.state.lootFoundSeenLinks[itemLink] = time()
     if self.History then
         self.History:AddLootFound(itemLink)
     end
+end
+
+function Goals:ApplyLootFound(id, ts, itemLink, sender)
+    if not itemLink then
+        return
+    end
+    self.state.lootFound = self.state.lootFound or {}
+    self.state.lootFoundSeenIds = self.state.lootFoundSeenIds or {}
+    self.state.lootFoundSeenLinks = self.state.lootFoundSeenLinks or {}
+    if id and id > 0 then
+        local key = tostring(id)
+        if ts then
+            key = key .. ":" .. tostring(ts)
+        end
+        if sender then
+            key = sender .. ":" .. key
+        end
+        if self.state.lootFoundSeenIds[key] then
+            return
+        end
+        self.state.lootFoundSeenIds[key] = true
+    end
+    table.insert(self.state.lootFound, 1, {
+        slot = 0,
+        link = itemLink,
+        ts = ts or time(),
+        assignedTo = nil,
+        synced = true,
+    })
+    self.state.lootFoundSeenLinks[itemLink] = ts or time()
+    if self.History then
+        self.History:AddLootFound(itemLink)
+    end
+    self:NotifyDataChanged()
 end
 
 function Goals:UpdateLootSlots(resetSeen)
@@ -801,21 +838,29 @@ function Goals:UpdateLootSlots(resetSeen)
     end
     local seen = self.state.lootFoundSeen or {}
     local list = {}
+    self.state.lootFoundCounter = self.state.lootFoundCounter or 0
     local count = GetNumLootItems and GetNumLootItems() or 0
     for slot = 1, count do
         local isItem = GetLootSlotType and GetLootSlotType(slot) == 1
         local link = GetLootSlotLink and GetLootSlotLink(slot) or nil
         if isItem or link then
             if link then
+                local entryTs = time()
+                self.state.lootFoundCounter = self.state.lootFoundCounter + 1
+                local entryId = self.state.lootFoundCounter
                 table.insert(list, {
                     slot = slot,
                     link = link,
-                    ts = time(),
+                    ts = entryTs,
                     assignedTo = nil,
+                    id = entryId,
                 })
                 if seen[slot] ~= link then
                     seen[slot] = link
                     self:RecordLootFound(link)
+                    if self.Comm and (self:IsSyncMaster() or (self.Dev and self.Dev.enabled)) then
+                        self.Comm:SendLootFound(entryId, entryTs, link)
+                    end
                 end
             end
         end
@@ -828,6 +873,8 @@ end
 function Goals:ClearFoundLoot()
     self.state.lootFound = {}
     self.state.lootFoundSeen = {}
+    self.state.lootFoundSeenIds = {}
+    self.state.lootFoundSeenLinks = {}
     self:NotifyDataChanged()
 end
 
@@ -862,6 +909,26 @@ function Goals:GetLootTargetIndex(name)
     return nil
 end
 
+function Goals:GetLootCandidateIndex(slot, name)
+    if not GetMasterLootCandidate or not slot then
+        return nil
+    end
+    local target = self:NormalizeName(name)
+    if target == "" then
+        return nil
+    end
+    for i = 1, 40 do
+        local candidate = GetMasterLootCandidate(slot, i)
+        if not candidate then
+            break
+        end
+        if self:NormalizeName(candidate) == target then
+            return i
+        end
+    end
+    return nil
+end
+
 function Goals:AssignLootSlot(slot, targetName, itemLink)
     if not slot or not targetName or targetName == "" then
         return
@@ -869,8 +936,26 @@ function Goals:AssignLootSlot(slot, targetName, itemLink)
     if not self:IsMasterLooter() and not (self.Dev and self.Dev.enabled) then
         return
     end
-    local index = self:GetLootTargetIndex(targetName)
+    local index = self:GetLootCandidateIndex(slot, targetName)
+    if (self.db and self.db.settings and self.db.settings.debug) or (self.Dev and self.Dev.enabled) then
+        local candidates = {}
+        if GetMasterLootCandidate then
+            for i = 1, 40 do
+                local candidate = GetMasterLootCandidate(slot, i)
+                if not candidate then
+                    break
+                end
+                table.insert(candidates, candidate)
+            end
+        end
+        self:Debug(string.format("AssignLootSlot slot=%s target=%s index=%s candidates=%s",
+            tostring(slot), tostring(targetName), tostring(index), table.concat(candidates, ", ")))
+    end
     if index == nil then
+        if (self.db and self.db.settings and self.db.settings.debug) or (self.Dev and self.Dev.enabled) then
+            self:Debug("AssignLootSlot failed: target not in master loot candidate list.")
+        end
+        self:Print("Target not eligible for this loot (out of range or not on loot table).")
         return
     end
     if GiveMasterLoot and slot > 0 then

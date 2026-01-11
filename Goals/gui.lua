@@ -546,30 +546,42 @@ function UI:SetupUpdateTabGlow(tab)
 
     local anim = glow:CreateAnimationGroup()
     local fadeIn = anim:CreateAnimation("Alpha")
-    fadeIn:SetFromAlpha(0.2)
-    fadeIn:SetToAlpha(1)
-    fadeIn:SetDuration(0.8)
-    fadeIn:SetOrder(1)
+    if fadeIn and fadeIn.SetFromAlpha then
+        fadeIn:SetFromAlpha(0.2)
+        fadeIn:SetToAlpha(1)
+        fadeIn:SetDuration(0.8)
+        fadeIn:SetOrder(1)
+    end
     local fadeOut = anim:CreateAnimation("Alpha")
-    fadeOut:SetFromAlpha(1)
-    fadeOut:SetToAlpha(0.2)
-    fadeOut:SetDuration(0.8)
-    fadeOut:SetOrder(2)
-    anim:SetLooping("REPEAT")
+    if fadeOut and fadeOut.SetFromAlpha then
+        fadeOut:SetFromAlpha(1)
+        fadeOut:SetToAlpha(0.2)
+        fadeOut:SetDuration(0.8)
+        fadeOut:SetOrder(2)
+    end
+    if anim.SetLooping then
+        anim:SetLooping("REPEAT")
+    end
     tab.glowAnim = anim
 
     local tabPulse = tab:CreateAnimationGroup()
     local tabIn = tabPulse:CreateAnimation("Alpha")
-    tabIn:SetFromAlpha(0.6)
-    tabIn:SetToAlpha(1)
-    tabIn:SetDuration(0.8)
-    tabIn:SetOrder(1)
+    if tabIn and tabIn.SetFromAlpha then
+        tabIn:SetFromAlpha(0.6)
+        tabIn:SetToAlpha(1)
+        tabIn:SetDuration(0.8)
+        tabIn:SetOrder(1)
+    end
     local tabOut = tabPulse:CreateAnimation("Alpha")
-    tabOut:SetFromAlpha(1)
-    tabOut:SetToAlpha(0.6)
-    tabOut:SetDuration(0.8)
-    tabOut:SetOrder(2)
-    tabPulse:SetLooping("REPEAT")
+    if tabOut and tabOut.SetFromAlpha then
+        tabOut:SetFromAlpha(1)
+        tabOut:SetToAlpha(0.6)
+        tabOut:SetDuration(0.8)
+        tabOut:SetOrder(2)
+    end
+    if tabPulse.SetLooping then
+        tabPulse:SetLooping("REPEAT")
+    end
     tab.tabPulse = tabPulse
 end
 
@@ -1107,13 +1119,13 @@ function UI:CreateHistoryTab(page)
         row:SetPoint("RIGHT", inset, "RIGHT", -6, 0)
 
         local timeText = row:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
-        timeText:SetPoint("LEFT", row, "LEFT", 0, 0)
+        timeText:SetPoint("TOPLEFT", row, "TOPLEFT", 4, -2)
         timeText:SetWidth(50)
         timeText:SetJustifyH("LEFT")
         row.timeText = timeText
 
         local text = row:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-        text:SetPoint("LEFT", timeText, "RIGHT", 8, 0)
+        text:SetPoint("TOPLEFT", timeText, "TOPRIGHT", 8, 0)
         text:SetPoint("RIGHT", row, "RIGHT", -4, 0)
         text:SetJustifyH("LEFT")
         row.text = text
@@ -1595,8 +1607,51 @@ function UI:ShowFoundLootMenu(row, entry)
     end
     local menu = self.foundLootMenu
     UIDropDownMenu_Initialize(menu, function(_, level)
-        local players = UI:GetPresentPlayerNames()
         local info
+        local players = UI:GetPresentPlayerNames()
+        if #players == 0 and Goals.GetGroupMembers then
+            local members = Goals:GetGroupMembers()
+            local seen = {}
+            for _, info in ipairs(members) do
+                local normalized = Goals:NormalizeName(info.name)
+                if normalized ~= "" and not seen[normalized] then
+                    seen[normalized] = true
+                    table.insert(players, info.name)
+                end
+            end
+        end
+        if entry.slot and entry.slot > 0 and GetMasterLootCandidate then
+            local candidates = {}
+            for i = 1, 40 do
+                local candidate = GetMasterLootCandidate(entry.slot, i)
+                if not candidate then
+                    break
+                end
+                local normalized = Goals:NormalizeName(candidate)
+                if normalized ~= "" then
+                    candidates[normalized] = true
+                end
+            end
+            if #players == 0 then
+                info = UIDropDownMenu_CreateInfo()
+                info.text = L.LABEL_NO_PLAYERS
+                info.notCheckable = true
+                UIDropDownMenu_AddButton(info, level)
+                return
+            end
+            for _, name in ipairs(players) do
+                local normalized = Goals:NormalizeName(name)
+                info = UIDropDownMenu_CreateInfo()
+                info.text = colorizeName(name)
+                info.value = name
+                info.disabled = not candidates[normalized]
+                info.func = function()
+                    Goals:AssignLootSlot(entry.slot, name, entry.link)
+                end
+                UIDropDownMenu_AddButton(info, level)
+            end
+            return
+        end
         if #players == 0 then
             info = UIDropDownMenu_CreateInfo()
             info.text = L.LABEL_NO_PLAYERS

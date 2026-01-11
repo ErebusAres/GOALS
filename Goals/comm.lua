@@ -147,6 +147,11 @@ function Comm:HandleMessage(msgType, payload, sender, channel)
         Goals:ApplyLootAssignment(name, itemLink)
         return
     end
+    if msgType == "LOOTFOUND" then
+        local id, ts, itemLink = payload:match("^(%d+)|(%d+)|(.+)$")
+        Goals:ApplyLootFound(tonumber(id) or 0, tonumber(ts) or 0, itemLink, sender)
+        return
+    end
     if msgType == "SETTING" then
         local key, value = payload:match("^(.-)|(.+)$")
         self:ApplySetting(key, value)
@@ -204,6 +209,14 @@ end
 function Comm:SendLootAssignment(name, itemLink)
     local payload = string.format("%s|%s", name, itemLink)
     self:Send("LOOT", payload)
+end
+
+function Comm:SendLootFound(id, ts, itemLink)
+    if not id or not ts or not itemLink then
+        return
+    end
+    local payload = string.format("%d|%d|%s", id, ts, itemLink)
+    self:Send("LOOTFOUND", payload)
 end
 
 function Comm:SendSetting(key, value)
