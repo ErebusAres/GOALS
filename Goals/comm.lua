@@ -226,7 +226,10 @@ function Comm:ApplyPoints(payload)
     for entry in string.gmatch(payload or "", "([^;]+)") do
         local name, points, class = entry:match("([^,]+),([^,]+),?(.*)")
         if name and points then
-            players[name] = { points = tonumber(points) or 0, class = class ~= "" and class or "UNKNOWN" }
+            local normalized = Goals:NormalizeName(name)
+            if normalized ~= "" and normalized ~= "Unknown" then
+                players[normalized] = { points = tonumber(points) or 0, class = class ~= "" and class or "UNKNOWN" }
+            end
         end
     end
     Goals.db.players = players

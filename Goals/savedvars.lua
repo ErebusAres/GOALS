@@ -53,5 +53,9 @@ function Goals:InitDB()
         GoalsDB = {}
     end
     self:CopyDefaults(GoalsDB, self.defaults)
+    if GoalsDB.players then
+        GoalsDB.players["Unknown"] = nil
+        GoalsDB.players["unknown"] = nil
+    end
     self.db = GoalsDB
 end

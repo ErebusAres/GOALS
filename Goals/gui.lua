@@ -381,21 +381,27 @@ function UI:ShowFloatingButton(show)
     end
 end
 
+local function registerSpecialFrame(name)
+    if not name then
+        return
+    end
+    if not UISpecialFrames then
+        UISpecialFrames = {}
+    end
+    for _, existing in ipairs(UISpecialFrames) do
+        if existing == name then
+            return
+        end
+    end
+    table.insert(UISpecialFrames, name)
+end
+
 function UI:CreateMainFrame()
     if self.frame then
         return
     end
-local frame
 
-local ok = pcall(function()
-    frame = CreateFrame("Frame", "GoalsMainFrame", UIParent, "BasicFrameTemplateWithInset")
-end)
-
-if not ok then
-    -- fall back to a template that exists
-    frame = CreateFrame("Frame", "GoalsMainFrame", UIParent, "UIPanelDialogTemplate")
-end
-
+    local frame = CreateFrame("Frame", "GoalsMainFrame", UIParent, "GoalsFrameTemplate")
     frame:SetSize(760, 520)
     frame:SetPoint("CENTER")
     frame:SetMovable(true)
@@ -405,11 +411,12 @@ end
     frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
     frame:Hide()
 
-    if frame.TitleText then
-        frame.TitleText:Hide()
+    local titleText = frame.TitleText
+    if not titleText then
+        titleText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     end
-    local titleText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     titleText:SetText(L.TITLE)
+    titleText:ClearAllPoints()
     titleText:SetPoint("TOPLEFT", frame, "TOPLEFT", 16, -6)
     titleText:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -70, -6)
     titleText:SetJustifyH("LEFT")
@@ -419,27 +426,24 @@ end
     if close then
         close:ClearAllPoints()
         close:SetPoint("TOPRIGHT", frame, "TOPRIGHT", 5, 5)
+        close:SetScript("OnClick", function()
+            frame:Hide()
+        end)
     end
 
-    local minimize = CreateFrame("Button", nil, frame)
+    registerSpecialFrame(frame:GetName())
+
+    local minimize = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
     if close then
         minimize:SetSize(close:GetWidth(), close:GetHeight())
-        minimize:SetFrameLevel(close:GetFrameLevel())
+        minimize:SetFrameLevel(close:GetFrameLevel() + 1)
     else
         minimize:SetSize(24, 24)
     end
-    local normal = minimize:CreateTexture(nil, "ARTWORK")
-    normal:SetTexture("Interface\\Buttons\\UI-Panel-HideButton-Up")
-    normal:SetAllPoints(minimize)
-    minimize:SetNormalTexture(normal)
-    local pushed = minimize:CreateTexture(nil, "ARTWORK")
-    pushed:SetTexture("Interface\\Buttons\\UI-Panel-HideButton-Down")
-    pushed:SetAllPoints(minimize)
-    minimize:SetPushedTexture(pushed)
-    local highlight = minimize:CreateTexture(nil, "HIGHLIGHT")
-    highlight:SetTexture("Interface\\Buttons\\UI-Panel-HideButton-Highlight")
-    highlight:SetAllPoints(minimize)
-    minimize:SetHighlightTexture(highlight)
+    minimize:SetNormalTexture("Interface\\Buttons\\UI-Panel-HideButton-Up")
+    minimize:SetPushedTexture("Interface\\Buttons\\UI-Panel-HideButton-Down")
+    minimize:SetHighlightTexture("Interface\\Buttons\\UI-Panel-HideButton-Highlight", "ADD")
+    minimize:SetAlpha(1)
     if close then
         minimize:ClearAllPoints()
         minimize:SetPoint("TOPRIGHT", close, "TOPLEFT", 7, 0)
@@ -704,7 +708,7 @@ function UI:CreateOverviewTab(page)
         local row = CreateFrame("Button", nil, rosterInset)
         row:SetHeight(ROW_HEIGHT)
         row:SetPoint("TOPLEFT", rosterInset, "TOPLEFT", 6, -22 - (i - 1) * ROW_HEIGHT)
-        row:SetPoint("RIGHT", rosterInset, "RIGHT", -6, 0)
+        row:SetPoint("RIGHT", rosterInset, "RIGHT", -26, 0)
 
         local icon = row:CreateTexture(nil, "ARTWORK")
         icon:SetSize(12, 12)

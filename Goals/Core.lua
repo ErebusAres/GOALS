@@ -454,7 +454,10 @@ end
 
 function Goals:EnsurePlayer(name, class)
     local key = self:NormalizeName(name)
-    if key == "" then
+    if key == "" or key == "Unknown" then
+        if self.db and self.db.players then
+            self.db.players[key] = nil
+        end
         return nil
     end
     local entry = self.db.players[key]
