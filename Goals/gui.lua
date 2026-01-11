@@ -10,7 +10,7 @@ local UI = Goals.UI
 local L = Goals.L
 
 local ROW_HEIGHT = 20
-local ROSTER_ROWS = 12
+local ROSTER_ROWS = 20
 local HISTORY_ROWS = 18
 local LOOT_HISTORY_ROWS = 16
 local LOOT_HISTORY_ROW_HEIGHT = 28
@@ -385,20 +385,21 @@ function UI:CreateMainFrame()
     if self.frame then
         return
     end
-    local frame = CreateFrame("Frame", "GoalsMainFrame", UIParent)
+local frame
+
+local ok = pcall(function()
+    frame = CreateFrame("Frame", "GoalsMainFrame", UIParent, "BasicFrameTemplateWithInset")
+end)
+
+if not ok then
+    -- fall back to a template that exists
+    frame = CreateFrame("Frame", "GoalsMainFrame", UIParent, "UIPanelDialogTemplate")
+end
+
     frame:SetSize(760, 520)
     frame:SetPoint("CENTER")
     frame:SetMovable(true)
     frame:EnableMouse(true)
-    frame:SetBackdrop({
-        bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
-        edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
-        tile = true,
-        tileSize = 32,
-        edgeSize = 32,
-        insets = { left = 8, right = 8, top = 8, bottom = 8 },
-    })
-    frame:SetBackdropColor(0, 0, 0, 0.8)
     frame:RegisterForDrag("LeftButton")
     frame:SetScript("OnDragStart", frame.StartMoving)
     frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
@@ -1403,7 +1404,7 @@ function UI:UpdateRosterList()
                     row.remove:Hide()
                 end
                 row.pointsText:ClearAllPoints()
-                row.pointsText:SetPoint("RIGHT", row, "RIGHT", -4, 0)
+                row.pointsText:SetPoint("RIGHT", row, "RIGHT", -28, 0)
             end
             if Goals:GetUndoPoints(entry.name) == nil then
                 row.undo:Disable()
