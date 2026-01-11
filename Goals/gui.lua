@@ -136,6 +136,17 @@ local function formatTime(ts)
     return date("%H:%M:%S", ts or time())
 end
 
+local function setShown(frame, show)
+    if not frame then
+        return
+    end
+    if show then
+        frame:Show()
+    else
+        frame:Hide()
+    end
+end
+
 function UI:GetAllPlayerNames()
     local names = {}
     if Goals.db and Goals.db.players then
@@ -659,7 +670,7 @@ function UI:SelectTab(id)
     end
     PanelTemplates_SetTab(self.frame, id)
     for index, page in ipairs(self.pages) do
-        page:SetShown(index == id)
+        setShown(page, index == id)
     end
     self.currentTab = id
     self:Refresh()
@@ -1531,10 +1542,10 @@ function UI:UpdateFoundLootList()
     end
     local hasAccess = hasModifyAccess()
     if self.foundHintLabel then
-        self.foundHintLabel:SetShown(hasAccess)
+        setShown(self.foundHintLabel, hasAccess)
     end
     if self.foundLockedLabel then
-        self.foundLockedLabel:SetShown(not hasAccess)
+        setShown(self.foundLockedLabel, not hasAccess)
     end
     if not hasAccess then
         self.foundLootScroll:Hide()
@@ -1577,7 +1588,7 @@ function UI:ShowFoundLootMenu(row, entry)
     end
     self.foundSelected = row
     for _, rowItem in ipairs(self.foundLootRows or {}) do
-        rowItem.selected:SetShown(rowItem == row)
+        setShown(rowItem.selected, rowItem == row)
     end
     if not self.foundLootMenu then
         self.foundLootMenu = CreateFrame("Frame", "GoalsFoundLootMenu", UIParent, "UIDropDownMenuTemplate")
