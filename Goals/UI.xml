@@ -224,4 +224,94 @@
             </Button>
         </Frames>
     </Frame>
+    <Frame name="GoalsInsetTemplate" virtual="true">
+        <Layers>
+            <Layer level="BACKGROUND">
+                <Texture name="$parentInsetBg" file="Interface\AddOns\Goals\Texture\FrameGeneral\UI-Background-Marble" horizTile="true" vertTile="true">
+                    <Anchors>
+                        <Anchor point="TOPLEFT" x="4" y="-4"/>
+                        <Anchor point="BOTTOMRIGHT" x="-6" y="4"/>
+                    </Anchors>
+                </Texture>
+            </Layer>
+            <Layer level="BORDER">
+                <Texture name="$parentInsetTopLeftCorner" file="Interface\AddOns\Goals\Texture\FrameGeneral\UI-Frame">
+                    <Size>
+                        <AbsDimension x="6" y="6"/>
+                    </Size>
+                    <Anchors>
+                        <Anchor point="TOPLEFT" relativeTo="$parentInsetBg"/>
+                    </Anchors>
+                    <TexCoords left="0.63281250" right="0.67968750" top="0.54687500" bottom="0.59375000"/>
+                </Texture>
+                <Texture name="$parentInsetTopRightCorner" file="Interface\AddOns\Goals\Texture\FrameGeneral\UI-Frame">
+                    <Size>
+                        <AbsDimension x="6" y="6"/>
+                    </Size>
+                    <Anchors>
+                        <Anchor point="TOPRIGHT" relativeTo="$parentInsetBg"/>
+                    </Anchors>
+                    <TexCoords left="0.90625000" right="0.95312500" top="0.21875000" bottom="0.26562500"/>
+                </Texture>
+                <Texture name="$parentInsetBotLeftCorner" file="Interface\AddOns\Goals\Texture\FrameGeneral\UI-Frame">
+                    <Size>
+                        <AbsDimension x="6" y="6"/>
+                    </Size>
+                    <Anchors>
+                        <Anchor point="BOTTOMLEFT" relativeTo="$parentInsetBg" y="-1"/>
+                    </Anchors>
+                    <TexCoords left="0.69531250" right="0.74218750" top="0.54687500" bottom="0.59375000"/>
+                </Texture>
+                <Texture name="$parentInsetBotRightCorner" file="Interface\AddOns\Goals\Texture\FrameGeneral\UI-Frame">
+                    <Size>
+                        <AbsDimension x="6" y="6"/>
+                    </Size>
+                    <Anchors>
+                        <Anchor point="BOTTOMRIGHT" relativeTo="$parentInsetBg" y="-1"/>
+                    </Anchors>
+                    <TexCoords left="0.75781250" right="0.80468750" top="0.54687500" bottom="0.59375000"/>
+                </Texture>
+                <Texture name="$parentInsetTopBorder" file="Interface\AddOns\Goals\Texture\FrameGeneral\_UI-Frame">
+                    <Size>
+                        <AbsDimension x="256" y="3"/>
+                    </Size>
+                    <Anchors>
+                        <Anchor point="TOPLEFT" relativeTo="$parentInsetTopLeftCorner" relativePoint="TOPRIGHT"/>
+                        <Anchor point="TOPRIGHT" relativeTo="$parentInsetTopRightCorner" relativePoint="TOPLEFT"/>
+                    </Anchors>
+                    <TexCoords left="0.00000000" right="1.00000000" top="0.08593750" bottom="0.10937500"/>
+                </Texture>
+                <Texture name="$parentInsetBottomBorder" file="Interface\AddOns\Goals\Texture\FrameGeneral\_UI-Frame">
+                    <Size>
+                        <AbsDimension x="256" y="3"/>
+                    </Size>
+                    <Anchors>
+                        <Anchor point="BOTTOMLEFT" relativeTo="$parentInsetBotLeftCorner" relativePoint="BOTTOMRIGHT"/>
+                        <Anchor point="BOTTOMRIGHT" relativeTo="$parentInsetBotRightCorner" relativePoint="BOTTOMLEFT"/>
+                    </Anchors>
+                    <TexCoords left="0.00000000" right="1.00000000" top="0.00781250" bottom="0.03125000"/>
+                </Texture>
+                <Texture name="$parentInsetLeftBorder" file="Interface\AddOns\Goals\Texture\FrameGeneral\!UI-Frame">
+                    <Size>
+                        <AbsDimension x="3" y="256"/>
+                    </Size>
+                    <Anchors>
+                        <Anchor point="TOPLEFT" relativeTo="$parentInsetTopLeftCorner" relativePoint="BOTTOMLEFT" x="0" y="0"/>
+                        <Anchor point="BOTTOMLEFT" relativeTo="$parentInsetBotLeftCorner" relativePoint="TOPLEFT"/>
+                    </Anchors>
+                    <TexCoords left="0.09375000" right="0.14062500" top="0.00000000" bottom="1.00000000"/>
+                </Texture>
+                <Texture name="$parentInsetRightBorder" file="Interface\AddOns\Goals\Texture\FrameGeneral\!UI-Frame">
+                    <Size>
+                        <AbsDimension x="3" y="256"/>
+                    </Size>
+                    <Anchors>
+                        <Anchor point="TOPRIGHT" relativeTo="$parentInsetTopRightCorner" relativePoint="BOTTOMRIGHT"/>
+                        <Anchor point="BOTTOMRIGHT" relativeTo="$parentInsetBotRightCorner" relativePoint="TOPRIGHT"/>
+                    </Anchors>
+                    <TexCoords left="0.01562500" right="0.06250000" top="0.00000000" bottom="1.00000000"/>
+                </Texture>
+            </Layer>
+        </Layers>
+    </Frame>
 </Ui>
