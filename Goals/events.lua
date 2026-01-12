@@ -162,14 +162,14 @@ end
 
 function Events:HandleGroupUpdate()
     Goals:EnsureGroupMembers()
-    if Goals.Comm and Goals.Comm.BroadcastVersion then
+    if Goals:CanSync() and Goals.Comm and Goals.Comm.BroadcastVersion then
         Goals.Comm:BroadcastVersion()
     end
     local wasMaster = Goals.sync.isMaster
     Goals:UpdateSyncStatus()
-    if Goals:IsSyncMaster() and not wasMaster then
+    if Goals:CanSync() and Goals:IsSyncMaster() and not wasMaster then
         Goals.Comm:BroadcastFullSync()
-    elseif not Goals:IsSyncMaster() then
+    elseif Goals:CanSync() and not Goals:IsSyncMaster() then
         Goals.sync.lastRequest = Goals.sync.lastRequest or 0
         if (GetTime() - Goals.sync.lastRequest) > 5 then
             Goals.sync.lastRequest = GetTime()

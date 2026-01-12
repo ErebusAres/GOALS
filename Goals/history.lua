@@ -70,12 +70,16 @@ function History:AddLootFound(itemLink)
     )
 end
 
-function History:AddLootAssigned(playerName, itemLink, resetPoints)
-    local suffix = resetPoints and " (points set to 0)" or ""
+function History:AddLootAssigned(playerName, itemLink, resetPoints, resetBefore)
+    local suffix = ""
+    if resetPoints then
+        local before = tonumber(resetBefore) or 0
+        suffix = string.format(" (%s's points set to 0 (-%d))", playerName or "", before)
+    end
     self:AddEntry(
         "LOOT_ASSIGN",
         string.format("Assigned to %s: %s%s", playerName, itemLink, suffix),
-        { player = playerName, item = itemLink, reset = resetPoints or false }
+        { player = playerName, item = itemLink, reset = resetPoints or false, resetBefore = resetBefore }
     )
 end
 

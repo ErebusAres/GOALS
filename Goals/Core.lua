@@ -26,6 +26,8 @@ Goals.pendingLoot = Goals.pendingLoot or {}
 Goals.pendingItemInfo = Goals.pendingItemInfo or {}
 Goals.undo = Goals.undo or {}
 
+local DEBUG_LOG_LIMIT = 400
+
 local wipeMessages = {
     "%s wiped. Better luck next time!",
     "%s wiped. Try again!",
@@ -99,8 +101,63 @@ function Goals:AnnounceWipe(encounterName)
 end
 
 function Goals:Debug(msg)
-    if self.Dev and self.Dev.enabled and msg then
-        prefixMessage("|cff999999DEBUG|r " .. msg)
+    if not (self.Dev and self.Dev.enabled) then
+        return
+    end
+    if not msg or msg == "" then
+        return
+    end
+    if not (self.db and self.db.settings and self.db.settings.debug) then
+        return
+    end
+    self:AppendDebugLog(msg)
+end
+
+function Goals:AppendDebugLog(msg)
+    if not self.db then
+        return
+    end
+    if type(self.db.debugLog) ~= "table" then
+        self.db.debugLog = {}
+    end
+    table.insert(self.db.debugLog, 1, { ts = time(), msg = tostring(msg) })
+    while #self.db.debugLog > DEBUG_LOG_LIMIT do
+        table.remove(self.db.debugLog)
+    end
+    if self.UI and self.UI.UpdateDebugLogList then
+        self.UI:UpdateDebugLogList()
+    end
+end
+
+function Goals:GetDebugLog()
+    if not self.db or type(self.db.debugLog) ~= "table" then
+        return {}
+    end
+    return self.db.debugLog
+end
+
+function Goals:GetDebugLogText()
+    local log = self:GetDebugLog()
+    local lines = {}
+    for _, entry in ipairs(log) do
+        local ts = entry.ts and date("%H:%M:%S", entry.ts) or ""
+        local msg = entry.msg or ""
+        if ts ~= "" then
+            table.insert(lines, ts .. " " .. msg)
+        else
+            table.insert(lines, msg)
+        end
+    end
+    return table.concat(lines, "\n")
+end
+
+function Goals:ClearDebugLog()
+    if not self.db then
+        return
+    end
+    self.db.debugLog = {}
+    if self.UI and self.UI.UpdateDebugLogList then
+        self.UI:UpdateDebugLogList()
     end
 end
 
@@ -313,6 +370,9 @@ function Goals:IsSyncMaster()
 end
 
 function Goals:CanSync()
+    if self.db and self.db.settings and self.db.settings.localOnly then
+        return false
+    end
     return self:IsSyncMaster() or (self.Dev and self.Dev.enabled)
 end
 
@@ -738,7 +798,12 @@ function Goals:HandleLootAssignment(playerName, itemLink, skipSync, forceRecord)
     local shouldReset = shouldTrack and self:ShouldResetForLoot(itemType, itemSubType, equipSlot)
     local resetApplied = shouldReset and not self:IsDisenchanter(playerName)
     if forceRecord or shouldTrack then
-        self:RecordLootAssignment(playerName, itemLink, resetApplied)
+        local before = nil
+        if resetApplied then
+            local entry = self.db and self.db.players and self.db.players[self:NormalizeName(playerName)] or nil
+            before = entry and entry.points or 0
+        end
+        self:RecordLootAssignment(playerName, itemLink, resetApplied, before)
         if self:CanSync() and not skipSync and self.Comm then
             if resetApplied then
                 self.Comm:SendLootReset(playerName, itemLink)
@@ -878,6 +943,53 @@ function Goals:ClearFoundLoot()
     self:NotifyDataChanged()
 end
 
+function Goals:ClearAllPointsLocal()
+    if not self.db or not self.db.players then
+        return
+    end
+    for _, entry in pairs(self.db.players) do
+        if type(entry) == "table" then
+            entry.points = 0
+        end
+    end
+    self.undo = {}
+    self:NotifyDataChanged()
+end
+
+function Goals:ClearPlayersLocal()
+    if not self.db then
+        return
+    end
+    self.db.players = {}
+    self.undo = {}
+    self:NotifyDataChanged()
+end
+
+function Goals:ClearLootHistoryLocal()
+    if not self.db or not self.db.settings then
+        return
+    end
+    self.db.settings.lootHistoryHiddenBefore = time()
+    self:ClearFoundLoot()
+    self:NotifyDataChanged()
+end
+
+function Goals:ClearHistoryLocal()
+    if not self.db then
+        return
+    end
+    self.db.history = {}
+    self:ClearFoundLoot()
+    self:NotifyDataChanged()
+end
+
+function Goals:ClearAllLocal()
+    self:ClearAllPointsLocal()
+    self:ClearPlayersLocal()
+    self:ClearLootHistoryLocal()
+    self:ClearHistoryLocal()
+end
+
 function Goals:GetFoundLoot()
     self.state.lootFound = self.state.lootFound or {}
     return self.state.lootFound
@@ -933,6 +1045,28 @@ function Goals:AssignLootSlot(slot, targetName, itemLink)
     if not slot or not targetName or targetName == "" then
         return
     end
+    if slot <= 0 then
+        if not (self.Dev and self.Dev.enabled) then
+            self:Print("Loot must be assigned from an open loot window.")
+            return
+        end
+        if not itemLink or itemLink == "" then
+            self:Debug("AssignLootSlot skipped: dev test requires an item link.")
+            return
+        end
+        if self.state.lootFound then
+            for i, entry in ipairs(self.state.lootFound) do
+                if entry.link == itemLink then
+                    entry.assignedTo = self:NormalizeName(targetName)
+                    table.remove(self.state.lootFound, i)
+                    break
+                end
+            end
+        end
+        self:HandleLootAssignment(targetName, itemLink, false, true)
+        self:NotifyDataChanged()
+        return
+    end
     if not self:IsMasterLooter() and not (self.Dev and self.Dev.enabled) then
         return
     end
@@ -977,10 +1111,10 @@ function Goals:AssignLootSlot(slot, targetName, itemLink)
     self:NotifyDataChanged()
 end
 
-function Goals:RecordLootAssignment(playerName, itemLink, resetApplied)
+function Goals:RecordLootAssignment(playerName, itemLink, resetApplied, resetBefore)
     self.state.lastLoot = { name = playerName, link = itemLink, ts = time() }
     if self.History then
-        self.History:AddLootAssigned(playerName, itemLink, resetApplied)
+        self.History:AddLootAssigned(playerName, itemLink, resetApplied, resetBefore)
     end
 end
 
@@ -990,7 +1124,9 @@ function Goals:ApplyLootAssignment(playerName, itemLink)
 end
 
 function Goals:ApplyLootReset(playerName, itemLink)
-    self:RecordLootAssignment(playerName, itemLink, true)
+    local entry = self.db and self.db.players and self.db.players[self:NormalizeName(playerName)] or nil
+    local before = entry and entry.points or 0
+    self:RecordLootAssignment(playerName, itemLink, true, before)
     self:SetPoints(playerName, 0, "Loot reset: " .. itemLink, true, true)
 end
 

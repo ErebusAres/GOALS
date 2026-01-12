@@ -11,8 +11,11 @@ local L = Goals.L
 
 local ROW_HEIGHT = 20
 local ROSTER_ROWS = 20
-local HISTORY_ROWS = 18
-local LOOT_HISTORY_ROWS = 16
+local HISTORY_ROWS = 17
+local HISTORY_ROW_HEIGHT_DOUBLE = 26
+local LOOT_HISTORY_ROWS = 15
+local DEBUG_ROWS = 16
+local DEBUG_ROW_HEIGHT = 16
 local LOOT_HISTORY_ROW_HEIGHT = 28
 local LOOT_HISTORY_ROW_HEIGHT_COMPACT = 20
 local LOOT_ROWS = 18
@@ -232,18 +235,23 @@ function UI:GetLootHistoryEntries()
         return list
     end
     local epicOnly = Goals.db.settings and Goals.db.settings.lootHistoryEpicOnly
+    local hiddenBefore = Goals.db.settings and Goals.db.settings.lootHistoryHiddenBefore or 0
     for _, entry in ipairs(Goals.db.history) do
         if entry.kind == "LOOT_FOUND" or entry.kind == "LOOT_ASSIGN" then
-            if epicOnly then
+            local include = true
+            if hiddenBefore > 0 and (entry.ts or 0) <= hiddenBefore then
+                include = false
+            end
+            if include and epicOnly then
                 local itemLink = entry.data and entry.data.item or nil
                 if itemLink and GetItemInfo then
                     local quality = select(3, GetItemInfo(itemLink))
                     if quality and quality < 4 then
-                        entry = nil
+                        include = false
                     end
                 end
             end
-            if entry then
+            if include then
                 table.insert(list, entry)
             end
         end
@@ -1135,20 +1143,26 @@ function UI:CreateHistoryTab(page)
 end
 
 function UI:CreateSettingsTab(page)
-    local inset = CreateFrame("Frame", "GoalsSettingsInset", page, "GoalsInsetTemplate")
-    inset:SetPoint("TOPLEFT", page, "TOPLEFT", 2, -8)
-    inset:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -2, 2)
-    self.settingsInset = inset
+    local leftInset = CreateFrame("Frame", "GoalsSettingsInset", page, "GoalsInsetTemplate")
+    leftInset:SetPoint("TOPLEFT", page, "TOPLEFT", 2, -8)
+    leftInset:SetPoint("BOTTOMLEFT", page, "BOTTOMLEFT", 2, 2)
+    leftInset:SetWidth(350)
+    self.settingsInset = leftInset
 
-    local combineCheck = CreateFrame("CheckButton", nil, inset, "UICheckButtonTemplate")
-    combineCheck:SetPoint("TOPLEFT", inset, "TOPLEFT", 12, -12)
+    local rightInset = CreateFrame("Frame", "GoalsSettingsActionsInset", page, "GoalsInsetTemplate")
+    rightInset:SetPoint("TOPLEFT", leftInset, "TOPRIGHT", 12, 0)
+    rightInset:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -2, 2)
+    self.settingsActionsInset = rightInset
+
+    local combineCheck = CreateFrame("CheckButton", nil, leftInset, "UICheckButtonTemplate")
+    combineCheck:SetPoint("TOPLEFT", leftInset, "TOPLEFT", 12, -12)
     setCheckText(combineCheck, L.CHECK_COMBINE_HISTORY)
     combineCheck:SetScript("OnClick", function(selfBtn)
         Goals:SetRaidSetting("combineBossHistory", selfBtn:GetChecked() and true or false)
     end)
     self.combineCheck = combineCheck
 
-    local minimapCheck = CreateFrame("CheckButton", nil, inset, "UICheckButtonTemplate")
+    local minimapCheck = CreateFrame("CheckButton", nil, leftInset, "UICheckButtonTemplate")
     minimapCheck:SetPoint("TOPLEFT", combineCheck, "BOTTOMLEFT", 0, -8)
     setCheckText(minimapCheck, L.CHECK_MINIMAP)
     minimapCheck:SetScript("OnClick", function(selfBtn)
@@ -1157,7 +1171,7 @@ function UI:CreateSettingsTab(page)
     end)
     self.minimapCheck = minimapCheck
 
-    local autoMinCheck = CreateFrame("CheckButton", nil, inset, "UICheckButtonTemplate")
+    local autoMinCheck = CreateFrame("CheckButton", nil, leftInset, "UICheckButtonTemplate")
     autoMinCheck:SetPoint("TOPLEFT", minimapCheck, "BOTTOMLEFT", 0, -8)
     setCheckText(autoMinCheck, L.CHECK_AUTO_MINIMIZE_COMBAT)
     autoMinCheck:SetScript("OnClick", function(selfBtn)
@@ -1165,10 +1179,18 @@ function UI:CreateSettingsTab(page)
     end)
     self.autoMinimizeCheck = autoMinCheck
 
-    local disLabel = createLabel(inset, L.SETTINGS_DISENCHANTER, "GameFontNormal")
-    disLabel:SetPoint("TOPLEFT", autoMinCheck, "BOTTOMLEFT", 0, -12)
+    local localOnlyCheck = CreateFrame("CheckButton", nil, leftInset, "UICheckButtonTemplate")
+    localOnlyCheck:SetPoint("TOPLEFT", autoMinCheck, "BOTTOMLEFT", 0, -8)
+    setCheckText(localOnlyCheck, "Disable sync (local only)")
+    localOnlyCheck:SetScript("OnClick", function(selfBtn)
+        Goals.db.settings.localOnly = selfBtn:GetChecked() and true or false
+    end)
+    self.localOnlyCheck = localOnlyCheck
 
-    local disDrop = CreateFrame("Frame", "GoalsDisenchanterDropdown", inset, "UIDropDownMenuTemplate")
+    local disLabel = createLabel(leftInset, L.SETTINGS_DISENCHANTER, "GameFontNormal")
+    disLabel:SetPoint("TOPLEFT", localOnlyCheck, "BOTTOMLEFT", 0, -12)
+
+    local disDrop = CreateFrame("Frame", "GoalsDisenchanterDropdown", leftInset, "UIDropDownMenuTemplate")
     disDrop:SetPoint("TOPLEFT", disLabel, "BOTTOMLEFT", -10, -2)
     styleDropdown(disDrop, 160)
     disDrop.colorize = true
@@ -1184,6 +1206,45 @@ function UI:CreateSettingsTab(page)
         end
         Goals:SetDisenchanter(name)
     end, L.NONE_OPTION)
+
+    local actionsTitle = createLabel(rightInset, "Data Management", "GameFontNormal")
+    actionsTitle:SetPoint("TOPLEFT", rightInset, "TOPLEFT", 10, -10)
+
+    local function createActionButton(text, onClick)
+        local btn = CreateFrame("Button", nil, rightInset, "UIPanelButtonTemplate")
+        btn:SetSize(180, 20)
+        btn:SetText(text)
+        btn:SetScript("OnClick", onClick)
+        return btn
+    end
+
+    local clearPointsBtn = createActionButton("Clear All Points", function()
+        if Goals and Goals.ClearAllPointsLocal then
+            Goals:ClearAllPointsLocal()
+        end
+    end)
+    clearPointsBtn:SetPoint("TOPLEFT", actionsTitle, "BOTTOMLEFT", 2, -10)
+
+    local clearPlayersBtn = createActionButton("Clear Players List", function()
+        if Goals and Goals.ClearPlayersLocal then
+            Goals:ClearPlayersLocal()
+        end
+    end)
+    clearPlayersBtn:SetPoint("TOPLEFT", clearPointsBtn, "BOTTOMLEFT", 0, -6)
+
+    local clearHistoryBtn = createActionButton("Clear History", function()
+        if Goals and Goals.ClearHistoryLocal then
+            Goals:ClearHistoryLocal()
+        end
+    end)
+    clearHistoryBtn:SetPoint("TOPLEFT", clearPlayersBtn, "BOTTOMLEFT", 0, -6)
+
+    local clearAllBtn = createActionButton("Clear All", function()
+        if Goals and Goals.ClearAllLocal then
+            Goals:ClearAllLocal()
+        end
+    end)
+    clearAllBtn:SetPoint("TOPLEFT", clearHistoryBtn, "BOTTOMLEFT", 0, -10)
 end
 
 function UI:CreateUpdateTab(page)
@@ -1364,6 +1425,14 @@ function UI:CreateDevTab(page)
         end
     end)
     self.devBossCheck = devBossCheck
+
+    local debugCheck = CreateFrame("CheckButton", nil, inset, "UICheckButtonTemplate")
+    debugCheck:SetPoint("TOPLEFT", devBossCheck, "BOTTOMLEFT", 0, -8)
+    setCheckText(debugCheck, "Enable debug log")
+    debugCheck:SetScript("OnClick", function(selfBtn)
+        Goals.db.settings.debug = selfBtn:GetChecked() and true or false
+    end)
+    self.debugCheck = debugCheck
 end
 
 function UI:CreateDebugTab(page)
@@ -1371,13 +1440,78 @@ function UI:CreateDebugTab(page)
     inset:SetPoint("TOPLEFT", page, "TOPLEFT", 2, -8)
     inset:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -2, 2)
 
-    local debugCheck = CreateFrame("CheckButton", nil, inset, "UICheckButtonTemplate")
-    debugCheck:SetPoint("TOPLEFT", inset, "TOPLEFT", 12, -12)
-    setCheckText(debugCheck, L.CHECK_DEBUG)
-    debugCheck:SetScript("OnClick", function(selfBtn)
-        Goals:SetRaidSetting("debug", selfBtn:GetChecked() and true or false)
+    local title = createLabel(inset, "Debug Log", "GameFontNormal")
+    title:SetPoint("TOPLEFT", inset, "TOPLEFT", 10, -10)
+
+    local clearBtn = CreateFrame("Button", nil, inset, "UIPanelButtonTemplate")
+    clearBtn:SetSize(100, 20)
+    clearBtn:SetText("Clear Log")
+    clearBtn:SetPoint("TOPRIGHT", inset, "TOPRIGHT", -10, -10)
+    clearBtn:SetScript("OnClick", function()
+        if Goals and Goals.ClearDebugLog then
+            Goals:ClearDebugLog()
+        end
     end)
-    self.debugCheck = debugCheck
+    self.debugClearButton = clearBtn
+
+    local copyBtn = CreateFrame("Button", nil, inset, "UIPanelButtonTemplate")
+    copyBtn:SetSize(100, 20)
+    copyBtn:SetText("Copy Log")
+    copyBtn:SetPoint("RIGHT", clearBtn, "LEFT", -6, 0)
+    copyBtn:SetScript("OnClick", function()
+        if UI and UI.PopulateDebugCopy then
+            UI:PopulateDebugCopy()
+        end
+    end)
+    self.debugCopyButton = copyBtn
+
+    local hint = createLabel(inset, "Select all text below and copy to share.", "GameFontHighlightSmall")
+    hint:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -4)
+    self.debugCopyHint = hint
+
+    local scroll = CreateFrame("ScrollFrame", "GoalsDebugLogScroll", inset, "FauxScrollFrameTemplate")
+    scroll:SetPoint("TOPLEFT", inset, "TOPLEFT", 2, -48)
+    scroll:SetPoint("BOTTOMRIGHT", inset, "BOTTOMRIGHT", -26, 110)
+    scroll:SetScript("OnVerticalScroll", function(selfScroll, offset)
+        FauxScrollFrame_OnVerticalScroll(selfScroll, offset, DEBUG_ROW_HEIGHT, function()
+            UI:UpdateDebugLogList()
+        end)
+    end)
+    self.debugLogScroll = scroll
+
+    self.debugLogRows = {}
+    for i = 1, DEBUG_ROWS do
+        local row = CreateFrame("Frame", nil, inset)
+        row:SetHeight(DEBUG_ROW_HEIGHT)
+        row:SetPoint("TOPLEFT", inset, "TOPLEFT", 8, -34 - (i - 1) * DEBUG_ROW_HEIGHT)
+        row:SetPoint("RIGHT", inset, "RIGHT", -6, 0)
+
+        local text = row:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+        text:SetPoint("LEFT", row, "LEFT", 0, 0)
+        text:SetPoint("RIGHT", row, "RIGHT", -4, 0)
+        text:SetJustifyH("LEFT")
+        text:SetWordWrap(false)
+        row.text = text
+
+        self.debugLogRows[i] = row
+    end
+
+    local copyScroll = CreateFrame("ScrollFrame", "GoalsDebugCopyScroll", inset, "UIPanelScrollFrameTemplate")
+    copyScroll:SetPoint("BOTTOMLEFT", inset, "BOTTOMLEFT", 6, 10)
+    copyScroll:SetPoint("BOTTOMRIGHT", inset, "BOTTOMRIGHT", -30, 10)
+    copyScroll:SetHeight(90)
+    self.debugCopyScroll = copyScroll
+
+    local edit = CreateFrame("EditBox", nil, copyScroll)
+    edit:SetMultiLine(true)
+    edit:SetAutoFocus(false)
+    edit:SetFontObject("ChatFontNormal")
+    edit:SetWidth(copyScroll:GetWidth())
+    edit:SetScript("OnEscapePressed", function(selfBox)
+        selfBox:ClearFocus()
+    end)
+    copyScroll:SetScrollChild(edit)
+    self.debugCopyBox = edit
 end
 
 function UI:UpdateRosterList()
@@ -1469,7 +1603,9 @@ function UI:FormatHistoryEntry(entry)
             return string.format("%s Looted: %s", colorizeName(data.player or ""), itemLink)
         end
         if data.reset then
-            return string.format("Gave %s: %s\n%s DKP Reset.", colorizeName(data.player or ""), itemLink, colorizeName(data.player or ""))
+            local before = tonumber(data.resetBefore) or 0
+            local playerName = colorizeName(data.player or "")
+            return string.format("Gave %s: %s\n%s's points set to 0 (-%d).", playerName, itemLink, playerName, before)
         end
         return string.format("Gave %s: %s", colorizeName(data.player or ""), itemLink)
     end
@@ -1486,6 +1622,7 @@ function UI:UpdateHistoryList()
     local data = Goals.db.history or {}
     local offset = FauxScrollFrame_GetOffset(self.historyScroll) or 0
     FauxScrollFrame_Update(self.historyScroll, #data, HISTORY_ROWS, ROW_HEIGHT)
+    local yOffset = -22
     for i = 1, HISTORY_ROWS do
         local row = self.historyRows[i]
         local entry = data[offset + i]
@@ -1493,10 +1630,51 @@ function UI:UpdateHistoryList()
             row:Show()
             row.timeText:SetText(formatTime(entry.ts))
             row.text:SetText(self:FormatHistoryEntry(entry))
+            local isReset = entry.kind == "LOOT_ASSIGN" and entry.data and entry.data.reset
+            if isReset then
+                row:SetHeight(HISTORY_ROW_HEIGHT_DOUBLE)
+            else
+                row:SetHeight(ROW_HEIGHT)
+            end
+            row:ClearAllPoints()
+            row:SetPoint("TOPLEFT", self.historyInset, "TOPLEFT", 6, yOffset)
+            row:SetPoint("RIGHT", self.historyInset, "RIGHT", -6, 0)
+            yOffset = yOffset - row:GetHeight()
         else
             row:Hide()
         end
     end
+end
+
+function UI:UpdateDebugLogList()
+    if not self.debugLogScroll or not self.debugLogRows then
+        return
+    end
+    local data = (Goals and Goals.GetDebugLog and Goals:GetDebugLog()) or {}
+    local offset = FauxScrollFrame_GetOffset(self.debugLogScroll) or 0
+    FauxScrollFrame_Update(self.debugLogScroll, #data, DEBUG_ROWS, DEBUG_ROW_HEIGHT)
+    for i = 1, DEBUG_ROWS do
+        local row = self.debugLogRows[i]
+        local entry = data[offset + i]
+        if entry then
+            row:Show()
+            local ts = entry.ts and formatTime(entry.ts) or ""
+            row.text:SetText(string.format("%s %s", ts, entry.msg or ""))
+        else
+            row:Hide()
+            row.text:SetText("")
+        end
+    end
+end
+
+function UI:PopulateDebugCopy()
+    if not self.debugCopyBox then
+        return
+    end
+    local text = Goals and Goals.GetDebugLogText and Goals:GetDebugLogText() or ""
+    self.debugCopyBox:SetText(text)
+    self.debugCopyBox:HighlightText()
+    self.debugCopyBox:SetFocus()
 end
 
 function UI:UpdateLootHistoryList()
@@ -1508,6 +1686,14 @@ function UI:UpdateLootHistoryList()
     local offset = FauxScrollFrame_GetOffset(self.lootHistoryScroll) or 0
     FauxScrollFrame_Update(self.lootHistoryScroll, #data, LOOT_HISTORY_ROWS, LOOT_HISTORY_ROW_HEIGHT_COMPACT)
     local yOffset = -22
+    local maxHeight = 0
+    if self.lootHistoryInset and self.lootHistoryInset.GetHeight then
+        maxHeight = self.lootHistoryInset:GetHeight() or 0
+    end
+    local bottomLimit = 0
+    if maxHeight > 0 then
+        bottomLimit = -(maxHeight - 4)
+    end
     for i = 1, LOOT_HISTORY_ROWS do
         local row = self.lootHistoryRows[i]
         local entry = data[offset + i]
@@ -1519,7 +1705,8 @@ function UI:UpdateLootHistoryList()
                 local itemLink = entry.data and entry.data.item or ""
                 row.text:SetText(string.format("Gave %s: %s", playerName, itemLink))
                 if entry.data and entry.data.reset then
-                    row.resetText:SetText(string.format("%s DKP Reset.", playerName))
+                    local before = tonumber(entry.data.resetBefore) or 0
+                    row.resetText:SetText(string.format("%s's points set to 0 (-%d).", playerName, before))
                     row.resetText:Show()
                     row:SetHeight(LOOT_HISTORY_ROW_HEIGHT)
                 else
@@ -1536,7 +1723,15 @@ function UI:UpdateLootHistoryList()
             row:ClearAllPoints()
             row:SetPoint("TOPLEFT", self.lootHistoryInset, "TOPLEFT", 6, yOffset)
             row:SetPoint("RIGHT", self.lootHistoryInset, "RIGHT", -6, 0)
-            yOffset = yOffset - row:GetHeight()
+            if bottomLimit ~= 0 and (yOffset - row:GetHeight()) < bottomLimit then
+                row:Hide()
+                row.itemLink = nil
+                if row.resetText then
+                    row.resetText:Hide()
+                end
+            else
+                yOffset = yOffset - row:GetHeight()
+            end
             row.itemLink = entry.data and entry.data.item or nil
         else
             row:Hide()
@@ -1726,6 +1921,9 @@ function UI:Refresh()
     if self.autoMinimizeCheck then
         self.autoMinimizeCheck:SetChecked(Goals.db.settings.autoMinimizeCombat and true or false)
     end
+    if self.localOnlyCheck then
+        self.localOnlyCheck:SetChecked(Goals.db.settings.localOnly and true or false)
+    end
     if self.resetMountPetCheck then
         self.resetMountPetCheck:SetChecked(Goals.db.settings.resetMountPet and true or false)
     end
@@ -1774,6 +1972,7 @@ function UI:Refresh()
     self:UpdateHistoryList()
     self:UpdateLootHistoryList()
     self:UpdateFoundLootList()
+    self:UpdateDebugLogList()
     self:UpdateMinimapButton()
 end
 

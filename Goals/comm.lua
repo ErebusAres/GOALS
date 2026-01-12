@@ -40,6 +40,9 @@ function Comm:GetChannel()
 end
 
 function Comm:Send(msgType, payload, channel, target)
+    if Goals.db and Goals.db.settings and Goals.db.settings.localOnly then
+        return
+    end
     local chan = channel or self:GetChannel()
     if not chan then
         return
@@ -67,6 +70,9 @@ end
 
 function Comm:OnMessage(prefix, message, channel, sender)
     if prefix ~= self.prefix then
+        return
+    end
+    if Goals.db and Goals.db.settings and Goals.db.settings.localOnly then
         return
     end
     if sender and Goals:NormalizeName(sender) == Goals:GetPlayerName() then
