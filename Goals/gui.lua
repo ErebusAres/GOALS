@@ -508,7 +508,12 @@ function UI:CreateMainFrame()
     if not titleText then
         titleText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     end
-    titleText:SetText(L.TITLE)
+    local version = Goals and Goals.UpdateInfo and Goals.UpdateInfo.version or nil
+    if version then
+        titleText:SetText(string.format("GOALS v2.%s - By: ErebusAres", tostring(version)))
+    else
+        titleText:SetText(L.TITLE)
+    end
     titleText:ClearAllPoints()
     titleText:SetPoint("TOPLEFT", frame, "TOPLEFT", 16, -6)
     titleText:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -70, -6)
