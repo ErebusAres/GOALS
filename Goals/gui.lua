@@ -787,9 +787,9 @@ function UI:UpdateLootOptionsVisibility()
     end
     local show = self.currentTab == self.lootTabId and self.lootOptionsOpen
     if self.lootOptionsOuter then
-        self.lootOptionsOuter:SetShown(show)
+        setShown(self.lootOptionsOuter, show)
     end
-    self.lootOptionsFrame:SetShown(show)
+    setShown(self.lootOptionsFrame, show)
 end
 
 function UI:CreateOverviewTab(page)
