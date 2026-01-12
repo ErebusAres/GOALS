@@ -27,6 +27,20 @@ Goals.pendingItemInfo = Goals.pendingItemInfo or {}
 Goals.undo = Goals.undo or {}
 
 local DEBUG_LOG_LIMIT = 400
+local function deepCopyTable(src)
+    if type(src) ~= "table" then
+        return src
+    end
+    local dst = {}
+    for key, value in pairs(src) do
+        if type(value) == "table" then
+            dst[key] = deepCopyTable(value)
+        else
+            dst[key] = value
+        end
+    end
+    return dst
+end
 
 local wipeMessages = {
     "%s wiped. Better luck next time!",
@@ -1261,9 +1275,190 @@ function Goals:IsGroupInCombat()
 end
 
 function Goals:NotifyDataChanged()
+    if self.db then
+        self.db.lastUpdated = time()
+    end
     if self.UI and self.UI.Refresh then
         self.UI:Refresh()
     end
+end
+
+function Goals:EnsureTableDefaults(tableData)
+    if type(tableData) ~= "table" then
+        return { players = {}, history = {}, settings = {}, debugLog = {}, lastUpdated = time() }
+    end
+    tableData.players = tableData.players or {}
+    tableData.history = tableData.history or {}
+    tableData.settings = tableData.settings or {}
+    tableData.debugLog = tableData.debugLog or {}
+    if not tableData.lastUpdated then
+        tableData.lastUpdated = time()
+    end
+    self:CopyDefaults(tableData, self.defaults)
+    return tableData
+end
+
+function Goals:GetTableRoot()
+    return self.dbRoot
+end
+
+function Goals:EnsureSaveTable(name)
+    if not self.dbRoot or not self.dbRoot.tables then
+        return nil
+    end
+    local key = self:NormalizeName(name or "")
+    if key == "" then
+        return nil
+    end
+    if not self.dbRoot.tables[key] then
+        self.dbRoot.tables[key] = {
+            players = {},
+            history = {},
+            settings = deepCopyTable(self.defaults.settings or {}),
+            debugLog = {},
+            lastUpdated = time(),
+        }
+    else
+        self.dbRoot.tables[key] = self:EnsureTableDefaults(self.dbRoot.tables[key])
+    end
+    return self.dbRoot.tables[key]
+end
+
+function Goals:CopyTableData(source, target)
+    if not source or not target then
+        return
+    end
+    target.players = deepCopyTable(source.players or {})
+    target.history = deepCopyTable(source.history or {})
+    target.settings = deepCopyTable(source.settings or {})
+    target.settings.devTestBoss = false
+    target.debugLog = {}
+    target.lastUpdated = time()
+end
+
+function Goals:SelectSaveTable(name)
+    if not self.dbRoot then
+        return
+    end
+    local tableData = self:EnsureSaveTable(name)
+    if not tableData then
+        return
+    end
+    self.dbRoot.activeTableName = name
+    self.db = tableData
+end
+
+function Goals:SaveCurrentTableAs(name)
+    if not self.dbRoot or not self.db or not name or name == "" then
+        return
+    end
+    local target = self:EnsureSaveTable(name)
+    if not target then
+        return
+    end
+    self:CopyTableData(self.db, target)
+    self:Print("Saving Table: " .. name)
+end
+
+function Goals:FindLatestTableForPlayer(name)
+    if not self.dbRoot or not self.dbRoot.tables then
+        return nil
+    end
+    local key = self:NormalizeName(name or "")
+    if key == "" then
+        return nil
+    end
+    local latestTable
+    local latestTs = 0
+    for _, tableData in pairs(self.dbRoot.tables) do
+        local players = tableData.players or {}
+        if players[key] and (tableData.lastUpdated or 0) > latestTs then
+            latestTable = tableData
+            latestTs = tableData.lastUpdated or 0
+        end
+    end
+    return latestTable
+end
+
+function Goals:GetSeenPlayersSnapshot()
+    local snapshot = {}
+    if not self.dbRoot or not self.dbRoot.tables then
+        return snapshot
+    end
+    for _, tableData in pairs(self.dbRoot.tables) do
+        local updated = tableData.lastUpdated or 0
+        for playerName, data in pairs(tableData.players or {}) do
+            local existing = snapshot[playerName]
+            if not existing or (existing.updated or 0) < updated then
+                snapshot[playerName] = {
+                    points = data.points or 0,
+                    class = data.class,
+                    updated = updated,
+                }
+            end
+        end
+    end
+    return snapshot
+end
+
+function Goals:MergeSeenPlayersIntoCurrent()
+    if not self.db or not self.db.players then
+        return
+    end
+    local snapshot = self:GetSeenPlayersSnapshot()
+    for name, data in pairs(snapshot) do
+        self.db.players[name] = { points = data.points or 0, class = data.class or "UNKNOWN" }
+    end
+    self:NotifyDataChanged()
+end
+
+function Goals:MergeSeenPlayersForGroup()
+    if not self.db or not self.db.players then
+        return
+    end
+    if not (self.db.settings and self.db.settings.tableAutoLoadSeen) then
+        return
+    end
+    local members = self.GetGroupMembers and self:GetGroupMembers() or {}
+    if #members == 0 then
+        return
+    end
+    local snapshot = self:GetSeenPlayersSnapshot()
+    local changed = false
+    for _, info in ipairs(members) do
+        local name = self:NormalizeName(info.name)
+        if name ~= "" and not self.db.players[name] then
+            local seen = snapshot[name]
+            if seen then
+                self.db.players[name] = { points = seen.points or 0, class = seen.class or info.class or "UNKNOWN" }
+                changed = true
+            end
+        end
+    end
+    if changed then
+        self:NotifyDataChanged()
+    end
+end
+
+function Goals:GetCombinedPlayers()
+    local combined = {}
+    if not self.dbRoot or not self.dbRoot.tables then
+        return combined
+    end
+    for _, tableData in pairs(self.dbRoot.tables) do
+        for name, data in pairs(tableData.players or {}) do
+            local entry = combined[name]
+            if not entry then
+                entry = { points = 0, class = data.class }
+                combined[name] = entry
+            end
+            entry.points = (entry.points or 0) + (data.points or 0)
+            if not entry.class and data.class then
+                entry.class = data.class
+            end
+        end
+    end
+    return combined
 end
 
 function Goals:ToggleUI()
@@ -1296,6 +1491,25 @@ function Goals:Init()
     if self.InitDB then
         self:InitDB()
     end
+    self.dbRoot = self.db
+    if self.dbRoot and not self.dbRoot.tables then
+        self.dbRoot.tables = {}
+    end
+    local playerName = self:GetPlayerName()
+    if self.dbRoot and (not self.dbRoot.activeTableName or self.dbRoot.activeTableName == "") then
+        self.dbRoot.activeTableName = playerName
+    end
+    if self.dbRoot and self.dbRoot.tables and not next(self.dbRoot.tables) then
+        local initial = {
+            players = self.dbRoot.players or {},
+            history = self.dbRoot.history or {},
+            settings = self.dbRoot.settings or {},
+            debugLog = {},
+            lastUpdated = time(),
+        }
+        self.dbRoot.tables[playerName] = initial
+    end
+    self:SelectSaveTable(playerName)
     if self.db and self.db.settings then
         local installed = self:GetInstalledUpdateVersion()
         if (self.db.settings.updateAvailableVersion or 0) < installed then

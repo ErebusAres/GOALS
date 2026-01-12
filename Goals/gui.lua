@@ -135,6 +135,19 @@ local function setupSudoDevPopup()
     }
 end
 
+local function setupSaveTableHelpPopup()
+    if not StaticPopupDialogs or StaticPopupDialogs.GOALS_SAVE_TABLE_HELP then
+        return
+    end
+    StaticPopupDialogs.GOALS_SAVE_TABLE_HELP = {
+        text = L.POPUP_SAVE_TABLE_HELP,
+        button1 = OKAY,
+        timeout = 0,
+        whileDead = 1,
+        hideOnEscape = 1,
+    }
+end
+
 local function setDropdownEnabled(dropdown, enabled)
     if not dropdown then
         return
@@ -278,9 +291,13 @@ function UI:GetSortedPlayers()
     if not Goals.db or not Goals.db.players then
         return list
     end
+    local playerMap = Goals.db.players
+    if Goals.db.settings and Goals.db.settings.tableCombined and Goals.GetCombinedPlayers then
+        playerMap = Goals:GetCombinedPlayers()
+    end
     local present = Goals:GetPresenceMap()
     local showPresentOnly = Goals.db.settings and Goals.db.settings.showPresentOnly
-    for name, data in pairs(Goals.db.players) do
+    for name, data in pairs(playerMap) do
         local isPresent = present[name] or false
         if not showPresentOnly or isPresent then
             table.insert(list, {
@@ -318,7 +335,7 @@ function UI:GetLootHistoryEntries()
     if not Goals.db or not Goals.db.history then
         return list
     end
-    local epicOnly = Goals.db.settings and Goals.db.settings.lootHistoryEpicOnly
+    local minQuality = Goals.db.settings and Goals.db.settings.lootHistoryMinQuality or 0
     local hiddenBefore = Goals.db.settings and Goals.db.settings.lootHistoryHiddenBefore or 0
     for _, entry in ipairs(Goals.db.history) do
         if entry.kind == "LOOT_FOUND" or entry.kind == "LOOT_ASSIGN" then
@@ -326,11 +343,11 @@ function UI:GetLootHistoryEntries()
             if hiddenBefore > 0 and (entry.ts or 0) <= hiddenBefore then
                 include = false
             end
-            if include and epicOnly then
+            if include and minQuality > 0 then
                 local itemLink = entry.data and entry.data.item or nil
                 if itemLink and GetItemInfo then
                     local quality = select(3, GetItemInfo(itemLink))
-                    if quality and quality < 4 then
+                    if quality and quality < minQuality then
                         include = false
                     end
                 end
@@ -1095,14 +1112,29 @@ function UI:CreateLootTab(page)
         setLootMethod("freeforall")
     end)
 
-    local epicOnlyCheck = CreateFrame("CheckButton", nil, page, "UICheckButtonTemplate")
-    epicOnlyCheck:SetPoint("TOPLEFT", lootLabel, "BOTTOMLEFT", 0, -8)
-    setCheckText(epicOnlyCheck, L.CHECK_LOOT_EPIC_ONLY)
-    epicOnlyCheck:SetScript("OnClick", function(selfBtn)
-        Goals.db.settings.lootHistoryEpicOnly = selfBtn:GetChecked() and true or false
-        UI:UpdateLootHistoryList()
+    local minFilterLabel = createLabel(page, L.LABEL_LOOT_HISTORY_FILTER, "GameFontNormal")
+    minFilterLabel:SetPoint("TOPLEFT", lootLabel, "BOTTOMLEFT", 0, -8)
+
+    local minFilterDrop = CreateFrame("Frame", "GoalsLootHistoryMinQuality", page, "UIDropDownMenuTemplate")
+    minFilterDrop:SetPoint("LEFT", minFilterLabel, "RIGHT", -6, -2)
+    styleDropdown(minFilterDrop, 140)
+    minFilterDrop.options = getQualityOptions()
+    UIDropDownMenu_Initialize(minFilterDrop, function(_, level)
+        for _, option in ipairs(minFilterDrop.options) do
+            local info = UIDropDownMenu_CreateInfo()
+            info.text = option.text
+            info.value = option.value
+            info.func = function()
+                Goals.db.settings.lootHistoryMinQuality = option.value
+                UIDropDownMenu_SetSelectedValue(minFilterDrop, option.value)
+                UIDropDownMenu_SetText(minFilterDrop, option.text)
+                UI:UpdateLootHistoryList()
+            end
+            info.checked = (Goals.db.settings.lootHistoryMinQuality or 0) == option.value
+            UIDropDownMenu_AddButton(info, level)
+        end
     end)
-    self.lootHistoryEpicCheck = epicOnlyCheck
+    self.lootHistoryMinQuality = minFilterDrop
 
     local historyInset = CreateFrame("Frame", "GoalsLootHistoryInset", page, "GoalsInsetTemplate")
     historyInset:SetPoint("TOPLEFT", page, "TOPLEFT", 2, -60)
@@ -1436,6 +1468,7 @@ function UI:CreateSettingsTab(page)
     self.localOnlyCheck = localOnlyCheck
 
     setupSudoDevPopup()
+    setupSaveTableHelpPopup()
     local sudoBtn = CreateFrame("Button", nil, leftInset, "UIPanelButtonTemplate")
     sudoBtn:SetSize(180, 20)
     sudoBtn:SetPoint("TOPLEFT", localOnlyCheck, "BOTTOMLEFT", 2, -12)
@@ -1508,6 +1541,45 @@ function UI:CreateSettingsTab(page)
     end)
     miniResetBtn:SetPoint("TOPLEFT", miniBtn, "BOTTOMLEFT", 0, -6)
     self.miniTrackerResetButton = miniResetBtn
+
+    local tableTitle = createLabel(rightInset, L.LABEL_SAVE_TABLES, "GameFontNormal")
+    tableTitle:SetPoint("TOPLEFT", miniResetBtn, "BOTTOMLEFT", 0, -16)
+
+    local helpBtn = CreateFrame("Button", nil, rightInset, "UIPanelButtonTemplate")
+    helpBtn:SetSize(22, 20)
+    helpBtn:SetText("?")
+    helpBtn:SetPoint("LEFT", tableTitle, "RIGHT", 6, 0)
+    helpBtn:SetScript("OnClick", function()
+        if StaticPopup_Show then
+            StaticPopup_Show("GOALS_SAVE_TABLE_HELP")
+        end
+    end)
+    self.saveTableHelpButton = helpBtn
+
+    local autoSeenCheck = CreateFrame("CheckButton", nil, rightInset, "UICheckButtonTemplate")
+    autoSeenCheck:SetPoint("TOPLEFT", tableTitle, "BOTTOMLEFT", 0, -6)
+    setCheckText(autoSeenCheck, L.CHECK_AUTOLOAD_SEEN)
+    autoSeenCheck:SetScript("OnClick", function(selfBtn)
+        Goals.db.settings.tableAutoLoadSeen = selfBtn:GetChecked() and true or false
+    end)
+    self.autoLoadSeenCheck = autoSeenCheck
+
+    local combinedCheck = CreateFrame("CheckButton", nil, rightInset, "UICheckButtonTemplate")
+    combinedCheck:SetPoint("TOPLEFT", autoSeenCheck, "BOTTOMLEFT", 0, -6)
+    setCheckText(combinedCheck, L.CHECK_COMBINED_TABLES)
+    combinedCheck:SetScript("OnClick", function(selfBtn)
+        Goals.db.settings.tableCombined = selfBtn:GetChecked() and true or false
+        Goals:NotifyDataChanged()
+    end)
+    self.combinedTablesCheck = combinedCheck
+
+    local syncSeenBtn = createActionButton(L.BUTTON_SYNC_SEEN, function()
+        if Goals and Goals.MergeSeenPlayersIntoCurrent then
+            Goals:MergeSeenPlayersIntoCurrent()
+        end
+    end)
+    syncSeenBtn:SetPoint("TOPLEFT", combinedCheck, "BOTTOMLEFT", 4, -8)
+    self.syncSeenButton = syncSeenBtn
 end
 
 function UI:CreateUpdateTab(page)
@@ -2199,6 +2271,12 @@ function UI:Refresh()
             self.sudoDevButton:SetText(L.BUTTON_SUDO_DEV_ENABLE)
         end
     end
+    if self.autoLoadSeenCheck then
+        self.autoLoadSeenCheck:SetChecked(Goals.db.settings.tableAutoLoadSeen and true or false)
+    end
+    if self.combinedTablesCheck then
+        self.combinedTablesCheck:SetChecked(Goals.db.settings.tableCombined and true or false)
+    end
     if self.resetMountsCheck then
         self.resetMountsCheck:SetChecked(Goals.db.settings.resetMounts and true or false)
     end
@@ -2217,8 +2295,10 @@ function UI:Refresh()
     if self.debugCheck then
         self.debugCheck:SetChecked(Goals.db.settings.debug and true or false)
     end
-    if self.lootHistoryEpicCheck then
-        self.lootHistoryEpicCheck:SetChecked(Goals.db.settings.lootHistoryEpicOnly and true or false)
+    if self.lootHistoryMinQuality then
+        local value = Goals.db.settings.lootHistoryMinQuality or 0
+        UIDropDownMenu_SetSelectedValue(self.lootHistoryMinQuality, value)
+        UIDropDownMenu_SetText(self.lootHistoryMinQuality, getQualityLabel(value))
     end
     self:SyncResetQualityDropdown()
     if self.devBossCheck then

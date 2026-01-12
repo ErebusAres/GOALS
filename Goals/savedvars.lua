@@ -11,6 +11,8 @@ Goals.defaults = {
     players = {},
     history = {},
     debugLog = {},
+    tables = {},
+    activeTableName = "",
     settings = {
         combineBossHistory = true,
         disenchanter = "",
@@ -24,9 +26,11 @@ Goals.defaults = {
         resetMinQuality = 4,
         showPresentOnly = false,
         sortMode = "POINTS",
-        lootHistoryEpicOnly = false,
+        lootHistoryMinQuality = 4,
         lootHistoryHiddenBefore = 0,
         localOnly = false,
+        tableAutoLoadSeen = true,
+        tableCombined = false,
         sudoDev = false,
         updateSeenVersion = 1,
         updateAvailableVersion = 0,
@@ -82,6 +86,12 @@ function Goals:InitDB()
     end
     if GoalsDB.settings and GoalsDB.settings.resetTokens == nil then
         GoalsDB.settings.resetTokens = true
+    end
+    if GoalsDB.settings and GoalsDB.settings.lootHistoryEpicOnly ~= nil then
+        if GoalsDB.settings.lootHistoryMinQuality == nil then
+            GoalsDB.settings.lootHistoryMinQuality = GoalsDB.settings.lootHistoryEpicOnly and 4 or 0
+        end
+        GoalsDB.settings.lootHistoryEpicOnly = nil
     end
     if GoalsDB.players then
         GoalsDB.players["Unknown"] = nil

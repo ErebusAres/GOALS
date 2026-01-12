@@ -162,6 +162,9 @@ end
 
 function Events:HandleGroupUpdate()
     Goals:EnsureGroupMembers()
+    if Goals.MergeSeenPlayersForGroup then
+        Goals:MergeSeenPlayersForGroup()
+    end
     if Goals:CanSync() and Goals.Comm and Goals.Comm.BroadcastVersion then
         Goals.Comm:BroadcastVersion()
     end
