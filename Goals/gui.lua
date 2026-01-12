@@ -16,6 +16,11 @@ local HISTORY_ROW_HEIGHT_DOUBLE = 26
 local LOOT_HISTORY_ROWS = 15
 local DEBUG_ROWS = 16
 local DEBUG_ROW_HEIGHT = 16
+local MINI_ROW_HEIGHT = 16
+local MINI_HEADER_HEIGHT = 22
+local MINI_FRAME_WIDTH = 200
+local MINI_DEFAULT_X = 260
+local MINI_DEFAULT_Y = 0
 local LOOT_HISTORY_ROW_HEIGHT = 28
 local LOOT_HISTORY_ROW_HEIGHT_COMPACT = 20
 local LOOT_ROWS = 18
@@ -93,6 +98,21 @@ local function hasModifyAccess()
     return (inRaid or inParty) and Goals:IsGroupLeader()
 end
 
+local function hasDisenchanterAccess()
+    if Goals and Goals.Dev and Goals.Dev.enabled then
+        return true
+    end
+    if Goals and Goals.db and Goals.db.settings and Goals.db.settings.sudoDev then
+        return true
+    end
+    if not Goals or not Goals.IsGroupLeader then
+        return false
+    end
+    local inRaid = Goals.IsInRaid and Goals:IsInRaid()
+    local inParty = Goals.IsInParty and Goals:IsInParty()
+    return (inRaid or inParty) and Goals:IsGroupLeader()
+end
+
 local function setupSudoDevPopup()
     if not StaticPopupDialogs or StaticPopupDialogs.GOALS_SUDO_DEV then
         return
@@ -136,6 +156,24 @@ local function setDropdownEnabled(dropdown, enabled)
             dropdown:Disable()
         end
     end
+end
+
+local function getMiniSettings()
+    if not Goals or not Goals.db or not Goals.db.settings then
+        return nil
+    end
+    if type(Goals.db.settings.miniTracker) ~= "table" then
+        Goals.db.settings.miniTracker = {
+            show = false,
+            minimized = false,
+            x = MINI_DEFAULT_X,
+            y = MINI_DEFAULT_Y,
+            hasPosition = false,
+            buttonX = 0,
+            buttonY = 0,
+        }
+    end
+    return Goals.db.settings.miniTracker
 end
 
 local function getQualityLabel(quality)
@@ -431,6 +469,8 @@ function UI:Init()
     self:CreateMainFrame()
     self:CreateMinimapButton()
     self:CreateFloatingButton()
+    self:CreateMiniTracker()
+    self:CreateMiniFloatingButton()
     self:CreateOptionsPanel()
     self:UpdateMinimapButton()
     self:Refresh()
@@ -930,8 +970,28 @@ function UI:CreateOverviewTab(page)
     disValue:SetPoint("TOPLEFT", disLabel, "BOTTOMLEFT", 0, -4)
     self.disenchantValue = disValue
 
+    local disSelectLabel = createLabel(rightInset, L.SETTINGS_DISENCHANTER, "GameFontNormal")
+    disSelectLabel:SetPoint("TOPLEFT", disValue, "BOTTOMLEFT", 0, -10)
+
+    local disDrop = CreateFrame("Frame", "GoalsDisenchanterDropdown", rightInset, "UIDropDownMenuTemplate")
+    disDrop:SetPoint("TOPLEFT", disSelectLabel, "BOTTOMLEFT", -10, -2)
+    styleDropdown(disDrop, 160)
+    disDrop.colorize = true
+    self.disenchanterDropdown = disDrop
+    self:SetupDropdown(disDrop, function()
+        return UI:GetDisenchanterCandidates()
+    end, function(name)
+        if name == L.NONE_OPTION then
+            Goals:SetDisenchanter("")
+            UI:SetDropdownText(disDrop, L.NONE_OPTION)
+            disDrop.selectedValue = ""
+            return
+        end
+        Goals:SetDisenchanter(name)
+    end, L.NONE_OPTION)
+
     local manualTitle = createLabel(rightInset, L.LABEL_MANUAL, "GameFontNormal")
-    manualTitle:SetPoint("TOPLEFT", disValue, "BOTTOMLEFT", 0, -18)
+    manualTitle:SetPoint("TOPLEFT", disDrop, "BOTTOMLEFT", 10, -12)
 
     local playerLabel = createLabel(rightInset, L.LABEL_PLAYER, "GameFontNormal")
     playerLabel:SetPoint("TOPLEFT", manualTitle, "BOTTOMLEFT", 0, -10)
@@ -1375,30 +1435,10 @@ function UI:CreateSettingsTab(page)
     end)
     self.localOnlyCheck = localOnlyCheck
 
-    local disLabel = createLabel(leftInset, L.SETTINGS_DISENCHANTER, "GameFontNormal")
-    disLabel:SetPoint("TOPLEFT", localOnlyCheck, "BOTTOMLEFT", 0, -12)
-
-    local disDrop = CreateFrame("Frame", "GoalsDisenchanterDropdown", leftInset, "UIDropDownMenuTemplate")
-    disDrop:SetPoint("TOPLEFT", disLabel, "BOTTOMLEFT", -10, -2)
-    styleDropdown(disDrop, 160)
-    disDrop.colorize = true
-    self.disenchanterDropdown = disDrop
-    self:SetupDropdown(disDrop, function()
-        return UI:GetDisenchanterCandidates()
-    end, function(name)
-        if name == L.NONE_OPTION then
-            Goals:SetDisenchanter("")
-            UI:SetDropdownText(disDrop, L.NONE_OPTION)
-            disDrop.selectedValue = ""
-            return
-        end
-        Goals:SetDisenchanter(name)
-    end, L.NONE_OPTION)
-
     setupSudoDevPopup()
     local sudoBtn = CreateFrame("Button", nil, leftInset, "UIPanelButtonTemplate")
     sudoBtn:SetSize(180, 20)
-    sudoBtn:SetPoint("TOPLEFT", disDrop, "BOTTOMLEFT", 6, -12)
+    sudoBtn:SetPoint("TOPLEFT", localOnlyCheck, "BOTTOMLEFT", 2, -12)
     sudoBtn:SetScript("OnClick", function()
         if Goals.db.settings.sudoDev then
             Goals.db.settings.sudoDev = false
@@ -1449,6 +1489,25 @@ function UI:CreateSettingsTab(page)
         end
     end)
     clearAllBtn:SetPoint("TOPLEFT", clearHistoryBtn, "BOTTOMLEFT", 0, -10)
+
+    local miniTitle = createLabel(rightInset, L.LABEL_MINI_TRACKER, "GameFontNormal")
+    miniTitle:SetPoint("TOPLEFT", clearAllBtn, "BOTTOMLEFT", 0, -16)
+
+    local miniBtn = createActionButton(L.BUTTON_TOGGLE_MINI_TRACKER, function()
+        if UI and UI.ToggleMiniTracker then
+            UI:ToggleMiniTracker()
+        end
+    end)
+    miniBtn:SetPoint("TOPLEFT", miniTitle, "BOTTOMLEFT", 0, -6)
+    self.miniTrackerButton = miniBtn
+
+    local miniResetBtn = createActionButton("Reset Mini Position", function()
+        if UI and UI.ResetMiniTrackerPosition then
+            UI:ResetMiniTrackerPosition()
+        end
+    end)
+    miniResetBtn:SetPoint("TOPLEFT", miniBtn, "BOTTOMLEFT", 0, -6)
+    self.miniTrackerResetButton = miniResetBtn
 end
 
 function UI:CreateUpdateTab(page)
@@ -2115,6 +2174,11 @@ function UI:Refresh()
         else
             self:SetDropdownText(self.disenchanterDropdown, L.NONE_OPTION)
         end
+        local canEditDis = hasDisenchanterAccess()
+        setDropdownEnabled(self.disenchanterDropdown, canEditDis)
+        if self.disenchanterDropdown.SetAlpha then
+            self.disenchanterDropdown:SetAlpha(canEditDis and 1 or 0.6)
+        end
     end
     if self.combineCheck then
         self.combineCheck:SetChecked(Goals.db.settings.combineBossHistory and true or false)
@@ -2197,6 +2261,8 @@ function UI:Refresh()
     self:UpdateLootHistoryList()
     self:UpdateFoundLootList()
     self:UpdateDebugLogList()
+    self:UpdateMiniTracker()
+    self:UpdateMiniFloatingButtonPosition()
     self:UpdateMinimapButton()
 end
 
@@ -2213,6 +2279,12 @@ function UI:CreateMinimapButton()
     button:SetHighlightTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
     button:SetScript("OnClick", function(_, btn)
         if btn == "LeftButton" then
+            if IsShiftKeyDown and IsShiftKeyDown() then
+                if UI and UI.ToggleMiniTracker then
+                    UI:ToggleMiniTracker()
+                end
+                return
+            end
             Goals:ToggleUI()
         end
     end)
@@ -2298,6 +2370,284 @@ function UI:UpdateMinimapButton()
     end
     self.minimapButton:Show()
     self:UpdateMinimapPosition()
+end
+
+function UI:UpdateMiniFloatingButtonPosition()
+    if not self.miniFloatingButton then
+        return
+    end
+    self:UpdateMiniFloatingPosition()
+end
+
+function UI:CreateMiniTracker()
+    if self.miniTracker then
+        return
+    end
+    local frame = CreateFrame("Frame", "GoalsMiniTracker", UIParent, "GoalsInsetTemplate")
+    frame:SetSize(MINI_FRAME_WIDTH, MINI_HEADER_HEIGHT + 10)
+    frame:SetPoint("CENTER", UIParent, "CENTER", MINI_DEFAULT_X, MINI_DEFAULT_Y)
+    frame:SetMovable(true)
+    frame:EnableMouse(true)
+    frame:RegisterForDrag("LeftButton")
+    frame:SetScript("OnDragStart", frame.StartMoving)
+    frame:SetScript("OnDragStop", function(selfFrame)
+        selfFrame:StopMovingOrSizing()
+        local uiX, uiY = UIParent:GetCenter()
+        local x, y = selfFrame:GetCenter()
+        local settings = getMiniSettings()
+        if settings then
+            settings.x = x - uiX
+            settings.y = y - uiY
+            settings.hasPosition = true
+        end
+    end)
+    frame:SetAlpha(0.85)
+    frame:Hide()
+
+    local title = createLabel(frame, L.LABEL_MINI_TRACKER, "GameFontNormal")
+    title:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, -6)
+    frame.title = title
+
+    local close = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
+    close:SetPoint("TOPRIGHT", frame, "TOPRIGHT", 2, 2)
+    close:SetScript("OnClick", function()
+        UI:CloseMiniTracker()
+    end)
+    frame.close = close
+
+    local minimize = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
+    minimize:SetSize(18, 18)
+    minimize:SetNormalTexture("Interface\\Buttons\\UI-Panel-HideButton-Up")
+    minimize:SetPushedTexture("Interface\\Buttons\\UI-Panel-HideButton-Down")
+    minimize:SetHighlightTexture("Interface\\Buttons\\UI-Panel-HideButton-Highlight", "ADD")
+    minimize:SetPoint("RIGHT", close, "LEFT", 4, 0)
+    minimize:SetScript("OnClick", function()
+        UI:MinimizeMiniTracker()
+    end)
+    frame.minimize = minimize
+
+    frame.rows = {}
+    self.miniTracker = frame
+    self:UpdateMiniTrackerPosition()
+end
+
+function UI:UpdateMiniTrackerPosition()
+    if not self.miniTracker then
+        return
+    end
+    local pos = getMiniSettings()
+    if not pos then
+        return
+    end
+    self.miniTracker:ClearAllPoints()
+    if pos.hasPosition then
+        self.miniTracker:SetPoint("CENTER", UIParent, "CENTER", pos.x or MINI_DEFAULT_X, pos.y or MINI_DEFAULT_Y)
+    else
+        self.miniTracker:SetPoint("CENTER", UIParent, "CENTER", MINI_DEFAULT_X, MINI_DEFAULT_Y)
+    end
+end
+
+function UI:ShowMiniTracker(show)
+    if not self.miniTracker then
+        return
+    end
+    local settings = getMiniSettings()
+    if not settings then
+        return
+    end
+    settings.show = show and true or false
+    settings.minimized = false
+    if show then
+        if not settings.hasPosition then
+            self.miniTracker:ClearAllPoints()
+            if self.frame and self.frame:IsShown() then
+                self.miniTracker:SetPoint("TOPRIGHT", self.frame, "TOPLEFT", -4, -2)
+            else
+                self.miniTracker:SetPoint("CENTER", UIParent, "CENTER", MINI_DEFAULT_X, MINI_DEFAULT_Y)
+            end
+            local uiX, uiY = UIParent:GetCenter()
+            local x, y = self.miniTracker:GetCenter()
+            settings.x = x - uiX
+            settings.y = y - uiY
+            settings.hasPosition = true
+        else
+            self:UpdateMiniTrackerPosition()
+        end
+    else
+        self:UpdateMiniTrackerPosition()
+    end
+    self:UpdateMiniTracker()
+end
+
+function UI:ToggleMiniTracker()
+    if not self.miniTracker then
+        return
+    end
+    local settings = getMiniSettings()
+    if not settings then
+        return
+    end
+    if not settings.show then
+        self:ShowMiniTracker(true)
+        return
+    end
+    if settings.minimized then
+        self:ShowMiniTracker(true)
+        return
+    end
+    self:MinimizeMiniTracker()
+end
+
+function UI:UpdateMiniTrackerVisibility()
+    if not self.miniTracker then
+        return
+    end
+    local settings = getMiniSettings()
+    if not settings then
+        return
+    end
+    local wantShow = settings.show and not settings.minimized
+    if Goals.Dev and Goals.Dev.enabled then
+        setShown(self.miniTracker, wantShow)
+        return
+    end
+    local inGroup = Goals.IsInRaid and Goals:IsInRaid() or false
+    if not inGroup and Goals.IsInParty then
+        inGroup = Goals:IsInParty()
+    end
+    local inCombat = UnitAffectingCombat and UnitAffectingCombat("player") or false
+    local autoHide = Goals.db.settings.autoMinimizeCombat and true or false
+    setShown(self.miniTracker, wantShow and inGroup and (not autoHide or not inCombat))
+end
+
+function UI:UpdateMiniTracker()
+    if not self.miniTracker or not Goals.db or not Goals.db.settings then
+        return
+    end
+    self:UpdateMiniTrackerVisibility()
+    if not self.miniTracker:IsShown() then
+        self:UpdateMiniFloatingButton()
+        return
+    end
+    local present = self:GetPresentPlayerNames()
+    local rowCount = #present
+    local rowY = -MINI_HEADER_HEIGHT
+    for i = 1, rowCount do
+        local row = self.miniTracker.rows[i]
+        if not row then
+            row = CreateFrame("Frame", nil, self.miniTracker)
+            row:SetHeight(MINI_ROW_HEIGHT)
+            row.nameText = row:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+            row.nameText:SetPoint("LEFT", row, "LEFT", 8, 0)
+            row.pointsText = row:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+            row.pointsText:SetPoint("RIGHT", row, "RIGHT", -8, 0)
+            row.pointsText:SetJustifyH("RIGHT")
+            self.miniTracker.rows[i] = row
+        end
+        local name = present[i]
+        row:Show()
+        row:ClearAllPoints()
+        row:SetPoint("TOPLEFT", self.miniTracker, "TOPLEFT", 0, rowY)
+        row:SetPoint("RIGHT", self.miniTracker, "RIGHT", 0, 0)
+        local entry = Goals.db.players and Goals.db.players[name] or nil
+        local points = entry and entry.points or 0
+        local r, g, b = Goals:GetClassColor(entry and entry.class or nil)
+        row.nameText:SetText(name)
+        row.nameText:SetTextColor(r, g, b)
+        row.pointsText:SetText(points)
+        rowY = rowY - MINI_ROW_HEIGHT
+    end
+    for i = rowCount + 1, #self.miniTracker.rows do
+        self.miniTracker.rows[i]:Hide()
+    end
+    local height = MINI_HEADER_HEIGHT + 8 + (rowCount * MINI_ROW_HEIGHT)
+    if height < MINI_HEADER_HEIGHT + 10 then
+        height = MINI_HEADER_HEIGHT + 10
+    end
+    self.miniTracker:SetHeight(height)
+    self:UpdateMiniFloatingButton()
+end
+
+function UI:MinimizeMiniTracker()
+    local settings = getMiniSettings()
+    if not settings then
+        return
+    end
+    settings.minimized = true
+    self:UpdateMiniTracker()
+end
+
+function UI:CloseMiniTracker()
+    local settings = getMiniSettings()
+    if not settings then
+        return
+    end
+    settings.show = false
+    settings.minimized = false
+    self:UpdateMiniTracker()
+end
+
+function UI:ResetMiniTrackerPosition()
+    local settings = getMiniSettings()
+    if not settings then
+        return
+    end
+    settings.hasPosition = false
+    if self.miniTracker and self.miniTracker:IsShown() then
+        self:ShowMiniTracker(true)
+    end
+end
+
+function UI:CreateMiniFloatingButton()
+    if self.miniFloatingButton then
+        return
+    end
+    local button = CreateFrame("Button", "GoalsMiniFloatingButton", UIParent, "UIPanelButtonTemplate")
+    button:SetSize(120, 24)
+    button:SetText(L.BUTTON_TOGGLE_MINI_TRACKER)
+    button:SetMovable(true)
+    button:RegisterForDrag("LeftButton")
+    button:SetScript("OnDragStart", button.StartMoving)
+    button:SetScript("OnDragStop", function(selfBtn)
+        selfBtn:StopMovingOrSizing()
+        local uiX, uiY = UIParent:GetCenter()
+        local x, y = selfBtn:GetCenter()
+        local settings = getMiniSettings()
+        if settings then
+            settings.buttonX = x - uiX
+            settings.buttonY = y - uiY
+        end
+    end)
+    button:SetScript("OnClick", function()
+        UI:ShowMiniTracker(true)
+    end)
+    button:Hide()
+    self.miniFloatingButton = button
+    self:UpdateMiniFloatingPosition()
+end
+
+function UI:UpdateMiniFloatingPosition()
+    if not self.miniFloatingButton then
+        return
+    end
+    local settings = getMiniSettings()
+    if not settings then
+        return
+    end
+    self.miniFloatingButton:ClearAllPoints()
+    self.miniFloatingButton:SetPoint("CENTER", UIParent, "CENTER", settings.buttonX or 0, settings.buttonY or 0)
+end
+
+function UI:UpdateMiniFloatingButton()
+    if not self.miniFloatingButton then
+        return
+    end
+    local settings = getMiniSettings()
+    if not settings then
+        return
+    end
+    local show = settings.show and settings.minimized
+    setShown(self.miniFloatingButton, show)
 end
 
 function UI:CreateFloatingButton()

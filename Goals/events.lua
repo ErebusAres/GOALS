@@ -45,7 +45,7 @@ function Events:Init()
     self.frame:RegisterEvent("BOSS_KILL")
     self:BuildBossLookup()
     if Goals and Goals.Dev and Goals.Dev.enabled then
-        Goals:Print("Events initialized.")
+        Goals:Debug("Events initialized.")
     end
 end
 
@@ -94,7 +94,7 @@ function Events:OnEvent(event, ...)
     if Goals and Goals.Dev and Goals.Dev.enabled and Goals.db and Goals.db.settings and Goals.db.settings.devTestBoss then
         if not self.debugEventLogged then
             self.debugEventLogged = true
-            Goals:Print("Events active: " .. tostring(event))
+            Goals:Debug("Events active: " .. tostring(event))
         end
     end
     if event == "CHAT_MSG_LOOT" then
@@ -210,12 +210,12 @@ function Events:HandleCombatLog(...)
     if Goals and Goals.Dev and Goals.Dev.enabled and Goals.db and Goals.db.settings and Goals.db.settings.devTestBoss then
         if not self.debugCombatLogged then
             self.debugCombatLogged = true
-            Goals:Print("Combat log active: " .. tostring(eventType) .. " src=" .. tostring(sourceName) .. " dest=" .. tostring(destName))
+            Goals:Debug("Combat log active: " .. tostring(eventType) .. " src=" .. tostring(sourceName) .. " dest=" .. tostring(destName))
         end
     end
     if Goals and Goals.Dev and Goals.Dev.enabled and Goals.db and Goals.db.settings and Goals.db.settings.devTestBoss then
         if (eventType == "UNIT_DIED" or eventType == "PARTY_KILL") and destName then
-            Goals:Print("Combat log: " .. eventType .. " " .. tostring(destName))
+            Goals:Debug("Combat log: " .. eventType .. " " .. tostring(destName))
         end
     end
     if sourceName then
@@ -252,7 +252,7 @@ function Events:HandleHostileDeath(message)
     if Goals and Goals.Dev and Goals.Dev.enabled and Goals.db and Goals.db.settings and Goals.db.settings.devTestBoss then
         if not self.debugHostileLogged then
             self.debugHostileLogged = true
-            Goals:Print("Hostile death msg: " .. tostring(message))
+            Goals:Debug("Hostile death msg: " .. tostring(message))
         end
     end
     local name = message:match("^(.+) dies%.$") or message:match("^You have slain (.+)!$")
@@ -260,7 +260,7 @@ function Events:HandleHostileDeath(message)
         return
     end
     if Goals and Goals.Dev and Goals.Dev.enabled and Goals.db and Goals.db.settings and Goals.db.settings.devTestBoss then
-        Goals:Print("Hostile death: " .. tostring(name))
+        Goals:Debug("Hostile death: " .. tostring(name))
         if normalizeBossName(name) == normalizeBossName("Garryowen Boar") then
             Goals:AwardBossKill("Garryowen Boar")
             return
@@ -386,6 +386,9 @@ function Events:HandleCombatStart()
     if not Goals or not Goals.db or not Goals.db.settings then
         return
     end
+    if Goals.Dev and Goals.Dev.enabled then
+        return
+    end
     if not Goals.db.settings.autoMinimizeCombat then
         return
     end
@@ -398,11 +401,25 @@ function Events:HandleCombatStart()
     end
     Goals.state.autoMinimizedThisCombat = true
     Goals.UI:Minimize()
+
+    if Goals.UI and Goals.UI.miniTracker and Goals.UI.miniTracker:IsShown() then
+        Goals.state.autoMinimizedMini = true
+        Goals.UI:ShowMiniTracker(false)
+    end
 end
 
 function Events:HandleCombatExit()
     Goals.state = Goals.state or {}
     Goals.state.autoMinimizedThisCombat = false
+    if Goals.state.autoMinimizedMini then
+        Goals.state.autoMinimizedMini = false
+        if Goals.UI then
+            Goals.UI:ShowMiniTracker(true)
+        end
+    end
+    if Goals.UI and Goals.UI.UpdateMiniTracker then
+        Goals.UI:UpdateMiniTracker()
+    end
 end
 
 function Events:FinishEncounter(success)

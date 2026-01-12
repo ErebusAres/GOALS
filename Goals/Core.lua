@@ -652,7 +652,7 @@ function Goals:AwardBossKill(encounterName, members, skipSync)
     if self.History then
         self.History:AddBossKill(encounterName, 1, names, self.db.settings.combineBossHistory)
     end
-    self:Print(encounterName .. " was defeated. +1 Point.")
+    self:Print(encounterName .. " was completed. +1 Point.")
     self:NotifyDataChanged()
     if self:CanSync() and not skipSync and self.Comm then
         self.Comm:SendBossKill(encounterName, names)
@@ -990,7 +990,7 @@ function Goals:UpdateLootSlots(resetSeen)
                 if seen[slot] ~= link then
                     seen[slot] = link
                     self:RecordLootFound(link)
-                    if self.Comm and (self:IsSyncMaster() or (self.Dev and self.Dev.enabled)) then
+                    if self.Comm and (self:IsSyncMaster() or (self.IsGroupLeader and self:IsGroupLeader()) or (self.Dev and self.Dev.enabled)) then
                         self.Comm:SendLootFound(entryId, entryTs, link)
                     end
                 end
@@ -1276,7 +1276,14 @@ function Goals:InitSlashCommands()
     SLASH_GOALS1 = "/goals"
     SLASH_GOALS2 = "/dkp"
     SLASH_GOALS3 = "/goalsui"
-    SlashCmdList["GOALS"] = function()
+    SlashCmdList["GOALS"] = function(msg)
+        local cmd = msg and msg:lower() or ""
+        if cmd:match("^mini") then
+            if self.UI and self.UI.ToggleMiniTracker then
+                self.UI:ToggleMiniTracker()
+            end
+            return
+        end
         self:ToggleUI()
     end
 end
@@ -1320,7 +1327,7 @@ function Goals:Init()
         self.UI:Init()
     end
     self:UpdateSyncStatus()
-    self:Print("Loaded v" .. self.version)
+    self:Debug("Loaded v" .. self.version)
 end
 
 function Goals:CheckBuild()
@@ -1331,7 +1338,7 @@ function Goals:CheckBuild()
     local buildOk = tostring(build or "") == "12340"
     local tocOk = tonumber(toc or 0) == 30300
     if not buildOk or not tocOk then
-        self:Print("Warning: Goals targets Wrath 3.3.5a (build 12340).")
+        self:Debug("Warning: Goals targets Wrath 3.3.5a (build 12340).")
     end
 end
 

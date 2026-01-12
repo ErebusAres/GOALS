@@ -41,6 +41,15 @@ Goals.defaults = {
             y = 0,
             show = false,
         },
+        miniTracker = {
+            show = false,
+            minimized = false,
+            x = 0,
+            y = 0,
+            hasPosition = false,
+            buttonX = 0,
+            buttonY = 0,
+        },
     },
 }
 
