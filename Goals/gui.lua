@@ -82,12 +82,37 @@ local function hasModifyAccess()
     if Goals and Goals.Dev and Goals.Dev.enabled then
         return true
     end
+    if Goals and Goals.db and Goals.db.settings and Goals.db.settings.sudoDev then
+        return true
+    end
     if not Goals or not Goals.IsGroupLeader then
         return false
     end
     local inRaid = Goals.IsInRaid and Goals:IsInRaid()
     local inParty = Goals.IsInParty and Goals:IsInParty()
     return (inRaid or inParty) and Goals:IsGroupLeader()
+end
+
+local function setupSudoDevPopup()
+    if not StaticPopupDialogs or StaticPopupDialogs.GOALS_SUDO_DEV then
+        return
+    end
+    StaticPopupDialogs.GOALS_SUDO_DEV = {
+        text = L.POPUP_SUDO_DEV,
+        button1 = L.POPUP_SUDO_DEV_ACCEPT,
+        button2 = CANCEL,
+        OnAccept = function()
+            if Goals and Goals.db and Goals.db.settings then
+                Goals.db.settings.sudoDev = true
+                if Goals.UI then
+                    Goals.UI:Refresh()
+                end
+            end
+        end,
+        timeout = 0,
+        whileDead = 1,
+        hideOnEscape = 1,
+    }
 end
 
 local function setDropdownEnabled(dropdown, enabled)
@@ -111,6 +136,27 @@ local function setDropdownEnabled(dropdown, enabled)
             dropdown:Disable()
         end
     end
+end
+
+local function getQualityLabel(quality)
+    local label = _G["ITEM_QUALITY" .. quality .. "_DESC"] or tostring(quality)
+    local color = ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[quality]
+    if color then
+        return string.format("|cff%02x%02x%02x%s|r", color.r * 255, color.g * 255, color.b * 255, label)
+    end
+    return label
+end
+
+local function getQualityOptions()
+    local qualities = { 0, 1, 2, 3, 4, 5, 6, 7 }
+    local options = {}
+    for _, quality in ipairs(qualities) do
+        local label = _G["ITEM_QUALITY" .. quality .. "_DESC"]
+        if label then
+            table.insert(options, { value = quality, text = getQualityLabel(quality) })
+        end
+    end
+    return options
 end
 
 local function styleDropdown(dropdown, width)
@@ -350,6 +396,34 @@ function UI:SyncSortDropdown()
     UIDropDownMenu_SetText(self.sortDropdown, text)
 end
 
+function UI:SetupResetQualityDropdown(dropdown)
+    dropdown.options = getQualityOptions()
+    UIDropDownMenu_Initialize(dropdown, function(_, level)
+        for _, option in ipairs(dropdown.options) do
+            local info = UIDropDownMenu_CreateInfo()
+            info.text = option.text
+            info.value = option.value
+            info.func = function()
+                Goals:SetRaidSetting("resetMinQuality", option.value)
+                UIDropDownMenu_SetSelectedValue(dropdown, option.value)
+                UIDropDownMenu_SetText(dropdown, option.text)
+            end
+            info.checked = (Goals.db.settings.resetMinQuality or 4) == option.value
+            UIDropDownMenu_AddButton(info, level)
+        end
+    end)
+    self:SyncResetQualityDropdown()
+end
+
+function UI:SyncResetQualityDropdown()
+    if not self.resetQualityDropdown then
+        return
+    end
+    local value = Goals.db.settings.resetMinQuality or 4
+    UIDropDownMenu_SetSelectedValue(self.resetQualityDropdown, value)
+    UIDropDownMenu_SetText(self.resetQualityDropdown, getQualityLabel(value))
+end
+
 function UI:Init()
     if self.frame then
         return
@@ -509,6 +583,9 @@ function UI:CreateMainFrame()
         if def.key == "update" then
             self.updateTab = tab
             self.updateTabId = i
+        end
+        if def.key == "loot" then
+            self.lootTabId = i
         end
         self.tabs[i] = tab
 
@@ -693,7 +770,21 @@ function UI:SelectTab(id)
         setShown(page, index == id)
     end
     self.currentTab = id
+    if self.UpdateLootOptionsVisibility then
+        self:UpdateLootOptionsVisibility()
+    end
     self:Refresh()
+end
+
+function UI:UpdateLootOptionsVisibility()
+    if not self.lootOptionsFrame then
+        return
+    end
+    local show = self.currentTab == self.lootTabId and self.lootOptionsOpen
+    if self.lootOptionsOuter then
+        self.lootOptionsOuter:SetShown(show)
+    end
+    self.lootOptionsFrame:SetShown(show)
 end
 
 function UI:CreateOverviewTab(page)
@@ -939,13 +1030,14 @@ function UI:CreateLootTab(page)
         setLootMethod("freeforall")
     end)
 
-    local resetCheck = CreateFrame("CheckButton", nil, page, "UICheckButtonTemplate")
-    resetCheck:SetPoint("TOPLEFT", lootLabel, "BOTTOMLEFT", 0, -8)
-    setCheckText(resetCheck, L.CHECK_RESET_MOUNT_PET)
-    resetCheck:SetScript("OnClick", function(selfBtn)
-        Goals:SetRaidSetting("resetMountPet", selfBtn:GetChecked() and true or false)
+    local epicOnlyCheck = CreateFrame("CheckButton", nil, page, "UICheckButtonTemplate")
+    epicOnlyCheck:SetPoint("TOPLEFT", lootLabel, "BOTTOMLEFT", 0, -8)
+    setCheckText(epicOnlyCheck, L.CHECK_LOOT_EPIC_ONLY)
+    epicOnlyCheck:SetScript("OnClick", function(selfBtn)
+        Goals.db.settings.lootHistoryEpicOnly = selfBtn:GetChecked() and true or false
+        UI:UpdateLootHistoryList()
     end)
-    self.resetMountPetCheck = resetCheck
+    self.lootHistoryEpicCheck = epicOnlyCheck
 
     local historyInset = CreateFrame("Frame", "GoalsLootHistoryInset", page, "GoalsInsetTemplate")
     historyInset:SetPoint("TOPLEFT", page, "TOPLEFT", 2, -60)
@@ -956,14 +1048,105 @@ function UI:CreateLootTab(page)
     local historyLabel = createLabel(historyInset, L.LABEL_LOOT_HISTORY, "GameFontNormal")
     historyLabel:SetPoint("TOPLEFT", historyInset, "TOPLEFT", 8, -6)
 
-    local epicOnlyCheck = CreateFrame("CheckButton", nil, page, "UICheckButtonTemplate")
-    epicOnlyCheck:SetPoint("LEFT", resetCheck, "RIGHT", 160, 0)
-    setCheckText(epicOnlyCheck, L.CHECK_LOOT_EPIC_ONLY)
-    epicOnlyCheck:SetScript("OnClick", function(selfBtn)
-        Goals.db.settings.lootHistoryEpicOnly = selfBtn:GetChecked() and true or false
-        UI:UpdateLootHistoryList()
+    local optionsBtn = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
+    optionsBtn:SetSize(130, 20)
+    optionsBtn:SetText(L.LABEL_LOOT_OPTIONS)
+    optionsBtn:SetPoint("TOPRIGHT", page, "TOPRIGHT", -6, -6)
+
+    local optionsIcon = optionsBtn:CreateTexture(nil, "ARTWORK")
+    optionsIcon:SetTexture("Interface\\Buttons\\UI-OptionsButton")
+    optionsIcon:SetSize(16, 16)
+    optionsIcon:SetPoint("LEFT", optionsBtn, "LEFT", 6, 0)
+    local optionsText = optionsBtn:GetFontString()
+    if optionsText then
+        optionsText:ClearAllPoints()
+        optionsText:SetPoint("LEFT", optionsIcon, "RIGHT", 4, 0)
+    end
+
+    optionsBtn:SetScript("OnClick", function()
+        UI.lootOptionsOpen = not UI.lootOptionsOpen
+        UI:UpdateLootOptionsVisibility()
     end)
-    self.lootHistoryEpicCheck = epicOnlyCheck
+    self.lootOptionsButton = optionsBtn
+    if self.lootOptionsOpen == nil then
+        self.lootOptionsOpen = false
+    end
+
+    if not self.lootOptionsFrame then
+        local outer = CreateFrame("Frame", "GoalsLootOptionsOuter", self.frame)
+        outer:SetPoint("TOPLEFT", self.frame, "TOPRIGHT", -2, -34)
+        outer:SetPoint("BOTTOMLEFT", self.frame, "BOTTOMRIGHT", -2, 26)
+        outer:SetWidth(238)
+        outer:SetBackdrop({
+            edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+            edgeSize = 16,
+            insets = { left = 3, right = 3, top = 3, bottom = 3 },
+        })
+        outer:SetBackdropBorderColor(0.85, 0.85, 0.85, 1)
+        outer:Hide()
+        self.lootOptionsOuter = outer
+
+        local optionsFrame = CreateFrame("Frame", "GoalsLootOptionsFrame", outer, "GoalsInsetTemplate")
+        optionsFrame:SetPoint("TOPLEFT", outer, "TOPLEFT", 4, -4)
+        optionsFrame:SetPoint("BOTTOMRIGHT", outer, "BOTTOMRIGHT", -4, 4)
+        optionsFrame:Hide()
+        self.lootOptionsFrame = optionsFrame
+
+        local optionsTitle = createLabel(optionsFrame, L.LABEL_LOOT_OPTIONS, "GameFontNormal")
+        optionsTitle:SetPoint("TOPLEFT", optionsFrame, "TOPLEFT", 10, -10)
+
+        local resetTitle = createLabel(optionsFrame, L.LABEL_RESET_POINTS, "GameFontNormal")
+        resetTitle:SetPoint("TOPLEFT", optionsTitle, "BOTTOMLEFT", 0, -12)
+
+        local resetMountCheck = CreateFrame("CheckButton", nil, optionsFrame, "UICheckButtonTemplate")
+        resetMountCheck:SetPoint("TOPLEFT", resetTitle, "BOTTOMLEFT", 0, -6)
+        setCheckText(resetMountCheck, L.CHECK_RESET_MOUNTS)
+        resetMountCheck:SetScript("OnClick", function(selfBtn)
+            Goals:SetRaidSetting("resetMounts", selfBtn:GetChecked() and true or false)
+        end)
+        self.resetMountsCheck = resetMountCheck
+
+        local resetPetCheck = CreateFrame("CheckButton", nil, optionsFrame, "UICheckButtonTemplate")
+        resetPetCheck:SetPoint("TOPLEFT", resetMountCheck, "BOTTOMLEFT", 0, -6)
+        setCheckText(resetPetCheck, L.CHECK_RESET_PETS)
+        resetPetCheck:SetScript("OnClick", function(selfBtn)
+            Goals:SetRaidSetting("resetPets", selfBtn:GetChecked() and true or false)
+        end)
+        self.resetPetsCheck = resetPetCheck
+
+        local resetRecipesCheck = CreateFrame("CheckButton", nil, optionsFrame, "UICheckButtonTemplate")
+        resetRecipesCheck:SetPoint("TOPLEFT", resetPetCheck, "BOTTOMLEFT", 0, -6)
+        setCheckText(resetRecipesCheck, L.CHECK_RESET_RECIPES)
+        resetRecipesCheck:SetScript("OnClick", function(selfBtn)
+            Goals:SetRaidSetting("resetRecipes", selfBtn:GetChecked() and true or false)
+        end)
+        self.resetRecipesCheck = resetRecipesCheck
+
+        local resetTokensCheck = CreateFrame("CheckButton", nil, optionsFrame, "UICheckButtonTemplate")
+        resetTokensCheck:SetPoint("TOPLEFT", resetRecipesCheck, "BOTTOMLEFT", 0, -6)
+        setCheckText(resetTokensCheck, L.CHECK_RESET_TOKENS)
+        resetTokensCheck:SetScript("OnClick", function(selfBtn)
+            Goals:SetRaidSetting("resetTokens", selfBtn:GetChecked() and true or false)
+        end)
+        self.resetTokensCheck = resetTokensCheck
+
+        local resetQuestCheck = CreateFrame("CheckButton", nil, optionsFrame, "UICheckButtonTemplate")
+        resetQuestCheck:SetPoint("TOPLEFT", resetTokensCheck, "BOTTOMLEFT", 0, -6)
+        setCheckText(resetQuestCheck, L.CHECK_RESET_QUEST_ITEMS)
+        resetQuestCheck:SetScript("OnClick", function(selfBtn)
+            Goals:SetRaidSetting("resetQuestItems", selfBtn:GetChecked() and true or false)
+        end)
+        self.resetQuestItemsCheck = resetQuestCheck
+
+        local minLabel = createLabel(optionsFrame, L.LABEL_MIN_RESET_QUALITY, "GameFontNormal")
+        minLabel:SetPoint("TOPLEFT", resetQuestCheck, "BOTTOMLEFT", 0, -12)
+
+        local minDrop = CreateFrame("Frame", "GoalsResetQualityDropdown", optionsFrame, "UIDropDownMenuTemplate")
+        minDrop:SetPoint("TOPLEFT", minLabel, "BOTTOMLEFT", -10, -2)
+        styleDropdown(minDrop, 160)
+        self.resetQualityDropdown = minDrop
+        self:SetupResetQualityDropdown(minDrop)
+    end
 
     local historyScroll = CreateFrame("ScrollFrame", "GoalsLootHistoryScroll", historyInset, "FauxScrollFrameTemplate")
     historyScroll:SetPoint("TOPLEFT", historyInset, "TOPLEFT", 2, -22)
@@ -1206,6 +1389,22 @@ function UI:CreateSettingsTab(page)
         end
         Goals:SetDisenchanter(name)
     end, L.NONE_OPTION)
+
+    setupSudoDevPopup()
+    local sudoBtn = CreateFrame("Button", nil, leftInset, "UIPanelButtonTemplate")
+    sudoBtn:SetSize(180, 20)
+    sudoBtn:SetPoint("TOPLEFT", disDrop, "BOTTOMLEFT", 6, -12)
+    sudoBtn:SetScript("OnClick", function()
+        if Goals.db.settings.sudoDev then
+            Goals.db.settings.sudoDev = false
+            UI:Refresh()
+            return
+        end
+        if StaticPopup_Show then
+            StaticPopup_Show("GOALS_SUDO_DEV")
+        end
+    end)
+    self.sudoDevButton = sudoBtn
 
     local actionsTitle = createLabel(rightInset, "Data Management", "GameFontNormal")
     actionsTitle:SetPoint("TOPLEFT", rightInset, "TOPLEFT", 10, -10)
@@ -1924,8 +2123,27 @@ function UI:Refresh()
     if self.localOnlyCheck then
         self.localOnlyCheck:SetChecked(Goals.db.settings.localOnly and true or false)
     end
-    if self.resetMountPetCheck then
-        self.resetMountPetCheck:SetChecked(Goals.db.settings.resetMountPet and true or false)
+    if self.sudoDevButton then
+        if Goals.db.settings.sudoDev then
+            self.sudoDevButton:SetText(L.BUTTON_SUDO_DEV_DISABLE)
+        else
+            self.sudoDevButton:SetText(L.BUTTON_SUDO_DEV_ENABLE)
+        end
+    end
+    if self.resetMountsCheck then
+        self.resetMountsCheck:SetChecked(Goals.db.settings.resetMounts and true or false)
+    end
+    if self.resetPetsCheck then
+        self.resetPetsCheck:SetChecked(Goals.db.settings.resetPets and true or false)
+    end
+    if self.resetRecipesCheck then
+        self.resetRecipesCheck:SetChecked(Goals.db.settings.resetRecipes and true or false)
+    end
+    if self.resetTokensCheck then
+        self.resetTokensCheck:SetChecked(Goals.db.settings.resetTokens and true or false)
+    end
+    if self.resetQuestItemsCheck then
+        self.resetQuestItemsCheck:SetChecked(Goals.db.settings.resetQuestItems and true or false)
     end
     if self.debugCheck then
         self.debugCheck:SetChecked(Goals.db.settings.debug and true or false)
@@ -1933,6 +2151,7 @@ function UI:Refresh()
     if self.lootHistoryEpicCheck then
         self.lootHistoryEpicCheck:SetChecked(Goals.db.settings.lootHistoryEpicOnly and true or false)
     end
+    self:SyncResetQualityDropdown()
     if self.devBossCheck then
         self.devBossCheck:SetChecked(Goals.db.settings.devTestBoss and true or false)
     end

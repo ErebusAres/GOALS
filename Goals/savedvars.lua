@@ -16,12 +16,18 @@ Goals.defaults = {
         disenchanter = "",
         debug = false,
         devTestBoss = false,
-        resetMountPet = false,
+        resetMounts = false,
+        resetPets = false,
+        resetRecipes = false,
+        resetQuestItems = false,
+        resetTokens = true,
+        resetMinQuality = 4,
         showPresentOnly = false,
         sortMode = "POINTS",
         lootHistoryEpicOnly = false,
         lootHistoryHiddenBefore = 0,
         localOnly = false,
+        sudoDev = false,
         updateSeenVersion = 1,
         updateAvailableVersion = 0,
         updateHasBeenSeen = false,
@@ -56,6 +62,18 @@ function Goals:InitDB()
         GoalsDB = {}
     end
     self:CopyDefaults(GoalsDB, self.defaults)
+    if GoalsDB.settings and GoalsDB.settings.resetMountPet ~= nil then
+        if GoalsDB.settings.resetMounts == nil then
+            GoalsDB.settings.resetMounts = GoalsDB.settings.resetMountPet and true or false
+        end
+        if GoalsDB.settings.resetPets == nil then
+            GoalsDB.settings.resetPets = GoalsDB.settings.resetMountPet and true or false
+        end
+        GoalsDB.settings.resetMountPet = nil
+    end
+    if GoalsDB.settings and GoalsDB.settings.resetTokens == nil then
+        GoalsDB.settings.resetTokens = true
+    end
     if GoalsDB.players then
         GoalsDB.players["Unknown"] = nil
         GoalsDB.players["unknown"] = nil

@@ -261,7 +261,12 @@ function Comm:SerializeSettings()
         "combineBossHistory=" .. (settings.combineBossHistory and "1" or "0"),
         "disenchanter=" .. (settings.disenchanter or ""),
         "debug=" .. (settings.debug and "1" or "0"),
-        "resetMountPet=" .. (settings.resetMountPet and "1" or "0"),
+        "resetMounts=" .. (settings.resetMounts and "1" or "0"),
+        "resetPets=" .. (settings.resetPets and "1" or "0"),
+        "resetRecipes=" .. (settings.resetRecipes and "1" or "0"),
+        "resetQuestItems=" .. (settings.resetQuestItems and "1" or "0"),
+        "resetTokens=" .. (settings.resetTokens and "1" or "0"),
+        "resetMinQuality=" .. tostring(settings.resetMinQuality or 4),
     }
     return table.concat(parts, ";")
 end
@@ -289,8 +294,28 @@ function Comm:ApplySetting(key, value)
         Goals.db.settings.debug = value == "1" or value == "true"
         return
     end
-    if key == "resetMountPet" then
-        Goals.db.settings.resetMountPet = value == "1" or value == "true"
+    if key == "resetMounts" then
+        Goals.db.settings.resetMounts = value == "1" or value == "true"
+        return
+    end
+    if key == "resetPets" then
+        Goals.db.settings.resetPets = value == "1" or value == "true"
+        return
+    end
+    if key == "resetRecipes" then
+        Goals.db.settings.resetRecipes = value == "1" or value == "true"
+        return
+    end
+    if key == "resetQuestItems" then
+        Goals.db.settings.resetQuestItems = value == "1" or value == "true"
+        return
+    end
+    if key == "resetTokens" then
+        Goals.db.settings.resetTokens = value == "1" or value == "true"
+        return
+    end
+    if key == "resetMinQuality" then
+        Goals.db.settings.resetMinQuality = tonumber(value) or 4
         return
     end
 end

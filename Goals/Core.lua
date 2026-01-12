@@ -670,20 +670,43 @@ function Goals:ApplyBossKillFromSync(encounterName, names)
     self:AwardBossKill(encounterName, roster, true)
 end
 
-function Goals:IsMountOrPet(itemType, itemSubType)
+function Goals:IsMount(itemType, itemSubType)
     local miscType = MISCELLANEOUS or "Miscellaneous"
     local mountType = MOUNT or "Mount"
+    if itemType ~= miscType then
+        return false
+    end
+    return itemSubType == mountType
+end
+
+function Goals:IsPet(itemType, itemSubType)
+    local miscType = MISCELLANEOUS or "Miscellaneous"
     local petType = COMPANION_PETS or "Companion Pets"
     local petTypeAlt = PETS or "Pets"
     if itemType ~= miscType then
         return false
     end
-    return itemSubType == mountType or itemSubType == petType or itemSubType == petTypeAlt
+    return itemSubType == petType or itemSubType == petTypeAlt
 end
 
 function Goals:IsQuestItem(itemType)
     local questType = QUESTS or ITEM_CLASS_QUEST or "Quest"
     return itemType == questType
+end
+
+function Goals:IsRecipe(itemType)
+    local recipeType = ITEM_CLASS_RECIPE or "Recipe"
+    return itemType == recipeType
+end
+
+function Goals:IsToken(itemType, itemSubType)
+    local miscType = MISCELLANEOUS or "Miscellaneous"
+    if itemType ~= miscType then
+        return false
+    end
+    local armorToken = ITEM_SUBCLASS_ARMOR_TOKEN or "Armor Token"
+    local tokenSub = TOKEN or "Token"
+    return itemSubType == armorToken or itemSubType == tokenSub
 end
 
 function Goals:IsEquippableSlot(equipSlot)
@@ -699,10 +722,27 @@ function Goals:IsTrinket(itemSubType, equipSlot)
     return itemSubType == trinketType or equipSlot == trinketSlot
 end
 
+function Goals:GetResetMinQuality()
+    local minQuality = self.db and self.db.settings and self.db.settings.resetMinQuality
+    if type(minQuality) ~= "number" then
+        return 4
+    end
+    if minQuality < 0 then
+        return 0
+    end
+    if minQuality > 7 then
+        return 7
+    end
+    return minQuality
+end
+
 function Goals:IsTrackedLootType(itemType, itemSubType, equipSlot)
     local armorType = ARMOR or "Armor"
     local weaponType = WEAPON or "Weapon"
-    if self:IsMountOrPet(itemType, itemSubType) then
+    if self:IsMount(itemType, itemSubType) or self:IsPet(itemType, itemSubType) then
+        return true
+    end
+    if self:IsToken(itemType, itemSubType) then
         return true
     end
     if itemType == armorType or itemType == weaponType then
@@ -721,32 +761,59 @@ function Goals:IsTrackedLootType(itemType, itemSubType, equipSlot)
 end
 
 function Goals:ShouldTrackLoot(quality, itemType, itemSubType, equipSlot)
-    if not quality or quality < 4 then
-        return false
-    end
     if not self:IsInRaid() and not (self.Dev and self.Dev.enabled) then
         return false
     end
-    return self:IsTrackedLootType(itemType, itemSubType, equipSlot)
-end
-
-function Goals:ShouldResetForLoot(itemType, itemSubType, equipSlot)
+    if not quality then
+        return false
+    end
     local armorType = ARMOR or "Armor"
     local weaponType = WEAPON or "Weapon"
-    if self:IsMountOrPet(itemType, itemSubType) then
-        return self.db and self.db.settings and self.db.settings.resetMountPet and true or false
+    local minQuality = self:GetResetMinQuality()
+    if self:IsMount(itemType, itemSubType) then
+        return self.db and self.db.settings and self.db.settings.resetMounts or false
     end
-    if itemType == armorType or itemType == weaponType then
-        return true
+    if self:IsPet(itemType, itemSubType) then
+        return self.db and self.db.settings and self.db.settings.resetPets or false
+    end
+    if self:IsToken(itemType, itemSubType) then
+        return self.db and self.db.settings and self.db.settings.resetTokens or false
+    end
+    if self:IsRecipe(itemType) then
+        return self.db and self.db.settings and self.db.settings.resetRecipes or false
     end
     if self:IsQuestItem(itemType) then
-        return true
+        return self.db and self.db.settings and self.db.settings.resetQuestItems or false
     end
-    if self:IsTrinket(itemSubType, equipSlot) then
-        return true
+    if itemType == armorType or itemType == weaponType or self:IsTrinket(itemSubType, equipSlot) or self:IsEquippableSlot(equipSlot) then
+        return quality >= minQuality
     end
-    if self:IsEquippableSlot(equipSlot) then
-        return true
+    return false
+end
+
+function Goals:ShouldResetForLoot(itemType, itemSubType, equipSlot, quality)
+    local armorType = ARMOR or "Armor"
+    local weaponType = WEAPON or "Weapon"
+    if self:IsMount(itemType, itemSubType) then
+        return self.db and self.db.settings and self.db.settings.resetMounts and true or false
+    end
+    if self:IsPet(itemType, itemSubType) then
+        return self.db and self.db.settings and self.db.settings.resetPets and true or false
+    end
+    if self:IsToken(itemType, itemSubType) then
+        return self.db and self.db.settings and self.db.settings.resetTokens and true or false
+    end
+    if self:IsRecipe(itemType) then
+        return self.db and self.db.settings and self.db.settings.resetRecipes and true or false
+    end
+    if self:IsQuestItem(itemType) then
+        return self.db and self.db.settings and self.db.settings.resetQuestItems and true or false
+    end
+    if itemType == armorType or itemType == weaponType or self:IsTrinket(itemSubType, equipSlot) or self:IsEquippableSlot(equipSlot) then
+        if not quality then
+            return false
+        end
+        return quality >= self:GetResetMinQuality()
     end
     return false
 end
@@ -795,7 +862,7 @@ function Goals:HandleLootAssignment(playerName, itemLink, skipSync, forceRecord)
         return
     end
     local shouldTrack = self:ShouldTrackLoot(quality, itemType, itemSubType, equipSlot)
-    local shouldReset = shouldTrack and self:ShouldResetForLoot(itemType, itemSubType, equipSlot)
+    local shouldReset = shouldTrack and self:ShouldResetForLoot(itemType, itemSubType, equipSlot, quality)
     local resetApplied = shouldReset and not self:IsDisenchanter(playerName)
     if forceRecord or shouldTrack then
         local before = nil
