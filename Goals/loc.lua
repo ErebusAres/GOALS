@@ -45,6 +45,7 @@ Goals.L = {
     CHECK_COMBINE_HISTORY = "Combine boss history entries",
     CHECK_MINIMAP = "Show minimap button",
     CHECK_AUTO_MINIMIZE_COMBAT = "Auto minimize in combat",
+    CHECK_DBM_INTEGRATION = "Use DBM encounter events (if available)",
     CHECK_PRESENT_ONLY = "Show present only",
     LABEL_LOOT_HISTORY_FILTER = "Show Minimum Only",
     CHECK_DEBUG = "Enable debug log",

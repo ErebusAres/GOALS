@@ -100,6 +100,9 @@ function Events:GetDBMEncounterName(mod)
 end
 
 function Events:HandleDBMPull(mod)
+    if not (Goals and Goals.db and Goals.db.settings and Goals.db.settings.dbmIntegration) then
+        return
+    end
     local encounterName = self:GetDBMEncounterName(mod)
     if not encounterName then
         return
@@ -108,6 +111,9 @@ function Events:HandleDBMPull(mod)
 end
 
 function Events:HandleDBMEnd(mod, success)
+    if not (Goals and Goals.db and Goals.db.settings and Goals.db.settings.dbmIntegration) then
+        return
+    end
     local encounterName = self:GetDBMEncounterName(mod)
     if not encounterName then
         return

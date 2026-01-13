@@ -29,6 +29,7 @@ Goals.defaults = {
         lootHistoryMinQuality = 4,
         lootHistoryHiddenBefore = 0,
         localOnly = false,
+        dbmIntegration = true,
         tableAutoLoadSeen = true,
         tableCombined = false,
         sudoDev = false,

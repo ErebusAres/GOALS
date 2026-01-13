@@ -96,6 +96,7 @@ _G.bossEncounters = {
     --T6 Hyjal Summit Bosses
     ["Rage Winterchill"] = { "Rage Winterchill" },
     ["Anetheron"] = { "Anetheron" },
+    ["Milleniax"] = { "Milleniax" }, -- Custom GO Boss.
     ["Kaz'rogal"] = { "Kaz'rogal" },
     ["Azgalor"] = { "Azgalor" },
     ["Archimonde"] = { "Archimonde" },
@@ -222,6 +223,7 @@ _G.bossEncounters = {
     ["Ysondre"] = { "Ysondre" }, -- Hinterlands World Boss
     ["Taerar"] = { "Taerar" }, -- Ashenvale World Boss
     ["Highlord Kruul"] = { "Highlord Kruul" } -- This Boss can be found in Searing Gorge, and many other locations.
+    ["King Terokk"] = { "King Terokk" } -- Terokkar Forest World Boss (Custom GO Boss)
     -- Add more creature names as needed
 }
 

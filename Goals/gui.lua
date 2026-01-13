@@ -1467,22 +1467,31 @@ function UI:CreateSettingsTab(page)
     end)
     self.localOnlyCheck = localOnlyCheck
 
+    local function hasDBM()
+        if DBM and DBM.RegisterCallback then
+            return true
+        end
+        if IsAddOnLoaded then
+            return IsAddOnLoaded("DBM-Core") or IsAddOnLoaded("DBM-GUI")
+        end
+        return false
+    end
+
+    if hasDBM() then
+        local dbmCheck = CreateFrame("CheckButton", nil, leftInset, "UICheckButtonTemplate")
+        dbmCheck:SetPoint("TOPLEFT", localOnlyCheck, "BOTTOMLEFT", 0, -8)
+        setCheckText(dbmCheck, L.CHECK_DBM_INTEGRATION)
+        dbmCheck:SetScript("OnClick", function(selfBtn)
+            Goals.db.settings.dbmIntegration = selfBtn:GetChecked() and true or false
+            if Goals.db.settings.dbmIntegration and Goals.Events and Goals.Events.InitDBMCallbacks then
+                Goals.Events:InitDBMCallbacks()
+            end
+        end)
+        self.dbmIntegrationCheck = dbmCheck
+    end
+
     setupSudoDevPopup()
     setupSaveTableHelpPopup()
-    local sudoBtn = CreateFrame("Button", nil, leftInset, "UIPanelButtonTemplate")
-    sudoBtn:SetSize(180, 20)
-    sudoBtn:SetPoint("TOPLEFT", localOnlyCheck, "BOTTOMLEFT", 2, -12)
-    sudoBtn:SetScript("OnClick", function()
-        if Goals.db.settings.sudoDev then
-            Goals.db.settings.sudoDev = false
-            UI:Refresh()
-            return
-        end
-        if StaticPopup_Show then
-            StaticPopup_Show("GOALS_SUDO_DEV")
-        end
-    end)
-    self.sudoDevButton = sudoBtn
 
     local actionsTitle = createLabel(rightInset, "Data Management", "GameFontNormal")
     actionsTitle:SetPoint("TOPLEFT", rightInset, "TOPLEFT", 10, -10)
@@ -1580,6 +1589,22 @@ function UI:CreateSettingsTab(page)
     end)
     syncSeenBtn:SetPoint("TOPLEFT", combinedCheck, "BOTTOMLEFT", 4, -8)
     self.syncSeenButton = syncSeenBtn
+
+    local editTitle = createLabel(rightInset, "Local Editing", "GameFontNormal")
+    editTitle:SetPoint("TOPLEFT", syncSeenBtn, "BOTTOMLEFT", -2, -16)
+
+    local sudoBtn = createActionButton("", function()
+        if Goals.db.settings.sudoDev then
+            Goals.db.settings.sudoDev = false
+            UI:Refresh()
+            return
+        end
+        if StaticPopup_Show then
+            StaticPopup_Show("GOALS_SUDO_DEV")
+        end
+    end)
+    sudoBtn:SetPoint("TOPLEFT", editTitle, "BOTTOMLEFT", 2, -8)
+    self.sudoDevButton = sudoBtn
 end
 
 function UI:CreateUpdateTab(page)
@@ -2266,6 +2291,9 @@ function UI:Refresh()
     end
     if self.localOnlyCheck then
         self.localOnlyCheck:SetChecked(Goals.db.settings.localOnly and true or false)
+    end
+    if self.dbmIntegrationCheck then
+        self.dbmIntegrationCheck:SetChecked(Goals.db.settings.dbmIntegration and true or false)
     end
     if self.sudoDevButton then
         if Goals.db.settings.sudoDev then
