@@ -2421,7 +2421,19 @@ function UI:CreateMinimapButton()
     end)
 
     local icon = button:CreateTexture(nil, "ARTWORK")
-    icon:SetTexture("Interface\\Icons\\achievement_bg_killflagcarriers_grabflag_capit")
+    local function setIconTexture(path)
+        icon:SetTexture(nil)
+        icon:SetTexture(path)
+        if icon:GetTexture() then
+            return true
+        end
+        return false
+    end
+
+    local iconPath = string.format("Interface\\AddOns\\%s\\Icons\\GoalsRune-Glow", addonName)
+    if not setIconTexture(iconPath) then
+        icon:SetTexture("Interface\\Icons\\achievement_bg_killflagcarriers_grabflag_capit")
+    end
     icon:SetSize(16, 16)
     icon:ClearAllPoints()
     icon:SetPoint("CENTER", button, "CENTER", 0, 0)
@@ -2430,9 +2442,9 @@ function UI:CreateMinimapButton()
 
     local border = button:CreateTexture(nil, "OVERLAY")
     border:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
-    border:SetSize(54, 54)
+    border:SetSize(53, 53)
     border:ClearAllPoints()
-    border:SetPoint("CENTER", button, "CENTER", 0, 0)
+    border:SetPoint("TOPLEFT", button, "TOPLEFT", 0, 0)
     border:Show()
     button.border = border
 

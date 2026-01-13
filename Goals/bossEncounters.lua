@@ -222,8 +222,8 @@ _G.bossEncounters = {
     ["Lethon"] = { "Lethon" }, -- Feralas World Boss
     ["Ysondre"] = { "Ysondre" }, -- Hinterlands World Boss
     ["Taerar"] = { "Taerar" }, -- Ashenvale World Boss
-    ["Highlord Kruul"] = { "Highlord Kruul" } -- This Boss can be found in Searing Gorge, and many other locations.
-    ["King Terokk"] = { "King Terokk" } -- Terokkar Forest World Boss (Custom GO Boss)
+    ["Highlord Kruul"] = { "Highlord Kruul" }, -- This Boss can be found in Searing Gorge, and many other locations.
+    ["King Terokk"] = { "King Terokk" }, -- Terokkar Forest World Boss (Custom GO Boss)
     -- Add more creature names as needed
 }
 
@@ -242,4 +242,4 @@ _G.encounterRules = {
     },
 }
 
-return bossEncounters
+return _G.bossEncounters
