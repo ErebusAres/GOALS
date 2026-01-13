@@ -945,6 +945,11 @@ function Goals:ApplyLootFound(id, ts, itemLink, sender)
     self.state.lootFound = self.state.lootFound or {}
     self.state.lootFoundSeenIds = self.state.lootFoundSeenIds or {}
     self.state.lootFoundSeenLinks = self.state.lootFoundSeenLinks or {}
+    local now = ts or time()
+    local lastSeen = self.state.lootFoundSeenLinks[itemLink] or 0
+    if lastSeen > 0 and math.abs(now - lastSeen) < 120 then
+        return
+    end
     if id and id > 0 then
         local key = tostring(id)
         if ts then
@@ -1197,11 +1202,17 @@ function Goals:RecordLootAssignment(playerName, itemLink, resetApplied, resetBef
 end
 
 function Goals:ApplyLootAssignment(playerName, itemLink)
+    if self:ShouldSkipLootAssignment(playerName, itemLink) then
+        return
+    end
     self:RecordLootAssignment(playerName, itemLink, false)
     self:NotifyDataChanged()
 end
 
 function Goals:ApplyLootReset(playerName, itemLink)
+    if self:ShouldSkipLootAssignment(playerName, itemLink) then
+        return
+    end
     local entry = self.db and self.db.players and self.db.players[self:NormalizeName(playerName)] or nil
     local before = entry and entry.points or 0
     self:RecordLootAssignment(playerName, itemLink, true, before)

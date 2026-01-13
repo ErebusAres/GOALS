@@ -2152,15 +2152,20 @@ function UI:ShowFoundLootMenu(row, entry)
         end
         if entry.slot and entry.slot > 0 and GetMasterLootCandidate then
             local candidates = {}
+            local candidateList = {}
             for i = 1, 40 do
                 local candidate = GetMasterLootCandidate(entry.slot, i)
                 if not candidate then
                     break
                 end
                 local normalized = Goals:NormalizeName(candidate)
-                if normalized ~= "" then
+                if normalized ~= "" and not candidates[normalized] then
                     candidates[normalized] = true
+                    table.insert(candidateList, normalized)
                 end
+            end
+            if #candidateList > 0 then
+                players = candidateList
             end
             if #players == 0 then
                 info = UIDropDownMenu_CreateInfo()
@@ -2170,11 +2175,9 @@ function UI:ShowFoundLootMenu(row, entry)
                 return
             end
             for _, name in ipairs(players) do
-                local normalized = Goals:NormalizeName(name)
                 info = UIDropDownMenu_CreateInfo()
                 info.text = colorizeName(name)
                 info.value = name
-                info.disabled = not candidates[normalized]
                 info.func = function()
                     Goals:AssignLootSlot(entry.slot, name, entry.link)
                 end
