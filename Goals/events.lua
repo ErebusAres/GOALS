@@ -295,6 +295,12 @@ function Events:StartEncounter(encounterName, bossName)
     if Goals.encounter.active and Goals.encounter.name == encounterName then
         return
     end
+    if Goals.encounter.lastCompletedName == encounterName then
+        local lastTs = Goals.encounter.lastCompletedTs or 0
+        if (time() - lastTs) < 30 then
+            return
+        end
+    end
     Goals.encounter.active = true
     Goals.encounter.name = encounterName
     Goals.encounter.remaining = {}
@@ -313,12 +319,21 @@ function Events:StartEncounter(encounterName, bossName)
     Goals.encounter.startTime = time()
     Goals.encounter.lastBoss = bossName
     Goals:Debug("Encounter started: " .. encounterName)
+    if Goals.AnnounceEncounterStart then
+        Goals:AnnounceEncounterStart(encounterName)
+    end
 end
 
 function Events:MarkBossDead(bossName)
     local encounterName, canonicalBoss = self:GetEncounterForBossName(bossName)
     if not encounterName then
         return
+    end
+    if not Goals.encounter.active and Goals.encounter.lastCompletedName == encounterName then
+        local lastTs = Goals.encounter.lastCompletedTs or 0
+        if (time() - lastTs) < 30 then
+            return
+        end
     end
     if not Goals.encounter.active then
         self:StartEncounter(encounterName, canonicalBoss or bossName)
@@ -435,13 +450,15 @@ function Events:FinishEncounter(success)
         if Goals:IsSyncMaster() or (Goals.Dev and Goals.Dev.enabled) then
             Goals:AwardBossKill(encounterName)
         end
+        Goals.encounter.lastCompletedName = encounterName
+        Goals.encounter.lastCompletedTs = time()
         return
+    end
+    if Goals.AnnounceWipe then
+        Goals:AnnounceWipe(encounterName)
     end
     if Goals:IsSyncMaster() or (Goals.Dev and Goals.Dev.enabled) then
         Goals.History:AddWipe(encounterName)
-        if Goals.AnnounceWipe then
-            Goals:AnnounceWipe(encounterName)
-        end
         Goals:NotifyDataChanged()
     end
 end

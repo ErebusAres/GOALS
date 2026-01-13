@@ -114,6 +114,10 @@ function Goals:AnnounceWipe(encounterName)
     self:Print(string.format("%s wiped.", encounterName or "Group"))
 end
 
+function Goals:AnnounceEncounterStart(encounterName)
+    self:Print(string.format("Good luck! %s started.", encounterName or "Encounter"))
+end
+
 function Goals:Debug(msg)
     if not (self.Dev and self.Dev.enabled) then
         return
