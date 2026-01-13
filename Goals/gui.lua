@@ -2191,6 +2191,12 @@ function UI:ShowFoundLootMenu(row, entry)
             end
             if #candidateList > 0 then
                 players = candidateList
+            else
+                info = UIDropDownMenu_CreateInfo()
+                info.text = "Open loot window to assign."
+                info.notCheckable = true
+                UIDropDownMenu_AddButton(info, level)
+                return
             end
             if #players == 0 then
                 info = UIDropDownMenu_CreateInfo()

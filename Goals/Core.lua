@@ -1157,6 +1157,10 @@ function Goals:AssignLootSlot(slot, targetName, itemLink)
     if not self:IsMasterLooter() and not (self.Dev and self.Dev.enabled) then
         return
     end
+    if (not self.Dev or not self.Dev.enabled) and (not GetMasterLootCandidate or not GetMasterLootCandidate(slot, 1)) then
+        self:Print("Loot must be assigned from an open loot window.")
+        return
+    end
     local index = self:GetLootCandidateIndex(slot, targetName)
     if (self.db and self.db.settings and self.db.settings.debug) or (self.Dev and self.Dev.enabled) then
         local candidates = {}
