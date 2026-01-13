@@ -388,7 +388,7 @@ function Goals:CanSync()
     if self.db and self.db.settings and self.db.settings.localOnly then
         return false
     end
-    return self:IsSyncMaster() or (self.Dev and self.Dev.enabled)
+    return self:IsSyncMaster()
 end
 
 function Goals:HasLeaderAccess()
@@ -1010,7 +1010,7 @@ function Goals:UpdateLootSlots(resetSeen)
                 if seen[slot] ~= link then
                     seen[slot] = link
                     self:RecordLootFound(link)
-                    if self.Comm and (self:IsSyncMaster() or (self.IsGroupLeader and self:IsGroupLeader()) or (self.Dev and self.Dev.enabled)) then
+                    if self.Comm and self:CanSync() then
                         self.Comm:SendLootFound(entryId, entryTs, link)
                     end
                 end
