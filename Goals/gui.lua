@@ -2421,17 +2421,19 @@ function UI:CreateMinimapButton()
     end)
 
     local icon = button:CreateTexture(nil, "ARTWORK")
-    icon:SetTexture("Interface\\Icons\\INV_Misc_Map_01")
+    icon:SetTexture("Interface\\Icons\\achievement_bg_killflagcarriers_grabflag_capit")
     icon:SetSize(16, 16)
-    icon:SetPoint("CENTER", 0, 0)
+    icon:ClearAllPoints()
+    icon:SetPoint("CENTER", button, "CENTER", 0, 0)
     icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
     button.icon = icon
 
     local border = button:CreateTexture(nil, "OVERLAY")
     border:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
     border:SetSize(54, 54)
+    border:ClearAllPoints()
     border:SetPoint("CENTER", button, "CENTER", 0, 0)
-    border:Hide()
+    border:Show()
     button.border = border
 
     button:SetScript("OnDragStart", function(selfBtn)
