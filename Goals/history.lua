@@ -45,6 +45,14 @@ function History:AddBossKill(encounterName, points, names, combine)
     end
 end
 
+function History:AddEncounterStart(encounterName)
+    self:AddEntry(
+        "ENCOUNTER_START",
+        string.format("%s: started", encounterName),
+        { encounter = encounterName }
+    )
+end
+
 function History:AddAdjustment(playerName, delta, reason)
     local sign = delta >= 0 and "+" or ""
     self:AddEntry(

@@ -19,6 +19,17 @@ local function normalizeBossName(name)
     return text:lower():gsub("[^%w]", "")
 end
 
+local function getUnitNameIfExists(unit)
+    if not unit or not UnitExists or not UnitExists(unit) then
+        return nil
+    end
+    local name = UnitName(unit)
+    if name and name ~= "" then
+        return name
+    end
+    return nil
+end
+
 function Events:Init()
     if self.frame then
         return
@@ -44,9 +55,67 @@ function Events:Init()
     self.frame:RegisterEvent("PLAYER_ENTERING_WORLD")
     self.frame:RegisterEvent("BOSS_KILL")
     self:BuildBossLookup()
+    self:InitDBMCallbacks()
     if Goals and Goals.Dev and Goals.Dev.enabled then
         Goals:Debug("Events initialized.")
     end
+end
+
+function Events:InitDBMCallbacks()
+    if self.dbmHooked then
+        return
+    end
+    if not DBM or not DBM.RegisterCallback then
+        return
+    end
+    self.dbmHooked = true
+    DBM:RegisterCallback("DBM_Pull", function(_, mod, delay, synced, startHp)
+        self:HandleDBMPull(mod, delay, synced, startHp)
+    end)
+    DBM:RegisterCallback("DBM_Kill", function(_, mod)
+        self:HandleDBMEnd(mod, true)
+    end)
+    DBM:RegisterCallback("DBM_Wipe", function(_, mod)
+        self:HandleDBMEnd(mod, false)
+    end)
+end
+
+function Events:GetDBMEncounterName(mod)
+    if not mod then
+        return nil
+    end
+    if mod.localization and mod.localization.general and mod.localization.general.name then
+        return mod.localization.general.name
+    end
+    if mod.combatInfo and mod.combatInfo.name then
+        return mod.combatInfo.name
+    end
+    if mod.name then
+        return mod.name
+    end
+    if mod.id then
+        return mod.id
+    end
+    return nil
+end
+
+function Events:HandleDBMPull(mod)
+    local encounterName = self:GetDBMEncounterName(mod)
+    if not encounterName then
+        return
+    end
+    self:StartEncounter(encounterName)
+end
+
+function Events:HandleDBMEnd(mod, success)
+    local encounterName = self:GetDBMEncounterName(mod)
+    if not encounterName then
+        return
+    end
+    if Goals.encounter.name ~= encounterName then
+        Goals.encounter.name = encounterName
+    end
+    self:FinishEncounter(success)
 end
 
 function Events:BuildBossLookup()
@@ -160,6 +229,21 @@ function Events:OnEvent(event, ...)
     end
 end
 
+function Events:CheckBossUnits()
+    local units = { "boss1", "boss2", "boss3", "boss4", "target", "focus" }
+    for _, unit in ipairs(units) do
+        local name = getUnitNameIfExists(unit)
+        if name then
+            local encounterName, bossName = self:GetEncounterForBossName(name)
+            if encounterName then
+                Goals.encounter.lastBossUnitSeen = time()
+                return encounterName, bossName
+            end
+        end
+    end
+    return nil
+end
+
 function Events:HandleGroupUpdate()
     Goals:EnsureGroupMembers()
     if Goals.MergeSeenPlayersForGroup then
@@ -246,6 +330,10 @@ function Events:HandleCombatLog(...)
             end
         end
     end
+    local encounterName = self:CheckBossUnits()
+    if encounterName then
+        self:StartEncounter(encounterName)
+    end
 end
 
 function Events:HandleHostileDeath(message)
@@ -319,6 +407,9 @@ function Events:StartEncounter(encounterName, bossName)
     Goals.encounter.startTime = time()
     Goals.encounter.lastBoss = bossName
     Goals:Debug("Encounter started: " .. encounterName)
+    if Goals.History and Goals.History.AddEncounterStart then
+        Goals.History:AddEncounterStart(encounterName)
+    end
     if Goals.AnnounceEncounterStart then
         Goals:AnnounceEncounterStart(encounterName)
     end
@@ -394,6 +485,13 @@ function Events:HandleCombatEnd()
         if lastKill > 0 and (time() - lastKill) < 20 then
             return
         end
+        if self:CheckBossUnits() then
+            return
+        end
+        local lastBossUnit = Goals.encounter.lastBossUnitSeen or 0
+        if lastBossUnit > 0 and (time() - lastBossUnit) < 8 then
+            return
+        end
         if Goals.encounter.active and not Goals:IsGroupInCombat() then
             self:FinishEncounter(false)
         end
@@ -401,6 +499,10 @@ function Events:HandleCombatEnd()
 end
 
 function Events:HandleCombatStart()
+    local encounterName = self:CheckBossUnits()
+    if encounterName then
+        self:StartEncounter(encounterName)
+    end
     if not Goals or not Goals.db or not Goals.db.settings then
         return
     end
@@ -442,6 +544,18 @@ end
 
 function Events:FinishEncounter(success)
     local encounterName = Goals.encounter.name or "Encounter"
+    if success and Goals.encounter.lastCompletedName == encounterName then
+        local lastTs = Goals.encounter.lastCompletedTs or 0
+        if (time() - lastTs) < 30 then
+            return
+        end
+    end
+    if not success and Goals.encounter.lastWipeName == encounterName then
+        local lastTs = Goals.encounter.lastWipeTs or 0
+        if (time() - lastTs) < 30 then
+            return
+        end
+    end
     Goals.encounter.active = false
     Goals.encounter.name = nil
     Goals.encounter.remaining = nil
@@ -457,10 +571,12 @@ function Events:FinishEncounter(success)
     if Goals.AnnounceWipe then
         Goals:AnnounceWipe(encounterName)
     end
-    if Goals:IsSyncMaster() or (Goals.Dev and Goals.Dev.enabled) then
+    if Goals.History then
         Goals.History:AddWipe(encounterName)
-        Goals:NotifyDataChanged()
     end
+    Goals:NotifyDataChanged()
+    Goals.encounter.lastWipeName = encounterName
+    Goals.encounter.lastWipeTs = time()
 end
 
 function Events:ResetEncounter()
