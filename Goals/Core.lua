@@ -293,11 +293,8 @@ function Goals:SetLootMethod(method)
     end
     if method == "master" then
         if self:IsInRaid() then
-            local index = self:GetSelfLootIndex()
-            if index == nil then
-                return false, "Unable to determine loot master index."
-            end
-            SetLootMethod("master", index)
+            local name = self:GetPlayerName()
+            SetLootMethod("master", name)
             return true
         end
         if self:IsInParty() then
