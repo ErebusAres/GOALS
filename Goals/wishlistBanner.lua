@@ -400,7 +400,7 @@ local AtlasInfo = {
 }
 
 local function getBannerTexturePath()
-	return (Goals and Goals.WishlistBannerTextureOverride) or "Interface\\AddOns\\Goals\\Texture\\BossBannerToast\\ArcaneGlow"
+	return (Goals and Goals.WishlistBannerTextureOverride) or "Interface\\AddOns\\Goals\\Texture\\BossBannerToast\\ArcaneGlow-NewBag-GlowMetal"
 end
 
 local function SetAtlas(textureObject, atlasName, useAtlasSize)
@@ -1089,6 +1089,10 @@ local function BossBanner_OnAnimOutFinished(self) -- moved up from retail source
 		banner.LootFrames[i]:Hide()
 	end
 	banner:SetHeight(banner.baseHeight)
+	if Goals and Goals.WishlistBannerTextureTest and Goals.ApplyWishlistBannerTexture then
+		Goals.WishlistBannerTextureTest = false
+		Goals:ApplyWishlistBannerTexture(nil)
+	end
 	TopBannerManager_BannerFinished()
 end
 
@@ -1585,6 +1589,9 @@ function Goals:ShowWishlistFoundAlertLocal(itemLinks, allowSound)
 	if not banner then
 		return
 	end
+	if self.WishlistBannerTextureLock and not self.WishlistBannerTextureTest then
+		return
+	end
 	local links = {}
 	if type(itemLinks) == "table" then
 		for i = 1, math.min(8, #itemLinks) do
@@ -1629,6 +1636,7 @@ function Goals:ApplyWishlistBannerTexture(path)
 		path = nil
 	end
 	self.WishlistBannerTextureOverride = path
+	self.WishlistBannerTextureLock = path and true or false
 	local banner = _G.GoalsWishlistBossBanner
 	if not banner then
 		return

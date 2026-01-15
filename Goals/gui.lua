@@ -3126,7 +3126,7 @@ function UI:CreateDevTab(page)
     local testDbmBtn = CreateFrame("Button", nil, inset, "UIPanelButtonTemplate")
     testDbmBtn:SetSize(160, 20)
     testDbmBtn:SetText("Test Wishlist (DBM)")
-    testDbmBtn:SetPoint("TOPLEFT", simulateUpdateBtn, "BOTTOMLEFT", 0, -8)
+    testDbmBtn:SetPoint("TOPLEFT", killBtn, "TOPRIGHT", 30, 0)
     testDbmBtn:SetScript("OnClick", function()
         if Goals and Goals.TestWishlistNotification then
             Goals:TestWishlistNotification(nil, true)
@@ -3143,6 +3143,22 @@ function UI:CreateDevTab(page)
         end
     end)
 
+    local function getWishlistTestResetDelay()
+        local count = 3
+        if Goals and Goals.db and Goals.db.settings then
+            count = tonumber(Goals.db.settings.devTestWishlistItems) or count
+        end
+        if count < 1 then
+            count = 1
+        elseif count > 8 then
+            count = 8
+        end
+        if Goals and Goals.GetDbmLootBannerDuration then
+            return Goals:GetDbmLootBannerDuration(count) + 1
+        end
+        return 8
+    end
+
     local testArcaneBtn = CreateFrame("Button", nil, inset, "UIPanelButtonTemplate")
     testArcaneBtn:SetSize(160, 20)
     testArcaneBtn:SetText("Test Local (Arcane)")
@@ -3150,20 +3166,40 @@ function UI:CreateDevTab(page)
     testArcaneBtn:SetScript("OnClick", function()
         if Goals and Goals.ApplyWishlistBannerTexture and Goals.TestWishlistNotification then
             local path = "Interface\\AddOns\\Goals\\Texture\\BossBannerToast\\ArcaneGlow"
+            Goals.WishlistBannerTextureTest = true
             Goals:ApplyWishlistBannerTexture(path)
             Goals:TestWishlistNotification(nil, false)
-            if Goals.Delay then
-                Goals:Delay(7, function()
-                    Goals:ApplyWishlistBannerTexture(nil)
-                end)
-            else
-                Goals:ApplyWishlistBannerTexture(nil)
-            end
+        end
+    end)
+
+    local testArcaneBagBtn = CreateFrame("Button", nil, inset, "UIPanelButtonTemplate")
+    testArcaneBagBtn:SetSize(160, 20)
+    testArcaneBagBtn:SetText("Test Local (NewBag)")
+    testArcaneBagBtn:SetPoint("TOPLEFT", testArcaneBtn, "BOTTOMLEFT", 0, -6)
+    testArcaneBagBtn:SetScript("OnClick", function()
+        if Goals and Goals.ApplyWishlistBannerTexture and Goals.TestWishlistNotification then
+            local path = "Interface\\AddOns\\Goals\\Texture\\BossBannerToast\\ArcaneGlow-NewBag"
+            Goals.WishlistBannerTextureTest = true
+            Goals:ApplyWishlistBannerTexture(path)
+            Goals:TestWishlistNotification(nil, false)
+        end
+    end)
+
+    local testArcaneGlowMetalBtn = CreateFrame("Button", nil, inset, "UIPanelButtonTemplate")
+    testArcaneGlowMetalBtn:SetSize(160, 20)
+    testArcaneGlowMetalBtn:SetText("Test Local (GlowMetal)")
+    testArcaneGlowMetalBtn:SetPoint("TOPLEFT", testArcaneBagBtn, "BOTTOMLEFT", 0, -6)
+    testArcaneGlowMetalBtn:SetScript("OnClick", function()
+        if Goals and Goals.ApplyWishlistBannerTexture and Goals.TestWishlistNotification then
+            local path = "Interface\\AddOns\\Goals\\Texture\\BossBannerToast\\ArcaneGlow-NewBag-GlowMetal"
+            Goals.WishlistBannerTextureTest = true
+            Goals:ApplyWishlistBannerTexture(path)
+            Goals:TestWishlistNotification(nil, false)
         end
     end)
 
     local updateDebug = createLabel(inset, "", "GameFontHighlightSmall")
-    updateDebug:SetPoint("TOPLEFT", testArcaneBtn, "BOTTOMLEFT", 0, -8)
+    updateDebug:SetPoint("TOPLEFT", simulateUpdateBtn, "BOTTOMLEFT", 0, -12)
     updateDebug:SetWidth(520)
     updateDebug:SetJustifyH("LEFT")
     self.updateDebugText = updateDebug
@@ -3188,7 +3224,7 @@ function UI:CreateDevTab(page)
     self.debugCheck = debugCheck
 
     local wishlistChatCheck = CreateFrame("CheckButton", nil, inset, "UICheckButtonTemplate")
-    wishlistChatCheck:SetPoint("TOPLEFT", debugCheck, "BOTTOMLEFT", 0, -8)
+    wishlistChatCheck:SetPoint("TOPLEFT", testArcaneGlowMetalBtn, "BOTTOMLEFT", 0, -10)
     setCheckText(wishlistChatCheck, "Test wishlist chat messages")
     wishlistChatCheck:SetScript("OnClick", function(selfBtn)
         Goals.db.settings.devTestWishlistChat = selfBtn:GetChecked() and true or false
