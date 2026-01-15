@@ -84,6 +84,20 @@ function History:AddLootAssigned(playerName, itemLink, resetPoints, resetBefore)
         local before = tonumber(resetBefore) or 0
         suffix = string.format(" (%s's points set to 0 (-%d))", playerName or "", before)
     end
+    if not resetPoints and itemLink and self.db and self.db.history and self.db.history[1] then
+        local last = self.db.history[1]
+        if last.kind == "LOOT_ASSIGN" and last.data and last.data.item == itemLink and not last.data.reset then
+            local lastTs = last.ts or 0
+            if (time() - lastTs) <= 3 then
+                last.data.players = last.data.players or { last.data.player }
+                table.insert(last.data.players, playerName)
+                last.data.player = nil
+                last.data.playerCount = #last.data.players
+                last.text = string.format("Gave %d players: %s", last.data.playerCount, itemLink)
+                return
+            end
+        end
+    end
     self:AddEntry(
         "LOOT_ASSIGN",
         string.format("Assigned to %s: %s%s", playerName, itemLink, suffix),

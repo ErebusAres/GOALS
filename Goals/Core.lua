@@ -1606,7 +1606,7 @@ function Goals:RefreshArmorTokenMap()
     end
 end
 
-function Goals:GetArmorTokenForItem(itemId)
+function Goals:GetDefaultArmorTokenForItem(itemId)
     if not itemId then
         return nil
     end
@@ -1614,6 +1614,60 @@ function Goals:GetArmorTokenForItem(itemId)
         self:RefreshArmorTokenMap()
     end
     return self.ArmorTokenMap[itemId]
+end
+
+function Goals:GetArmorTokenForItem(itemId)
+    if not itemId then
+        return nil
+    end
+    local defaultToken = self:GetDefaultArmorTokenForItem(itemId)
+    local override = self:GetCustomRealmTokenOverride(itemId, defaultToken)
+    if override then
+        return override
+    end
+    return defaultToken
+end
+
+function Goals:GetCustomRealmTokenOverride(itemId, defaultToken)
+    local realm = GetRealmName and GetRealmName() or ""
+    if realm == "" or string.lower(realm) ~= "redus" then
+        return nil
+    end
+    local tokenId = defaultToken
+    if not tokenId then
+        return nil
+    end
+    local t4Map = {
+        [29753] = 29755, [29754] = 29755, [29755] = 29755, -- Chestguard of the Fallen Hero
+        [29756] = 29756, [29757] = 29756, [29758] = 29756, -- Gloves of the Fallen Hero
+        [29759] = 29759, [29760] = 29759, [29761] = 29759, -- Helm of the Fallen Hero
+        [29762] = 29762, [29763] = 29762, [29764] = 29762, -- Pauldrons of the Fallen Hero
+        [29765] = 29765, [29766] = 29765, [29767] = 29765, -- Leggings of the Fallen Hero
+    }
+    local t5Map = {
+        [30236] = 30238, [30237] = 30238, [30238] = 30238, -- Chestguard of the Vanquished Hero
+        [30239] = 30241, [30240] = 30241, [30241] = 30241, -- Gloves of the Vanquished Hero
+        [30242] = 30244, [30243] = 30244, [30244] = 30244, -- Helm of the Vanquished Hero
+        [30245] = 30247, [30246] = 30247, [30247] = 30247, -- Leggings of the Vanquished Hero
+        [30248] = 30250, [30249] = 30250, [30250] = 30250, -- Pauldrons of the Vanquished Hero
+    }
+    local t6Map = {
+        [31089] = 31090, [31090] = 31090, [31091] = 31090, -- Chestguard of the Forgotten Protector
+        [31092] = 31093, [31093] = 31093, [31094] = 31093, -- Gloves of the Forgotten Protector
+        [31095] = 31096, [31096] = 31096, [31097] = 31096, -- Helm of the Forgotten Protector
+        [31098] = 31099, [31099] = 31099, [31100] = 31099, -- Leggings of the Forgotten Protector
+        [31101] = 31102, [31102] = 31102, [31103] = 31102, -- Pauldrons of the Forgotten Protector
+    }
+    if t4Map[tokenId] then
+        return t4Map[tokenId]
+    end
+    if t5Map[tokenId] then
+        return t5Map[tokenId]
+    end
+    if t6Map[tokenId] then
+        return t6Map[tokenId]
+    end
+    return nil
 end
 
 function Goals:SetWishlistItem(slotKey, itemData)
@@ -1627,6 +1681,9 @@ function Goals:SetWishlistItem(slotKey, itemData)
     end
     if itemData.found == nil then
         itemData.found = false
+    end
+    if itemData.manualFound == nil then
+        itemData.manualFound = false
     end
     list.items = list.items or {}
     if oldEntry and oldEntry.itemId and itemData.itemId and oldEntry.itemId ~= itemData.itemId then
@@ -1790,6 +1847,7 @@ function Goals:SerializeWishlist(list)
             table.concat(gemStrs, ","),
             escapeWishlistText(entry.notes or ""),
             escapeWishlistText(entry.source or ""),
+            tostring(entry.manualFound and 1 or 0),
         }, ":")
         table.insert(items, itemPart)
     end
@@ -1815,7 +1873,7 @@ function Goals:DeserializeWishlist(text)
             end
         elseif key == "items" then
             for entry in string.gmatch(value or "", "([^|]+)") do
-                local slotKey, itemId, enchantId, gems, notes, source = entry:match("([^:]*):([^:]*):([^:]*):([^:]*):([^:]*):?(.*)")
+                local slotKey, itemId, enchantId, gems, notes, source, manualFound = entry:match("([^:]*):([^:]*):([^:]*):([^:]*):([^:]*):?([^:]*):?(.*)")
                 if slotKey and slotKey ~= "" then
                     local gemIds = {}
                     for gem in string.gmatch(gems or "", "([^,]+)") do
@@ -1830,6 +1888,7 @@ function Goals:DeserializeWishlist(text)
                         gemIds = gemIds,
                         notes = unescapeWishlistText(notes),
                         source = unescapeWishlistText(source),
+                        manualFound = tonumber(manualFound) == 1,
                     }
                 end
             end
@@ -1958,6 +2017,372 @@ function Goals:EnqueueWishlistAnnounce(itemLink)
     end
 end
 
+function Goals:GetWishlistTokenName(tokenId)
+    if not tokenId or tokenId == 0 then
+        return nil
+    end
+    local cached = self:CacheItemById(tokenId)
+    if cached and cached.name then
+        return cached.name
+    end
+    return "Token " .. tostring(tokenId)
+end
+
+function Goals:FormatWishlistItemWithToken(itemLink)
+    if not itemLink or itemLink == "" then
+        return ""
+    end
+    local itemId = self:GetItemIdFromLink(itemLink)
+    if not itemId then
+        return itemLink
+    end
+    local tokenId = self:GetArmorTokenForItem(itemId)
+    local tokenName = self:GetWishlistTokenName(tokenId)
+    if tokenName then
+        return string.format("%s (Token: %s)", itemLink, tokenName)
+    end
+    return itemLink
+end
+
+function Goals:ShowWishlistFoundAlert(itemLinks, forceDbm)
+    if not UIParent then
+        return
+    end
+    local settings = self.db and self.db.settings or {}
+    if settings.wishlistPopupDisabled then
+        return
+    end
+    local allowSound = settings.wishlistPopupSound ~= false
+    local bossBanner = _G.BossBanner
+    local allowDbm = (forceDbm == true) or (forceDbm ~= false and settings.wishlistDbmIntegration)
+    if IsAddOnLoaded and IsAddOnLoaded("DBM-Core") and allowDbm and bossBanner and bossBanner.PlayBanner then
+        local links = {}
+        if type(itemLinks) == "table" then
+            for i = 1, math.min(8, #itemLinks) do
+                links[i] = itemLinks[i]
+            end
+        else
+            links[1] = itemLinks
+        end
+        bossBanner.pendingLoot = bossBanner.pendingLoot or {}
+        for i = #bossBanner.pendingLoot, 1, -1 do
+            bossBanner.pendingLoot[i] = nil
+        end
+        if bossBanner.AnimIn then
+            bossBanner.AnimIn:Stop()
+        end
+        if bossBanner.AnimSwitch then
+            bossBanner.AnimSwitch:Stop()
+        end
+        if bossBanner.AnimOut then
+            bossBanner.AnimOut:Stop()
+        end
+        bossBanner.animState = nil
+        bossBanner.animTimeLeft = nil
+        bossBanner.lootShown = 0
+        if bossBanner.LootFrames then
+            for i = 1, #bossBanner.LootFrames do
+                bossBanner.LootFrames[i]:Hide()
+            end
+        end
+        if bossBanner.baseHeight then
+            bossBanner:SetHeight(bossBanner.baseHeight)
+        end
+        bossBanner:Hide()
+
+        local sourceName = "Wishlist items found"
+        for i, link in ipairs(links) do
+            local texture = select(10, GetItemInfo(link)) or "Interface\\Icons\\inv_misc_questionmark"
+            table.insert(bossBanner.pendingLoot, {
+                itemID = self:GetItemIdFromLink(link),
+                quantity = 1,
+                slot = i,
+                lootSourceName = sourceName,
+                itemLink = link,
+                texture = texture,
+            })
+        end
+        bossBanner.encounterID = "GoalsWishlist"
+        bossBanner.encounterName = sourceName
+        local restoreSound
+        if DBM and DBM.Options and DBM.Options.PlayBBSound ~= nil then
+            restoreSound = DBM.Options.PlayBBSound
+            if not allowSound then
+                DBM.Options.PlayBBSound = false
+            end
+        end
+        bossBanner:PlayBanner({ encounterID = "GoalsWishlist", name = sourceName, mode = "LOOT" })
+        if restoreSound ~= nil then
+            DBM.Options.PlayBBSound = restoreSound
+        end
+        return
+    end
+    if not self.wishlistAlertFrame then
+        local frame = CreateFrame("Frame", "GoalsWishlistAlert", UIParent)
+        frame.headerHeight = 40
+        frame.rowHeight = 44
+        frame.rowStride = 50
+        frame.maxRows = 8
+        frame:SetSize(440, frame.headerHeight + frame.rowStride * 3 + 24)
+        frame:SetPoint("TOP", UIParent, "TOP", 0, -120)
+        frame:SetFrameStrata("HIGH")
+        local useDbm = true
+        frame.useDbmBanner = useDbm
+
+        local title = frame:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge")
+        title:SetPoint("TOPLEFT", frame, "TOPLEFT", 26, -18)
+        title:SetText("Wishlist items found")
+        frame.title = title
+
+        local atlasData = {
+            ["BossBanner-BgBanner-Bottom"] = { width = 440, height = 112, left = 0.00195312, right = 0.861328, top = 0.00195312, bottom = 0.220703 },
+            ["BossBanner-BgBanner-Top"] = { width = 440, height = 112, left = 0.00195312, right = 0.861328, top = 0.224609, bottom = 0.443359 },
+            ["BossBanner-BgBanner-Mid"] = { width = 440, height = 64, left = 0.00195312, right = 0.861328, top = 0.447266, bottom = 0.572266 },
+            ["LootBanner-LootBagCircle"] = { width = 44, height = 44, left = 0.865234, right = 0.951172, top = 0.224609, bottom = 0.310547 },
+            ["LootBanner-ItemBg"] = { width = 269, height = 41, left = 0.244141, right = 0.769531, top = 0.724609, bottom = 0.804688 },
+            ["LootBanner-IconGlow"] = { width = 40, height = 40, left = 0.865234, right = 0.943359, top = 0.447266, bottom = 0.525391 },
+        }
+
+        local function setGoalsAtlas(texture, name)
+            local entry = atlasData[name]
+            if not entry then
+                return
+            end
+            texture:SetTexture("Interface\\AddOns\\Goals\\Texture\\BossBannerToast\\BossBanner.blp")
+            texture:SetTexCoord(entry.left, entry.right, entry.top, entry.bottom)
+            texture:SetSize(entry.width, entry.height)
+        end
+
+        local banner = frame:CreateTexture(nil, "BACKGROUND", nil, -1)
+        banner:SetTexture("Interface\\AddOns\\Goals\\Texture\\BossBannerToast\\BossBanner.blp")
+        banner:SetPoint("TOPLEFT", frame, "TOPLEFT", -32, 32)
+        banner:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 32, -32)
+        banner:SetTexCoord(0, 1, 0, 1)
+        banner:SetAlpha(0.9)
+        frame.banner = banner
+
+        local bannerTop = frame:CreateTexture(nil, "BACKGROUND")
+        bannerTop:SetPoint("TOP", frame, "TOP", 0, 8)
+        setGoalsAtlas(bannerTop, "BossBanner-BgBanner-Top")
+        frame.bannerTop = bannerTop
+
+        local bannerBottom = frame:CreateTexture(nil, "BACKGROUND")
+        bannerBottom:SetPoint("BOTTOM", frame, "BOTTOM", 0, -8)
+        setGoalsAtlas(bannerBottom, "BossBanner-BgBanner-Bottom")
+        frame.bannerBottom = bannerBottom
+
+        local bannerMid = frame:CreateTexture(nil, "BACKGROUND")
+        bannerMid:SetPoint("TOP", bannerTop, "BOTTOM", 0, 0)
+        bannerMid:SetPoint("BOTTOM", bannerBottom, "TOP", 0, 0)
+        bannerMid:SetPoint("LEFT", frame, "LEFT", 0, 0)
+        bannerMid:SetPoint("RIGHT", frame, "RIGHT", 0, 0)
+        bannerMid:SetTexture("Interface\\AddOns\\Goals\\Texture\\BossBannerToast\\BossBanner.blp")
+        bannerMid:SetTexCoord(atlasData["BossBanner-BgBanner-Mid"].left, atlasData["BossBanner-BgBanner-Mid"].right, atlasData["BossBanner-BgBanner-Mid"].top, atlasData["BossBanner-BgBanner-Mid"].bottom)
+        frame.bannerMid = bannerMid
+
+        local lootCircle = frame:CreateTexture(nil, "ARTWORK")
+        lootCircle:SetPoint("TOPLEFT", frame, "TOPLEFT", 18, -44)
+        setGoalsAtlas(lootCircle, "LootBanner-LootBagCircle")
+        lootCircle:SetAlpha(0.7)
+        frame.lootCircle = lootCircle
+
+        frame.rows = {}
+        for i = 1, frame.maxRows do
+            local row = CreateFrame("Frame", nil, frame)
+            row:SetSize(360, frame.rowHeight)
+            row.baseX = 34
+            row.baseY = 0
+            row:SetPoint("TOPLEFT", frame, "TOPLEFT", row.baseX, -frame.headerHeight)
+
+            local bg = row:CreateTexture(nil, "BACKGROUND")
+            bg:SetPoint("CENTER", row, "CENTER", 0, 0)
+            bg:SetAlpha(0.95)
+            setGoalsAtlas(bg, "LootBanner-ItemBg")
+            row.bg = bg
+
+            local icon = row:CreateTexture(nil, "ARTWORK")
+            icon:SetPoint("LEFT", row, "LEFT", 6, 0)
+            icon:SetSize(36, 36)
+            icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+            row.icon = icon
+            if useDbm then
+                local iconFrame = row:CreateTexture(nil, "OVERLAY")
+                iconFrame:SetTexture("Interface\\AddOns\\Goals\\Texture\\BossBannerToast\\WhiteIconFrame")
+                iconFrame:SetPoint("CENTER", icon, "CENTER", 0, 0)
+                iconFrame:SetSize(38, 38)
+                iconFrame:SetBlendMode("ADD")
+                row.iconFrame = iconFrame
+            end
+            local glow = row:CreateTexture(nil, "BORDER")
+            glow:SetPoint("CENTER", icon, "CENTER", 0, 0)
+            setGoalsAtlas(glow, "LootBanner-IconGlow")
+            glow:SetBlendMode("ADD")
+            glow:SetAlpha(0.25)
+            row.iconGlow = glow
+
+            local text = row:CreateFontString(nil, "ARTWORK", "GameFontNormalMed3")
+            text:SetPoint("LEFT", icon, "RIGHT", 12, 0)
+            text:SetWidth(260)
+            text:SetJustifyH("LEFT")
+            text:SetWordWrap(false)
+            row.text = text
+
+            row:Hide()
+            frame.rows[i] = row
+        end
+        frame:Hide()
+        self.wishlistAlertFrame = frame
+    end
+    local frame = self.wishlistAlertFrame
+    local links = {}
+    if type(itemLinks) == "table" then
+        for i = 1, math.min(8, #itemLinks) do
+            links[i] = itemLinks[i]
+        end
+    else
+        links[1] = itemLinks
+    end
+    local rowsShown = math.max(1, #links)
+    frame:SetHeight(frame.headerHeight + (rowsShown * frame.rowStride) + 24)
+    for i = 1, frame.maxRows do
+        local row = frame.rows[i]
+        local link = links[i]
+        if row and link then
+            local name, _, quality, _, _, _, _, _, _, texture = GetItemInfo(link)
+            row.text:SetText(name or link)
+            row.icon:SetTexture(texture or "Interface\\Icons\\inv_misc_questionmark")
+            local color = (quality and ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[quality]) or nil
+            if color then
+                row.text:SetTextColor(color.r, color.g, color.b)
+                row.bg:SetVertexColor(color.r, color.g, color.b, 0.6)
+            else
+                row.text:SetTextColor(1, 0.82, 0)
+                row.bg:SetVertexColor(1, 1, 1, 0.75)
+            end
+            row.baseY = -frame.headerHeight - (i - 1) * frame.rowStride
+            row:ClearAllPoints()
+            row:SetPoint("TOPLEFT", frame, "TOPLEFT", row.baseX, row.baseY)
+            row.animStart = (frame.startTime or 0) + (i - 1) * 0.08
+            row:SetAlpha(0)
+            row:Show()
+        elseif row then
+            row:Hide()
+            row.animStart = nil
+        end
+    end
+    frame.startTime = GetTime and GetTime() or 0
+    frame.duration = 5.5
+    frame.fadeIn = 0.2
+    frame.fadeOut = 0.6
+    frame:SetAlpha(0)
+    frame:Show()
+    frame:SetScript("OnUpdate", function(selfFrame)
+        local now = GetTime and GetTime() or 0
+        local elapsed = now - (selfFrame.startTime or 0)
+        local alpha = 1
+        if elapsed < (selfFrame.fadeIn or 0) then
+            alpha = elapsed / (selfFrame.fadeIn or 0.2)
+        elseif elapsed > (selfFrame.duration - (selfFrame.fadeOut or 0.6)) then
+            alpha = (selfFrame.duration - elapsed) / (selfFrame.fadeOut or 0.6)
+        end
+        if alpha < 0 then
+            alpha = 0
+        elseif alpha > 1 then
+            alpha = 1
+        end
+        selfFrame:SetAlpha(alpha)
+        if selfFrame.shimmer then
+            local pulse = 0.2 + 0.2 * math.abs(math.sin(elapsed * 4))
+            selfFrame.shimmer:SetAlpha(pulse)
+        end
+        if selfFrame.ring then
+            local ringPulse = 0.12 + 0.06 * math.abs(math.sin(elapsed * 3))
+            selfFrame.ring:SetAlpha(ringPulse)
+        end
+        if elapsed < 0.4 then
+            local scale = 0.9 + (elapsed / 0.4) * 0.1
+            selfFrame:SetScale(scale)
+        else
+            selfFrame:SetScale(1)
+        end
+        if selfFrame.rows then
+            for _, row in ipairs(selfFrame.rows) do
+                if row:IsShown() and row.animStart then
+                    local rowElapsed = now - row.animStart
+                    if rowElapsed < 0 then
+                        row:SetAlpha(0)
+                        row:ClearAllPoints()
+                        row:SetPoint("TOPLEFT", selfFrame, "TOPLEFT", row.baseX - 12, row.baseY)
+                    elseif rowElapsed < 0.2 then
+                        local t = rowElapsed / 0.2
+                        row:SetAlpha(t)
+                        row:ClearAllPoints()
+                        row:SetPoint("TOPLEFT", selfFrame, "TOPLEFT", row.baseX - (1 - t) * 12, row.baseY)
+                    else
+                        row:SetAlpha(1)
+                        row:ClearAllPoints()
+                        row:SetPoint("TOPLEFT", selfFrame, "TOPLEFT", row.baseX, row.baseY)
+                    end
+                end
+            end
+        end
+        if elapsed >= (selfFrame.duration or 0) then
+            selfFrame:SetScript("OnUpdate", nil)
+            selfFrame:Hide()
+        end
+    end)
+    if PlaySound and allowSound then
+        PlaySound("ReadyCheck")
+    end
+end
+
+function Goals:GetWishlistAlertDelay(forceDbm)
+    if forceDbm == false then
+        return 0.4
+    end
+    local settings = self.db and self.db.settings or {}
+    local allowDbm = (forceDbm == true) or settings.wishlistDbmIntegration
+    if IsAddOnLoaded and IsAddOnLoaded("DBM-Core") and allowDbm then
+        return 2.0
+    end
+    return 0.4
+end
+
+function Goals:TestWishlistNotification(itemLink, forceDbm)
+    local links = {}
+    if itemLink then
+        links = { itemLink }
+    else
+        links = {
+            select(2, GetItemInfo(30166)) or "item:30166",
+            select(2, GetItemInfo(30168)) or "item:30168",
+            select(2, GetItemInfo(29976)) or "item:29976",
+        }
+    end
+    local chatEnabled = self.db and self.db.settings and self.db.settings.devTestWishlistChat
+    if chatEnabled then
+        if self.db and self.db.settings and self.db.settings.wishlistAnnounce then
+            for _, link in ipairs(links) do
+                self:EnqueueWishlistAnnounce(link)
+            end
+            self:FlushWishlistAnnouncements()
+        else
+            for _, link in ipairs(links) do
+                local msg = self:FormatWishlistItemWithToken(link)
+                self:Print("Wishlist found: " .. msg)
+            end
+        end
+    end
+    local delay = self:GetWishlistAlertDelay(forceDbm)
+    if delay > 0 then
+        self:Delay(delay, function()
+            self:ShowWishlistFoundAlert(links, forceDbm)
+        end)
+    else
+        self:ShowWishlistFoundAlert(links, forceDbm)
+    end
+end
+
 function Goals:FlushWishlistAnnouncements()
     local settings = self.db and self.db.settings or {}
     if not settings.wishlistAnnounce then
@@ -1978,6 +2403,29 @@ function Goals:FlushWishlistAnnouncements()
         end
     end
     local template = settings.wishlistAnnounceTemplate or "%s is on my wishlist"
+    local function sendSplitMessage(msg)
+        local maxLen = 252
+        local text = msg or ""
+        while #text > maxLen do
+            local cut = maxLen
+            local chunk = text:sub(1, maxLen)
+            local commaPos = chunk:match(".*(), ")
+            local spacePos = chunk:match(".*() ")
+            if commaPos then
+                cut = commaPos - 1
+            elseif spacePos then
+                cut = spacePos - 1
+            end
+            if cut < 1 then
+                cut = maxLen
+            end
+            SendChatMessage(text:sub(1, cut), channel)
+            text = text:sub(cut + 1):gsub("^%s+", "")
+        end
+        if text ~= "" then
+            SendChatMessage(text, channel)
+        end
+    end
     local idx = 1
     while idx <= #queue do
         local slice = { queue[idx] }
@@ -1987,9 +2435,13 @@ function Goals:FlushWishlistAnnouncements()
         if queue[idx + 2] then
             table.insert(slice, queue[idx + 2])
         end
-        local itemText = table.concat(slice, ", ")
+        local formatted = {}
+        for _, link in ipairs(slice) do
+            table.insert(formatted, self:FormatWishlistItemWithToken(link))
+        end
+        local itemText = table.concat(formatted, ", ")
         local msg = string.format(template, itemText)
-        SendChatMessage(msg, channel)
+        sendSplitMessage(msg)
         idx = idx + #slice
     end
     self.wishlistState.announceQueue = {}
@@ -2058,6 +2510,38 @@ function Goals:MarkWishlistFound(itemId)
     end
 end
 
+function Goals:ToggleWishlistFoundForSlot(slotKey)
+    local list = self:GetActiveWishlist()
+    if not list or not list.id or not slotKey then
+        return
+    end
+    local entry = list.items and list.items[slotKey]
+    if not entry or not entry.itemId then
+        return
+    end
+    local foundMap = self:GetWishlistFoundMap(list.id)
+    if not foundMap then
+        return
+    end
+    local current = entry.manualFound and true or false
+    local nextState = not current
+    if nextState then
+        foundMap[entry.itemId] = true
+        if entry.tokenId and entry.tokenId > 0 then
+            foundMap[entry.tokenId] = true
+        end
+        entry.manualFound = true
+    else
+        foundMap[entry.itemId] = nil
+        if entry.tokenId and entry.tokenId > 0 then
+            foundMap[entry.tokenId] = nil
+        end
+        entry.manualFound = false
+    end
+    list.updated = time()
+    self:NotifyDataChanged()
+end
+
 function Goals:HandleWishlistLoot(itemLink)
     if not itemLink then
         return
@@ -2068,7 +2552,20 @@ function Goals:HandleWishlistLoot(itemLink)
     end
     if self:WishlistContainsItem(itemId) then
         self:MarkWishlistFound(itemId)
+        if self.db and self.db.settings and not self.db.settings.wishlistAnnounce then
+            local msg = self:FormatWishlistItemWithToken(itemLink)
+            self:Print("Wishlist found: " .. msg)
+        end
         self:EnqueueWishlistAnnounce(itemLink)
+        local delay = self:GetWishlistAlertDelay()
+        if delay > 0 then
+            local link = itemLink
+            self:Delay(delay, function()
+                self:ShowWishlistFoundAlert(link)
+            end)
+        else
+            self:ShowWishlistFoundAlert(itemLink)
+        end
     end
 end
 

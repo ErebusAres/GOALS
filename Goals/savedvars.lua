@@ -24,6 +24,7 @@ Goals.defaults = {
         disenchanter = "",
         debug = false,
         devTestBoss = false,
+        devTestWishlistChat = true,
         resetMounts = false,
         resetPets = false,
         resetRecipes = false,
@@ -37,6 +38,7 @@ Goals.defaults = {
         lootHistoryHiddenBefore = 0,
         localOnly = false,
         dbmIntegration = true,
+        wishlistDbmIntegration = true,
         tableAutoLoadSeen = true,
         tableCombined = false,
         sudoDev = false,
@@ -47,6 +49,8 @@ Goals.defaults = {
         wishlistAnnounce = true,
         wishlistAnnounceChannel = "AUTO",
         wishlistAnnounceTemplate = "%s is on my wishlist",
+        wishlistPopupDisabled = false,
+        wishlistPopupSound = true,
         atlasImportPrompted = false,
         atlasSelectedListKey = "",
         minimap = {
@@ -105,6 +109,17 @@ function Goals:InitDB()
             GoalsDB.settings.lootHistoryMinQuality = GoalsDB.settings.lootHistoryEpicOnly and 4 or 0
         end
         GoalsDB.settings.lootHistoryEpicOnly = nil
+    end
+    if GoalsDB.settings then
+        local hasDbm = false
+        if DBM and DBM.RegisterCallback then
+            hasDbm = true
+        elseif IsAddOnLoaded then
+            hasDbm = IsAddOnLoaded("DBM-Core") or IsAddOnLoaded("DBM-GUI")
+        end
+        if not hasDbm then
+            GoalsDB.settings.wishlistDbmIntegration = false
+        end
     end
     if GoalsDB.players then
         GoalsDB.players["Unknown"] = nil

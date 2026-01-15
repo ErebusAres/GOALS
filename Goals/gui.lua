@@ -81,6 +81,99 @@ local function colorizeName(name)
     return name
 end
 
+local classColorList = nil
+local function getClassColorList()
+    if classColorList then
+        return classColorList
+    end
+    classColorList = {}
+    if RAID_CLASS_COLORS then
+        local classes = {}
+        for className in pairs(RAID_CLASS_COLORS) do
+            table.insert(classes, className)
+        end
+        table.sort(classes)
+        for _, className in ipairs(classes) do
+            local color = RAID_CLASS_COLORS[className]
+            table.insert(classColorList, { r = color.r, g = color.g, b = color.b })
+        end
+    end
+    if #classColorList == 0 then
+        classColorList = {
+            { r = 0.9, g = 0.9, b = 0.9 },
+        }
+    end
+    return classColorList
+end
+
+local function getRainbowColor()
+    local colors = getClassColorList()
+    local count = #colors
+    local t = GetTime and GetTime() or 0
+    local index = (math.floor(t * 2) % count) + 1
+    return colors[index]
+end
+
+local function formatPlayersCount(count)
+    local text = tostring(count) .. " Players"
+    local c = getRainbowColor()
+    return string.format("|cff%02x%02x%02x%s|r", c.r * 255, c.g * 255, c.b * 255, text)
+end
+
+function UI:UpdateRainbowRows()
+    local function updateRow(row)
+        if not row or not row.rainbowData then
+            return false
+        end
+        local data = row.rainbowData
+        if data.kind == "loot" then
+            row.text:SetText(string.format("Gave %s: %s", formatPlayersCount(data.count), data.itemLink or ""))
+        elseif data.kind == "boss" then
+            row.text:SetText(string.format("Gave %s: +%d (%s)", formatPlayersCount(data.count), data.points or 0, data.encounter or "Boss"))
+        end
+        return true
+    end
+
+    local any = false
+    if self.historyRows then
+        for _, row in ipairs(self.historyRows) do
+            if row:IsShown() then
+                any = updateRow(row) or any
+            end
+        end
+    end
+    if self.lootHistoryRows then
+        for _, row in ipairs(self.lootHistoryRows) do
+            if row:IsShown() then
+                any = updateRow(row) or any
+            end
+        end
+    end
+    return any
+end
+
+function UI:StartRainbowTicker()
+    if not self.frame then
+        return
+    end
+    if self.rainbowTickerActive then
+        return
+    end
+    self.rainbowTickerActive = true
+    self.rainbowElapsed = 0
+    self.frame:SetScript("OnUpdate", function(_, elapsed)
+        self.rainbowElapsed = (self.rainbowElapsed or 0) + (elapsed or 0)
+        if self.rainbowElapsed < 0.2 then
+            return
+        end
+        self.rainbowElapsed = 0
+        if not self:UpdateRainbowRows() then
+            self.rainbowTickerActive = false
+            self.frame:SetScript("OnUpdate", nil)
+        end
+    end)
+end
+
 local function getUpdateInfo()
     local info = Goals and Goals.UpdateInfo or nil
     local installed = info and tonumber(info.version) or 0
@@ -671,6 +764,9 @@ function UI:CreateMainFrame()
         if def.key == "loot" then
             self.lootTabId = i
         end
+        if def.key == "wishlist" then
+            self.wishlistTabId = i
+        end
         self.tabs[i] = tab
 
         local page = CreateFrame("Frame", nil, frame)
@@ -857,6 +953,9 @@ function UI:SelectTab(id)
     if self.UpdateLootOptionsVisibility then
         self:UpdateLootOptionsVisibility()
     end
+    if self.UpdateWishlistHelpVisibility then
+        self:UpdateWishlistHelpVisibility()
+    end
     self:Refresh()
 end
 
@@ -869,6 +968,17 @@ function UI:UpdateLootOptionsVisibility()
         setShown(self.lootOptionsOuter, show)
     end
     setShown(self.lootOptionsFrame, show)
+end
+
+function UI:UpdateWishlistHelpVisibility()
+    if not self.wishlistHelpFrame then
+        return
+    end
+    local show = self.currentTab == self.wishlistTabId and self.wishlistHelpOpen
+    if self.wishlistHelpOuter then
+        setShown(self.wishlistHelpOuter, show)
+    end
+    setShown(self.wishlistHelpFrame, show)
 end
 
 function UI:CreateOverviewTab(page)
@@ -1553,7 +1663,66 @@ function UI:CreateWishlistTab(page)
     self.wishlistSubTabs.manage = createTabButton("Manage", "manage", nil)
     self.wishlistSubTabs.search = createTabButton("Search", "search", self.wishlistSubTabs.manage)
     self.wishlistSubTabs.actions = createTabButton("Actions", "actions", self.wishlistSubTabs.search)
+
+    local helpBtn = CreateFrame("Button", nil, tabBar, "UIPanelButtonTemplate")
+    helpBtn:SetSize(22, 20)
+    helpBtn:SetText("?")
+    helpBtn:SetPoint("RIGHT", tabBar, "RIGHT", 0, 0)
+    helpBtn:SetScript("OnClick", function()
+        self.wishlistHelpOpen = not self.wishlistHelpOpen
+        if self.UpdateWishlistHelpVisibility then
+            self:UpdateWishlistHelpVisibility()
+        end
+    end)
+    self.wishlistHelpButton = helpBtn
+
     selectWishlistTab("manage")
+
+    if self.wishlistHelpOpen == nil then
+        self.wishlistHelpOpen = false
+    end
+    if not self.wishlistHelpFrame then
+        local outer = CreateFrame("Frame", "GoalsWishlistHelpOuter", self.frame)
+        outer:SetPoint("TOPLEFT", self.frame, "TOPRIGHT", -2, -34)
+        outer:SetPoint("BOTTOMLEFT", self.frame, "BOTTOMRIGHT", -2, 26)
+        outer:SetWidth(260)
+        outer:SetBackdrop({
+            edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+            edgeSize = 16,
+            insets = { left = 3, right = 3, top = 3, bottom = 3 },
+        })
+        outer:SetBackdropBorderColor(0.85, 0.85, 0.85, 1)
+        outer:Hide()
+        self.wishlistHelpOuter = outer
+
+        local helpFrame = CreateFrame("Frame", "GoalsWishlistHelpFrame", outer, "GoalsInsetTemplate")
+        helpFrame:SetPoint("TOPLEFT", outer, "TOPLEFT", 4, -4)
+        helpFrame:SetPoint("BOTTOMRIGHT", outer, "BOTTOMRIGHT", -4, 4)
+        helpFrame:Hide()
+        self.wishlistHelpFrame = helpFrame
+
+        local helpTitle = createLabel(helpFrame, "Wishlist Help", "GameFontNormal")
+        helpTitle:SetPoint("TOPLEFT", helpFrame, "TOPLEFT", 10, -10)
+
+        local helpText = helpFrame:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+        helpText:SetPoint("TOPLEFT", helpTitle, "BOTTOMLEFT", 0, -8)
+        helpText:SetPoint("TOPRIGHT", helpFrame, "TOPRIGHT", -10, -8)
+        helpText:SetJustifyH("LEFT")
+        helpText:SetText(
+            "Tips:\n" ..
+            "- Use Search to find items and add to a slot.\n" ..
+            "- Paste an in-game item link into Search to cache it.\n" ..
+            "- Example: |cff...|Hitem:12345:...|h[Item]|h|r\n" ..
+            "- You can also paste a raw item ID (12345).\n" ..
+            "- Click a slot icon to select it before adding.\n" ..
+            "- Alt-click a slot icon to mark found/unfound.\n" ..
+            "- Right-click a slot icon to clear it.\n" ..
+            "- Enchant ID and Gems apply to the selected slot.\n" ..
+            "- Import supports wishlist strings and Wowhead links.\n" ..
+            "- Required tokens update as items are marked found."
+        )
+        self.wishlistHelpText = helpText
+    end
 
     local slotsLabel = createLabel(leftInset, L.LABEL_WISHLIST_SLOTS, "GameFontNormal")
     slotsLabel:SetPoint("TOPLEFT", leftInset, "TOPLEFT", 10, -8)
@@ -1612,12 +1781,12 @@ function UI:CreateWishlistTab(page)
         local label = button:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
         button.label = label
 
-        local foundShadow = button:CreateTexture(nil, "OVERLAY")
+        local foundShadow = button:CreateTexture(nil, "ARTWORK")
         foundShadow:SetTexture("Interface\\Cooldown\\ping4")
         foundShadow:SetPoint("TOPLEFT", button, "TOPLEFT", 1, -1)
         foundShadow:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", -1, 1)
         foundShadow:SetVertexColor(0, 0, 0, 0.45)
-        foundShadow:SetDrawLayer("OVERLAY", 0)
+        foundShadow:SetDrawLayer("ARTWORK", 0)
         foundShadow:SetBlendMode("BLEND")
         foundShadow:Hide()
         button.foundShadow = foundShadow
@@ -1627,7 +1796,7 @@ function UI:CreateWishlistTab(page)
         foundIcon:SetPoint("TOPLEFT", button, "TOPLEFT", 3, -3)
         foundIcon:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", -3, 3)
         foundIcon:SetVertexColor(0.2, 1, 0.2)
-        foundIcon:SetDrawLayer("OVERLAY", 2)
+        foundIcon:SetDrawLayer("OVERLAY", 5)
         foundIcon:SetBlendMode("BLEND")
         foundIcon:Hide()
         button.foundIcon = foundIcon
@@ -1687,6 +1856,15 @@ function UI:CreateWishlistTab(page)
             GameTooltip:Hide()
         end)
         button:SetScript("OnClick", function(selfBtn, btn)
+            local altDown = (IsModifiedClick and IsModifiedClick("ALT")) or (IsAltKeyDown and IsAltKeyDown())
+            if btn == "LeftButton" and altDown then
+                if Goals.ToggleWishlistFoundForSlot then
+                    Goals:ToggleWishlistFoundForSlot(slotDef.key)
+                end
+                self.selectedWishlistSlot = slotDef.key
+                self:UpdateWishlistUI()
+                return
+            end
             if btn == "RightButton" then
                 Goals:ClearWishlistItem(slotDef.key)
                 return
@@ -1955,7 +2133,8 @@ function UI:CreateWishlistTab(page)
     self.wishlistClearSlotButton = clearSlotBtn
 
     local enchantLabel = createLabel(searchPage, "Enchant ID", "GameFontNormal")
-    enchantLabel:SetPoint("TOPLEFT", addSlotBtn, "BOTTOMLEFT", 0, -12)
+    enchantLabel:SetPoint("TOP", addSlotBtn, "BOTTOM", 0, -12)
+    enchantLabel:SetPoint("LEFT", searchLabel, "LEFT", 0, 0)
 
     local enchantBox = CreateFrame("EditBox", "GoalsWishlistEnchantBox", searchPage, "InputBoxTemplate")
     enchantBox:SetPoint("LEFT", enchantLabel, "RIGHT", 10, 0)
@@ -1967,7 +2146,8 @@ function UI:CreateWishlistTab(page)
     self.wishlistEnchantBox = enchantBox
 
     local gemsLabel = createLabel(searchPage, "Gems", "GameFontNormal")
-    gemsLabel:SetPoint("TOPLEFT", enchantLabel, "BOTTOMLEFT", 0, -10)
+    gemsLabel:SetPoint("TOP", enchantLabel, "BOTTOM", 0, -10)
+    gemsLabel:SetPoint("LEFT", searchLabel, "LEFT", 0, 0)
 
     local gemBoxes = {}
     for i = 1, 3 do
@@ -1987,7 +2167,7 @@ function UI:CreateWishlistTab(page)
     self.wishlistGemBoxes = gemBoxes
 
     local applyGemsBtn = CreateFrame("Button", nil, searchPage, "UIPanelButtonTemplate")
-    applyGemsBtn:SetPoint("TOPLEFT", gemsLabel, "BOTTOMLEFT", 0, -10)
+    applyGemsBtn:SetPoint("TOPLEFT", addSlotBtn, "BOTTOMLEFT", 0, -66)
     applyGemsBtn:SetSize(60, 20)
     applyGemsBtn:SetText(L.BUTTON_APPLY)
     applyGemsBtn:SetScript("OnClick", function()
@@ -2009,6 +2189,63 @@ function UI:CreateWishlistTab(page)
         Goals:SetWishlistItemSmart(UI.selectedWishlistSlot, entry)
     end)
     self.wishlistApplyGemsButton = applyGemsBtn
+
+    local tokenLabel = createLabel(searchPage, "Required tokens", "GameFontNormal")
+    tokenLabel:SetPoint("TOP", applyGemsBtn, "BOTTOM", 0, -10)
+    tokenLabel:SetPoint("LEFT", searchLabel, "LEFT", 0, 0)
+
+    local tokenInset = CreateFrame("Frame", "GoalsWishlistTokenInset", searchPage, "GoalsInsetTemplate")
+    tokenInset:SetPoint("TOPLEFT", tokenLabel, "BOTTOMLEFT", -4, -6)
+    tokenInset:SetPoint("TOPRIGHT", searchPage, "TOPRIGHT", -6, 0)
+    tokenInset:SetHeight(ROW_HEIGHT * 5 + 12)
+    self.wishlistTokenInset = tokenInset
+
+    local tokenScroll = CreateFrame("ScrollFrame", "GoalsWishlistTokenScroll", tokenInset, "FauxScrollFrameTemplate")
+    tokenScroll:SetPoint("TOPLEFT", tokenInset, "TOPLEFT", 2, -6)
+    tokenScroll:SetPoint("BOTTOMRIGHT", tokenInset, "BOTTOMRIGHT", -26, 6)
+    tokenScroll:SetScript("OnVerticalScroll", function(selfScroll, offset)
+        FauxScrollFrame_OnVerticalScroll(selfScroll, offset, ROW_HEIGHT, function()
+            UI:UpdateWishlistTokenDisplay()
+        end)
+    end)
+    self.wishlistTokenScroll = tokenScroll
+
+    self.wishlistTokenRows = {}
+    for i = 1, 5 do
+        local row = CreateFrame("Button", nil, tokenInset)
+        row:SetHeight(ROW_HEIGHT)
+        row:SetPoint("TOPLEFT", tokenInset, "TOPLEFT", 8, -6 - (i - 1) * ROW_HEIGHT)
+        row:SetPoint("RIGHT", tokenInset, "RIGHT", -26, 0)
+        local icon = row:CreateTexture(nil, "ARTWORK")
+        icon:SetSize(16, 16)
+        icon:SetPoint("LEFT", row, "LEFT", 0, 0)
+        row.icon = icon
+        local text = row:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+        text:SetPoint("LEFT", icon, "RIGHT", 6, 0)
+        text:SetPoint("RIGHT", row, "RIGHT", -4, 0)
+        row.text = text
+        row:SetScript("OnEnter", function(selfRow)
+            if selfRow.itemLink then
+                GameTooltip:SetOwner(selfRow, "ANCHOR_RIGHT")
+                GameTooltip:SetHyperlink(selfRow.itemLink)
+                GameTooltip:Show()
+            elseif selfRow.itemId then
+                GameTooltip:SetOwner(selfRow, "ANCHOR_RIGHT")
+                GameTooltip:SetHyperlink("item:" .. tostring(selfRow.itemId))
+                GameTooltip:Show()
+            end
+        end)
+        row:SetScript("OnLeave", function()
+            GameTooltip:Hide()
+        end)
+        self.wishlistTokenRows[i] = row
+    end
+    local tokenEmpty = tokenInset:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    tokenEmpty:SetPoint("TOPLEFT", tokenInset, "TOPLEFT", 8, -10)
+    tokenEmpty:SetText("None required")
+    tokenEmpty:Hide()
+    self.wishlistTokenEmpty = tokenEmpty
+    self.wishlistTokenLabel = tokenLabel
 
     local popout = actionsPage
 
@@ -2479,6 +2716,31 @@ function UI:CreateWishlistTab(page)
     end)
     self.wishlistAnnounceCheck = announceCheck
 
+    local soundToggle = CreateFrame("Button", nil, popout, "UIPanelButtonTemplate")
+    soundToggle:SetPoint("LEFT", announceLabel, "RIGHT", 6, 0)
+    soundToggle:SetSize(36, 20)
+    soundToggle:SetText("SND")
+    soundToggle:SetScript("OnClick", function()
+        local enabled = Goals.db.settings.wishlistPopupSound and true or false
+        Goals.db.settings.wishlistPopupSound = not enabled
+        if Goals.db.settings.wishlistPopupSound then
+            soundToggle:SetText("SND")
+        else
+            soundToggle:SetText("MUT")
+        end
+        Goals:NotifyDataChanged()
+    end)
+    self.wishlistPopupSoundToggle = soundToggle
+
+    local disablePopupCheck = CreateFrame("CheckButton", nil, popout, "UICheckButtonTemplate")
+    disablePopupCheck:SetPoint("LEFT", announceCheck, "RIGHT", 120, 0)
+    setCheckText(disablePopupCheck, "Disable popup")
+    disablePopupCheck:SetScript("OnClick", function(selfCheck)
+        Goals.db.settings.wishlistPopupDisabled = selfCheck:GetChecked() and true or false
+        Goals:NotifyDataChanged()
+    end)
+    self.wishlistPopupDisableCheck = disablePopupCheck
+
     self.wishlistChannelDrop = nil
     if Goals and Goals.db and Goals.db.settings then
         Goals.db.settings.wishlistAnnounceChannel = "AUTO"
@@ -2555,6 +2817,14 @@ function UI:CreateSettingsTab(page)
             end
         end)
         self.dbmIntegrationCheck = dbmCheck
+
+        local dbmWishlistCheck = CreateFrame("CheckButton", nil, leftInset, "UICheckButtonTemplate")
+        dbmWishlistCheck:SetPoint("TOPLEFT", dbmCheck, "BOTTOMLEFT", 0, -8)
+        setCheckText(dbmWishlistCheck, L.CHECK_DBM_WISHLIST)
+        dbmWishlistCheck:SetScript("OnClick", function(selfBtn)
+            Goals.db.settings.wishlistDbmIntegration = selfBtn:GetChecked() and true or false
+        end)
+        self.wishlistDbmIntegrationCheck = dbmWishlistCheck
     end
 
     setupSudoDevPopup()
@@ -2836,8 +3106,28 @@ function UI:CreateDevTab(page)
         end
     end)
 
+    local testDbmBtn = CreateFrame("Button", nil, inset, "UIPanelButtonTemplate")
+    testDbmBtn:SetSize(160, 20)
+    testDbmBtn:SetText("Test Wishlist (DBM)")
+    testDbmBtn:SetPoint("TOPLEFT", simulateUpdateBtn, "BOTTOMLEFT", 0, -8)
+    testDbmBtn:SetScript("OnClick", function()
+        if Goals and Goals.TestWishlistNotification then
+            Goals:TestWishlistNotification(nil, true)
+        end
+    end)
+
+    local testLocalBtn = CreateFrame("Button", nil, inset, "UIPanelButtonTemplate")
+    testLocalBtn:SetSize(160, 20)
+    testLocalBtn:SetText("Test Wishlist (Local)")
+    testLocalBtn:SetPoint("TOPLEFT", testDbmBtn, "BOTTOMLEFT", 0, -6)
+    testLocalBtn:SetScript("OnClick", function()
+        if Goals and Goals.TestWishlistNotification then
+            Goals:TestWishlistNotification(nil, false)
+        end
+    end)
+
     local updateDebug = createLabel(inset, "", "GameFontHighlightSmall")
-    updateDebug:SetPoint("TOPLEFT", simulateUpdateBtn, "BOTTOMLEFT", 0, -8)
+    updateDebug:SetPoint("TOPLEFT", testLocalBtn, "BOTTOMLEFT", 0, -8)
     updateDebug:SetWidth(520)
     updateDebug:SetJustifyH("LEFT")
     self.updateDebugText = updateDebug
@@ -2860,6 +3150,14 @@ function UI:CreateDevTab(page)
         Goals.db.settings.debug = selfBtn:GetChecked() and true or false
     end)
     self.debugCheck = debugCheck
+
+    local wishlistChatCheck = CreateFrame("CheckButton", nil, inset, "UICheckButtonTemplate")
+    wishlistChatCheck:SetPoint("TOPLEFT", debugCheck, "BOTTOMLEFT", 0, -8)
+    setCheckText(wishlistChatCheck, "Test wishlist chat messages")
+    wishlistChatCheck:SetScript("OnClick", function(selfBtn)
+        Goals.db.settings.devTestWishlistChat = selfBtn:GetChecked() and true or false
+    end)
+    self.wishlistChatCheck = wishlistChatCheck
 end
 
 function UI:CreateDebugTab(page)
@@ -3017,6 +3315,10 @@ function UI:FormatHistoryEntry(entry)
     if entry.kind == "BOSSKILL" and data.player then
         return string.format("%s: %s +%d", data.encounter or "Boss", colorizeName(data.player), data.points or 0)
     end
+    if entry.kind == "BOSSKILL" and data.players then
+        local count = #data.players
+        return string.format("Gave %s: +%d (%s)", formatPlayersCount(count), data.points or 0, data.encounter or "Boss")
+    end
     if entry.kind == "ADJUST" then
         local delta = data.delta or 0
         local sign = delta >= 0 and "+" or ""
@@ -3028,6 +3330,9 @@ function UI:FormatHistoryEntry(entry)
     if entry.kind == "LOOT_ASSIGN" then
         local itemLink = data.item or ""
         local quality = itemLink ~= "" and select(3, GetItemInfo(itemLink)) or nil
+        if data.players and #data.players >= 3 then
+            return string.format("Gave %s: %s", formatPlayersCount(#data.players), itemLink)
+        end
         if quality and quality < 4 then
             return string.format("%s Looted: %s", colorizeName(data.player or ""), itemLink)
         end
@@ -3052,13 +3357,36 @@ function UI:UpdateHistoryList()
     local offset = FauxScrollFrame_GetOffset(self.historyScroll) or 0
     FauxScrollFrame_Update(self.historyScroll, #data, HISTORY_ROWS, ROW_HEIGHT)
     local yOffset = -22
+    local hasRainbow = false
     for i = 1, HISTORY_ROWS do
         local row = self.historyRows[i]
         local entry = data[offset + i]
         if entry then
             row:Show()
             row.timeText:SetText(formatTime(entry.ts))
-            row.text:SetText(self:FormatHistoryEntry(entry))
+            row.rainbowData = nil
+            if entry.kind == "BOSSKILL" and entry.data and entry.data.players then
+                local count = #entry.data.players
+                row.rainbowData = {
+                    kind = "boss",
+                    count = count,
+                    points = entry.data.points or 0,
+                    encounter = entry.data.encounter or "Boss",
+                }
+                row.text:SetText(string.format("Gave %s: +%d (%s)", formatPlayersCount(count), entry.data.points or 0, entry.data.encounter or "Boss"))
+                hasRainbow = true
+            elseif entry.kind == "LOOT_ASSIGN" and entry.data and entry.data.players and #entry.data.players >= 3 then
+                local count = #entry.data.players
+                row.rainbowData = {
+                    kind = "loot",
+                    count = count,
+                    itemLink = entry.data.item or "",
+                }
+                row.text:SetText(string.format("Gave %s: %s", formatPlayersCount(count), entry.data.item or ""))
+                hasRainbow = true
+            else
+                row.text:SetText(self:FormatHistoryEntry(entry))
+            end
             local isReset = entry.kind == "LOOT_ASSIGN" and entry.data and entry.data.reset
             if isReset then
                 row:SetHeight(HISTORY_ROW_HEIGHT_DOUBLE)
@@ -3071,7 +3399,11 @@ function UI:UpdateHistoryList()
             yOffset = yOffset - row:GetHeight()
         else
             row:Hide()
+            row.rainbowData = nil
         end
+    end
+    if hasRainbow then
+        self:StartRainbowTicker()
     end
 end
 
@@ -3182,6 +3514,109 @@ function UI:UpdateWishlistSearchResults()
             self.wishlistClearSlotButton:Disable()
         end
     end
+    if self.UpdateWishlistTokenDisplay then
+        self:UpdateWishlistTokenDisplay()
+    end
+end
+
+function UI:UpdateWishlistTokenDisplay()
+    if not self.wishlistTokenRows or not self.wishlistTokenScroll then
+        return
+    end
+    local list = Goals:GetActiveWishlist()
+    local tokens = {}
+    local ordered = {}
+    local foundMap = nil
+    if list and list.id and Goals.GetWishlistFoundMap then
+        foundMap = Goals:GetWishlistFoundMap(list.id)
+    end
+    local slotRank = {}
+    if Goals.GetWishlistSlotDefs then
+        local defs = Goals:GetWishlistSlotDefs() or {}
+        for index, def in ipairs(defs) do
+            if def and def.key then
+                slotRank[def.key] = index
+            end
+        end
+    end
+    for slotKey, entry in pairs(list and list.items or {}) do
+        if entry and entry.itemId then
+            local isClaimed = foundMap and (foundMap[entry.itemId] or (entry.tokenId and foundMap[entry.tokenId]))
+            if not isClaimed then
+                local tokenId = Goals.GetArmorTokenForItem and Goals:GetArmorTokenForItem(entry.itemId) or entry.tokenId
+                if tokenId and tokenId > 0 then
+                    local rank = slotRank[slotKey] or 999
+                    if tokens[tokenId] then
+                        tokens[tokenId].count = tokens[tokenId].count + 1
+                        if rank < tokens[tokenId].rank then
+                            tokens[tokenId].rank = rank
+                        end
+                    else
+                        tokens[tokenId] = { count = 1, rank = rank }
+                    end
+                end
+            end
+        end
+    end
+    for tokenId, count in pairs(tokens) do
+        table.insert(ordered, { id = tokenId, count = count.count, rank = count.rank })
+    end
+    table.sort(ordered, function(a, b)
+        if a.rank ~= b.rank then
+            return a.rank < b.rank
+        end
+        return a.id < b.id
+    end)
+    if self.wishlistTokenEmpty then
+        self.wishlistTokenEmpty:SetShown(#ordered == 0)
+    end
+    local visibleRows = math.min(#self.wishlistTokenRows, math.max(#ordered, 1))
+    local insetHeight = (visibleRows * ROW_HEIGHT) + 12
+    if self.wishlistTokenInset then
+        self.wishlistTokenInset:SetHeight(insetHeight)
+    end
+    if self.wishlistTokenScroll then
+        if #ordered > #self.wishlistTokenRows then
+            self.wishlistTokenScroll:Show()
+        else
+            self.wishlistTokenScroll:Hide()
+        end
+    end
+    local offset = FauxScrollFrame_GetOffset(self.wishlistTokenScroll) or 0
+    FauxScrollFrame_Update(self.wishlistTokenScroll, #ordered, #self.wishlistTokenRows, ROW_HEIGHT)
+    for i = 1, #self.wishlistTokenRows do
+        local row = self.wishlistTokenRows[i]
+        local index = i + offset
+        local entry = ordered[index]
+        if entry then
+            row:Show()
+            local cached = Goals.CacheItemById and Goals:CacheItemById(entry.id) or nil
+            local name = cached and cached.name or ("Token " .. tostring(entry.id))
+            if entry.count and entry.count > 1 then
+                name = name .. " x" .. tostring(entry.count)
+            end
+            row.text:SetText(name)
+            row.itemId = entry.id
+            row.itemLink = cached and cached.link or nil
+            if cached and cached.quality and ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[cached.quality] then
+                local color = ITEM_QUALITY_COLORS[cached.quality]
+                row.text:SetTextColor(color.r, color.g, color.b)
+            else
+                row.text:SetTextColor(1, 1, 1)
+            end
+            if cached and cached.texture then
+                row.icon:SetTexture(cached.texture)
+                row.icon:Show()
+            else
+                row.icon:SetTexture(nil)
+                row.icon:Hide()
+            end
+        else
+            row:Hide()
+            row.itemId = nil
+            row.itemLink = nil
+        end
+    end
 end
 
 function UI:UpdateWishlistUI()
@@ -3196,10 +3631,12 @@ function UI:UpdateWishlistUI()
     if list and foundMap and Goals.IsWishlistItemOwned then
         for _, entry in pairs(list.items or {}) do
             if entry and entry.itemId then
-                foundMap[entry.itemId] = Goals:IsWishlistItemOwned(entry.itemId) or nil
+                local owned = Goals:IsWishlistItemOwned(entry.itemId)
+                foundMap[entry.itemId] = (owned or entry.manualFound) and true or nil
             end
             if entry and entry.tokenId and entry.tokenId > 0 then
-                foundMap[entry.tokenId] = Goals:IsWishlistItemOwned(entry.tokenId) or nil
+                local owned = Goals:IsWishlistItemOwned(entry.tokenId)
+                foundMap[entry.tokenId] = (owned or entry.manualFound) and true or nil
             end
         end
     end
@@ -3349,6 +3786,9 @@ function UI:UpdateWishlistUI()
             end
         end
     end
+    if self.UpdateWishlistTokenDisplay then
+        self:UpdateWishlistTokenDisplay()
+    end
     self:UpdateWishlistManagerList()
     self:UpdateWishlistSearchResults()
     if self.wishlistAddSlotButton then
@@ -3395,6 +3835,7 @@ function UI:UpdateLootHistoryList()
     if maxHeight > 0 then
         bottomLimit = -(maxHeight - 4)
     end
+    local hasRainbow = false
     for i = 1, LOOT_HISTORY_ROWS do
         local row = self.lootHistoryRows[i]
         local entry = data[offset + i]
@@ -3402,9 +3843,21 @@ function UI:UpdateLootHistoryList()
             row:Show()
             row.timeText:SetText(formatTime(entry.ts))
             if entry.kind == "LOOT_ASSIGN" then
-                local playerName = colorizeName(entry.data and entry.data.player or "")
                 local itemLink = entry.data and entry.data.item or ""
-                row.text:SetText(string.format("Gave %s: %s", playerName, itemLink))
+                local players = entry.data and entry.data.players or nil
+                local playerName = colorizeName(entry.data and entry.data.player or "")
+                if players and #players >= 3 then
+                    row.rainbowData = {
+                        kind = "loot",
+                        count = #players,
+                        itemLink = itemLink,
+                    }
+                    row.text:SetText(string.format("Gave %s: %s", formatPlayersCount(#players), itemLink))
+                    hasRainbow = true
+                else
+                    row.rainbowData = nil
+                    row.text:SetText(string.format("Gave %s: %s", playerName, itemLink))
+                end
                 if entry.data and entry.data.reset then
                     local before = tonumber(entry.data.resetBefore) or 0
                     row.resetText:SetText(string.format("%s's points set to 0 (-%d).", playerName, before))
@@ -3417,6 +3870,7 @@ function UI:UpdateLootHistoryList()
                 end
             else
                 row.text:SetText(entry.text or "")
+                row.rainbowData = nil
                 row.resetText:SetText("")
                 row.resetText:Hide()
                 row:SetHeight(LOOT_HISTORY_ROW_HEIGHT_COMPACT)
@@ -3437,10 +3891,14 @@ function UI:UpdateLootHistoryList()
         else
             row:Hide()
             row.itemLink = nil
+            row.rainbowData = nil
             if row.resetText then
                 row.resetText:Hide()
             end
         end
+    end
+    if hasRainbow then
+        self:StartRainbowTicker()
     end
 end
 
@@ -3642,6 +4100,9 @@ function UI:Refresh()
     if self.dbmIntegrationCheck then
         self.dbmIntegrationCheck:SetChecked(Goals.db.settings.dbmIntegration and true or false)
     end
+    if self.wishlistDbmIntegrationCheck then
+        self.wishlistDbmIntegrationCheck:SetChecked(Goals.db.settings.wishlistDbmIntegration and true or false)
+    end
     if self.sudoDevButton then
         if Goals.db.settings.sudoDev then
             self.sudoDevButton:SetText(L.BUTTON_SUDO_DEV_DISABLE)
@@ -3673,8 +4134,21 @@ function UI:Refresh()
     if self.debugCheck then
         self.debugCheck:SetChecked(Goals.db.settings.debug and true or false)
     end
+    if self.wishlistChatCheck then
+        self.wishlistChatCheck:SetChecked(Goals.db.settings.devTestWishlistChat and true or false)
+    end
     if self.wishlistAnnounceCheck then
         self.wishlistAnnounceCheck:SetChecked(Goals.db.settings.wishlistAnnounce and true or false)
+    end
+    if self.wishlistPopupDisableCheck then
+        self.wishlistPopupDisableCheck:SetChecked(Goals.db.settings.wishlistPopupDisabled and true or false)
+    end
+    if self.wishlistPopupSoundToggle then
+        if Goals.db.settings.wishlistPopupSound == false then
+            self.wishlistPopupSoundToggle:SetText("MUT")
+        else
+            self.wishlistPopupSoundToggle:SetText("SND")
+        end
     end
     if Goals.db and Goals.db.settings then
         Goals.db.settings.wishlistAnnounceChannel = "AUTO"
