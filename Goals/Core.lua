@@ -931,6 +931,9 @@ function Goals:HandleLootAssignment(playerName, itemLink, skipSync, forceRecord)
     end
     local shouldTrack = self:ShouldTrackLoot(quality, itemType, itemSubType, equipSlot)
     local shouldReset = shouldTrack and self:ShouldResetForLoot(itemType, itemSubType, equipSlot, quality)
+    if self.db and self.db.settings and self.db.settings.disablePointGain then
+        shouldReset = false
+    end
     local resetApplied = shouldReset and not self:IsDisenchanter(playerName)
     if forceRecord or shouldTrack then
         local before = nil
