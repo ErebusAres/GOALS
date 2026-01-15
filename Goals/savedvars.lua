@@ -25,6 +25,7 @@ Goals.defaults = {
         debug = false,
         devTestBoss = false,
         devTestWishlistChat = true,
+        devTestWishlistItems = 3,
         resetMounts = false,
         resetPets = false,
         resetRecipes = false,

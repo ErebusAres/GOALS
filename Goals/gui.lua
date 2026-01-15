@@ -3143,8 +3143,27 @@ function UI:CreateDevTab(page)
         end
     end)
 
+    local testArcaneBtn = CreateFrame("Button", nil, inset, "UIPanelButtonTemplate")
+    testArcaneBtn:SetSize(160, 20)
+    testArcaneBtn:SetText("Test Local (Arcane)")
+    testArcaneBtn:SetPoint("TOPLEFT", testLocalBtn, "BOTTOMLEFT", 0, -6)
+    testArcaneBtn:SetScript("OnClick", function()
+        if Goals and Goals.ApplyWishlistBannerTexture and Goals.TestWishlistNotification then
+            local path = "Interface\\AddOns\\Goals\\Texture\\BossBannerToast\\ArcaneGlow"
+            Goals:ApplyWishlistBannerTexture(path)
+            Goals:TestWishlistNotification(nil, false)
+            if Goals.Delay then
+                Goals:Delay(7, function()
+                    Goals:ApplyWishlistBannerTexture(nil)
+                end)
+            else
+                Goals:ApplyWishlistBannerTexture(nil)
+            end
+        end
+    end)
+
     local updateDebug = createLabel(inset, "", "GameFontHighlightSmall")
-    updateDebug:SetPoint("TOPLEFT", testLocalBtn, "BOTTOMLEFT", 0, -8)
+    updateDebug:SetPoint("TOPLEFT", testArcaneBtn, "BOTTOMLEFT", 0, -8)
     updateDebug:SetWidth(520)
     updateDebug:SetJustifyH("LEFT")
     self.updateDebugText = updateDebug
@@ -3175,6 +3194,27 @@ function UI:CreateDevTab(page)
         Goals.db.settings.devTestWishlistChat = selfBtn:GetChecked() and true or false
     end)
     self.wishlistChatCheck = wishlistChatCheck
+
+    local wishlistCountLabel = createLabel(inset, "Test wishlist items (1-8)", "GameFontNormalSmall")
+    wishlistCountLabel:SetPoint("TOPLEFT", wishlistChatCheck, "BOTTOMLEFT", 0, -10)
+    local wishlistCountBox = CreateFrame("EditBox", "GoalsDevWishlistCountBox", inset, "InputBoxTemplate")
+    wishlistCountBox:SetSize(40, 18)
+    wishlistCountBox:SetPoint("LEFT", wishlistCountLabel, "RIGHT", 8, 0)
+    wishlistCountBox:SetNumeric(true)
+    wishlistCountBox:SetMaxLetters(2)
+    wishlistCountBox:SetAutoFocus(false)
+    wishlistCountBox:SetScript("OnEnterPressed", function(selfBox)
+        selfBox:ClearFocus()
+        local value = tonumber(selfBox:GetText()) or 1
+        if value < 1 then
+            value = 1
+        elseif value > 8 then
+            value = 8
+        end
+        Goals.db.settings.devTestWishlistItems = value
+        selfBox:SetText(tostring(value))
+    end)
+    self.wishlistTestCountBox = wishlistCountBox
 end
 
 function UI:CreateDebugTab(page)
@@ -4153,6 +4193,15 @@ function UI:Refresh()
     end
     if self.wishlistChatCheck then
         self.wishlistChatCheck:SetChecked(Goals.db.settings.devTestWishlistChat and true or false)
+    end
+    if self.wishlistTestCountBox then
+        local value = tonumber(Goals.db.settings.devTestWishlistItems) or 1
+        if value < 1 then
+            value = 1
+        elseif value > 8 then
+            value = 8
+        end
+        self.wishlistTestCountBox:SetText(tostring(value))
     end
     if self.wishlistAnnounceCheck then
         self.wishlistAnnounceCheck:SetChecked(Goals.db.settings.wishlistAnnounce and true or false)

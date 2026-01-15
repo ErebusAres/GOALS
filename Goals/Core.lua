@@ -2377,14 +2377,34 @@ function Goals:ShowWishlistFoundAlert(itemLinks, forceDbm)
     end
 end
 
-function Goals:GetWishlistAlertDelay(forceDbm)
+function Goals:GetDbmLootBannerDuration(itemCount)
+    local items = tonumber(itemCount) or 1
+    if items < 1 then
+        items = 1
+    end
+    -- DBM loot banner: 0.25s expand per extra item + ~4s insert hold + ~0.5s anim out.
+    local expand = 0
+    if items > 1 then
+        expand = 0.25 * (items - 1)
+    end
+    return 4.5 + expand
+end
+
+function Goals:GetWishlistAlertDelay(forceDbm, itemCount)
     if forceDbm == false then
+        local settings = self.db and self.db.settings or {}
+        if IsAddOnLoaded and IsAddOnLoaded("DBM-Core") and not settings.wishlistDbmIntegration then
+            return self:GetDbmLootBannerDuration(itemCount)
+        end
         return 0.4
     end
     local settings = self.db and self.db.settings or {}
     local allowDbm = (forceDbm == true) or settings.wishlistDbmIntegration
     if IsAddOnLoaded and IsAddOnLoaded("DBM-Core") and allowDbm then
         return 2.0
+    end
+    if IsAddOnLoaded and IsAddOnLoaded("DBM-Core") and not allowDbm then
+        return self:GetDbmLootBannerDuration(itemCount)
     end
     return 0.4
 end
@@ -2394,11 +2414,28 @@ function Goals:TestWishlistNotification(itemLink, forceDbm)
     if itemLink then
         links = { itemLink }
     else
-        links = {
+        local count = 3
+        if self.db and self.db.settings then
+            count = tonumber(self.db.settings.devTestWishlistItems) or count
+        end
+        if count < 1 then
+            count = 1
+        elseif count > 8 then
+            count = 8
+        end
+        local pool = {
             select(2, GetItemInfo(30166)) or "item:30166",
             select(2, GetItemInfo(30168)) or "item:30168",
             select(2, GetItemInfo(29976)) or "item:29976",
+            select(2, GetItemInfo(29950)) or "item:29950",
+            select(2, GetItemInfo(30190)) or "item:30190",
+            select(2, GetItemInfo(30018)) or "item:30018",
+            select(2, GetItemInfo(29376)) or "item:29376",
+            select(2, GetItemInfo(30047)) or "item:30047",
         }
+        for i = 1, count do
+            links[i] = pool[i]
+        end
     end
     local chatEnabled = self.db and self.db.settings and self.db.settings.devTestWishlistChat
     if chatEnabled then
@@ -2414,7 +2451,7 @@ function Goals:TestWishlistNotification(itemLink, forceDbm)
             end
         end
     end
-    local delay = self:GetWishlistAlertDelay(forceDbm)
+    local delay = self:GetWishlistAlertDelay(forceDbm, #links)
     if delay > 0 then
         self:Delay(delay, function()
             self:ShowWishlistFoundAlert(links, forceDbm)
@@ -2598,7 +2635,7 @@ function Goals:HandleWishlistLoot(itemLink)
             self:Print("Wishlist found: " .. msg)
         end
         self:EnqueueWishlistAnnounce(itemLink)
-        local delay = self:GetWishlistAlertDelay()
+        local delay = self:GetWishlistAlertDelay(nil, 1)
         if delay > 0 then
             local link = itemLink
             self:Delay(delay, function()

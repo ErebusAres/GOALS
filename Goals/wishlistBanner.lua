@@ -399,10 +399,14 @@ local AtlasInfo = {
 --	}, -- Interface/LevelUp/BossBanner
 }
 
+local function getBannerTexturePath()
+	return (Goals and Goals.WishlistBannerTextureOverride) or "Interface\\AddOns\\Goals\\Texture\\BossBannerToast\\ArcaneGlow"
+end
+
 local function SetAtlas(textureObject, atlasName, useAtlasSize)
 	local atlas = AtlasInfo[atlasName]
 	if textureObject and atlas then
-		textureObject:SetTexture("Interface\\AddOns\\Goals\\Texture\\BossBannerToast\\BossBanner") -- hardcode texture, since there is only one required for this Toast
+		textureObject:SetTexture(getBannerTexturePath()) -- hardcode texture, since there is only one required for this Toast
 		textureObject:SetTexCoord(atlas[3], atlas[4], atlas[5], atlas[6])
 		if useAtlasSize then
 			textureObject:SetSize(atlas[1], atlas[2])
@@ -1617,5 +1621,47 @@ function Goals:ShowWishlistFoundAlertLocal(itemLinks, allowSound)
 	banner:PlayBanner({ encounterID = "GoalsWishlist", name = sourceName, mode = "LOOT" })
 	if allowSound and PlaySound then
 		PlaySound("ReadyCheck")
+	end
+end
+
+function Goals:ApplyWishlistBannerTexture(path)
+	if path == "" then
+		path = nil
+	end
+	self.WishlistBannerTextureOverride = path
+	local banner = _G.GoalsWishlistBossBanner
+	if not banner then
+		return
+	end
+	if banner.BannerTop then
+		SetAtlas(banner.BannerTop, "BossBanner-BgBanner-Top", true)
+		SetAtlas(banner.BannerTopGlow, "BossBanner-BgBanner-Top", true)
+		SetAtlas(banner.BannerBottom, "BossBanner-BgBanner-Bottom", true)
+		SetAtlas(banner.BannerBottomGlow, "BossBanner-BgBanner-Bottom", true)
+		SetAtlas(banner.BannerMiddle, "BossBanner-BgBanner-Mid", true)
+		SetAtlas(banner.BannerMiddleGlow, "BossBanner-BgBanner-Mid", true)
+		SetAtlas(banner.SkullCircle, "BossBanner-SkullCircle", true)
+		SetAtlas(banner.LootCircle, "LootBanner-LootBagCircle", true)
+		SetAtlas(banner.BottomFillagree, "BossBanner-BottomFillagree", true)
+		SetAtlas(banner.SkullSpikes, "BossBanner-SkullSpikes", true)
+		SetAtlas(banner.RightFillagree, "BossBanner-RightFillagree", true)
+		SetAtlas(banner.LeftFillagree, "BossBanner-LeftFillagree", true)
+		SetAtlas(banner.FlashBurst, "BossBanner-RedLightning", true)
+		SetAtlas(banner.FlashBurstLeft, "BossBanner-RedLightning", true)
+		SetAtlas(banner.FlashBurstCenter, "BossBanner-RedLightning", true)
+		SetAtlas(banner.RedFlash, "BossBanner-RedFlash", true)
+	end
+	if banner.LootFrames then
+		for _, frame in ipairs(banner.LootFrames) do
+			if frame.Background then
+				SetAtlas(frame.Background, "LootBanner-ItemBg", true)
+			end
+			if frame.IconHitBox and frame.IconHitBox.Glow then
+				SetAtlas(frame.IconHitBox.Glow, "LootBanner-IconGlow", true)
+			end
+			if frame.IconHitBox and frame.IconHitBox.GlowWhite then
+				SetAtlas(frame.IconHitBox.GlowWhite, "LootBanner-IconGlow", true)
+			end
+		end
 	end
 end
