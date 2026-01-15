@@ -1621,10 +1621,23 @@ function Goals:SetWishlistItem(slotKey, itemData)
     if not list or not slotKey or type(itemData) ~= "table" then
         return
     end
+    local oldEntry = list.items and list.items[slotKey] or nil
     if itemData.itemId then
         itemData.tokenId = self:GetArmorTokenForItem(itemData.itemId) or 0
     end
+    if itemData.found == nil then
+        itemData.found = false
+    end
     list.items = list.items or {}
+    if oldEntry and oldEntry.itemId and itemData.itemId and oldEntry.itemId ~= itemData.itemId then
+        local foundMap = self:GetWishlistFoundMap(list.id)
+        if foundMap then
+            foundMap[oldEntry.itemId] = nil
+            if oldEntry.tokenId then
+                foundMap[oldEntry.tokenId] = nil
+            end
+        end
+    end
     list.items[slotKey] = itemData
     list.updated = time()
     self:NotifyDataChanged()
@@ -1636,6 +1649,16 @@ function Goals:ClearWishlistItem(slotKey)
         return
     end
     list.items = list.items or {}
+    local entry = list.items[slotKey]
+    if entry then
+        local foundMap = self:GetWishlistFoundMap(list.id)
+        if foundMap and entry.itemId then
+            foundMap[entry.itemId] = nil
+            if entry.tokenId then
+                foundMap[entry.tokenId] = nil
+            end
+        end
+    end
     list.items[slotKey] = nil
     list.updated = time()
     self:NotifyDataChanged()
@@ -1985,6 +2008,56 @@ function Goals:WishlistContainsItem(itemId)
     return false
 end
 
+function Goals:IsWishlistItemOwned(itemId)
+    if not itemId then
+        return false
+    end
+    local count = 0
+    if GetItemCount then
+        count = GetItemCount(itemId, true) or 0
+    end
+    if count > 0 then
+        return true
+    end
+    if IsEquippedItem and IsEquippedItem(itemId) then
+        return true
+    end
+    return false
+end
+
+function Goals:GetWishlistFoundMap(listId)
+    self.wishlistState = self.wishlistState or {}
+    self.wishlistState.foundItemsByList = self.wishlistState.foundItemsByList or {}
+    if not listId then
+        return nil
+    end
+    if not self.wishlistState.foundItemsByList[listId] then
+        self.wishlistState.foundItemsByList[listId] = {}
+    end
+    return self.wishlistState.foundItemsByList[listId]
+end
+
+function Goals:MarkWishlistFound(itemId)
+    local list = self:GetActiveWishlist()
+    if not list or not list.id or not itemId then
+        return
+    end
+    local foundMap = self:GetWishlistFoundMap(list.id)
+    if not foundMap then
+        return
+    end
+    local updated = false
+    for _, entry in pairs(list.items or {}) do
+        if entry and (entry.itemId == itemId or entry.tokenId == itemId) then
+            foundMap[entry.itemId] = true
+            updated = true
+        end
+    end
+    if updated then
+        self:NotifyDataChanged()
+    end
+end
+
 function Goals:HandleWishlistLoot(itemLink)
     if not itemLink then
         return
@@ -1994,6 +2067,7 @@ function Goals:HandleWishlistLoot(itemLink)
         return
     end
     if self:WishlistContainsItem(itemId) then
+        self:MarkWishlistFound(itemId)
         self:EnqueueWishlistAnnounce(itemLink)
     end
 end

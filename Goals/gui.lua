@@ -1612,6 +1612,26 @@ function UI:CreateWishlistTab(page)
         local label = button:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
         button.label = label
 
+        local foundShadow = button:CreateTexture(nil, "OVERLAY")
+        foundShadow:SetTexture("Interface\\Cooldown\\ping4")
+        foundShadow:SetPoint("TOPLEFT", button, "TOPLEFT", 1, -1)
+        foundShadow:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", -1, 1)
+        foundShadow:SetVertexColor(0, 0, 0, 0.45)
+        foundShadow:SetDrawLayer("OVERLAY", 0)
+        foundShadow:SetBlendMode("BLEND")
+        foundShadow:Hide()
+        button.foundShadow = foundShadow
+
+        local foundIcon = button:CreateTexture(nil, "OVERLAY")
+        foundIcon:SetTexture("Interface\\RaidFrame\\ReadyCheck-Ready")
+        foundIcon:SetPoint("TOPLEFT", button, "TOPLEFT", 3, -3)
+        foundIcon:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", -3, 3)
+        foundIcon:SetVertexColor(0.2, 1, 0.2)
+        foundIcon:SetDrawLayer("OVERLAY", 2)
+        foundIcon:SetBlendMode("BLEND")
+        foundIcon:Hide()
+        button.foundIcon = foundIcon
+
         button.gems = {}
         for i = 1, 3 do
             local gemBtn = CreateFrame("Button", nil, button)
@@ -3169,6 +3189,20 @@ function UI:UpdateWishlistUI()
         return
     end
     local list = Goals:GetActiveWishlist()
+    local foundMap = nil
+    if list and list.id and Goals.GetWishlistFoundMap then
+        foundMap = Goals:GetWishlistFoundMap(list.id)
+    end
+    if list and foundMap and Goals.IsWishlistItemOwned then
+        for _, entry in pairs(list.items or {}) do
+            if entry and entry.itemId then
+                foundMap[entry.itemId] = Goals:IsWishlistItemOwned(entry.itemId) or nil
+            end
+            if entry and entry.tokenId and entry.tokenId > 0 then
+                foundMap[entry.tokenId] = Goals:IsWishlistItemOwned(entry.tokenId) or nil
+            end
+        end
+    end
     if not self.selectedWishlistSlot then
         for slotKey in pairs(self.wishlistSlotButtons) do
             self.selectedWishlistSlot = slotKey
@@ -3221,6 +3255,27 @@ function UI:UpdateWishlistUI()
             button.border:Hide()
             button.itemId = entry and entry.itemId or nil
             button.itemLink = nil
+        end
+        if button.foundIcon then
+            local found = false
+            if entry and foundMap then
+                if entry.itemId and foundMap[entry.itemId] then
+                    found = true
+                elseif entry.tokenId and foundMap[entry.tokenId] then
+                    found = true
+                end
+            end
+            if found then
+                button.foundIcon:Show()
+                if button.foundShadow then
+                    button.foundShadow:Show()
+                end
+            else
+                button.foundIcon:Hide()
+                if button.foundShadow then
+                    button.foundShadow:Hide()
+                end
+            end
         end
         local gemCount = 0
         if entry and entry.gemIds then
