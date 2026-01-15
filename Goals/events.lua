@@ -178,6 +178,7 @@ function Events:OnEvent(event, ...)
     end
     if event == "GET_ITEM_INFO_RECEIVED" then
         Goals:ProcessPendingLoot()
+        Goals:ProcessPendingWishlistInfo()
         return
     end
     if event == "LOOT_OPENED" then
@@ -275,9 +276,7 @@ function Events:HandleGroupUpdate()
 end
 
 function Events:HandleLootMessage(message)
-    if not Goals:IsSyncMaster() and not (Goals.Dev and Goals.Dev.enabled) then
-        return
-    end
+    local canAssign = Goals:IsSyncMaster() or (Goals.Dev and Goals.Dev.enabled)
     local itemLink = message:match("(|c%x+|Hitem:.-|h%[.-%]|h|r)")
     if not itemLink then
         return
@@ -287,6 +286,12 @@ function Events:HandleLootMessage(message)
         playerName = Goals:GetPlayerName()
     end
     if not playerName then
+        return
+    end
+    if Goals.HandleWishlistLoot then
+        Goals:HandleWishlistLoot(itemLink)
+    end
+    if not canAssign then
         return
     end
     Goals:HandleLootAssignment(Goals:NormalizeName(playerName), itemLink, false, true)

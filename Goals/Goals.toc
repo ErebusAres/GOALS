@@ -8,6 +8,7 @@
 ## Dependencies:
 ## OptionalDeps:
 
+armorTokens.lua
 Core.lua
 loc.lua
 savedvars.lua

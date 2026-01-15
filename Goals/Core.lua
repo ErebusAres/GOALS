@@ -25,6 +25,15 @@ Goals.state.recentAssignments = Goals.state.recentAssignments or {}
 Goals.pendingLoot = Goals.pendingLoot or {}
 Goals.pendingItemInfo = Goals.pendingItemInfo or {}
 Goals.undo = Goals.undo or {}
+Goals.wishlistState = Goals.wishlistState or {
+    announceQueue = {},
+    announceNextFlush = 0,
+    announcedItems = {},
+}
+Goals.itemCache = Goals.itemCache or {}
+Goals.pendingWishlistInfo = Goals.pendingWishlistInfo or {}
+Goals.ArmorTokenMap = Goals.ArmorTokenMap or {}
+Goals.ArmorTokenReverse = Goals.ArmorTokenReverse or {}
 
 local DEBUG_LOG_LIMIT = 400
 local function deepCopyTable(src)
@@ -63,6 +72,31 @@ Goals.classColors = Goals.classColors or {
     WARRIOR = { r = 0.78, g = 0.63, b = 0.43 },
     UNKNOWN = { r = 0.5, g = 0.5, b = 0.5 },
 }
+
+Goals.WishlistSlots = Goals.WishlistSlots or {
+    { key = "HEAD", label = "Head", inv = "HeadSlot", column = 1, row = 1 },
+    { key = "NECK", label = "Neck", inv = "NeckSlot", column = 1, row = 2 },
+    { key = "SHOULDER", label = "Shoulders", inv = "ShoulderSlot", column = 1, row = 3 },
+    { key = "BACK", label = "Back", inv = "BackSlot", column = 1, row = 4 },
+    { key = "CHEST", label = "Chest", inv = "ChestSlot", column = 1, row = 5 },
+    { key = "WRIST", label = "Wrist", inv = "WristSlot", column = 1, row = 6 },
+    { key = "HANDS", label = "Hands", inv = "HandsSlot", column = 1, row = 7 },
+    { key = "WAIST", label = "Waist", inv = "WaistSlot", column = 2, row = 1 },
+    { key = "LEGS", label = "Legs", inv = "LegsSlot", column = 2, row = 2 },
+    { key = "FEET", label = "Feet", inv = "FeetSlot", column = 2, row = 3 },
+    { key = "RING1", label = "Ring 1", inv = "Finger0Slot", column = 2, row = 4 },
+    { key = "RING2", label = "Ring 2", inv = "Finger1Slot", column = 2, row = 5 },
+    { key = "TRINKET1", label = "Trinket 1", inv = "Trinket0Slot", column = 2, row = 6 },
+    { key = "TRINKET2", label = "Trinket 2", inv = "Trinket1Slot", column = 2, row = 7 },
+    { key = "MAINHAND", label = "Main Hand", inv = "MainHandSlot", column = 3, row = 1 },
+    { key = "OFFHAND", label = "Off Hand", inv = "SecondaryHandSlot", column = 3, row = 1 },
+    { key = "RELIC", label = "Relic", inv = "RangedSlot", column = 3, row = 1 },
+}
+
+Goals.WishlistSlotIndex = Goals.WishlistSlotIndex or {}
+for _, entry in ipairs(Goals.WishlistSlots) do
+    Goals.WishlistSlotIndex[entry.key] = entry
+end
 
 local function prefixMessage(msg)
     DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffGoals|r: " .. msg)
@@ -579,6 +613,9 @@ function Goals:AdjustPoints(name, delta, reason, skipSync, skipUndo)
     if not entry or not delta or delta == 0 then
         return
     end
+    if delta > 0 and self.db and self.db.settings and self.db.settings.disablePointGain then
+        return
+    end
     if not skipUndo then
         self:RecordUndo(name, entry.points or 0)
     end
@@ -595,6 +632,9 @@ end
 function Goals:AwardPresentPoints(delta, reason)
     local amount = tonumber(delta or 0) or 0
     if amount == 0 then
+        return
+    end
+    if self.db and self.db.settings and self.db.settings.disablePointGain then
         return
     end
     local present = self:GetPresenceMap()
@@ -644,6 +684,9 @@ end
 function Goals:AwardBossKill(encounterName, members, skipSync)
     local roster = members or self:GetGroupMembers()
     if not roster or #roster == 0 then
+        return
+    end
+    if self.db and self.db.settings and self.db.settings.disablePointGain then
         return
     end
     local present = self:GetPresenceMap()
@@ -729,6 +772,16 @@ function Goals:IsEquippableSlot(equipSlot)
         return false
     end
     return equipSlot ~= "INVTYPE_NON_EQUIP"
+end
+
+function Goals:IsEquippableItemId(itemId)
+    if not itemId then
+        return false
+    end
+    if IsEquippableItem then
+        return IsEquippableItem(itemId)
+    end
+    return true
 end
 
 function Goals:IsTrinket(itemSubType, equipSlot)
@@ -924,6 +977,7 @@ function Goals:RequestItemInfo(itemLink)
     self:Delay(0.5, function()
         self.pendingItemInfo[itemLink] = nil
         self:ProcessPendingLoot()
+        self:ProcessPendingWishlistInfo()
     end)
 end
 
@@ -1301,12 +1355,13 @@ end
 
 function Goals:EnsureTableDefaults(tableData)
     if type(tableData) ~= "table" then
-        return { players = {}, history = {}, settings = {}, debugLog = {}, lastUpdated = time() }
+        return { players = {}, history = {}, settings = {}, debugLog = {}, wishlists = {}, lastUpdated = time() }
     end
     tableData.players = tableData.players or {}
     tableData.history = tableData.history or {}
     tableData.settings = tableData.settings or {}
     tableData.debugLog = tableData.debugLog or {}
+    tableData.wishlists = tableData.wishlists or {}
     if not tableData.lastUpdated then
         tableData.lastUpdated = time()
     end
@@ -1331,6 +1386,7 @@ function Goals:EnsureSaveTable(name)
             players = {},
             history = {},
             settings = deepCopyTable(self.defaults.settings or {}),
+            wishlists = deepCopyTable(self.defaults.wishlists or {}),
             debugLog = {},
             lastUpdated = time(),
         }
@@ -1348,8 +1404,1350 @@ function Goals:CopyTableData(source, target)
     target.history = deepCopyTable(source.history or {})
     target.settings = deepCopyTable(source.settings or {})
     target.settings.devTestBoss = false
+    target.wishlists = deepCopyTable(source.wishlists or {})
     target.debugLog = {}
     target.lastUpdated = time()
+end
+
+function Goals:EnsureWishlistData()
+    if not self.db then
+        return nil
+    end
+    if type(self.db.wishlists) ~= "table" then
+        self.db.wishlists = {}
+    end
+    local data = self.db.wishlists
+    data.version = data.version or 1
+    data.activeId = data.activeId or 1
+    data.nextId = data.nextId or 1
+    if type(data.lists) ~= "table" then
+        data.lists = {}
+    end
+    local nextId = data.nextId
+    for _, list in ipairs(data.lists) do
+        if list.id and list.id >= nextId then
+            nextId = list.id + 1
+        end
+        if type(list.items) ~= "table" then
+            list.items = {}
+        end
+    end
+    data.nextId = nextId
+    if #data.lists == 0 then
+        local defaultName = self:GetPlayerName()
+        if defaultName ~= "" then
+            defaultName = defaultName .. " Wishlist"
+        else
+            defaultName = "Wishlist"
+        end
+        local list = {
+            id = data.nextId,
+            name = defaultName,
+            created = time(),
+            updated = time(),
+            items = {},
+        }
+        data.nextId = data.nextId + 1
+        table.insert(data.lists, list)
+        data.activeId = list.id
+    end
+    return data
+end
+
+function Goals:GetWishlistById(id)
+    local data = self:EnsureWishlistData()
+    if not data then
+        return nil
+    end
+    for _, list in ipairs(data.lists) do
+        if list.id == id then
+            return list
+        end
+    end
+    return nil
+end
+
+function Goals:GetActiveWishlist()
+    local data = self:EnsureWishlistData()
+    if not data then
+        return nil
+    end
+    local list = self:GetWishlistById(data.activeId)
+    if list then
+        return list
+    end
+    if data.lists[1] then
+        data.activeId = data.lists[1].id
+        return data.lists[1]
+    end
+    return nil
+end
+
+function Goals:SetActiveWishlist(id)
+    local data = self:EnsureWishlistData()
+    if not data or not id then
+        return
+    end
+    if self:GetWishlistById(id) then
+        data.activeId = id
+        self:NotifyDataChanged()
+    end
+end
+
+function Goals:NormalizeWishlistName(name)
+    if not name or name == "" then
+        return ""
+    end
+    name = tostring(name):gsub("%s+", " "):gsub("^%s+", ""):gsub("%s+$", "")
+    return name
+end
+
+function Goals:CreateWishlist(name)
+    local data = self:EnsureWishlistData()
+    if not data then
+        return nil
+    end
+    local clean = self:NormalizeWishlistName(name)
+    if clean == "" then
+        local baseName = self:GetPlayerName()
+        if baseName == "" then
+            baseName = "Wishlist"
+        end
+        local maxIndex = -1
+        for _, list in ipairs(data.lists) do
+            local listName = list.name or ""
+            local idx = listName:match("^" .. baseName .. " (%d+)$")
+            if idx then
+                maxIndex = math.max(maxIndex, tonumber(idx) or -1)
+            end
+        end
+        clean = string.format("%s %d", baseName, maxIndex + 1)
+    end
+    local list = {
+        id = data.nextId,
+        name = clean,
+        created = time(),
+        updated = time(),
+        items = {},
+    }
+    data.nextId = (data.nextId or 1) + 1
+    table.insert(data.lists, list)
+    data.activeId = list.id
+    self:NotifyDataChanged()
+    return list
+end
+
+function Goals:RenameWishlist(id, newName)
+    local list = self:GetWishlistById(id)
+    if not list then
+        return false
+    end
+    local clean = self:NormalizeWishlistName(newName)
+    if clean == "" then
+        return false
+    end
+    list.name = clean
+    list.updated = time()
+    self:NotifyDataChanged()
+    return true
+end
+
+function Goals:CopyWishlist(id, newName)
+    local list = self:GetWishlistById(id)
+    if not list then
+        return nil
+    end
+    local copy = self:CreateWishlist(newName ~= "" and newName or (list.name .. " Copy"))
+    if not copy then
+        return nil
+    end
+    copy.items = deepCopyTable(list.items or {})
+    copy.updated = time()
+    self:NotifyDataChanged()
+    return copy
+end
+
+function Goals:DeleteWishlist(id)
+    local data = self:EnsureWishlistData()
+    if not data then
+        return false
+    end
+    for index, list in ipairs(data.lists) do
+        if list.id == id then
+            table.remove(data.lists, index)
+            if data.activeId == id then
+                data.activeId = data.lists[1] and data.lists[1].id or 0
+            end
+            self:NotifyDataChanged()
+            return true
+        end
+    end
+    return false
+end
+
+function Goals:GetWishlistItem(slotKey)
+    local list = self:GetActiveWishlist()
+    if not list or not slotKey then
+        return nil
+    end
+    list.items = list.items or {}
+    return list.items[slotKey]
+end
+
+function Goals:RefreshArmorTokenMap()
+    self.ArmorTokenReverse = {}
+    for _, tokenId in pairs(self.ArmorTokenMap or {}) do
+        if tokenId and tokenId > 0 then
+            self.ArmorTokenReverse[tokenId] = true
+        end
+    end
+end
+
+function Goals:GetArmorTokenForItem(itemId)
+    if not itemId then
+        return nil
+    end
+    if not self.ArmorTokenReverse or not next(self.ArmorTokenReverse) then
+        self:RefreshArmorTokenMap()
+    end
+    return self.ArmorTokenMap[itemId]
+end
+
+function Goals:SetWishlistItem(slotKey, itemData)
+    local list = self:GetActiveWishlist()
+    if not list or not slotKey or type(itemData) ~= "table" then
+        return
+    end
+    if itemData.itemId then
+        itemData.tokenId = self:GetArmorTokenForItem(itemData.itemId) or 0
+    end
+    list.items = list.items or {}
+    list.items[slotKey] = itemData
+    list.updated = time()
+    self:NotifyDataChanged()
+end
+
+function Goals:ClearWishlistItem(slotKey)
+    local list = self:GetActiveWishlist()
+    if not list or not slotKey then
+        return
+    end
+    list.items = list.items or {}
+    list.items[slotKey] = nil
+    list.updated = time()
+    self:NotifyDataChanged()
+end
+
+function Goals:GetWishlistSlotDefs()
+    return self.WishlistSlots
+end
+
+function Goals:GetWishlistSlotDef(slotKey)
+    return self.WishlistSlotIndex and self.WishlistSlotIndex[slotKey] or nil
+end
+
+function Goals:GetItemIdFromLink(link)
+    if not link or link == "" then
+        return nil
+    end
+    local itemId = link:match("item:(%d+)")
+    return itemId and tonumber(itemId) or nil
+end
+
+function Goals:CacheItemById(itemId)
+    if not itemId then
+        return nil
+    end
+    self.itemCache = self.itemCache or {}
+    self.pendingWishlistInfo = self.pendingWishlistInfo or {}
+    local cached = self.itemCache[itemId]
+    if cached and cached.name then
+        return cached
+    end
+    if self.pendingWishlistInfo[itemId] then
+        return nil
+    end
+    local itemName, itemLink, quality, itemLevel, _, itemType, itemSubType, _, equipSlot, texture = GetItemInfo(itemId)
+    if itemName then
+        cached = {
+            id = itemId,
+            name = itemName,
+            link = itemLink,
+            quality = quality,
+            level = itemLevel,
+            type = itemType,
+            subType = itemSubType,
+            equipSlot = equipSlot,
+            texture = texture,
+        }
+        self.itemCache[itemId] = cached
+        return cached
+    end
+    self.pendingWishlistInfo[itemId] = true
+    self:RequestItemInfo("item:" .. tostring(itemId))
+    return nil
+end
+
+function Goals:CacheItemByLink(itemLink)
+    local itemId = self:GetItemIdFromLink(itemLink)
+    if itemId then
+        local cached = self:CacheItemById(itemId)
+        if cached and not cached.link then
+            cached.link = itemLink
+        end
+        return cached
+    end
+    return nil
+end
+
+function Goals:ProcessPendingWishlistInfo()
+    if not self.pendingWishlistInfo or not next(self.pendingWishlistInfo) then
+        return
+    end
+    local updated = false
+    for itemId in pairs(self.pendingWishlistInfo) do
+        if self:CacheItemById(itemId) then
+            self.pendingWishlistInfo[itemId] = nil
+            updated = true
+        end
+    end
+    if updated and self.UI and self.UI.UpdateWishlistUI then
+        self.UI:UpdateWishlistUI()
+    end
+end
+
+local function escapeWishlistText(text)
+    if text == nil then
+        return ""
+    end
+    text = tostring(text)
+    text = text:gsub("%%", "%%25")
+    text = text:gsub("|", "%%7C")
+    text = text:gsub(";", "%%3B")
+    text = text:gsub(":", "%%3A")
+    text = text:gsub(",", "%%2C")
+    return text
+end
+
+local function unescapeWishlistText(text)
+    if text == nil then
+        return ""
+    end
+    text = tostring(text)
+    text = text:gsub("%%2C", ",")
+    text = text:gsub("%%3A", ":")
+    text = text:gsub("%%3B", ";")
+    text = text:gsub("%%7C", "|")
+    text = text:gsub("%%25", "%%")
+    return text
+end
+
+function Goals:SerializeWishlist(list)
+    if not list then
+        return ""
+    end
+    local parts = {
+        "WL1",
+        "name=" .. escapeWishlistText(list.name or ""),
+    }
+    local items = {}
+    for slotKey, entry in pairs(list.items or {}) do
+        local gems = entry.gemIds or {}
+        local gemStrs = {}
+        for i = 1, #gems do
+            gemStrs[i] = tostring(gems[i])
+        end
+        local itemPart = table.concat({
+            slotKey or "",
+            tostring(entry.itemId or 0),
+            tostring(entry.enchantId or 0),
+            table.concat(gemStrs, ","),
+            escapeWishlistText(entry.notes or ""),
+            escapeWishlistText(entry.source or ""),
+        }, ":")
+        table.insert(items, itemPart)
+    end
+    table.insert(parts, "items=" .. table.concat(items, "|"))
+    return table.concat(parts, ";")
+end
+
+function Goals:DeserializeWishlist(text)
+    if not text or text == "" then
+        return nil, "Empty import string."
+    end
+    if not text:find("^WL1") then
+        return nil, "Unknown wishlist format."
+    end
+    local name = "Wishlist"
+    local items = {}
+    for part in string.gmatch(text, "([^;]+)") do
+        local key, value = part:match("([^=]+)=(.*)")
+        if key == "name" then
+            local clean = unescapeWishlistText(value)
+            if clean ~= "" then
+                name = clean
+            end
+        elseif key == "items" then
+            for entry in string.gmatch(value or "", "([^|]+)") do
+                local slotKey, itemId, enchantId, gems, notes, source = entry:match("([^:]*):([^:]*):([^:]*):([^:]*):([^:]*):?(.*)")
+                if slotKey and slotKey ~= "" then
+                    local gemIds = {}
+                    for gem in string.gmatch(gems or "", "([^,]+)") do
+                        local id = tonumber(gem)
+                        if id and id > 0 then
+                            table.insert(gemIds, id)
+                        end
+                    end
+                    items[slotKey] = {
+                        itemId = tonumber(itemId) or 0,
+                        enchantId = tonumber(enchantId) or 0,
+                        gemIds = gemIds,
+                        notes = unescapeWishlistText(notes),
+                        source = unescapeWishlistText(source),
+                    }
+                end
+            end
+        end
+    end
+    return {
+        name = name,
+        items = items,
+    }, nil
+end
+
+function Goals:ExportActiveWishlist()
+    local list = self:GetActiveWishlist()
+    if not list then
+        return ""
+    end
+    return self:SerializeWishlist(list)
+end
+
+function Goals:ImportWishlistString(text)
+    local data, err = self:DeserializeWishlist(text)
+    if not data then
+        return false, err
+    end
+    local list = self:CreateWishlist(data.name)
+    if not list then
+        return false, "Failed to create wishlist."
+    end
+    list.items = data.items or {}
+    list.updated = time()
+    self:NotifyDataChanged()
+    return true, nil
+end
+
+function Goals:SerializeAllWishlists()
+    local data = self:EnsureWishlistData()
+    if not data then
+        return ""
+    end
+    local parts = { "WLS1" }
+    for _, list in ipairs(data.lists) do
+        table.insert(parts, self:SerializeWishlist(list))
+    end
+    return table.concat(parts, "||")
+end
+
+function Goals:ApplyWishlistSync(payload)
+    if not payload or payload == "" then
+        return
+    end
+    if not payload:find("^WLS1") then
+        return
+    end
+    local lists = {}
+    local parts = {}
+    local start = 1
+    while true do
+        local sepStart, sepEnd = payload:find("||", start, true)
+        if not sepStart then
+            table.insert(parts, payload:sub(start))
+            break
+        end
+        table.insert(parts, payload:sub(start, sepStart - 1))
+        start = sepEnd + 1
+    end
+    for _, entry in ipairs(parts) do
+        if entry ~= "WLS1" and entry ~= "" then
+            local data = self:DeserializeWishlist(entry)
+            if data and data.items then
+                table.insert(lists, data)
+            end
+        end
+    end
+    local wishlistData = self:EnsureWishlistData()
+    if not wishlistData then
+        return
+    end
+    wishlistData.version = 1
+    wishlistData.lists = {}
+    wishlistData.nextId = 1
+    for _, data in ipairs(lists) do
+        local list = {
+            id = wishlistData.nextId,
+            name = data.name,
+            created = time(),
+            updated = time(),
+            items = data.items or {},
+        }
+        wishlistData.nextId = wishlistData.nextId + 1
+        table.insert(wishlistData.lists, list)
+    end
+    if wishlistData.lists[1] then
+        wishlistData.activeId = wishlistData.lists[1].id
+    else
+        wishlistData.activeId = 0
+        self:EnsureWishlistData()
+    end
+    self:NotifyDataChanged()
+end
+
+function Goals:EnqueueWishlistAnnounce(itemLink)
+    if not itemLink or itemLink == "" then
+        return
+    end
+    if self.db and self.db.settings and not self.db.settings.wishlistAnnounce then
+        return
+    end
+    local itemId = self:GetItemIdFromLink(itemLink)
+    if not itemId then
+        return
+    end
+    self.wishlistState = self.wishlistState or {}
+    self.wishlistState.announceQueue = self.wishlistState.announceQueue or {}
+    self.wishlistState.announcedItems = self.wishlistState.announcedItems or {}
+    if self.wishlistState.announcedItems[itemId] then
+        return
+    end
+    table.insert(self.wishlistState.announceQueue, itemLink)
+    self.wishlistState.announcedItems[itemId] = true
+    local now = GetTime and GetTime() or 0
+    if self.wishlistState.announceNextFlush == 0 or now >= self.wishlistState.announceNextFlush then
+        self.wishlistState.announceNextFlush = now + 0.5
+        self:Delay(0.6, function()
+            self:FlushWishlistAnnouncements()
+        end)
+    end
+end
+
+function Goals:FlushWishlistAnnouncements()
+    local settings = self.db and self.db.settings or {}
+    if not settings.wishlistAnnounce then
+        return
+    end
+    local queue = self.wishlistState and self.wishlistState.announceQueue or {}
+    if not queue or #queue == 0 then
+        return
+    end
+    local channel = settings.wishlistAnnounceChannel or "AUTO"
+    if channel == "AUTO" then
+        if self:IsInRaid() then
+            channel = "RAID"
+        elseif self:IsInParty() then
+            channel = "PARTY"
+        else
+            channel = "SAY"
+        end
+    end
+    local template = settings.wishlistAnnounceTemplate or "%s is on my wishlist"
+    local idx = 1
+    while idx <= #queue do
+        local slice = { queue[idx] }
+        if queue[idx + 1] then
+            table.insert(slice, queue[idx + 1])
+        end
+        if queue[idx + 2] then
+            table.insert(slice, queue[idx + 2])
+        end
+        local itemText = table.concat(slice, ", ")
+        local msg = string.format(template, itemText)
+        SendChatMessage(msg, channel)
+        idx = idx + #slice
+    end
+    self.wishlistState.announceQueue = {}
+end
+
+function Goals:WishlistContainsItem(itemId)
+    local list = self:GetActiveWishlist()
+    if not list or not itemId then
+        return false
+    end
+    for _, entry in pairs(list.items or {}) do
+        if entry and (entry.itemId == itemId or entry.tokenId == itemId) then
+            return true
+        end
+    end
+    return false
+end
+
+function Goals:HandleWishlistLoot(itemLink)
+    if not itemLink then
+        return
+    end
+    local itemId = self:GetItemIdFromLink(itemLink)
+    if not itemId then
+        return
+    end
+    if self:WishlistContainsItem(itemId) then
+        self:EnqueueWishlistAnnounce(itemLink)
+    end
+end
+
+function Goals:BuildWishlistItemCache()
+    self.itemCache = self.itemCache or {}
+    local list = self:GetActiveWishlist()
+    if list and list.items then
+        for _, entry in pairs(list.items) do
+            if entry and entry.itemId then
+                self:CacheItemById(entry.itemId)
+            end
+            if entry and entry.gemIds then
+                for _, gemId in ipairs(entry.gemIds) do
+                    self:CacheItemById(gemId)
+                end
+            end
+        end
+    end
+    if self.db and self.db.history then
+        for _, entry in ipairs(self.db.history) do
+            if entry and entry.data and entry.data.item then
+                self:CacheItemByLink(entry.data.item)
+            end
+        end
+    end
+end
+
+function Goals:MapEquipSlotToGroup(equipSlot)
+    local map = {
+        INVTYPE_HEAD = "HEAD",
+        INVTYPE_NECK = "NECK",
+        INVTYPE_SHOULDER = "SHOULDER",
+        INVTYPE_CLOAK = "BACK",
+        INVTYPE_CHEST = "CHEST",
+        INVTYPE_ROBE = "CHEST",
+        INVTYPE_WRIST = "WRIST",
+        INVTYPE_HAND = "HANDS",
+        INVTYPE_WAIST = "WAIST",
+        INVTYPE_LEGS = "LEGS",
+        INVTYPE_FEET = "FEET",
+        INVTYPE_FINGER = "RING",
+        INVTYPE_TRINKET = "TRINKET",
+        INVTYPE_WEAPON = "MAINHAND",
+        INVTYPE_WEAPONMAINHAND = "MAINHAND",
+        INVTYPE_2HWEAPON = "MAINHAND",
+        INVTYPE_WEAPONOFFHAND = "OFFHAND",
+        INVTYPE_SHIELD = "OFFHAND",
+        INVTYPE_HOLDABLE = "OFFHAND",
+        INVTYPE_RANGED = "RELIC",
+        INVTYPE_RANGEDRIGHT = "RELIC",
+        INVTYPE_RELIC = "RELIC",
+    }
+    return map[equipSlot]
+end
+
+function Goals:GuessWishlistSlot(itemId)
+    if not itemId then
+        return nil
+    end
+    local cached = self:CacheItemById(itemId)
+    local equipSlot = cached and cached.equipSlot or nil
+    local group = equipSlot and self:MapEquipSlotToGroup(equipSlot) or nil
+    if not group then
+        return nil
+    end
+    local list = self:GetActiveWishlist()
+    local items = list and list.items or {}
+    if group == "RING" then
+        if not items.RING1 then
+            return "RING1"
+        end
+        if not items.RING2 then
+            return "RING2"
+        end
+        return "RING1"
+    end
+    if group == "TRINKET" then
+        if not items.TRINKET1 then
+            return "TRINKET1"
+        end
+        if not items.TRINKET2 then
+            return "TRINKET2"
+        end
+        return "TRINKET1"
+    end
+    return group
+end
+
+function Goals:SetWishlistItemSmart(slotKey, itemData)
+    if not itemData or not itemData.itemId then
+        return
+    end
+    local desired = slotKey
+    local guessed = self:GuessWishlistSlot(itemData.itemId)
+    if guessed and guessed ~= desired then
+        desired = guessed
+    end
+    self:SetWishlistItem(desired, itemData)
+end
+
+function Goals:HasAtlasLootEnhanced()
+    return _G.AtlasLoot or _G.AtlasLootEnhanced or _G.AtlasLootWishList or _G.AtlasLootWishListDB
+end
+
+local function collectItemIdsFromTable(tbl, out, depth, maxNodes)
+    if type(tbl) ~= "table" then
+        return
+    end
+    depth = depth or 0
+    if depth > 6 then
+        return
+    end
+    local nodes = 0
+    for key, value in pairs(tbl) do
+        nodes = nodes + 1
+        if nodes > maxNodes then
+            return
+        end
+        if type(value) == "number" then
+            if value > 0 then
+                out[value] = true
+            end
+        elseif type(value) == "string" then
+            local id = value:match("item:(%d+)")
+            if id then
+                out[tonumber(id)] = true
+            end
+        elseif type(value) == "table" then
+            collectItemIdsFromTable(value, out, depth + 1, maxNodes)
+        elseif type(key) == "number" then
+            if key > 0 and (type(value) == "boolean" or value == nil) then
+                out[key] = true
+            end
+        elseif type(key) == "string" and type(value) == "table" then
+            collectItemIdsFromTable(value, out, depth + 1, maxNodes)
+        end
+    end
+end
+
+function Goals:CollectAtlasLootWishlists()
+    local candidates = {
+        AtlasLootWishList = _G.AtlasLootWishList,
+        AtlasLootWishListDB = _G.AtlasLootWishListDB,
+        AtlasLootCharDB = _G.AtlasLootCharDB,
+        AtlasLoot = _G.AtlasLoot,
+    }
+    local lists = {}
+    local playerName = self:GetPlayerName()
+
+    local function addList(name, tbl)
+        local items = {}
+        collectItemIdsFromTable(tbl, items, 0, 2000)
+        local ids = {}
+        for itemId in pairs(items) do
+            table.insert(ids, itemId)
+        end
+        if #ids > 0 then
+            table.sort(ids)
+            table.insert(lists, {
+                key = name,
+                name = name,
+                items = ids,
+                score = (playerName ~= "" and name:find(playerName, 1, true)) and 1 or 0,
+            })
+        end
+    end
+
+    local function scanTable(rootName, tbl, depth)
+        if type(tbl) ~= "table" or depth > 3 then
+            return
+        end
+        local hasSubtables = false
+        for key, value in pairs(tbl) do
+            if type(value) == "table" then
+                hasSubtables = true
+                local childName = rootName .. "/" .. tostring(key)
+                scanTable(childName, value, depth + 1)
+            end
+        end
+        if not hasSubtables then
+            addList(rootName, tbl)
+        end
+    end
+
+    for name, tbl in pairs(candidates) do
+        if type(tbl) == "table" then
+            scanTable(name, tbl, 0)
+        end
+    end
+
+    table.sort(lists, function(a, b)
+        if a.score ~= b.score then
+            return a.score > b.score
+        end
+        return a.name < b.name
+    end)
+    return lists
+end
+
+function Goals:GetAtlasLootWishlistSelection()
+    local lists = self:CollectAtlasLootWishlists()
+    local selected = nil
+    local selectedKey = self.db and self.db.settings and self.db.settings.atlasSelectedListKey
+    if selectedKey and selectedKey ~= "" then
+        for _, entry in ipairs(lists) do
+            if entry.key == selectedKey then
+                selected = entry
+                break
+            end
+        end
+    end
+    return lists, selected
+end
+
+function Goals:ImportAtlasLootWishlist(listKey)
+    local lists = self:CollectAtlasLootWishlists()
+    if #lists == 0 then
+        return false, "No AtlasLoot wishlist items found."
+    end
+    local selected = nil
+    if listKey and listKey ~= "" then
+        for _, entry in ipairs(lists) do
+            if entry.key == listKey then
+                selected = entry
+                break
+            end
+        end
+    end
+    if not selected then
+        return false, "No AtlasLoot wishlist selected."
+    end
+    local ids = selected.items or {}
+    local imported = 0
+    for _, itemId in ipairs(ids) do
+        if self:IsEquippableItemId(itemId) then
+            local slotKey = self:GuessWishlistSlot(itemId)
+            if slotKey then
+                self:SetWishlistItemSmart(slotKey, {
+                    itemId = itemId,
+                    enchantId = 0,
+                    gemIds = {},
+                    notes = "Imported from AtlasLoot",
+                    source = "AtlasLoot",
+                })
+                imported = imported + 1
+            end
+        end
+    end
+    if imported == 0 then
+        return false, "No equippable AtlasLoot items to import."
+    end
+    self:NotifyDataChanged()
+    return true, string.format("Imported %d AtlasLoot items from %s.", imported, selected.name or "AtlasLoot")
+end
+function Goals:MatchesSlotFilter(filterKey, equipSlot)
+    if not filterKey or filterKey == "" or filterKey == "ALL" then
+        return true
+    end
+    local group = self:MapEquipSlotToGroup(equipSlot)
+    if not group then
+        return false
+    end
+    if group == "RING" then
+        return filterKey == "RING1" or filterKey == "RING2"
+    end
+    if group == "TRINKET" then
+        return filterKey == "TRINKET1" or filterKey == "TRINKET2"
+    end
+    return group == filterKey
+end
+
+function Goals:TooltipHasText(itemLink, needle)
+    if not needle or needle == "" then
+        return true
+    end
+    if not itemLink then
+        return false
+    end
+    self.statsTooltip = self.statsTooltip or CreateFrame("GameTooltip", "GoalsStatsTooltip", UIParent, "GameTooltipTemplate")
+    local tooltip = self.statsTooltip
+    tooltip:SetOwner(UIParent, "ANCHOR_NONE")
+    tooltip:ClearLines()
+    tooltip:SetHyperlink(itemLink)
+    local lowerNeedle = string.lower(needle)
+    for i = 1, tooltip:NumLines() do
+        local line = _G["GoalsStatsTooltipTextLeft" .. i]
+        if line then
+            local text = line:GetText()
+            if text and string.find(string.lower(text), lowerNeedle, 1, true) then
+                tooltip:Hide()
+                return true
+            end
+        end
+    end
+    tooltip:Hide()
+    return false
+end
+
+function Goals:SearchWishlistItems(query, filters)
+    self:BuildWishlistItemCache()
+    local results = {}
+    local clean = query and tostring(query) or ""
+    clean = clean:gsub("^%s+", ""):gsub("%s+$", "")
+    local queryLower = string.lower(clean)
+    local filterSlot = filters and filters.slotKey or "ALL"
+    local minLevel = filters and tonumber(filters.minLevel) or 0
+    local statsNeedle = filters and filters.stats or ""
+    local sourceNeedle = filters and filters.source or ""
+    local function addResult(itemId, itemLink)
+        local cached = self:CacheItemById(itemId)
+        if cached then
+            if not self:IsEquippableSlot(cached.equipSlot) then
+                return
+            end
+            if minLevel > 0 and (cached.level or 0) < minLevel then
+                return
+            end
+            if not self:MatchesSlotFilter(filterSlot, cached.equipSlot) then
+                return
+            end
+            if sourceNeedle ~= "" and not self:TooltipHasText(cached.link, sourceNeedle) then
+                return
+            end
+            if statsNeedle ~= "" and not self:TooltipHasText(cached.link, statsNeedle) then
+                return
+            end
+            table.insert(results, cached)
+        else
+            if not self:IsEquippableItemId(itemId) then
+                return
+            end
+            table.insert(results, {
+                id = itemId,
+                name = "Item " .. tostring(itemId),
+                link = itemLink,
+                quality = 1,
+                level = 0,
+                equipSlot = nil,
+                texture = nil,
+                pending = true,
+            })
+        end
+    end
+    local itemId = tonumber(clean)
+    if itemId and itemId > 0 then
+        addResult(itemId)
+        return results
+    end
+    local linkId = self:GetItemIdFromLink(clean)
+    if linkId then
+        addResult(linkId, clean)
+        return results
+    end
+    local itemIdFromString = clean:match("item:(%d+)")
+    if itemIdFromString then
+        addResult(tonumber(itemIdFromString), clean)
+        return results
+    end
+    for _, cached in pairs(self.itemCache or {}) do
+        if cached and cached.name and self:IsEquippableSlot(cached.equipSlot) then
+            if queryLower == "" or string.find(string.lower(cached.name), queryLower, 1, true) then
+                if self:MatchesSlotFilter(filterSlot, cached.equipSlot) and (minLevel == 0 or (cached.level or 0) >= minLevel) then
+                    if (statsNeedle == "" or self:TooltipHasText(cached.link, statsNeedle)) and (sourceNeedle == "" or self:TooltipHasText(cached.link, sourceNeedle)) then
+                        table.insert(results, cached)
+                    end
+                end
+            end
+        end
+    end
+    table.sort(results, function(a, b)
+        return (a.name or "") < (b.name or "")
+    end)
+    return results
+end
+
+function Goals:DecodeBase64(input)
+    if not input or input == "" then
+        return ""
+    end
+    input = input:gsub("[^%w%+%/%=]", "")
+    local b = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+    local t = {}
+    local function decodeChar(x)
+        if x == "=" then
+            return nil
+        end
+        return b:find(x, 1, true) - 1
+    end
+    local i = 1
+    while i <= #input do
+        local c1 = decodeChar(input:sub(i, i)); i = i + 1
+        local c2 = decodeChar(input:sub(i, i)); i = i + 1
+        local c3 = decodeChar(input:sub(i, i)); i = i + 1
+        local c4 = decodeChar(input:sub(i, i)); i = i + 1
+        if not c1 or not c2 then
+            break
+        end
+        local n1 = (c1 * 4) + math.floor(c2 / 16)
+        table.insert(t, string.char(n1))
+        if c3 then
+            local n2 = ((c2 % 16) * 16) + math.floor(c3 / 4)
+            table.insert(t, string.char(n2))
+        end
+        if c4 then
+            local n3 = ((c3 % 4) * 64) + c4
+            table.insert(t, string.char(n3))
+        end
+    end
+    return table.concat(t)
+end
+
+function Goals:DecodeJson(text)
+    local pos = 1
+    local function skipWhitespace()
+        while true do
+            local c = text:sub(pos, pos)
+            if c == " " or c == "\n" or c == "\r" or c == "\t" then
+                pos = pos + 1
+            else
+                break
+            end
+        end
+    end
+    local function parseString()
+        pos = pos + 1
+        local result = {}
+        while pos <= #text do
+            local c = text:sub(pos, pos)
+            if c == "\"" then
+                pos = pos + 1
+                return table.concat(result)
+            elseif c == "\\" then
+                local nextChar = text:sub(pos + 1, pos + 1)
+                if nextChar == "\"" or nextChar == "\\" or nextChar == "/" then
+                    table.insert(result, nextChar)
+                    pos = pos + 2
+                elseif nextChar == "b" then
+                    table.insert(result, "\b")
+                    pos = pos + 2
+                elseif nextChar == "f" then
+                    table.insert(result, "\f")
+                    pos = pos + 2
+                elseif nextChar == "n" then
+                    table.insert(result, "\n")
+                    pos = pos + 2
+                elseif nextChar == "r" then
+                    table.insert(result, "\r")
+                    pos = pos + 2
+                elseif nextChar == "t" then
+                    table.insert(result, "\t")
+                    pos = pos + 2
+                else
+                    pos = pos + 2
+                end
+            else
+                table.insert(result, c)
+                pos = pos + 1
+            end
+        end
+        return nil
+    end
+    local function parseNumber()
+        local startPos = pos
+        while pos <= #text do
+            local char = text:sub(pos, pos)
+            if not char:match("[%d%+%-%eE%.]") then
+                break
+            end
+            pos = pos + 1
+        end
+        local num = tonumber(text:sub(startPos, pos - 1))
+        return num
+    end
+    local function parseValue()
+        skipWhitespace()
+        local c = text:sub(pos, pos)
+        if c == "{" then
+            pos = pos + 1
+            local obj = {}
+            skipWhitespace()
+            if text:sub(pos, pos) == "}" then
+                pos = pos + 1
+                return obj
+            end
+            while pos <= #text do
+                skipWhitespace()
+                local key = parseString()
+                skipWhitespace()
+                pos = pos + 1
+                local value = parseValue()
+                obj[key] = value
+                skipWhitespace()
+                local sep = text:sub(pos, pos)
+                if sep == "}" then
+                    pos = pos + 1
+                    break
+                end
+                pos = pos + 1
+            end
+            return obj
+        elseif c == "[" then
+            pos = pos + 1
+            local arr = {}
+            skipWhitespace()
+            if text:sub(pos, pos) == "]" then
+                pos = pos + 1
+                return arr
+            end
+            local i = 1
+            while pos <= #text do
+                arr[i] = parseValue()
+                i = i + 1
+                skipWhitespace()
+                local sep = text:sub(pos, pos)
+                if sep == "]" then
+                    pos = pos + 1
+                    break
+                end
+                pos = pos + 1
+            end
+            return arr
+        elseif c == "\"" then
+            return parseString()
+        elseif c == "t" and text:sub(pos, pos + 3) == "true" then
+            pos = pos + 4
+            return true
+        elseif c == "f" and text:sub(pos, pos + 4) == "false" then
+            pos = pos + 5
+            return false
+        elseif c == "n" and text:sub(pos, pos + 3) == "null" then
+            pos = pos + 4
+            return nil
+        else
+            return parseNumber()
+        end
+    end
+    skipWhitespace()
+    local ok, result = pcall(parseValue)
+    if not ok then
+        return nil, "Failed to parse JSON."
+    end
+    return result, nil
+end
+
+local function normalizeSlotKey(slotValue)
+    if not slotValue then
+        return nil
+    end
+    local text = tostring(slotValue):lower()
+    text = text:gsub("slot", "")
+    text = text:gsub("%s+", "")
+    if text == "head" then return "HEAD" end
+    if text == "neck" then return "NECK" end
+    if text == "shoulder" or text == "shoulders" then return "SHOULDER" end
+    if text == "back" or text == "cloak" then return "BACK" end
+    if text == "chest" or text == "robe" then return "CHEST" end
+    if text == "wrist" then return "WRIST" end
+    if text == "hands" or text == "hand" then return "HANDS" end
+    if text == "waist" or text == "belt" then return "WAIST" end
+    if text == "legs" then return "LEGS" end
+    if text == "feet" or text == "boots" then return "FEET" end
+    if text == "ring1" or text == "finger1" then return "RING1" end
+    if text == "ring2" or text == "finger2" then return "RING2" end
+    if text == "trinket1" then return "TRINKET1" end
+    if text == "trinket2" then return "TRINKET2" end
+    if text == "mainhand" or text == "mainhandweapon" then return "MAINHAND" end
+    if text == "offhand" or text == "secondaryhand" then return "OFFHAND" end
+    if text == "relic" or text == "ranged" then return "RELIC" end
+    return nil
+end
+
+local function slotIdToKey(slotId)
+    local map = {
+        [1] = "HEAD",
+        [2] = "NECK",
+        [3] = "SHOULDER",
+        [5] = "CHEST",
+        [6] = "WAIST",
+        [7] = "LEGS",
+        [8] = "FEET",
+        [9] = "WRIST",
+        [10] = "HANDS",
+        [11] = "RING1",
+        [12] = "RING2",
+        [13] = "TRINKET1",
+        [14] = "TRINKET2",
+        [15] = "BACK",
+        [16] = "MAINHAND",
+        [17] = "OFFHAND",
+        [18] = "RELIC",
+    }
+    return map[slotId]
+end
+
+function Goals:ExtractWowheadItems(payload)
+    local items = {}
+    if type(payload) ~= "table" then
+        return items
+    end
+    local list = payload.items or payload.gear or payload.slots or payload
+    if type(list) ~= "table" then
+        return items
+    end
+    local function handleEntry(entry, slotKeyFromMap)
+        if type(entry) ~= "table" then
+            return
+        end
+        local itemId = entry.id or entry.item or entry.itemId or entry.item_id
+        local slotKey = normalizeSlotKey(entry.slot or entry.slotName or entry.name)
+        if not slotKey and entry.slotId then
+            slotKey = slotIdToKey(tonumber(entry.slotId))
+        end
+        if not slotKey and entry.slot then
+            slotKey = slotIdToKey(tonumber(entry.slot))
+        end
+        if not slotKey and slotKeyFromMap then
+            slotKey = slotIdToKey(tonumber(slotKeyFromMap))
+        end
+        if slotKey and itemId then
+            local gems = entry.gems or entry.gemIds or {}
+            local gemIds = {}
+            if type(gems) == "table" then
+                for _, gem in ipairs(gems) do
+                    local gemId = tonumber(gem)
+                    if gemId and gemId > 0 then
+                        table.insert(gemIds, gemId)
+                    end
+                end
+                if #gemIds == 0 then
+                    for _, gem in pairs(gems) do
+                        local gemId = tonumber(gem)
+                        if gemId and gemId > 0 then
+                            table.insert(gemIds, gemId)
+                        end
+                    end
+                end
+            end
+            local item = {
+                slotKey = slotKey,
+                itemId = tonumber(itemId) or 0,
+                enchantId = tonumber(entry.enchant or entry.enchantId or entry.enchantID) or 0,
+                gemIds = gemIds,
+                source = "Wowhead",
+            }
+            table.insert(items, item)
+        end
+    end
+    if #list > 0 then
+        for _, entry in ipairs(list) do
+            handleEntry(entry)
+        end
+    else
+        for slotKey, entry in pairs(list) do
+            handleEntry(entry, slotKey)
+        end
+    end
+    return items
+end
+
+function Goals:ImportWowhead(text)
+    if not text or text == "" then
+        return nil, "Empty import text."
+    end
+    local jsonText = nil
+    if text:find("{") then
+        jsonText = text
+    else
+        local data = text:match("data=([^&]+)")
+        if data then
+            data = data:gsub("%%2B", "+")
+            data = data:gsub("%%2F", "/")
+            data = data:gsub("%%3D", "=")
+            jsonText = self:DecodeBase64(data)
+        end
+    end
+    if jsonText then
+        local decoded, err = self:DecodeJson(jsonText)
+        if not decoded then
+            return nil, err or "Could not parse JSON."
+        end
+        local items = self:ExtractWowheadItems(decoded)
+        if #items > 0 then
+            return items, nil
+        end
+    end
+    local itemsParam = text:match("items=([^&]+)")
+    if itemsParam then
+        local items = {}
+        for chunk in string.gmatch(itemsParam, "([^;]+)") do
+            local slotId, itemId, enchantId, gems = chunk:match("(%d+):(%d+):?(%d*):?(.*)")
+            local slotKey = slotIdToKey(tonumber(slotId))
+            if slotKey and itemId then
+                local gemIds = {}
+                for gem in string.gmatch(gems or "", "([^,]+)") do
+                    local gemId = tonumber(gem)
+                    if gemId and gemId > 0 then
+                        table.insert(gemIds, gemId)
+                    end
+                end
+                table.insert(items, {
+                    slotKey = slotKey,
+                    itemId = tonumber(itemId) or 0,
+                    enchantId = tonumber(enchantId) or 0,
+                    gemIds = gemIds,
+                    source = "Wowhead",
+                })
+            end
+        end
+        if #items > 0 then
+            return items, nil
+        end
+    end
+    return nil, "No recognizable Wowhead data found."
+end
+
+function Goals:ApplyImportedWishlistItems(items, targetListId)
+    if type(items) ~= "table" then
+        return false, "No items to import."
+    end
+    local list = targetListId and self:GetWishlistById(targetListId) or self:GetActiveWishlist()
+    if not list then
+        return false, "No active wishlist."
+    end
+    local missingItems, unknownGems, unknownEnchants = 0, 0, 0
+    for _, entry in ipairs(items) do
+        if entry.slotKey and entry.itemId and entry.itemId > 0 then
+            local gemIds = entry.gemIds or {}
+            for _, gemId in ipairs(gemIds) do
+                if not self:CacheItemById(gemId) then
+                    unknownGems = unknownGems + 1
+                end
+            end
+            if entry.enchantId and entry.enchantId > 0 then
+                unknownEnchants = unknownEnchants + 1
+            end
+            if not self:CacheItemById(entry.itemId) then
+                missingItems = missingItems + 1
+            end
+            list.items = list.items or {}
+            local tokenId = self:GetArmorTokenForItem(entry.itemId) or 0
+            list.items[entry.slotKey] = {
+                itemId = entry.itemId,
+                enchantId = entry.enchantId or 0,
+                gemIds = gemIds,
+                notes = entry.notes or "",
+                source = entry.source or "Import",
+                tokenId = tokenId,
+            }
+        else
+            missingItems = missingItems + 1
+        end
+    end
+    list.updated = time()
+    self:NotifyDataChanged()
+    local summary = string.format("Imported %d items (%d missing, %d unknown enchants, %d unknown gems).", #items, missingItems, unknownEnchants, unknownGems)
+    return true, summary
 end
 
 function Goals:SelectSaveTable(name)
@@ -1362,6 +2760,7 @@ function Goals:SelectSaveTable(name)
     end
     self.dbRoot.activeTableName = name
     self.db = tableData
+    self:EnsureWishlistData()
 end
 
 function Goals:SaveCurrentTableAs(name)
@@ -1520,12 +2919,22 @@ function Goals:Init()
             players = self.dbRoot.players or {},
             history = self.dbRoot.history or {},
             settings = self.dbRoot.settings or {},
+            wishlists = self.dbRoot.wishlists or {},
             debugLog = {},
             lastUpdated = time(),
         }
         self.dbRoot.tables[playerName] = initial
     end
     self:SelectSaveTable(playerName)
+    self:EnsureWishlistData()
+    if not self.linkHooked and hooksecurefunc then
+        self.linkHooked = true
+        hooksecurefunc("SetItemRef", function(link)
+            if link and link:find("^item:") then
+                Goals:CacheItemByLink(link)
+            end
+        end)
+    end
     if self.db and self.db.settings then
         local installed = self:GetInstalledUpdateVersion()
         if (self.db.settings.updateAvailableVersion or 0) < installed then

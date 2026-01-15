@@ -24,11 +24,22 @@ local MINI_DEFAULT_Y = 0
 local LOOT_HISTORY_ROW_HEIGHT = 28
 local LOOT_HISTORY_ROW_HEIGHT_COMPACT = 20
 local LOOT_ROWS = 18
+local WISHLIST_SLOT_SIZE = 36
+local WISHLIST_ROW_SPACING = 46
 
 local function createLabel(parent, text, template)
     local label = parent:CreateFontString(nil, "ARTWORK", template or "GameFontNormal")
     label:SetText(text or "")
     return label
+end
+
+local function bindEscapeClear(editBox)
+    if not editBox then
+        return
+    end
+    editBox:SetScript("OnEscapePressed", function(self)
+        self:ClearFocus()
+    end)
 end
 
 local function setCheckText(check, text)
@@ -96,6 +107,16 @@ local function hasModifyAccess()
     local inRaid = Goals.IsInRaid and Goals:IsInRaid()
     local inParty = Goals.IsInParty and Goals:IsInParty()
     return (inRaid or inParty) and Goals:IsGroupLeader()
+end
+
+local function hasPointGainAccess()
+    if Goals and Goals.Dev and Goals.Dev.enabled then
+        return true
+    end
+    if Goals and Goals.db and Goals.db.settings and Goals.db.settings.sudoDev then
+        return true
+    end
+    return Goals and Goals.sync and Goals.sync.isMaster
 end
 
 local function hasDisenchanterAccess()
@@ -618,6 +639,7 @@ function UI:CreateMainFrame()
         { key = "overview", text = L.TAB_OVERVIEW, create = "CreateOverviewTab" },
         { key = "loot", text = L.TAB_LOOT, create = "CreateLootTab" },
         { key = "history", text = L.TAB_HISTORY, create = "CreateHistoryTab" },
+        { key = "wishlist", text = L.TAB_WISHLIST, create = "CreateWishlistTab" },
         { key = "settings", text = L.TAB_SETTINGS, create = "CreateSettingsTab" },
     }
     if self:ShouldShowUpdateTab() then
@@ -868,6 +890,15 @@ function UI:CreateOverviewTab(page)
     end)
     self.presentCheck = presentCheck
 
+    local disableGainCheck = CreateFrame("CheckButton", nil, page, "UICheckButtonTemplate")
+    disableGainCheck:SetPoint("LEFT", presentCheck.Text or presentCheck, "RIGHT", 12, 0)
+    disableGainCheck:SetPoint("CENTER", presentCheck, "CENTER", 0, 0)
+    setCheckText(disableGainCheck, L.CHECK_DISABLE_POINT_GAIN)
+    disableGainCheck:SetScript("OnClick", function(selfBtn)
+        Goals:SetRaidSetting("disablePointGain", selfBtn:GetChecked() and true or false)
+    end)
+    self.disablePointGainCheck = disableGainCheck
+
     local rosterInset = CreateFrame("Frame", "GoalsOverviewRosterInset", page, "GoalsInsetTemplate")
     rosterInset:SetPoint("TOPLEFT", page, "TOPLEFT", 2, -30)
     rosterInset:SetPoint("BOTTOMLEFT", page, "BOTTOMLEFT", 2, 2)
@@ -1030,6 +1061,7 @@ function UI:CreateOverviewTab(page)
     amountBox:SetAutoFocus(false)
     amountBox:SetNumeric(true)
     amountBox:SetNumber(1)
+    bindEscapeClear(amountBox)
     amountBox:SetScript("OnEnterPressed", function(selfBox)
         selfBox:ClearFocus()
     end)
@@ -1419,6 +1451,1021 @@ function UI:CreateHistoryTab(page)
         row.text = text
 
         self.historyRows[i] = row
+    end
+end
+
+local function fitWishlistLabel(label, text)
+    if not label then
+        return
+    end
+    label:SetText(text or "")
+    local font, size = label:GetFont()
+    local lineHeight = (size or 12) + 2
+    local maxHeight = lineHeight * 3
+    if label:GetStringHeight() <= maxHeight then
+        return
+    end
+    local base = text or ""
+    local left, right = 1, #base
+    local best = ""
+    while left <= right do
+        local mid = math.floor((left + right) / 2)
+        local candidate = base:sub(1, mid) .. "..."
+        label:SetText(candidate)
+        if label:GetStringHeight() <= maxHeight then
+            best = candidate
+            left = mid + 1
+        else
+            right = mid - 1
+        end
+    end
+    if best ~= "" then
+        label:SetText(best)
+    else
+        label:SetText("...")
+    end
+end
+
+-- reserved for future wishlist textbox styling tweaks
+
+function UI:CreateWishlistTab(page)
+    local leftInset = CreateFrame("Frame", "GoalsWishlistLeftInset", page, "GoalsInsetTemplate")
+    leftInset:SetPoint("TOPLEFT", page, "TOPLEFT", 2, -8)
+    leftInset:SetPoint("BOTTOMLEFT", page, "BOTTOMLEFT", 2, 2)
+    leftInset:SetWidth(380)
+    self.wishlistLeftInset = leftInset
+
+    local rightInset = CreateFrame("Frame", "GoalsWishlistRightInset", page, "GoalsInsetTemplate")
+    rightInset:SetPoint("TOPLEFT", leftInset, "TOPRIGHT", 12, 0)
+    rightInset:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -2, 2)
+    self.wishlistRightInset = rightInset
+
+    local tabBar = CreateFrame("Frame", nil, rightInset)
+    tabBar:SetPoint("TOPLEFT", rightInset, "TOPLEFT", 8, -6)
+    tabBar:SetPoint("TOPRIGHT", rightInset, "TOPRIGHT", -8, -6)
+    tabBar:SetHeight(22)
+
+    local managerPage = CreateFrame("Frame", nil, rightInset)
+    managerPage:SetPoint("TOPLEFT", rightInset, "TOPLEFT", 6, -32)
+    managerPage:SetPoint("BOTTOMRIGHT", rightInset, "BOTTOMRIGHT", -6, 6)
+
+    local searchPage = CreateFrame("Frame", nil, rightInset)
+    searchPage:SetPoint("TOPLEFT", rightInset, "TOPLEFT", 6, -32)
+    searchPage:SetPoint("BOTTOMRIGHT", rightInset, "BOTTOMRIGHT", -6, 6)
+    searchPage:Hide()
+
+    local actionsPage = CreateFrame("Frame", nil, rightInset)
+    actionsPage:SetPoint("TOPLEFT", rightInset, "TOPLEFT", 6, -32)
+    actionsPage:SetPoint("BOTTOMRIGHT", rightInset, "BOTTOMRIGHT", -6, 6)
+    actionsPage:Hide()
+
+    local function selectWishlistTab(key)
+        managerPage:SetShown(key == "manage")
+        searchPage:SetShown(key == "search")
+        actionsPage:SetShown(key == "actions")
+        if self.wishlistSubTabs then
+            for name, button in pairs(self.wishlistSubTabs) do
+                if name == key then
+                    button:LockHighlight()
+                else
+                    button:UnlockHighlight()
+                end
+            end
+        end
+    end
+
+    local function createTabButton(text, key, anchor)
+        local btn = CreateFrame("Button", nil, tabBar, "UIPanelButtonTemplate")
+        btn:SetSize(80, 20)
+        btn:SetText(text)
+        if anchor then
+            btn:SetPoint("LEFT", anchor, "RIGHT", 6, 0)
+        else
+            btn:SetPoint("LEFT", tabBar, "LEFT", 0, 0)
+        end
+        btn:SetScript("OnClick", function()
+            selectWishlistTab(key)
+        end)
+        return btn
+    end
+
+    self.wishlistSubTabs = {}
+    self.wishlistSubTabs.manage = createTabButton("Manage", "manage", nil)
+    self.wishlistSubTabs.search = createTabButton("Search", "search", self.wishlistSubTabs.manage)
+    self.wishlistSubTabs.actions = createTabButton("Actions", "actions", self.wishlistSubTabs.search)
+    selectWishlistTab("manage")
+
+    local slotsLabel = createLabel(leftInset, L.LABEL_WISHLIST_SLOTS, "GameFontNormal")
+    slotsLabel:SetPoint("TOPLEFT", leftInset, "TOPLEFT", 10, -8)
+
+    self.wishlistSlotButtons = {}
+    local slots = Goals:GetWishlistSlotDefs() or {}
+    local leftColumnX = 28
+    local rightColumnX = leftInset:GetWidth() - WISHLIST_SLOT_SIZE - 30
+    local columnCenter = leftInset:GetWidth() * 0.5
+    local centerGap = 3
+    local gemColumnWidth = 12
+    local gemNameGap = 2
+    local nameOffset = gemColumnWidth + gemNameGap + 6
+    local leftLabelWidth = math.max(80, (columnCenter - centerGap) - (leftColumnX + WISHLIST_SLOT_SIZE + nameOffset) - 4)
+    local rightLabelWidth = math.max(80, (rightColumnX - nameOffset) - (columnCenter + centerGap) - 4)
+    local topY = -28
+    local bottomRowY = 60
+    local bottomRowX = {
+        MAINHAND = 80,
+        OFFHAND = 170,
+        RELIC = 260,
+    }
+
+    local function createSlotButton(slotDef)
+        local button = CreateFrame("Button", nil, leftInset)
+        button:SetSize(WISHLIST_SLOT_SIZE, WISHLIST_SLOT_SIZE)
+        button:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+
+        local icon = button:CreateTexture(nil, "ARTWORK")
+        icon:SetPoint("TOPLEFT", button, "TOPLEFT", 2, -2)
+        icon:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", -2, 2)
+        icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+        button.icon = icon
+
+        local border = button:CreateTexture(nil, "OVERLAY")
+        border:SetTexture("Interface\\Buttons\\UI-ActionButton-Border")
+        border:SetBlendMode("ADD")
+        border:SetPoint("CENTER", button, "CENTER", 0, 0)
+        border:SetSize(WISHLIST_SLOT_SIZE * 1.8, WISHLIST_SLOT_SIZE * 1.8)
+        border:Hide()
+        button.border = border
+
+        local highlight = button:CreateTexture(nil, "HIGHLIGHT")
+        highlight:SetTexture("Interface\\Buttons\\ButtonHilight-Square")
+        highlight:SetBlendMode("ADD")
+        highlight:SetAllPoints(button)
+        button:SetHighlightTexture(highlight)
+
+        local selected = button:CreateTexture(nil, "OVERLAY")
+        selected:SetTexture("Interface\\Buttons\\CheckButtonHilight")
+        selected:SetBlendMode("ADD")
+        selected:SetAllPoints(button)
+        selected:Hide()
+        button.selected = selected
+
+        local label = button:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+        button.label = label
+
+        button.gems = {}
+        for i = 1, 3 do
+            local gemBtn = CreateFrame("Button", nil, button)
+            gemBtn:SetSize(12, 12)
+            gemBtn:Hide()
+            local gemTex = gemBtn:CreateTexture(nil, "ARTWORK")
+            gemTex:SetAllPoints(gemBtn)
+            gemBtn.icon = gemTex
+            gemBtn:SetScript("OnEnter", function(selfGem)
+                if selfGem.itemId then
+                    GameTooltip:SetOwner(selfGem, "ANCHOR_RIGHT")
+                    GameTooltip:SetHyperlink("item:" .. tostring(selfGem.itemId))
+                    GameTooltip:Show()
+                end
+            end)
+            gemBtn:SetScript("OnLeave", function()
+                GameTooltip:Hide()
+            end)
+            button.gems[i] = gemBtn
+        end
+
+        local enchantBtn = CreateFrame("Button", nil, button)
+        enchantBtn:SetSize(12, 12)
+        enchantBtn:Hide()
+        local enchantTex = enchantBtn:CreateTexture(nil, "ARTWORK")
+        enchantTex:SetAllPoints(enchantBtn)
+        enchantTex:SetTexture("Interface\\Icons\\inv_enchant_formulagood_01")
+        enchantBtn.icon = enchantTex
+        enchantBtn:SetScript("OnEnter", function(selfIcon)
+            if selfIcon.enchantId then
+                GameTooltip:SetOwner(selfIcon, "ANCHOR_RIGHT")
+                GameTooltip:SetText("Enchant ID: " .. tostring(selfIcon.enchantId))
+                GameTooltip:Show()
+            end
+        end)
+        enchantBtn:SetScript("OnLeave", function()
+            GameTooltip:Hide()
+        end)
+        button.enchantIcon = enchantBtn
+
+        button:SetScript("OnEnter", function(selfBtn)
+            GameTooltip:SetOwner(selfBtn, "ANCHOR_RIGHT")
+            if selfBtn.itemLink then
+                GameTooltip:SetHyperlink(selfBtn.itemLink)
+            elseif selfBtn.itemId then
+                GameTooltip:SetHyperlink("item:" .. tostring(selfBtn.itemId))
+            else
+                GameTooltip:SetText(slotDef.label or "")
+            end
+            GameTooltip:Show()
+        end)
+        button:SetScript("OnLeave", function()
+            GameTooltip:Hide()
+        end)
+        button:SetScript("OnClick", function(selfBtn, btn)
+            if btn == "RightButton" then
+                Goals:ClearWishlistItem(slotDef.key)
+                return
+            end
+            self.selectedWishlistSlot = slotDef.key
+            self:UpdateWishlistUI()
+        end)
+
+        return button
+    end
+
+    for _, slotDef in ipairs(slots) do
+        local button = createSlotButton(slotDef)
+        if slotDef.column == 1 then
+            button:SetPoint("TOPLEFT", leftInset, "TOPLEFT", leftColumnX, topY - (slotDef.row - 1) * WISHLIST_ROW_SPACING)
+            button.label:SetPoint("LEFT", button, "RIGHT", nameOffset, 0)
+            button.label:SetWidth(leftLabelWidth)
+            button.label:SetJustifyH("LEFT")
+            if button.label.SetJustifyV then
+                button.label:SetJustifyV("MIDDLE")
+            end
+            button.label:SetWordWrap(true)
+        elseif slotDef.column == 2 then
+            button:SetPoint("TOPLEFT", leftInset, "TOPLEFT", rightColumnX, topY - (slotDef.row - 1) * WISHLIST_ROW_SPACING)
+            button.label:SetPoint("RIGHT", button, "LEFT", -nameOffset, 0)
+            button.label:SetJustifyH("RIGHT")
+            if button.label.SetJustifyV then
+                button.label:SetJustifyV("MIDDLE")
+            end
+            button.label:SetWidth(rightLabelWidth)
+            button.label:SetWordWrap(true)
+        else
+            local x = bottomRowX[slotDef.key] or 90
+            button:SetPoint("BOTTOMLEFT", leftInset, "BOTTOMLEFT", x, bottomRowY)
+            button.label:SetPoint("TOP", button, "BOTTOM", 0, -6)
+            button.label:SetWidth(104)
+            button.label:SetJustifyH("CENTER")
+            if button.label.SetJustifyV then
+                button.label:SetJustifyV("MIDDLE")
+            end
+            button.label:SetWordWrap(true)
+        end
+        button.slotKey = slotDef.key
+        button.slotLabel = slotDef.label or slotDef.key
+        button.column = slotDef.column
+        self.wishlistSlotButtons[slotDef.key] = button
+    end
+
+    local managerLabel = createLabel(managerPage, L.LABEL_WISHLIST_MANAGER, "GameFontNormal")
+    managerLabel:SetPoint("TOPLEFT", managerPage, "TOPLEFT", 4, -4)
+
+    local managerInset = CreateFrame("Frame", "GoalsWishlistManagerInset", managerPage, "GoalsInsetTemplate")
+    managerInset:SetPoint("TOPLEFT", managerPage, "TOPLEFT", 0, -24)
+    managerInset:SetPoint("TOPRIGHT", managerPage, "TOPRIGHT", 0, -24)
+    managerInset:SetHeight(110)
+    self.wishlistManagerInset = managerInset
+
+    local managerScroll = CreateFrame("ScrollFrame", "GoalsWishlistManagerScroll", managerInset, "FauxScrollFrameTemplate")
+    managerScroll:SetPoint("TOPLEFT", managerInset, "TOPLEFT", 2, -6)
+    managerScroll:SetPoint("BOTTOMRIGHT", managerInset, "BOTTOMRIGHT", -26, 6)
+    managerScroll:SetScript("OnVerticalScroll", function(selfScroll, offset)
+        FauxScrollFrame_OnVerticalScroll(selfScroll, offset, ROW_HEIGHT, function()
+            UI:UpdateWishlistManagerList()
+        end)
+    end)
+    self.wishlistManagerScroll = managerScroll
+
+    self.wishlistManagerRows = {}
+    for i = 1, 5 do
+        local row = CreateFrame("Button", nil, managerInset)
+        row:SetHeight(ROW_HEIGHT)
+        row:SetPoint("TOPLEFT", managerInset, "TOPLEFT", 8, -6 - (i - 1) * ROW_HEIGHT)
+        row:SetPoint("RIGHT", managerInset, "RIGHT", -26, 0)
+        local highlight = row:CreateTexture(nil, "HIGHLIGHT")
+        highlight:SetAllPoints(row)
+        highlight:SetTexture("Interface\\Buttons\\UI-Listbox-Highlight")
+        highlight:SetBlendMode("ADD")
+        row:SetHighlightTexture(highlight)
+        local text = row:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+        text:SetPoint("LEFT", row, "LEFT", 2, 0)
+        text:SetPoint("RIGHT", row, "RIGHT", -4, 0)
+        row.text = text
+        row:SetScript("OnClick", function(selfRow)
+            if selfRow.listId then
+                Goals:SetActiveWishlist(selfRow.listId)
+                UI.selectedWishlistList = selfRow.listId
+                UI:UpdateWishlistUI()
+            end
+        end)
+        self.wishlistManagerRows[i] = row
+    end
+
+    local nameBox = CreateFrame("EditBox", nil, managerPage, "InputBoxTemplate")
+    nameBox:SetPoint("TOPLEFT", managerInset, "BOTTOMLEFT", 6, -8)
+    nameBox:SetSize(140, 20)
+    nameBox:SetAutoFocus(false)
+    bindEscapeClear(nameBox)
+    self.wishlistNameBox = nameBox
+
+    local createBtn = CreateFrame("Button", nil, managerPage, "UIPanelButtonTemplate")
+    createBtn:SetPoint("LEFT", nameBox, "RIGHT", 8, 0)
+    createBtn:SetSize(64, 20)
+    createBtn:SetText(L.BUTTON_CREATE)
+    createBtn:SetScript("OnClick", function()
+        Goals:CreateWishlist(nameBox:GetText())
+        nameBox:SetText("")
+    end)
+    self.wishlistCreateButton = createBtn
+
+    local renameBtn = CreateFrame("Button", nil, managerPage, "UIPanelButtonTemplate")
+    renameBtn:SetPoint("LEFT", createBtn, "RIGHT", 6, 0)
+    renameBtn:SetSize(64, 20)
+    renameBtn:SetText(L.BUTTON_RENAME)
+    renameBtn:SetScript("OnClick", function()
+        local list = Goals:GetActiveWishlist()
+        if list then
+            Goals:RenameWishlist(list.id, nameBox:GetText())
+            nameBox:SetText("")
+        end
+    end)
+    self.wishlistRenameButton = renameBtn
+
+    local copyBtn = CreateFrame("Button", nil, managerPage, "UIPanelButtonTemplate")
+    copyBtn:SetPoint("TOPLEFT", nameBox, "BOTTOMLEFT", 0, -6)
+    copyBtn:SetSize(64, 20)
+    copyBtn:SetText(L.BUTTON_COPY)
+    copyBtn:SetScript("OnClick", function()
+        local list = Goals:GetActiveWishlist()
+        if list then
+            Goals:CopyWishlist(list.id, nameBox:GetText())
+            nameBox:SetText("")
+        end
+    end)
+    self.wishlistCopyButton = copyBtn
+
+    local deleteBtn = CreateFrame("Button", nil, managerPage, "UIPanelButtonTemplate")
+    deleteBtn:SetPoint("LEFT", copyBtn, "RIGHT", 6, 0)
+    deleteBtn:SetSize(64, 20)
+    deleteBtn:SetText(L.BUTTON_DELETE)
+    deleteBtn:SetScript("OnClick", function()
+        local list = Goals:GetActiveWishlist()
+        if not list then
+            return
+        end
+        StaticPopupDialogs.GOALS_DELETE_WISHLIST = StaticPopupDialogs.GOALS_DELETE_WISHLIST or {
+            text = L.WISHLIST_DELETE_CONFIRM,
+            button1 = L.WISHLIST_DELETE_ACCEPT,
+            button2 = CANCEL,
+            OnAccept = function()
+                Goals:DeleteWishlist(list.id)
+            end,
+            timeout = 0,
+            whileDead = 1,
+            hideOnEscape = 1,
+        }
+        local dialog = StaticPopup_Show("GOALS_DELETE_WISHLIST", list.name or "")
+    end)
+    self.wishlistDeleteButton = deleteBtn
+
+    local searchLabel = createLabel(searchPage, L.LABEL_WISHLIST_SEARCH, "GameFontNormal")
+    searchLabel:SetPoint("TOPLEFT", searchPage, "TOPLEFT", 4, -4)
+
+    local searchBox = CreateFrame("EditBox", "GoalsWishlistSearchBox", searchPage, "InputBoxTemplate")
+    searchBox:SetPoint("LEFT", searchLabel, "RIGHT", 10, 0)
+    searchBox:SetSize(210, 20)
+    searchBox:SetAutoFocus(false)
+    bindEscapeClear(searchBox)
+    searchBox:SetScript("OnEnterPressed", function(selfBox)
+        selfBox:ClearFocus()
+        UI:UpdateWishlistSearchResults()
+    end)
+    self.wishlistSearchBox = searchBox
+
+    local linkHint = createLabel(searchPage, "Paste item link or item:ID", "GameFontHighlightSmall")
+    linkHint:SetPoint("TOPLEFT", searchLabel, "BOTTOMLEFT", 0, -4)
+    linkHint:SetTextColor(0.7, 0.7, 0.7)
+
+    self.wishlistSlotFilter = nil
+    self.wishlistIlvlBox = nil
+    self.wishlistStatsBox = nil
+    self.wishlistSourceBox = nil
+
+    local resultsLabel = createLabel(searchPage, L.LABEL_WISHLIST_RESULTS, "GameFontNormal")
+    resultsLabel:SetPoint("TOPLEFT", searchLabel, "BOTTOMLEFT", 0, -14)
+
+    local resultsInset = CreateFrame("Frame", "GoalsWishlistResultsInset", searchPage, "GoalsInsetTemplate")
+    resultsInset:SetPoint("TOPLEFT", resultsLabel, "BOTTOMLEFT", -4, -6)
+    resultsInset:SetPoint("TOPRIGHT", searchPage, "TOPRIGHT", -6, 0)
+    resultsInset:SetHeight(110)
+    self.wishlistResultsInset = resultsInset
+
+    local resultsScroll = CreateFrame("ScrollFrame", "GoalsWishlistResultsScroll", resultsInset, "FauxScrollFrameTemplate")
+    resultsScroll:SetPoint("TOPLEFT", resultsInset, "TOPLEFT", 2, -6)
+    resultsScroll:SetPoint("BOTTOMRIGHT", resultsInset, "BOTTOMRIGHT", -26, 6)
+    resultsScroll:SetScript("OnVerticalScroll", function(selfScroll, offset)
+        FauxScrollFrame_OnVerticalScroll(selfScroll, offset, ROW_HEIGHT, function()
+            UI:UpdateWishlistSearchResults()
+        end)
+    end)
+    self.wishlistResultsScroll = resultsScroll
+
+    self.wishlistResultsRows = {}
+    for i = 1, 5 do
+        local row = CreateFrame("Button", nil, resultsInset)
+        row:SetHeight(ROW_HEIGHT)
+        row:SetPoint("TOPLEFT", resultsInset, "TOPLEFT", 8, -6 - (i - 1) * ROW_HEIGHT)
+        row:SetPoint("RIGHT", resultsInset, "RIGHT", -26, 0)
+        local icon = row:CreateTexture(nil, "ARTWORK")
+        icon:SetSize(16, 16)
+        icon:SetPoint("LEFT", row, "LEFT", 0, 0)
+        row.icon = icon
+        local text = row:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+        text:SetPoint("LEFT", icon, "RIGHT", 6, 0)
+        text:SetPoint("RIGHT", row, "RIGHT", -4, 0)
+        row.text = text
+        local selected = row:CreateTexture(nil, "ARTWORK")
+        selected:SetAllPoints(row)
+        selected:SetTexture("Interface\\Buttons\\UI-Listbox-Highlight")
+        selected:SetBlendMode("ADD")
+        selected:Hide()
+        row.selected = selected
+        row:SetScript("OnClick", function(selfRow)
+            UI.selectedWishlistResult = selfRow.entry
+            UI:UpdateWishlistSearchResults()
+        end)
+        row:SetScript("OnEnter", function(selfRow)
+            if selfRow.entry and selfRow.entry.link then
+                GameTooltip:SetOwner(selfRow, "ANCHOR_RIGHT")
+                GameTooltip:SetHyperlink(selfRow.entry.link)
+                GameTooltip:Show()
+            end
+        end)
+        row:SetScript("OnLeave", function()
+            GameTooltip:Hide()
+        end)
+        self.wishlistResultsRows[i] = row
+    end
+
+    local addSlotBtn = CreateFrame("Button", nil, searchPage, "UIPanelButtonTemplate")
+    addSlotBtn:SetPoint("TOPLEFT", resultsInset, "BOTTOMLEFT", 0, -10)
+    addSlotBtn:SetSize(110, 20)
+    addSlotBtn:SetText(L.BUTTON_ADD_SLOT)
+    addSlotBtn:SetScript("OnClick", function()
+        if UI.selectedWishlistResult and UI.selectedWishlistSlot then
+            local entry = UI.selectedWishlistResult
+            Goals:SetWishlistItemSmart(UI.selectedWishlistSlot, {
+                itemId = entry.id or entry.itemId,
+                enchantId = 0,
+                gemIds = {},
+                notes = "",
+                source = entry.source or "",
+            })
+        end
+    end)
+    self.wishlistAddSlotButton = addSlotBtn
+
+    local clearSlotBtn = CreateFrame("Button", nil, searchPage, "UIPanelButtonTemplate")
+    clearSlotBtn:SetPoint("LEFT", addSlotBtn, "RIGHT", 8, 0)
+    clearSlotBtn:SetSize(100, 20)
+    clearSlotBtn:SetText(L.BUTTON_CLEAR_SLOT)
+    clearSlotBtn:SetScript("OnClick", function()
+        if UI.selectedWishlistSlot then
+            Goals:ClearWishlistItem(UI.selectedWishlistSlot)
+        end
+    end)
+    self.wishlistClearSlotButton = clearSlotBtn
+
+    local enchantLabel = createLabel(searchPage, "Enchant ID", "GameFontNormal")
+    enchantLabel:SetPoint("TOPLEFT", addSlotBtn, "BOTTOMLEFT", 0, -12)
+
+    local enchantBox = CreateFrame("EditBox", "GoalsWishlistEnchantBox", searchPage, "InputBoxTemplate")
+    enchantBox:SetPoint("LEFT", enchantLabel, "RIGHT", 10, 0)
+    enchantBox:SetSize(90, 20)
+    enchantBox:SetAutoFocus(false)
+    enchantBox:SetNumeric(true)
+    enchantBox:SetFontObject(searchBox:GetFontObject())
+    bindEscapeClear(enchantBox)
+    self.wishlistEnchantBox = enchantBox
+
+    local gemsLabel = createLabel(searchPage, "Gems", "GameFontNormal")
+    gemsLabel:SetPoint("TOPLEFT", enchantLabel, "BOTTOMLEFT", 0, -10)
+
+    local gemBoxes = {}
+    for i = 1, 3 do
+        local gemBox = CreateFrame("EditBox", "GoalsWishlistGemBox"..i, searchPage, "InputBoxTemplate")
+        if i == 1 then
+            gemBox:SetPoint("LEFT", gemsLabel, "RIGHT", 10, 0)
+        else
+            gemBox:SetPoint("LEFT", gemBoxes[i - 1], "RIGHT", 6, 0)
+        end
+        gemBox:SetSize(46, 20)
+        gemBox:SetAutoFocus(false)
+        gemBox:SetNumeric(true)
+        gemBox:SetFontObject(searchBox:GetFontObject())
+        bindEscapeClear(gemBox)
+        gemBoxes[i] = gemBox
+    end
+    self.wishlistGemBoxes = gemBoxes
+
+    local applyGemsBtn = CreateFrame("Button", nil, searchPage, "UIPanelButtonTemplate")
+    applyGemsBtn:SetPoint("TOPLEFT", gemsLabel, "BOTTOMLEFT", 0, -10)
+    applyGemsBtn:SetSize(60, 20)
+    applyGemsBtn:SetText(L.BUTTON_APPLY)
+    applyGemsBtn:SetScript("OnClick", function()
+        if not UI.selectedWishlistSlot then
+            return
+        end
+        local entry = Goals:GetWishlistItem(UI.selectedWishlistSlot)
+        if not entry then
+            return
+        end
+        entry.enchantId = tonumber(enchantBox:GetText()) or 0
+        entry.gemIds = {}
+        for i = 1, 3 do
+            local value = tonumber(gemBoxes[i]:GetText())
+            if value and value > 0 then
+                table.insert(entry.gemIds, value)
+            end
+        end
+        Goals:SetWishlistItemSmart(UI.selectedWishlistSlot, entry)
+    end)
+    self.wishlistApplyGemsButton = applyGemsBtn
+
+    local popout = actionsPage
+
+    local popoutTitle = createLabel(popout, L.LABEL_WISHLIST_ACTIONS, "GameFontNormal")
+    popoutTitle:SetPoint("TOPLEFT", popout, "TOPLEFT", 4, -4)
+
+    local notesLabel = createLabel(popout, L.LABEL_WISHLIST_NOTES, "GameFontNormal")
+    notesLabel:SetPoint("TOPLEFT", popout, "TOPLEFT", 10, -36)
+
+    local notesBox = CreateFrame("EditBox", "GoalsWishlistNotesBox", popout, "InputBoxTemplate")
+    notesBox:SetPoint("TOPLEFT", notesLabel, "BOTTOMLEFT", 0, -2)
+    notesBox:SetSize(180, 20)
+    notesBox:SetAutoFocus(false)
+    bindEscapeClear(notesBox)
+    self.wishlistNotesBox = notesBox
+
+    local sourceEntryLabel = createLabel(popout, L.LABEL_WISHLIST_SOURCE, "GameFontNormal")
+    sourceEntryLabel:SetPoint("TOPLEFT", popout, "TOPLEFT", 200, -36)
+
+    local sourceEntryBox = CreateFrame("EditBox", "GoalsWishlistSourceBox", popout, "InputBoxTemplate")
+    sourceEntryBox:SetPoint("TOPLEFT", sourceEntryLabel, "BOTTOMLEFT", 0, -2)
+    sourceEntryBox:SetSize(120, 20)
+    sourceEntryBox:SetAutoFocus(false)
+    bindEscapeClear(sourceEntryBox)
+    self.wishlistSourceEntryBox = sourceEntryBox
+
+    local applyNotesBtn = CreateFrame("Button", nil, popout, "UIPanelButtonTemplate")
+    applyNotesBtn:SetPoint("TOPLEFT", notesBox, "BOTTOMLEFT", 0, -6)
+    applyNotesBtn:SetSize(60, 20)
+    applyNotesBtn:SetText(L.BUTTON_APPLY)
+    applyNotesBtn:SetScript("OnClick", function()
+        if not UI.selectedWishlistSlot then
+            return
+        end
+        local entry = Goals:GetWishlistItem(UI.selectedWishlistSlot)
+        if not entry then
+            return
+        end
+        entry.notes = notesBox:GetText() or ""
+        entry.source = sourceEntryBox:GetText() or ""
+        Goals:SetWishlistItem(UI.selectedWishlistSlot, entry)
+    end)
+    self.wishlistApplyNotesButton = applyNotesBtn
+
+    local importLabel = createLabel(popout, L.LABEL_WISHLIST_IMPORT, "GameFontNormal")
+    importLabel:SetPoint("TOPLEFT", applyNotesBtn, "BOTTOMLEFT", 0, -10)
+
+    local importFrame = CreateFrame("Frame", "GoalsWishlistImportFrame", popout, "GoalsInsetTemplate")
+    importFrame:SetPoint("TOPLEFT", importLabel, "BOTTOMLEFT", 0, -4)
+    importFrame:SetPoint("TOPRIGHT", popout, "TOPRIGHT", -10, 0)
+    importFrame:SetHeight(110)
+
+    local importScroll = CreateFrame("ScrollFrame", "GoalsWishlistImportScroll", importFrame, "UIPanelScrollFrameTemplate")
+    importScroll:SetPoint("TOPLEFT", importFrame, "TOPLEFT", 4, -4)
+    importScroll:SetPoint("BOTTOMRIGHT", importFrame, "BOTTOMRIGHT", -26, 4)
+    self.wishlistImportScroll = importScroll
+
+    local importBox = CreateFrame("EditBox", "GoalsWishlistImportBox", importScroll)
+    importBox:SetMultiLine(true)
+    importBox:SetAutoFocus(false)
+    importBox:SetFontObject("GameFontHighlightSmall")
+    importBox:SetTextInsets(2, 2, 2, 2)
+    importBox:SetJustifyH("LEFT")
+    importBox:SetPoint("TOPLEFT", importScroll, "TOPLEFT", 0, 0)
+    bindEscapeClear(importBox)
+    importBox:EnableMouse(true)
+    importBox:SetScript("OnMouseDown", function(self)
+        self:SetFocus()
+    end)
+    local importMeasure = importFrame:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    importMeasure:SetPoint("TOPLEFT", importFrame, "TOPLEFT", 0, 0)
+    importMeasure:SetJustifyH("LEFT")
+    importMeasure:SetWordWrap(true)
+    importMeasure:SetFontObject(importBox:GetFontObject())
+    importMeasure:Hide()
+    importBox:SetScript("OnCursorChanged", function(self, x, y)
+        local scroll = -y
+        if scroll < 0 then
+            scroll = 0
+        end
+        local maxScroll = math.max(0, (self:GetHeight() or 0) - (importScroll:GetHeight() or 0))
+        if scroll > maxScroll then
+            scroll = maxScroll
+        end
+        importScroll:SetVerticalScroll(scroll)
+    end)
+    local function wrapImportText(text, maxWidth)
+        local output = {}
+        local index = 1
+        local length = #text
+        if length == 0 then
+            return ""
+        end
+        while index <= length do
+            local remaining = text:sub(index)
+            importMeasure:SetText(remaining)
+            if importMeasure:GetStringWidth() <= maxWidth then
+                table.insert(output, remaining)
+                break
+            end
+            local low, high, best = 1, #remaining, 1
+            while low <= high do
+                local mid = math.floor((low + high) / 2)
+                importMeasure:SetText(remaining:sub(1, mid))
+                if importMeasure:GetStringWidth() <= maxWidth then
+                    best = mid
+                    low = mid + 1
+                else
+                    high = mid - 1
+                end
+            end
+            local cut = best
+            local space = remaining:sub(1, cut):match(".*()%s")
+            if space and space > 1 then
+                cut = space
+            end
+            table.insert(output, remaining:sub(1, cut))
+            index = index + cut
+            if remaining:sub(cut, cut):match("%s") then
+                index = index + 1
+            end
+        end
+        return table.concat(output, "\n")
+    end
+
+    local function updateImportBoxSize()
+        local width = importScroll:GetWidth() or 0
+        local height = importScroll:GetHeight() or 0
+        if width <= 0 then
+            width = 1
+        end
+        importBox:SetWidth(width)
+        importMeasure:SetWidth(width)
+        importMeasure:SetText(importBox:GetText() or "")
+        local textHeight = importMeasure:GetStringHeight() + 6
+        if height > textHeight then
+            textHeight = height
+        end
+        importBox:SetHeight(textHeight)
+        importScroll:UpdateScrollChildRect()
+    end
+    local function normalizeImportText()
+        if importBox.isWrapping then
+            return
+        end
+        local text = importBox:GetText() or ""
+        local raw = text:gsub("\r", ""):gsub("\n", "")
+        importBox.rawText = raw
+        local width = importScroll:GetWidth() or 0
+        if width <= 0 then
+            updateImportBoxSize()
+            return
+        end
+        importBox.isWrapping = true
+        local wrapped = wrapImportText(raw, width - 6)
+        if wrapped ~= text then
+            importBox:SetText(wrapped)
+        end
+        importBox.isWrapping = false
+        updateImportBoxSize()
+    end
+    importBox:SetScript("OnTextChanged", function()
+        normalizeImportText()
+    end)
+    importBox:SetScript("OnEditFocusLost", function()
+        normalizeImportText()
+    end)
+    importScroll:SetScript("OnSizeChanged", function(self)
+        local width = self:GetWidth() or 0
+        if width > 0 and importBox.SetWidth then
+            importBox:SetWidth(width)
+        end
+        normalizeImportText()
+    end)
+    local function scheduleImportNormalize()
+        if importBox.normalizeScheduled then
+            return
+        end
+        importBox.normalizeScheduled = true
+        importScroll:SetScript("OnUpdate", function(self)
+            local width = self:GetWidth() or 0
+            if width > 0 then
+                self:SetScript("OnUpdate", nil)
+                importBox.normalizeScheduled = false
+                normalizeImportText()
+            end
+        end)
+    end
+    importScroll:SetScript("OnShow", function()
+        scheduleImportNormalize()
+    end)
+    importScroll:SetScrollChild(importBox)
+    updateImportBoxSize()
+    scheduleImportNormalize()
+    self.wishlistImportBox = importBox
+
+    local importModeLabel = createLabel(popout, L.WISHLIST_IMPORT_MODE, "GameFontNormal")
+    importModeLabel:SetPoint("TOPLEFT", importScroll, "BOTTOMLEFT", 0, -6)
+
+    local importModeDrop = CreateFrame("Frame", "GoalsWishlistImportModeDropdown", popout, "UIDropDownMenuTemplate")
+    importModeDrop:SetPoint("TOPLEFT", importModeLabel, "BOTTOMLEFT", -16, -2)
+    UIDropDownMenu_SetWidth(importModeDrop, 90)
+    UIDropDownMenu_SetButtonWidth(importModeDrop, 104)
+    importModeDrop.selectedValue = "NEW"
+    UIDropDownMenu_Initialize(importModeDrop, function(_, level)
+        local info = UIDropDownMenu_CreateInfo()
+        info.text = L.WISHLIST_IMPORT_NEW
+        info.value = "NEW"
+        info.func = function()
+            importModeDrop.selectedValue = "NEW"
+            UIDropDownMenu_SetSelectedValue(importModeDrop, "NEW")
+            UI:SetDropdownText(importModeDrop, L.WISHLIST_IMPORT_NEW)
+        end
+        info.checked = importModeDrop.selectedValue == "NEW"
+        UIDropDownMenu_AddButton(info, level)
+        info = UIDropDownMenu_CreateInfo()
+        info.text = L.WISHLIST_IMPORT_ACTIVE
+        info.value = "ACTIVE"
+        info.func = function()
+            importModeDrop.selectedValue = "ACTIVE"
+            UIDropDownMenu_SetSelectedValue(importModeDrop, "ACTIVE")
+            UI:SetDropdownText(importModeDrop, L.WISHLIST_IMPORT_ACTIVE)
+        end
+        info.checked = importModeDrop.selectedValue == "ACTIVE"
+        UIDropDownMenu_AddButton(info, level)
+    end)
+    self.wishlistImportMode = importModeDrop
+    self:SetDropdownText(importModeDrop, L.WISHLIST_IMPORT_NEW)
+
+    local exportBtn = CreateFrame("Button", nil, popout, "UIPanelButtonTemplate")
+    exportBtn:SetPoint("LEFT", importModeDrop, "RIGHT", 0, 2)
+    exportBtn:SetSize(60, 20)
+    exportBtn:SetText(L.BUTTON_EXPORT)
+    exportBtn:SetScript("OnClick", function()
+        local text = Goals:ExportActiveWishlist() or ""
+        importBox.rawText = text
+        importBox:SetText(text)
+        importBox:HighlightText()
+    end)
+    self.wishlistExportButton = exportBtn
+
+    local importBtn = CreateFrame("Button", nil, popout, "UIPanelButtonTemplate")
+    importBtn:SetPoint("LEFT", exportBtn, "RIGHT", 6, 0)
+    importBtn:SetSize(60, 20)
+    importBtn:SetText(L.BUTTON_IMPORT)
+    importBtn:SetScript("OnClick", function()
+        local text = importBox.rawText or importBox:GetText() or ""
+        if importModeDrop.selectedValue == "NEW" then
+            local ok, err = Goals:ImportWishlistString(text)
+            if not ok then
+                Goals:Print(err or "Import failed.")
+            end
+        else
+            local data, err = Goals:DeserializeWishlist(text)
+            if not data then
+                Goals:Print(err or "Import failed.")
+                return
+            end
+            local list = Goals:GetActiveWishlist()
+            if list then
+                list.items = data.items or {}
+                list.updated = time()
+                Goals:NotifyDataChanged()
+            end
+        end
+    end)
+    self.wishlistImportButton = importBtn
+
+    local wowheadBtn = CreateFrame("Button", nil, popout, "UIPanelButtonTemplate")
+    wowheadBtn:SetPoint("TOPLEFT", importModeDrop, "BOTTOMLEFT", 16, -6)
+    wowheadBtn:SetSize(130, 20)
+    wowheadBtn:SetText(L.BUTTON_IMPORT_WOWHEAD)
+    wowheadBtn:SetScript("OnClick", function()
+        local text = importBox.rawText or importBox:GetText() or ""
+        local items, err = Goals:ImportWowhead(text)
+        if not items then
+            Goals:Print(err or "Wowhead import failed.")
+            return
+        end
+        local targetId = nil
+        if importModeDrop.selectedValue == "NEW" then
+            local list = Goals:CreateWishlist("Wowhead Import")
+            targetId = list and list.id or nil
+        else
+            local list = Goals:GetActiveWishlist()
+            targetId = list and list.id or nil
+        end
+        local ok, summary = Goals:ApplyImportedWishlistItems(items, targetId)
+        if ok and summary then
+            Goals:Print(summary)
+            if targetId then
+                Goals:SetActiveWishlist(targetId)
+            end
+        elseif not ok then
+            Goals:Print(summary or "Import failed.")
+        end
+    end)
+    self.wishlistWowheadButton = wowheadBtn
+
+    local function formatAtlasListOptions(lists)
+        local maxList = 10
+        local lines = {}
+        local count = math.min(#lists, maxList)
+        for i = 1, count do
+            local entry = lists[i]
+            table.insert(lines, string.format("%d) %s", i, entry.name or entry.key))
+        end
+        if #lists > maxList then
+            table.insert(lines, string.format("...and %d more (type full name).", #lists - maxList))
+        end
+        return table.concat(lines, "\n")
+    end
+
+    local function showAtlasSelectPopup(lists)
+        StaticPopupDialogs.GOALS_ATLAS_SELECT = StaticPopupDialogs.GOALS_ATLAS_SELECT or {
+            text = "Multiple AtlasLoot wishlists found.",
+            button1 = "Import",
+            button2 = CANCEL,
+            hasEditBox = 1,
+            editBoxWidth = 220,
+            OnShow = function(selfPopup, data)
+                selfPopup.editBox:SetText("")
+                selfPopup.editBox:SetFocus()
+                if data and data.message then
+                    selfPopup.text:SetText(data.message)
+                end
+            end,
+            OnAccept = function(selfPopup, data)
+                local input = selfPopup.editBox:GetText() or ""
+                local listsData = data and data.lists or {}
+                local selected = nil
+                local index = tonumber(input)
+                if index and listsData[index] then
+                    selected = listsData[index]
+                elseif input ~= "" then
+                    for _, entry in ipairs(listsData) do
+                        if entry.name == input or entry.key == input then
+                            selected = entry
+                            break
+                        end
+                    end
+                end
+                if not selected then
+                    Goals:Print("No matching AtlasLoot wishlist found.")
+                    return
+                end
+                Goals.db.settings.atlasSelectedListKey = selected.key
+                if Goals.ImportAtlasLootWishlist then
+                    local ok, msg = Goals:ImportAtlasLootWishlist(selected.key)
+                    if msg then
+                        Goals:Print(msg)
+                    end
+                    if ok and Goals.UI and Goals.UI.UpdateWishlistUI then
+                        Goals.UI:UpdateWishlistUI()
+                    end
+                end
+            end,
+            timeout = 0,
+            whileDead = 1,
+            hideOnEscape = 1,
+        }
+        local message = "Multiple AtlasLoot wishlists found.\nEnter number or name to import:\n" .. formatAtlasListOptions(lists)
+        StaticPopup_Show("GOALS_ATLAS_SELECT", nil, nil, { lists = lists, message = message })
+    end
+
+    local function startAtlasImport()
+        if not Goals.GetAtlasLootWishlistSelection then
+            return
+        end
+        if not (Goals.db and Goals.db.settings) then
+            return
+        end
+        local lists, selected = Goals:GetAtlasLootWishlistSelection()
+        if #lists == 0 then
+            Goals:Print("No AtlasLoot wishlist items found.")
+            return
+        end
+        if #lists == 1 then
+            selected = lists[1]
+        end
+        if not selected then
+            showAtlasSelectPopup(lists)
+            return
+        end
+        Goals.db.settings.atlasSelectedListKey = selected.key
+        if Goals.ImportAtlasLootWishlist then
+            local ok, msg = Goals:ImportAtlasLootWishlist(selected.key)
+            if msg then
+                Goals:Print(msg)
+            end
+            if ok and Goals.UI and Goals.UI.UpdateWishlistUI then
+                Goals.UI:UpdateWishlistUI()
+            end
+        end
+    end
+
+    if Goals.HasAtlasLootEnhanced and Goals:HasAtlasLootEnhanced() then
+        local atlasBtn = CreateFrame("Button", nil, popout, "UIPanelButtonTemplate")
+        atlasBtn:SetPoint("LEFT", wowheadBtn, "RIGHT", 6, 0)
+        atlasBtn:SetSize(120, 20)
+        atlasBtn:SetText("Import AtlasLoot")
+        atlasBtn:SetScript("OnClick", function()
+            startAtlasImport()
+        end)
+        self.wishlistAtlasButton = atlasBtn
+    else
+        self.wishlistAtlasButton = nil
+    end
+
+    if Goals and Goals.db and Goals.db.settings and not Goals.db.settings.atlasImportPrompted then
+        if Goals.HasAtlasLootEnhanced and Goals:HasAtlasLootEnhanced() then
+            StaticPopupDialogs.GOALS_ATLAS_IMPORT = StaticPopupDialogs.GOALS_ATLAS_IMPORT or {
+                text = "AtlasLoot wishlist detected. Import now?",
+                button1 = "Import",
+                button2 = CANCEL,
+                OnAccept = function()
+                    Goals.db.settings.atlasImportPrompted = true
+                    startAtlasImport()
+                end,
+                OnCancel = function()
+                    Goals.db.settings.atlasImportPrompted = true
+                end,
+                timeout = 0,
+                whileDead = 1,
+                hideOnEscape = 1,
+            }
+            StaticPopup_Show("GOALS_ATLAS_IMPORT")
+        else
+            Goals.db.settings.atlasImportPrompted = true
+        end
+    end
+
+    local syncLabel = createLabel(popout, L.LABEL_WISHLIST_SYNC, "GameFontNormal")
+    syncLabel:SetPoint("TOPLEFT", wowheadBtn, "BOTTOMLEFT", 0, -10)
+
+    local syncLoadBtn = CreateFrame("Button", nil, popout, "UIPanelButtonTemplate")
+    syncLoadBtn:SetPoint("TOPLEFT", syncLabel, "BOTTOMLEFT", -6, -4)
+    syncLoadBtn:SetSize(90, 20)
+    syncLoadBtn:SetText(L.BUTTON_SYNC_LOAD)
+    syncLoadBtn:SetScript("OnClick", function()
+        if Goals.Comm and Goals.Comm.RequestWishlistSync then
+            Goals.Comm:RequestWishlistSync()
+        end
+    end)
+    self.wishlistSyncLoadButton = syncLoadBtn
+
+    local syncSaveBtn = CreateFrame("Button", nil, popout, "UIPanelButtonTemplate")
+    syncSaveBtn:SetPoint("LEFT", syncLoadBtn, "RIGHT", 6, 0)
+    syncSaveBtn:SetSize(90, 20)
+    syncSaveBtn:SetText(L.BUTTON_SYNC_SAVE)
+    syncSaveBtn:SetScript("OnClick", function()
+        if Goals.Comm and Goals.Comm.SendWishlistSync then
+            Goals.Comm:SendWishlistSync(nil)
+        end
+    end)
+    self.wishlistSyncSaveButton = syncSaveBtn
+
+    local announceLabel = createLabel(popout, L.LABEL_WISHLIST_ANNOUNCE, "GameFontNormal")
+    announceLabel:SetPoint("TOPLEFT", syncLoadBtn, "BOTTOMLEFT", 0, -8)
+    announceLabel:SetPoint("LEFT", popoutTitle, "LEFT", 0, 0)
+
+    local announceCheck = CreateFrame("CheckButton", nil, popout, "UICheckButtonTemplate")
+    announceCheck:SetPoint("TOPLEFT", announceLabel, "BOTTOMLEFT", -4, -2)
+    setCheckText(announceCheck, L.CHECK_WISHLIST_ANNOUNCE)
+    announceCheck:SetScript("OnClick", function(selfCheck)
+        Goals.db.settings.wishlistAnnounce = selfCheck:GetChecked() and true or false
+        Goals:NotifyDataChanged()
+    end)
+    self.wishlistAnnounceCheck = announceCheck
+
+    self.wishlistChannelDrop = nil
+    if Goals and Goals.db and Goals.db.settings then
+        Goals.db.settings.wishlistAnnounceChannel = "AUTO"
+    end
+
+    if slots[1] then
+        self.selectedWishlistSlot = slots[1].key
     end
 end
 
@@ -1867,9 +2914,7 @@ function UI:CreateDebugTab(page)
     edit:SetAutoFocus(false)
     edit:SetFontObject("ChatFontNormal")
     edit:SetWidth(copyScroll:GetWidth())
-    edit:SetScript("OnEscapePressed", function(selfBox)
-        selfBox:ClearFocus()
-    end)
+    bindEscapeClear(edit)
     copyScroll:SetScrollChild(edit)
     self.debugCopyBox = edit
 end
@@ -1937,6 +2982,10 @@ function UI:UpdateRosterList()
     end
     if self.presentCheck then
         self.presentCheck:SetChecked(Goals.db.settings.showPresentOnly and true or false)
+    end
+    if self.disablePointGainCheck then
+        self.disablePointGainCheck:SetChecked(Goals.db.settings.disablePointGain and true or false)
+        self.disablePointGainCheck:SetShown(hasPointGainAccess())
     end
 end
 
@@ -2026,6 +3075,243 @@ function UI:UpdateDebugLogList()
         end
     end
 end
+
+function UI:UpdateWishlistManagerList()
+    if not self.wishlistManagerScroll or not self.wishlistManagerRows then
+        return
+    end
+    local data = Goals:EnsureWishlistData()
+    local lists = data and data.lists or {}
+    local offset = FauxScrollFrame_GetOffset(self.wishlistManagerScroll) or 0
+    FauxScrollFrame_Update(self.wishlistManagerScroll, #lists, #self.wishlistManagerRows, ROW_HEIGHT)
+    for i = 1, #self.wishlistManagerRows do
+        local row = self.wishlistManagerRows[i]
+        local index = i + offset
+        local list = lists[index]
+        if list then
+            row:Show()
+            row.listId = list.id
+            local count = 0
+            for _ in pairs(list.items or {}) do
+                count = count + 1
+            end
+            row.text:SetText(string.format("%s (%d)", list.name or "Wishlist", count))
+            if data and data.activeId == list.id then
+                row.text:SetTextColor(0.1, 1, 0.1)
+            else
+                row.text:SetTextColor(1, 1, 1)
+            end
+        else
+            row:Hide()
+            row.listId = nil
+        end
+    end
+end
+
+function UI:UpdateWishlistSearchResults()
+    if not self.wishlistResultsScroll or not self.wishlistResultsRows then
+        return
+    end
+    local query = self.wishlistSearchBox and self.wishlistSearchBox:GetText() or ""
+    self.wishlistResults = Goals:SearchWishlistItems(query, nil)
+    local offset = FauxScrollFrame_GetOffset(self.wishlistResultsScroll) or 0
+    FauxScrollFrame_Update(self.wishlistResultsScroll, #self.wishlistResults, #self.wishlistResultsRows, ROW_HEIGHT)
+    for i = 1, #self.wishlistResultsRows do
+        local row = self.wishlistResultsRows[i]
+        local index = i + offset
+        local entry = self.wishlistResults[index]
+        if entry then
+            row:Show()
+            row.entry = entry
+            row.text:SetText(entry.name or ("Item " .. tostring(entry.id or "")))
+            if entry.quality and ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[entry.quality] then
+                local color = ITEM_QUALITY_COLORS[entry.quality]
+                row.text:SetTextColor(color.r, color.g, color.b)
+            else
+                row.text:SetTextColor(1, 1, 1)
+            end
+            if entry.texture then
+                row.icon:SetTexture(entry.texture)
+                row.icon:Show()
+            else
+                row.icon:SetTexture(nil)
+                row.icon:Hide()
+            end
+            if self.selectedWishlistResult == entry then
+                row.selected:Show()
+            else
+                row.selected:Hide()
+            end
+        else
+            row:Hide()
+            row.entry = nil
+            row.selected:Hide()
+        end
+    end
+    if self.wishlistAddSlotButton then
+        if self.selectedWishlistSlot and self.selectedWishlistResult then
+            self.wishlistAddSlotButton:Enable()
+        else
+            self.wishlistAddSlotButton:Disable()
+        end
+    end
+    if self.wishlistClearSlotButton then
+        if self.selectedWishlistSlot then
+            self.wishlistClearSlotButton:Enable()
+        else
+            self.wishlistClearSlotButton:Disable()
+        end
+    end
+end
+
+function UI:UpdateWishlistUI()
+    if not self.wishlistSlotButtons then
+        return
+    end
+    local list = Goals:GetActiveWishlist()
+    if not self.selectedWishlistSlot then
+        for slotKey in pairs(self.wishlistSlotButtons) do
+            self.selectedWishlistSlot = slotKey
+            break
+        end
+    end
+    Goals:BuildWishlistItemCache()
+    for slotKey, button in pairs(self.wishlistSlotButtons) do
+        local slotDef = Goals:GetWishlistSlotDef(slotKey)
+        local entry = list and list.items and list.items[slotKey] or nil
+        local cached = entry and entry.itemId and Goals:CacheItemById(entry.itemId) or nil
+        local iconTexture = nil
+        if slotDef and slotDef.inv then
+            local _, texture = GetInventorySlotInfo(slotDef.inv)
+            iconTexture = texture
+        end
+        if cached and cached.texture then
+            button.icon:SetTexture(cached.texture)
+            button.icon:SetVertexColor(1, 1, 1)
+            local labelText = cached.name or slotDef.label or slotKey
+            fitWishlistLabel(button.label, labelText)
+            if cached.quality and ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[cached.quality] then
+                local color = ITEM_QUALITY_COLORS[cached.quality]
+            button.label:SetTextColor(color.r, color.g, color.b)
+            button.border:Show()
+            button.border:SetVertexColor(color.r, color.g, color.b)
+            else
+            button.label:SetTextColor(1, 1, 1)
+            button.border:Hide()
+            end
+            button.itemId = cached.id
+            button.itemLink = cached.link
+        else
+            if iconTexture then
+                button.icon:SetTexture(iconTexture)
+            button.icon:SetVertexColor(0.7, 0.7, 0.7)
+            else
+                button.icon:SetTexture(nil)
+            end
+            if entry and entry.itemId and entry.itemId > 0 then
+                fitWishlistLabel(button.label, "Item " .. tostring(entry.itemId))
+            else
+                if slotDef and slotDef.key == "RELIC" then
+                    fitWishlistLabel(button.label, "Relic / Ranged")
+                else
+                    fitWishlistLabel(button.label, (slotDef and slotDef.label) or slotKey)
+                end
+            end
+            button.label:SetTextColor(0.9, 0.9, 0.9)
+            button.border:Hide()
+            button.itemId = entry and entry.itemId or nil
+            button.itemLink = nil
+        end
+        local gemCount = 0
+        if entry and entry.gemIds then
+            for i = 1, 3 do
+                if entry.gemIds[i] then
+                    gemCount = gemCount + 1
+                end
+            end
+        end
+        local gemOffset = (gemCount - 1) * 0.5
+        for i = 1, 3 do
+            local gemTexture = nil
+            if entry and entry.gemIds and entry.gemIds[i] then
+                local gemCache = Goals:CacheItemById(entry.gemIds[i])
+                gemTexture = gemCache and gemCache.texture or nil
+            end
+            local gem = button.gems[i]
+            if gemTexture then
+                gem.icon:SetTexture(gemTexture)
+                gem:Show()
+                gem:ClearAllPoints()
+                local yOffset = (gemOffset - (i - 1)) * 14
+                if button.column == 2 then
+                    gem:SetPoint("CENTER", button, "LEFT", -8, yOffset)
+                else
+                    gem:SetPoint("CENTER", button, "RIGHT", 8, yOffset)
+                end
+                gem.itemId = entry.gemIds[i]
+            else
+                gem:Hide()
+                gem.itemId = nil
+            end
+        end
+        if entry and entry.enchantId and entry.enchantId > 0 then
+            button.enchantIcon:Show()
+            button.enchantIcon.enchantId = entry.enchantId
+            button.enchantIcon:ClearAllPoints()
+            if button.column == 2 then
+                button.enchantIcon:SetPoint("CENTER", button, "RIGHT", 12, 0)
+            elseif button.column == 1 then
+                button.enchantIcon:SetPoint("CENTER", button, "LEFT", -12, 0)
+            else
+                button.enchantIcon:SetPoint("CENTER", button, "LEFT", -12, 0)
+            end
+        else
+            button.enchantIcon:Hide()
+            button.enchantIcon.enchantId = nil
+        end
+        if self.selectedWishlistSlot == slotKey then
+            button.selected:Show()
+        else
+            button.selected:Hide()
+        end
+    end
+    if self.wishlistNotesBox and self.wishlistSourceEntryBox then
+        local selected = self.selectedWishlistSlot and list and list.items and list.items[self.selectedWishlistSlot] or nil
+        self.wishlistNotesBox:SetText(selected and selected.notes or "")
+        self.wishlistSourceEntryBox:SetText(selected and selected.source or "")
+    end
+    if self.wishlistEnchantBox then
+        local selected = self.selectedWishlistSlot and list and list.items and list.items[self.selectedWishlistSlot] or nil
+        self.wishlistEnchantBox:SetText(selected and selected.enchantId or "")
+    end
+    if self.wishlistGemBoxes then
+        local selected = self.selectedWishlistSlot and list and list.items and list.items[self.selectedWishlistSlot] or nil
+        local gems = selected and selected.gemIds or {}
+        for i = 1, 3 do
+            local value = gems[i]
+            if self.wishlistGemBoxes[i] then
+                self.wishlistGemBoxes[i]:SetText(value or "")
+            end
+        end
+    end
+    self:UpdateWishlistManagerList()
+    self:UpdateWishlistSearchResults()
+    if self.wishlistAddSlotButton then
+        if self.selectedWishlistSlot and self.selectedWishlistResult then
+            self.wishlistAddSlotButton:Enable()
+        else
+            self.wishlistAddSlotButton:Disable()
+        end
+    end
+    if self.wishlistClearSlotButton then
+        if self.selectedWishlistSlot then
+            self.wishlistClearSlotButton:Enable()
+        else
+            self.wishlistClearSlotButton:Disable()
+        end
+    end
+end
+
 
 function UI:PopulateDebugCopy()
     if not self.debugCopyBox then
@@ -2332,6 +3618,15 @@ function UI:Refresh()
     if self.debugCheck then
         self.debugCheck:SetChecked(Goals.db.settings.debug and true or false)
     end
+    if self.wishlistAnnounceCheck then
+        self.wishlistAnnounceCheck:SetChecked(Goals.db.settings.wishlistAnnounce and true or false)
+    end
+    if Goals.db and Goals.db.settings then
+        Goals.db.settings.wishlistAnnounceChannel = "AUTO"
+    end
+    if self.wishlistTemplateBox then
+        self.wishlistTemplateBox:SetText(Goals.db.settings.wishlistAnnounceTemplate or "%s is on my wishlist")
+    end
     if self.lootHistoryMinQuality then
         local value = Goals.db.settings.lootHistoryMinQuality or 0
         UIDropDownMenu_SetSelectedValue(self.lootHistoryMinQuality, value)
@@ -2378,6 +3673,7 @@ function UI:Refresh()
     self:UpdateLootHistoryList()
     self:UpdateFoundLootList()
     self:UpdateDebugLogList()
+    self:UpdateWishlistUI()
     self:UpdateMiniTracker()
     self:UpdateMiniFloatingButtonPosition()
     self:UpdateMinimapButton()

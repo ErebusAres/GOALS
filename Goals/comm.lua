@@ -127,6 +127,18 @@ function Comm:HandleMessage(msgType, payload, sender, channel)
         self:ApplySettings(payload)
         return
     end
+    if msgType == "SYNC_WISHLIST" then
+        if Goals.ApplyWishlistSync then
+            Goals:ApplyWishlistSync(payload)
+        end
+        return
+    end
+    if msgType == "WISHLIST_SYNC_REQUEST" then
+        if Goals:IsSyncMaster() then
+            self:SendWishlistSync(sender)
+        end
+        return
+    end
     if msgType == "BOSSKILL" then
         local encounter, list = payload:match("^(.-)|(.*)$")
         local names = split(list or "", ",")
@@ -186,10 +198,25 @@ function Comm:SendSync(target)
     local channel = target and "WHISPER" or nil
     self:Send("SYNC_POINTS", self:SerializePoints(), channel, target)
     self:Send("SYNC_SETTINGS", self:SerializeSettings(), channel, target)
+    if Goals.SerializeAllWishlists then
+        self:Send("SYNC_WISHLIST", Goals:SerializeAllWishlists(), channel, target)
+    end
 end
 
 function Comm:BroadcastFullSync()
     self:SendSync(nil)
+end
+
+function Comm:SendWishlistSync(target)
+    if not Goals.SerializeAllWishlists then
+        return
+    end
+    local channel = target and "WHISPER" or nil
+    self:Send("SYNC_WISHLIST", Goals:SerializeAllWishlists(), channel, target)
+end
+
+function Comm:RequestWishlistSync()
+    self:Send("WISHLIST_SYNC_REQUEST", Goals.version)
 end
 
 function Comm:SendBossKill(encounterName, names)
