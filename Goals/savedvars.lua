@@ -43,7 +43,9 @@ Goals.defaults = {
         tableCombined = false,
         sudoDev = false,
         updateSeenVersion = 1,
+        updateSeenMajor = 2,
         updateAvailableVersion = 0,
+        updateAvailableMajor = 0,
         updateHasBeenSeen = false,
         autoMinimizeCombat = true,
         wishlistAnnounce = true,
@@ -109,6 +111,14 @@ function Goals:InitDB()
             GoalsDB.settings.lootHistoryMinQuality = GoalsDB.settings.lootHistoryEpicOnly and 4 or 0
         end
         GoalsDB.settings.lootHistoryEpicOnly = nil
+    end
+    if GoalsDB.settings then
+        if GoalsDB.settings.updateSeenMajor == nil then
+            GoalsDB.settings.updateSeenMajor = 2
+        end
+        if GoalsDB.settings.updateAvailableMajor == nil then
+            GoalsDB.settings.updateAvailableMajor = 0
+        end
     end
     if GoalsDB.settings then
         local hasDbm = false

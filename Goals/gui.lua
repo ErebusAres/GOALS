@@ -176,15 +176,23 @@ end
 
 local function getUpdateInfo()
     local info = Goals and Goals.UpdateInfo or nil
-    local installed = info and tonumber(info.version) or 0
+    local installedMajor = info and tonumber(info.major) or 2
+    local installedMinor = info and tonumber(info.version) or 0
     local url = info and info.url or ""
-    local available = Goals and Goals.db and Goals.db.settings and Goals.db.settings.updateAvailableVersion or 0
-    return installed, available, url
+    local availableMajor = Goals and Goals.db and Goals.db.settings and Goals.db.settings.updateAvailableMajor or 0
+    local availableMinor = Goals and Goals.db and Goals.db.settings and Goals.db.settings.updateAvailableVersion or 0
+    return installedMajor, installedMinor, availableMajor, availableMinor, url
 end
 
 local function isUpdateAvailable()
-    local installed, available = getUpdateInfo()
-    return available > installed
+    local installedMajor, installedMinor, availableMajor, availableMinor = getUpdateInfo()
+    if availableMajor == 0 and availableMinor == 0 then
+        return false
+    end
+    if availableMajor ~= installedMajor then
+        return availableMajor > installedMajor
+    end
+    return availableMinor > installedMinor
 end
 
 local function hasModifyAccess()
@@ -679,9 +687,9 @@ function UI:CreateMainFrame()
     if not titleText then
         titleText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     end
-    local version = Goals and Goals.UpdateInfo and Goals.UpdateInfo.version or nil
+    local version = Goals and Goals.GetDisplayVersion and Goals:GetDisplayVersion() or nil
     if version then
-        titleText:SetText(string.format("GOALS v2.%s - By: ErebusAres", tostring(version)))
+        titleText:SetText(string.format("GOALS v%s - By: ErebusAres", tostring(version)))
     else
         titleText:SetText(L.TITLE)
     end
@@ -856,7 +864,6 @@ function UI:UpdateUpdateTabGlow()
     end
     local available = isUpdateAvailable()
     local seenFlag = Goals and Goals.db and Goals.db.settings and Goals.db.settings.updateHasBeenSeen
-    local installed, availableVersion = getUpdateInfo()
     if available then
         self:SetupUpdateTabGlow(self.updateTab)
         if self.updateTab.glow then
@@ -898,15 +905,17 @@ function UI:RefreshUpdateTab()
     if not self.updateStatusText or not self.updateVersionText or not self.updateUrlText then
         return
     end
-    local installedVersion, availableVersion, updateUrl = getUpdateInfo()
+    local installedMajor, installedMinor, availableMajor, availableMinor, updateUrl = getUpdateInfo()
+    local installedVersion = string.format("%d.%d", installedMajor, installedMinor)
+    local availableVersion = string.format("%d.%d", availableMajor, availableMinor)
     self.updateUrl = updateUrl or ""
     local available = isUpdateAvailable()
-    if available and availableVersion > 0 then
+    if available and (availableMajor > 0 or availableMinor > 0) then
         self.updateStatusText:SetText(string.format(L.UPDATE_AVAILABLE, availableVersion))
         self.updateVersionText:SetText(string.format(L.UPDATE_VERSION_LINE, installedVersion, availableVersion))
     else
         self.updateStatusText:SetText(L.UPDATE_NONE)
-        if installedVersion > 0 then
+        if installedMinor > 0 then
             self.updateVersionText:SetText(string.format(L.UPDATE_VERSION_CURRENT, installedVersion))
         else
             self.updateVersionText:SetText("")
@@ -925,7 +934,7 @@ function UI:RefreshUpdateTab()
         end
     end
     if self.updateDismissButton then
-        if available and availableVersion > installedVersion then
+        if available then
             self.updateDismissButton:Enable()
             self.updateDismissButton:Show()
         else
@@ -935,9 +944,10 @@ function UI:RefreshUpdateTab()
     end
     if self.updateDebugText then
         local settings = Goals and Goals.db and Goals.db.settings or nil
-        local seen = settings and settings.updateSeenVersion or 0
+        local seenMajor = settings and settings.updateSeenMajor or 0
+        local seenMinor = settings and settings.updateSeenVersion or 0
         local seenFlag = settings and settings.updateHasBeenSeen and "true" or "false"
-        self.updateDebugText:SetText(string.format("Debug: installed v%d, available v%d, seen v%d, seenFlag %s", installedVersion, availableVersion, seen, seenFlag))
+        self.updateDebugText:SetText(string.format("Debug: installed v%s, available v%s, seen v%d.%d, seenFlag %s", installedVersion, availableVersion, seenMajor, seenMinor, seenFlag))
     end
 end
 
@@ -3016,9 +3026,11 @@ function UI:CreateUpdateTab(page)
     dismissBtn:SetText("Dismiss")
     dismissBtn:SetPoint("TOPLEFT", step3, "BOTTOMLEFT", 0, -10)
     dismissBtn:SetScript("OnClick", function()
-        local installed, availableVersion = getUpdateInfo()
-        if availableVersion and availableVersion > installed and Goals and Goals.db and Goals.db.settings then
-            Goals.db.settings.updateSeenVersion = availableVersion
+        local installedMajor, installedMinor, availableMajor, availableMinor = getUpdateInfo()
+        local available = isUpdateAvailable()
+        if available and Goals and Goals.db and Goals.db.settings then
+            Goals.db.settings.updateSeenMajor = availableMajor
+            Goals.db.settings.updateSeenVersion = availableMinor
             Goals.db.settings.updateHasBeenSeen = true
             if Goals.UI then
                 Goals.UI:RefreshUpdateTab()
@@ -3078,7 +3090,9 @@ function UI:CreateDevTab(page)
     resetUpdateBtn:SetPoint("TOPLEFT", syncBtn, "BOTTOMLEFT", 0, -8)
     resetUpdateBtn:SetScript("OnClick", function()
         if Goals.db and Goals.db.settings then
+            Goals.db.settings.updateSeenMajor = 0
             Goals.db.settings.updateSeenVersion = 0
+            Goals.db.settings.updateAvailableMajor = 0
             Goals.db.settings.updateAvailableVersion = 0
             Goals.db.settings.updateHasBeenSeen = false
             if Goals.UI then
@@ -3086,8 +3100,9 @@ function UI:CreateDevTab(page)
                 Goals.UI:UpdateUpdateTabGlow()
             end
             if Goals and Goals.GetInstalledUpdateVersion then
-                local installed = Goals:GetInstalledUpdateVersion()
-                Goals:Print("Update notice reset. Installed v" .. installed .. ", available v0.")
+                local installedMajor = Goals:GetUpdateMajorVersion()
+                local installedMinor = Goals:GetInstalledUpdateVersion()
+                Goals:Print("Update notice reset. Installed v" .. installedMajor .. "." .. installedMinor .. ", available v0.")
             else
                 Goals:Print("Update notice reset.")
             end
@@ -3100,9 +3115,11 @@ function UI:CreateDevTab(page)
     simulateUpdateBtn:SetPoint("TOPLEFT", resetUpdateBtn, "BOTTOMLEFT", 0, -8)
     simulateUpdateBtn:SetScript("OnClick", function()
         if Goals and Goals.GetInstalledUpdateVersion and Goals.HandleRemoteVersion then
-            local installed = Goals:GetInstalledUpdateVersion()
-            Goals:HandleRemoteVersion(installed + 1, Goals:GetPlayerName())
-            Goals:Print("Simulated update v" .. (installed + 1) .. ".")
+            local installedMajor = Goals:GetUpdateMajorVersion()
+            local installedMinor = Goals:GetInstalledUpdateVersion()
+            local payload = string.format("%d.%d", installedMajor, installedMinor + 1)
+            Goals:HandleRemoteVersion(payload, Goals:GetPlayerName())
+            Goals:Print("Simulated update v" .. payload .. ".")
         end
     end)
 
@@ -4232,7 +4249,8 @@ function UI:CreateMinimapButton()
     end)
     button:SetScript("OnEnter", function(selfBtn)
         GameTooltip:SetOwner(selfBtn, "ANCHOR_LEFT")
-        GameTooltip:SetText("Goals v2")
+        local versionText = Goals and Goals.GetDisplayVersion and Goals:GetDisplayVersion() or "2"
+        GameTooltip:SetText("Goals v" .. versionText)
         local playerName = Goals and Goals.GetPlayerName and Goals:GetPlayerName() or ""
         local entry = Goals and Goals.db and Goals.db.players and Goals.db.players[playerName] or nil
         local points = entry and entry.points or 0

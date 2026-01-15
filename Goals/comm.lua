@@ -182,12 +182,14 @@ function Comm:RequestSync()
 end
 
 function Comm:SendVersion(target)
+    local major = Goals.GetUpdateMajorVersion and Goals:GetUpdateMajorVersion() or 0
     local version = Goals.GetInstalledUpdateVersion and Goals:GetInstalledUpdateVersion() or 0
     if not version or version <= 0 then
         return
     end
     local channel = target and "WHISPER" or nil
-    self:Send("VERSION", tostring(version), channel, target)
+    local payload = string.format("%d.%d", major, version)
+    self:Send("VERSION", payload, channel, target)
 end
 
 function Comm:BroadcastVersion()

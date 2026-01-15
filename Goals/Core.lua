@@ -231,21 +231,47 @@ function Goals:GetInstalledUpdateVersion()
     return version
 end
 
+function Goals:GetUpdateMajorVersion()
+    local info = self.UpdateInfo
+    return info and tonumber(info.major) or 2
+end
+
+function Goals:GetDisplayVersion()
+    local major = self:GetUpdateMajorVersion()
+    local minor = self:GetInstalledUpdateVersion()
+    return string.format("%d.%d", major, minor)
+end
+
+function Goals:IsVersionNewer(majorA, minorA, majorB, minorB)
+    majorA = tonumber(majorA) or 0
+    minorA = tonumber(minorA) or 0
+    majorB = tonumber(majorB) or 0
+    minorB = tonumber(minorB) or 0
+    if majorA ~= majorB then
+        return majorA > majorB
+    end
+    return minorA > minorB
+end
+
 function Goals:HandleRemoteVersion(version, sender)
     if not self.db or not self.db.settings then
         return
     end
-    local installed = self:GetInstalledUpdateVersion()
-    local incoming = tonumber(version) or 0
-    if incoming <= installed then
+    local installedMajor = self:GetUpdateMajorVersion()
+    local installedMinor = self:GetInstalledUpdateVersion()
+    local incomingMajor, incomingMinor = tostring(version or ""):match("^(%d+)%.(%d+)$")
+    incomingMajor = tonumber(incomingMajor) or installedMajor
+    incomingMinor = tonumber(incomingMinor) or tonumber(version) or 0
+    if not self:IsVersionNewer(incomingMajor, incomingMinor, installedMajor, installedMinor) then
         return
     end
-    if (self.db.settings.updateAvailableVersion or 0) < incoming then
-        self.db.settings.updateAvailableVersion = incoming
+    if self:IsVersionNewer(incomingMajor, incomingMinor, self.db.settings.updateAvailableMajor or 0, self.db.settings.updateAvailableVersion or 0) then
+        self.db.settings.updateAvailableMajor = incomingMajor
+        self.db.settings.updateAvailableVersion = incomingMinor
         self.db.settings.updateHasBeenSeen = false
         self:NotifyDataChanged()
         local who = sender and self:NormalizeName(sender) or "someone"
-        self:Print("Update available (v" .. incoming .. ") from " .. who .. ".")
+        self:Print("Update available (v" .. string.format("%d.%d", incomingMajor, incomingMinor) .. ") from " .. who .. ".")
     end
 end
 
@@ -2117,6 +2143,14 @@ function Goals:ShowWishlistFoundAlert(itemLinks, forceDbm)
         end
         return
     end
+    if self.ShowWishlistFoundAlertLocal then
+        if self.wishlistAlertFrame then
+            self.wishlistAlertFrame:SetScript("OnUpdate", nil)
+            self.wishlistAlertFrame:Hide()
+        end
+        self:ShowWishlistFoundAlertLocal(itemLinks, allowSound)
+        return
+    end
     if not self.wishlistAlertFrame then
         local frame = CreateFrame("Frame", "GoalsWishlistAlert", UIParent)
         frame.headerHeight = 40
@@ -2134,6 +2168,13 @@ function Goals:ShowWishlistFoundAlert(itemLinks, forceDbm)
         title:SetText("Wishlist items found")
         frame.title = title
 
+        local bannerTexturePath = "Interface\\AddOns\\Goals\\Texture\\BossBannerToast\\BossBanner"
+        local iconFramePath = "Interface\\AddOns\\Goals\\Texture\\BossBannerToast\\WhiteIconFrame"
+        if IsAddOnLoaded and IsAddOnLoaded("DBM-Core") then
+            bannerTexturePath = "Interface\\AddOns\\DBM-Core\\textures\\BossBannerToast\\BossBanner"
+            iconFramePath = "Interface\\AddOns\\DBM-Core\\textures\\BossBannerToast\\WhiteIconFrame"
+        end
+
         local atlasData = {
             ["BossBanner-BgBanner-Bottom"] = { width = 440, height = 112, left = 0.00195312, right = 0.861328, top = 0.00195312, bottom = 0.220703 },
             ["BossBanner-BgBanner-Top"] = { width = 440, height = 112, left = 0.00195312, right = 0.861328, top = 0.224609, bottom = 0.443359 },
@@ -2148,13 +2189,13 @@ function Goals:ShowWishlistFoundAlert(itemLinks, forceDbm)
             if not entry then
                 return
             end
-            texture:SetTexture("Interface\\AddOns\\Goals\\Texture\\BossBannerToast\\BossBanner.blp")
+            texture:SetTexture(bannerTexturePath)
             texture:SetTexCoord(entry.left, entry.right, entry.top, entry.bottom)
             texture:SetSize(entry.width, entry.height)
         end
 
         local banner = frame:CreateTexture(nil, "BACKGROUND", nil, -1)
-        banner:SetTexture("Interface\\AddOns\\Goals\\Texture\\BossBannerToast\\BossBanner.blp")
+        banner:SetTexture(bannerTexturePath)
         banner:SetPoint("TOPLEFT", frame, "TOPLEFT", -32, 32)
         banner:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 32, -32)
         banner:SetTexCoord(0, 1, 0, 1)
@@ -2176,7 +2217,7 @@ function Goals:ShowWishlistFoundAlert(itemLinks, forceDbm)
         bannerMid:SetPoint("BOTTOM", bannerBottom, "TOP", 0, 0)
         bannerMid:SetPoint("LEFT", frame, "LEFT", 0, 0)
         bannerMid:SetPoint("RIGHT", frame, "RIGHT", 0, 0)
-        bannerMid:SetTexture("Interface\\AddOns\\Goals\\Texture\\BossBannerToast\\BossBanner.blp")
+        bannerMid:SetTexture(bannerTexturePath)
         bannerMid:SetTexCoord(atlasData["BossBanner-BgBanner-Mid"].left, atlasData["BossBanner-BgBanner-Mid"].right, atlasData["BossBanner-BgBanner-Mid"].top, atlasData["BossBanner-BgBanner-Mid"].bottom)
         frame.bannerMid = bannerMid
 
@@ -2207,7 +2248,7 @@ function Goals:ShowWishlistFoundAlert(itemLinks, forceDbm)
             row.icon = icon
             if useDbm then
                 local iconFrame = row:CreateTexture(nil, "OVERLAY")
-                iconFrame:SetTexture("Interface\\AddOns\\Goals\\Texture\\BossBannerToast\\WhiteIconFrame")
+                iconFrame:SetTexture(iconFramePath)
                 iconFrame:SetPoint("CENTER", icon, "CENTER", 0, 0)
                 iconFrame:SetSize(38, 38)
                 iconFrame:SetBlendMode("ADD")
@@ -3510,12 +3551,17 @@ function Goals:Init()
         end)
     end
     if self.db and self.db.settings then
-        local installed = self:GetInstalledUpdateVersion()
-        if (self.db.settings.updateAvailableVersion or 0) < installed then
+        local installedMajor = self:GetUpdateMajorVersion()
+        local installedMinor = self:GetInstalledUpdateVersion()
+        if not self:IsVersionNewer(self.db.settings.updateAvailableMajor or 0, self.db.settings.updateAvailableVersion or 0, installedMajor, installedMinor) then
+            self.db.settings.updateAvailableMajor = 0
             self.db.settings.updateAvailableVersion = 0
         end
         if self.db.settings.updateSeenVersion == nil then
-            self.db.settings.updateSeenVersion = installed
+            self.db.settings.updateSeenVersion = installedMinor
+        end
+        if self.db.settings.updateSeenMajor == nil then
+            self.db.settings.updateSeenMajor = installedMajor
         end
         if self.db.settings.updateHasBeenSeen == nil then
             self.db.settings.updateHasBeenSeen = false
