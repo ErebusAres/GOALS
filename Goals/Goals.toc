@@ -8,6 +8,7 @@
 ## Dependencies:
 ## OptionalDeps:
 
+bindings.xml
 armorTokens.lua
 gemsAndEnchants.lua
 wishlistBanner.lua

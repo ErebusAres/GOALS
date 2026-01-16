@@ -606,6 +606,7 @@ Goals.EnchantSearchList = Goals.EnchantSearchList or {
     { id = 3816, name = "Arcanum of the Flame's Soul", spellId = 59948, slot = "HEAD" },
     { id = 3814, name = "Arcanum of the Fleeing Shadow", spellId = 59946, slot = "HEAD" },
     { id = 3812, name = "Arcanum of the Frosty Soul", spellId = 59944, slot = "HEAD" },
+    
     { id = 3004, name = "Arcanum of the Gladiator", spellId = 35453, slot = "HEAD" },
     { id = 3096, name = "Arcanum of the Outcast", spellId = 37891, slot = "HEAD" },
     { id = 3842, name = "Arcanum of the Savage Gladiator", spellId = 61271, slot = "HEAD" },

@@ -14,6 +14,7 @@ Goals.L = {
     TAB_WISHLIST = "Wishlist",
     TAB_SETTINGS = "Settings",
     TAB_UPDATE = "Update",
+    TAB_HELP = "Help",
     TAB_DEV = "Dev",
     TAB_DEBUG = "Debug",
     LABEL_POINTS = "Points",
@@ -83,7 +84,7 @@ Goals.L = {
     CHECK_RESET_MOUNT_PET = "Mounts/pets reset points",
     CHECK_RESET_MOUNTS = "Mounts",
     CHECK_RESET_PETS = "Companions",
-    CHECK_RESET_RECIPES = "Recipes",
+    CHECK_RESET_RECIPES = "Patterns",
     CHECK_RESET_QUEST_ITEMS = "Quest Items",
     CHECK_RESET_TOKENS = "Armor Tokens",
     LABEL_LOOT_OPTIONS = "Loot Options",
@@ -137,3 +138,7 @@ Goals.L = {
     WISHLIST_DELETE_CONFIRM = "Delete wishlist '%s'?",
     WISHLIST_DELETE_ACCEPT = "Delete",
 }
+
+BINDING_HEADER_GOALS = "GOALS"
+BINDING_NAME_GOALS_TOGGLE_UI = "Toggle GOALS UI"
+BINDING_NAME_GOALS_TOGGLE_MINI = "Toggle Mini Viewer"

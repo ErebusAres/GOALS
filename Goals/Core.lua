@@ -8,6 +8,16 @@ local addonName = ...
 local Goals = _G.Goals or {}
 _G.Goals = Goals
 
+if not _G.BINDING_HEADER_GOALS then
+    _G.BINDING_HEADER_GOALS = "GOALS"
+end
+if not _G.BINDING_NAME_GOALS_TOGGLE_UI then
+    _G.BINDING_NAME_GOALS_TOGGLE_UI = "Toggle GOALS UI"
+end
+if not _G.BINDING_NAME_GOALS_TOGGLE_MINI then
+    _G.BINDING_NAME_GOALS_TOGGLE_MINI = "Toggle Mini Viewer"
+end
+
 Goals.name = addonName or "Goals"
 Goals.version = GetAddOnMetadata(Goals.name, "Version") or "dev"
 Goals.db = Goals.db or nil
@@ -803,7 +813,10 @@ end
 
 function Goals:IsRecipe(itemType)
     local recipeType = ITEM_CLASS_RECIPE or "Recipe"
-    return itemType == recipeType
+    if itemType == recipeType then
+        return true
+    end
+    return itemType == "Pattern"
 end
 
 function Goals:IsToken(itemType, itemSubType)
@@ -1838,6 +1851,7 @@ function Goals:CacheEnchantByEntry(entry)
     if not id then
         return nil
     end
+    id = tonumber(id) or id
     self.enchantCache = self.enchantCache or {}
     local cached = self.enchantCache[id]
     if cached and cached.name then
@@ -1845,8 +1859,9 @@ function Goals:CacheEnchantByEntry(entry)
     end
     local name = entry.name
     local icon = entry.icon
-    if entry.spellId and GetSpellInfo then
-        local spellName, _, spellIcon = GetSpellInfo(entry.spellId)
+    local spellId = entry.spellId and tonumber(entry.spellId) or entry.spellId
+    if spellId and GetSpellInfo then
+        local spellName, _, spellIcon = GetSpellInfo(spellId)
         if not name or name == "" then
             name = spellName
         end
@@ -1859,7 +1874,7 @@ function Goals:CacheEnchantByEntry(entry)
         id = id,
         name = name,
         icon = icon,
-        spellId = entry.spellId,
+        spellId = spellId,
     }
     self.enchantCache[id] = cached
     entry.name = name
@@ -1870,12 +1885,20 @@ function Goals:CacheEnchantByEntry(entry)
 end
 
 function Goals:GetEnchantInfoById(enchantId)
+    enchantId = tonumber(enchantId)
     if not enchantId or enchantId <= 0 then
         return nil
     end
     self.enchantById = self.enchantById or {}
     local cached = self.enchantById[enchantId]
     if cached then
+        if not cached.spellId and GetSpellInfo then
+            local name = GetSpellInfo(enchantId)
+            if name then
+                cached.spellId = enchantId
+                cached.name = cached.name or name
+            end
+        end
         return cached
     end
     local list = self:GetEnchantSearchList() or {}
@@ -1883,6 +1906,24 @@ function Goals:GetEnchantInfoById(enchantId)
         local entryId = entry and (entry.id or entry.enchantId)
         if entryId == enchantId then
             cached = self:CacheEnchantByEntry(entry)
+            if cached and not cached.spellId and GetSpellInfo then
+                local name = GetSpellInfo(enchantId)
+                if name then
+                    cached.spellId = enchantId
+                    cached.name = cached.name or name
+                end
+            end
+            self.enchantById[enchantId] = cached
+            return cached
+        end
+    end
+    for _, entry in ipairs(list) do
+        local entrySpellId = entry and entry.spellId or nil
+        if entrySpellId == enchantId then
+            cached = self:CacheEnchantByEntry(entry)
+            if cached then
+                cached.matchedSpellId = true
+            end
             self.enchantById[enchantId] = cached
             return cached
         end
@@ -2800,6 +2841,31 @@ function Goals:BuildWishlistItemCache()
             end
         end
     end
+end
+
+function Goals:BuildItemLinkWithSockets(itemId, baseLink, enchantId, gemIds)
+    if not itemId then
+        return nil
+    end
+    local enchant = tonumber(enchantId) or 0
+    local gem1 = gemIds and tonumber(gemIds[1]) or 0
+    local gem2 = gemIds and tonumber(gemIds[2]) or 0
+    local gem3 = gemIds and tonumber(gemIds[3]) or 0
+    local level = UnitLevel and UnitLevel("player") or 0
+    return string.format("item:%d:%d:%d:%d:%d:0:0:0:%d:0:0:0:0:0:0:0:0:0:0", itemId, enchant, gem1, gem2, gem3, level)
+end
+
+function Goals:BuildFullItemLinkWithSockets(itemId, baseLink, enchantId, gemIds)
+    local itemString = self:BuildItemLinkWithSockets(itemId, baseLink, enchantId, gemIds)
+    if not itemString then
+        return nil
+    end
+    local cached = self.CacheItemById and self:CacheItemById(itemId) or nil
+    local name = cached and cached.name or ("Item " .. tostring(itemId))
+    local quality = cached and cached.quality or 1
+    local color = ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[quality]
+    local hex = color and string.format("ff%02x%02x%02x", color.r * 255, color.g * 255, color.b * 255) or "ffffffff"
+    return string.format("|c%s|H%s|h[%s]|h|r", hex, itemString, name)
 end
 
 function Goals:RefreshWishlistItemCache()
@@ -3988,6 +4054,37 @@ function Goals:InitSlashCommands()
             return
         end
         self:ToggleUI()
+    end
+end
+
+local function isTypingInEditBox()
+    if ChatEdit_GetActiveWindow then
+        local editBox = ChatEdit_GetActiveWindow()
+        if editBox and editBox:IsShown() then
+            return true
+        end
+    end
+    if IsInEditMode and IsInEditMode() then
+        return true
+    end
+    return false
+end
+
+function Goals_ToggleUIBinding()
+    if isTypingInEditBox() then
+        return
+    end
+    if Goals and Goals.ToggleUI then
+        Goals:ToggleUI()
+    end
+end
+
+function Goals_ToggleMiniBinding()
+    if isTypingInEditBox() then
+        return
+    end
+    if Goals and Goals.UI and Goals.UI.ToggleMiniTracker then
+        Goals.UI:ToggleMiniTracker()
     end
 end
 

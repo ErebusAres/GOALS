@@ -383,6 +383,36 @@ local function createSmallIconButton(parent, size, texture)
     return btn
 end
 
+local function bindLiveSearch(editBox, callback, delay)
+    if not editBox or not callback then
+        return
+    end
+    editBox._liveSearchDelay = delay or 0.15
+    editBox._liveSearchElapsed = 0
+    editBox._liveSearchPending = false
+    editBox._liveSearchLastText = nil
+    editBox:SetScript("OnUpdate", function(selfBox, elapsed)
+        if not selfBox._liveSearchPending then
+            return
+        end
+        selfBox._liveSearchElapsed = selfBox._liveSearchElapsed + (elapsed or 0)
+        if selfBox._liveSearchElapsed < selfBox._liveSearchDelay then
+            return
+        end
+        selfBox._liveSearchElapsed = 0
+        selfBox._liveSearchPending = false
+        local text = selfBox:GetText() or ""
+        if text ~= selfBox._liveSearchLastText then
+            selfBox._liveSearchLastText = text
+            callback()
+        end
+    end)
+    editBox:SetScript("OnTextChanged", function(selfBox)
+        selfBox._liveSearchPending = true
+        selfBox._liveSearchElapsed = 0
+    end)
+end
+
 function UI:GetAllPlayerNames()
     local names = {}
     if Goals.db and Goals.db.players then
@@ -764,6 +794,7 @@ function UI:CreateMainFrame()
         table.insert(tabDefs, { key = "dev", text = L.TAB_DEV, create = "CreateDevTab" })
         table.insert(tabDefs, { key = "debug", text = L.TAB_DEBUG, create = "CreateDebugTab" })
     end
+    table.insert(tabDefs, { key = "help", text = L.TAB_HELP, create = "CreateHelpTab" })
 
     for i, def in ipairs(tabDefs) do
         local tabName = frame:GetName() .. "Tab" .. i
@@ -789,6 +820,16 @@ function UI:CreateMainFrame()
         if def.key == "wishlist" then
             self.wishlistTabId = i
         end
+        if def.key == "help" then
+            self.helpTab = tab
+            self.helpTabId = i
+        end
+        if def.key == "dev" then
+            self.devTab = tab
+        end
+        if def.key == "debug" then
+            self.debugTab = tab
+        end
         self.tabs[i] = tab
 
         local page = CreateFrame("Frame", nil, frame)
@@ -807,6 +848,11 @@ function UI:CreateMainFrame()
     PanelTemplates_SetTab(frame, 1)
     self:SelectTab(1)
     self:UpdateUpdateTabGlow()
+
+    if self.helpTab then
+        self.helpTab:ClearAllPoints()
+        self.helpTab:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -12, -4)
+    end
 end
 
 function UI:ShouldShowUpdateTab()
@@ -1013,10 +1059,40 @@ function UI:UpdateWishlistSocketPickerVisibility()
         return
     end
     local show = self.currentTab == self.wishlistTabId and self.wishlistSocketPickerOpen
+    if show then
+        local gemAvailable, enchantAvailable = self:GetWishlistSocketAvailability()
+        if not gemAvailable and not enchantAvailable then
+            show = false
+            self.wishlistSocketPickerOpen = false
+        end
+    end
     if self.wishlistSocketPickerOuter then
         setShown(self.wishlistSocketPickerOuter, show)
     end
     setShown(self.wishlistSocketPickerFrame, show)
+end
+
+function UI:GetWishlistSocketAvailability()
+    local slotKey = self.selectedWishlistSlot
+    if not slotKey then
+        return false, false, nil
+    end
+    local previewItemId = nil
+    if self.wishlistActiveTab == "search" and self.selectedWishlistResult then
+        previewItemId = self.selectedWishlistResult.id or self.selectedWishlistResult.itemId
+    end
+    if not previewItemId then
+        local list = Goals:GetActiveWishlist()
+        local entry = list and list.items and list.items[slotKey] or nil
+        previewItemId = entry and entry.itemId or nil
+    end
+    local socketTypes = nil
+    if previewItemId and Goals.GetItemSocketTypes then
+        socketTypes = Goals:GetItemSocketTypes(previewItemId)
+    end
+    local gemAvailable = socketTypes and #socketTypes > 0 or false
+    local enchantAvailable = Goals.IsWishlistSlotEnchantable and Goals:IsWishlistSlotEnchantable(slotKey) or false
+    return gemAvailable, enchantAvailable, previewItemId, socketTypes
 end
 
 function UI:CreateOverviewTab(page)
@@ -1671,6 +1747,7 @@ function UI:CreateWishlistTab(page)
         setShown(managerPage, key == "manage")
         setShown(searchPage, key == "search")
         setShown(actionsPage, key == "actions")
+        self.wishlistActiveTab = key
         if self.wishlistSubTabs then
             for name, button in pairs(self.wishlistSubTabs) do
                 if name == key then
@@ -1702,9 +1779,11 @@ function UI:CreateWishlistTab(page)
     self.wishlistSubTabs.search = createTabButton("Search", "search", self.wishlistSubTabs.manage)
     self.wishlistSubTabs.actions = createTabButton("Actions", "actions", self.wishlistSubTabs.search)
 
-    local helpBtn = CreateFrame("Button", nil, tabBar, "UIPanelInfoButton")
+    local helpBtn = CreateFrame("Button", "GoalsWishlistHelpButton", tabBar, "UIPanelInfoButton")
     helpBtn:SetSize(18, 18)
     helpBtn:SetPoint("RIGHT", tabBar, "RIGHT", 0, 0)
+    helpBtn:SetScript("OnMouseDown", function()
+    end)
     helpBtn:SetScript("OnMouseUp", function()
     end)
     local helpLabel = createLabel(tabBar, "Help", "GameFontNormalSmall")
@@ -1782,6 +1861,42 @@ function UI:CreateWishlistTab(page)
     if self.wishlistSocketPickerOpen == nil then
         self.wishlistSocketPickerOpen = false
     end
+
+    local function showEnchantTooltip(owner, enchantId)
+        if not enchantId then
+            return
+        end
+        GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
+        local info = Goals.GetEnchantInfoById and Goals:GetEnchantInfoById(enchantId) or nil
+        local spellId = info and info.spellId or nil
+        if not spellId and GetSpellInfo then
+            local name = GetSpellInfo(enchantId)
+            if name then
+                spellId = enchantId
+            end
+        end
+        local shown = false
+        if spellId then
+            local spellLink = GetSpellLink and GetSpellLink(spellId) or nil
+            if spellLink then
+                GameTooltip:SetHyperlink(spellLink)
+                shown = true
+            else
+                GameTooltip:SetHyperlink("spell:" .. tostring(spellId))
+                shown = true
+            end
+        end
+        if not shown then
+            if info and info.name then
+                GameTooltip:SetText(info.name)
+            else
+                GameTooltip:SetText("Enchant ID: " .. tostring(enchantId))
+            end
+        end
+        GameTooltip:AddLine("ID: " .. tostring(enchantId), 0.7, 0.7, 0.7)
+        GameTooltip:Show()
+    end
+
     if not self.wishlistSocketPickerFrame then
         local outer = CreateFrame("Frame", "GoalsWishlistSocketPickerOuter", self.frame)
         outer:SetPoint("TOPLEFT", self.frame, "TOPRIGHT", -2, -34)
@@ -1811,7 +1926,7 @@ function UI:CreateWishlistTab(page)
         slotLabel:SetJustifyH("LEFT")
         self.wishlistSocketPickerSlotLabel = slotLabel
 
-        local closeBtn = CreateFrame("Button", nil, pickerFrame, "UIPanelButtonTemplate")
+        local closeBtn = CreateFrame("Button", "GoalsWishlistSocketPickerCloseButton", pickerFrame, "UIPanelButtonTemplate")
         closeBtn:SetSize(20, 18)
         closeBtn:SetText("X")
         closeBtn:SetPoint("TOPRIGHT", pickerFrame, "TOPRIGHT", -8, -8)
@@ -1822,117 +1937,131 @@ function UI:CreateWishlistTab(page)
         end)
         self.wishlistSocketPickerClose = closeBtn
 
-        local searchLabel = createLabel(pickerFrame, "Search", "GameFontNormal")
-        searchLabel:SetPoint("TOPLEFT", slotLabel, "BOTTOMLEFT", 0, -10)
+        local function createSocketBlock(mode, titleText, topAnchor)
+            local block = {}
+            block.mode = mode
+            block.title = createLabel(pickerFrame, titleText, "GameFontNormal")
+            if topAnchor then
+                block.title:SetPoint("TOPLEFT", topAnchor, "BOTTOMLEFT", 0, -12)
+            else
+                block.title:SetPoint("TOPLEFT", slotLabel, "BOTTOMLEFT", 0, -10)
+            end
 
-        local searchBox = CreateFrame("EditBox", "GoalsWishlistSocketSearchBox", pickerFrame, "InputBoxTemplate")
-        searchBox:SetPoint("LEFT", searchLabel, "RIGHT", 8, 0)
-        searchBox:SetSize(150, 18)
-        searchBox:SetAutoFocus(false)
-        bindEscapeClear(searchBox)
-        searchBox:SetScript("OnEnterPressed", function(selfBox)
-            selfBox:ClearFocus()
-            UI:UpdateWishlistSocketPickerResults()
-        end)
-        self.wishlistSocketSearchBox = searchBox
-
-        local resultsInset = CreateFrame("Frame", "GoalsWishlistSocketResultsInset", pickerFrame, "GoalsInsetTemplate")
-        resultsInset:SetPoint("TOPLEFT", searchLabel, "BOTTOMLEFT", -4, -6)
-        resultsInset:SetPoint("TOPRIGHT", pickerFrame, "TOPRIGHT", -10, 0)
-        resultsInset:SetHeight(120)
-        self.wishlistSocketResultsInset = resultsInset
-
-        local resultsScroll = CreateFrame("ScrollFrame", "GoalsWishlistSocketResultsScroll", resultsInset, "FauxScrollFrameTemplate")
-        resultsScroll:SetPoint("TOPLEFT", resultsInset, "TOPLEFT", 2, -6)
-        resultsScroll:SetPoint("BOTTOMRIGHT", resultsInset, "BOTTOMRIGHT", -26, 6)
-        resultsScroll:SetScript("OnVerticalScroll", function(selfScroll, offset)
-            FauxScrollFrame_OnVerticalScroll(selfScroll, offset, ROW_HEIGHT, function()
+            block.searchBox = CreateFrame("EditBox", "GoalsWishlistSocket" .. mode .. "SearchBox", pickerFrame, "InputBoxTemplate")
+            block.searchBox:SetPoint("LEFT", block.title, "RIGHT", 8, 0)
+            block.searchBox:SetSize(150, 18)
+            block.searchBox:SetAutoFocus(false)
+            bindEscapeClear(block.searchBox)
+            block.searchBox:SetScript("OnEnterPressed", function(selfBox)
+                selfBox:ClearFocus()
                 UI:UpdateWishlistSocketPickerResults()
             end)
-        end)
-        self.wishlistSocketResultsScroll = resultsScroll
+            bindLiveSearch(block.searchBox, function()
+                UI:UpdateWishlistSocketPickerResults()
+            end, 0.15)
 
-        self.wishlistSocketResultsRows = {}
-        for i = 1, 5 do
-            local row = CreateFrame("Button", nil, resultsInset)
-            row:SetHeight(ROW_HEIGHT)
-            row:SetPoint("TOPLEFT", resultsInset, "TOPLEFT", 8, -6 - (i - 1) * ROW_HEIGHT)
-            row:SetPoint("RIGHT", resultsInset, "RIGHT", -26, 0)
-            local icon = row:CreateTexture(nil, "ARTWORK")
-            icon:SetSize(16, 16)
-            icon:SetPoint("LEFT", row, "LEFT", 0, 0)
-            row.icon = icon
-            local text = row:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-            text:SetPoint("LEFT", icon, "RIGHT", 6, 0)
-            text:SetPoint("RIGHT", row, "RIGHT", -4, 0)
-            row.text = text
-            local selected = row:CreateTexture(nil, "ARTWORK")
-            selected:SetAllPoints(row)
-            selected:SetTexture("Interface\\Buttons\\UI-Listbox-Highlight")
-            selected:SetBlendMode("ADD")
-            selected:Hide()
-            row.selected = selected
-        row:SetScript("OnClick", function(selfRow)
-            UI.selectedWishlistSocketResult = selfRow.entry
-            UI.selectedWishlistSocketResultId = selfRow.entry and selfRow.entry.id or nil
-            if UI.wishlistSocketPickerMode == "ENCHANT" then
-                if Goals.CacheEnchantByEntry then
-                    Goals:CacheEnchantByEntry(selfRow.entry)
-                end
-            elseif Goals.CacheItemById then
-                local itemId = selfRow.entry and (selfRow.entry.id or selfRow.entry.itemId)
-                if itemId then
-                    Goals:CacheItemById(itemId)
-                end
-            end
-            UI:UpdateWishlistSocketPickerResults()
-        end)
-            row:SetScript("OnEnter", function(selfRow)
-                if UI.wishlistSocketPickerMode == "ENCHANT" then
-                    if selfRow.entry and selfRow.entry.id then
+            block.resultsInset = CreateFrame("Frame", "GoalsWishlistSocket" .. mode .. "ResultsInset", pickerFrame, "GoalsInsetTemplate")
+            block.resultsInset:SetPoint("TOPLEFT", block.title, "BOTTOMLEFT", -4, -6)
+            block.resultsInset:SetPoint("TOPRIGHT", pickerFrame, "TOPRIGHT", -10, 0)
+            block.resultsInset:SetHeight((ROW_HEIGHT * 5) + 12)
+
+            block.resultsScroll = CreateFrame("ScrollFrame", "GoalsWishlistSocket" .. mode .. "ResultsScroll", block.resultsInset, "FauxScrollFrameTemplate")
+            block.resultsScroll:SetPoint("TOPLEFT", block.resultsInset, "TOPLEFT", 2, -6)
+            block.resultsScroll:SetPoint("BOTTOMRIGHT", block.resultsInset, "BOTTOMRIGHT", -26, 6)
+            block.resultsScroll:SetScript("OnVerticalScroll", function(selfScroll, offset)
+                FauxScrollFrame_OnVerticalScroll(selfScroll, offset, ROW_HEIGHT, function()
+                    UI:UpdateWishlistSocketPickerResults()
+                end)
+            end)
+
+            block.rows = {}
+            for i = 1, 5 do
+                local row = CreateFrame("Button", nil, block.resultsInset)
+                row:SetHeight(ROW_HEIGHT)
+                row:SetPoint("TOPLEFT", block.resultsInset, "TOPLEFT", 8, -6 - (i - 1) * ROW_HEIGHT)
+                row:SetPoint("RIGHT", block.resultsInset, "RIGHT", -26, 0)
+                local icon = row:CreateTexture(nil, "ARTWORK")
+                icon:SetSize(16, 16)
+                icon:SetPoint("LEFT", row, "LEFT", 0, 0)
+                row.icon = icon
+                local text = row:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+                text:SetPoint("LEFT", icon, "RIGHT", 6, 0)
+                text:SetPoint("RIGHT", row, "RIGHT", -4, 0)
+                row.text = text
+                local selected = row:CreateTexture(nil, "ARTWORK")
+                selected:SetAllPoints(row)
+                selected:SetTexture("Interface\\Buttons\\UI-Listbox-Highlight")
+                selected:SetBlendMode("ADD")
+                selected:Hide()
+                row.selected = selected
+                row:SetScript("OnClick", function(selfRow)
+                    if block.mode == "ENCHANT" then
+                        UI.selectedWishlistEnchantResult = selfRow.entry
+                        UI.selectedWishlistEnchantResultId = selfRow.entry and selfRow.entry.id or nil
+                        UI.selectedWishlistSocketMode = "ENCHANT"
+                        if Goals.CacheEnchantByEntry then
+                            Goals:CacheEnchantByEntry(selfRow.entry)
+                        end
+                    else
+                        UI.selectedWishlistGemResult = selfRow.entry
+                        UI.selectedWishlistGemResultId = selfRow.entry and selfRow.entry.id or nil
+                        UI.selectedWishlistSocketMode = "GEM"
+                        if Goals.CacheItemById then
+                            local itemId = selfRow.entry and (selfRow.entry.id or selfRow.entry.itemId)
+                            if itemId then
+                                Goals:CacheItemById(itemId)
+                            end
+                        end
+                    end
+                    UI:UpdateWishlistSocketPickerResults()
+                end)
+                row:SetScript("OnEnter", function(selfRow)
+                    if block.mode == "ENCHANT" then
+                        if selfRow.entry and selfRow.entry.id then
+                            showEnchantTooltip(selfRow, selfRow.entry.id)
+                        end
+                    elseif selfRow.entry and selfRow.entry.link then
                         GameTooltip:SetOwner(selfRow, "ANCHOR_RIGHT")
-                        GameTooltip:SetText("Enchant ID: " .. tostring(selfRow.entry.id))
+                        GameTooltip:SetHyperlink(selfRow.entry.link)
                         GameTooltip:Show()
                     end
-                elseif selfRow.entry and selfRow.entry.link then
-                    GameTooltip:SetOwner(selfRow, "ANCHOR_RIGHT")
-                    GameTooltip:SetHyperlink(selfRow.entry.link)
-                    GameTooltip:Show()
+                end)
+                row:SetScript("OnLeave", function()
+                    GameTooltip:Hide()
+                end)
+                block.rows[i] = row
+            end
+
+            block.emptyLabel = block.resultsInset:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+            block.emptyLabel:SetPoint("TOPLEFT", block.resultsInset, "TOPLEFT", 8, -10)
+            block.emptyLabel:SetText("No results.")
+            block.emptyLabel:Hide()
+
+            block.applyBtn = CreateFrame("Button", "GoalsWishlistSocket" .. mode .. "ApplyButton", pickerFrame, "UIPanelButtonTemplate")
+            block.applyBtn:SetPoint("TOPLEFT", block.resultsInset, "BOTTOMLEFT", 0, -6)
+            block.applyBtn:SetSize(60, 20)
+            block.applyBtn:SetText(L.BUTTON_APPLY)
+            block.applyBtn:SetScript("OnClick", function()
+                if UI and UI.ApplyWishlistSocketSelection then
+                    UI:ApplyWishlistSocketSelection(block.mode, block.mode == "ENCHANT" and UI.selectedWishlistEnchantResult or UI.selectedWishlistGemResult, UI.selectedWishlistSocketIndex)
                 end
             end)
-            row:SetScript("OnLeave", function()
-                GameTooltip:Hide()
+
+            block.clearBtn = CreateFrame("Button", "GoalsWishlistSocket" .. mode .. "ClearButton", pickerFrame, "UIPanelButtonTemplate")
+            block.clearBtn:SetPoint("LEFT", block.applyBtn, "RIGHT", 6, 0)
+            block.clearBtn:SetSize(60, 20)
+            block.clearBtn:SetText("Clear")
+            block.clearBtn:SetScript("OnClick", function()
+                if UI and UI.ClearWishlistSocketSelection then
+                    UI:ClearWishlistSocketSelection(block.mode, UI.selectedWishlistSocketIndex)
+                end
             end)
-            self.wishlistSocketResultsRows[i] = row
+
+            return block
         end
 
-        local emptyLabel = resultsInset:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
-        emptyLabel:SetPoint("TOPLEFT", resultsInset, "TOPLEFT", 8, -10)
-        emptyLabel:SetText("No results.")
-        emptyLabel:Hide()
-        self.wishlistSocketResultsEmpty = emptyLabel
-
-        local applyBtn = CreateFrame("Button", nil, pickerFrame, "UIPanelButtonTemplate")
-        applyBtn:SetPoint("TOPLEFT", resultsInset, "BOTTOMLEFT", 0, -8)
-        applyBtn:SetSize(60, 20)
-        applyBtn:SetText(L.BUTTON_APPLY)
-        applyBtn:SetScript("OnClick", function()
-            if UI and UI.ApplyWishlistSocketSelection then
-                UI:ApplyWishlistSocketSelection()
-            end
-        end)
-        self.wishlistSocketApplyButton = applyBtn
-
-        local clearBtn = CreateFrame("Button", nil, pickerFrame, "UIPanelButtonTemplate")
-        clearBtn:SetPoint("LEFT", applyBtn, "RIGHT", 6, 0)
-        clearBtn:SetSize(60, 20)
-        clearBtn:SetText("Clear")
-        clearBtn:SetScript("OnClick", function()
-            if UI and UI.ClearWishlistSocketSelection then
-                UI:ClearWishlistSocketSelection()
-            end
-        end)
-        self.wishlistSocketClearButton = clearBtn
+        self.wishlistSocketGemBlock = createSocketBlock("GEM", "Gems", nil)
+        self.wishlistSocketEnchantBlock = createSocketBlock("ENCHANT", "Enchants", self.wishlistSocketGemBlock.applyBtn)
     end
 
     local slotsLabel = createLabel(leftInset, L.LABEL_WISHLIST_SLOTS, "GameFontNormal")
@@ -2009,6 +2138,7 @@ function UI:CreateWishlistTab(page)
 
         local label = button:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
         button.label = label
+        button.slotKey = slotDef.key
 
         local foundShadow = button:CreateTexture(nil, "ARTWORK")
         foundShadow:SetTexture("Interface\\Cooldown\\ping4")
@@ -2082,15 +2212,7 @@ function UI:CreateWishlistTab(page)
         enchantBtn.selected = enchantSelected
         enchantBtn:SetScript("OnEnter", function(selfIcon)
             if selfIcon.enchantId then
-                local info = Goals.GetEnchantInfoById and Goals:GetEnchantInfoById(selfIcon.enchantId)
-                GameTooltip:SetOwner(selfIcon, "ANCHOR_RIGHT")
-                if info and info.name then
-                    GameTooltip:SetText(info.name)
-                    GameTooltip:AddLine("ID: " .. tostring(selfIcon.enchantId), 0.7, 0.7, 0.7)
-                else
-                    GameTooltip:SetText("Enchant ID: " .. tostring(selfIcon.enchantId))
-                end
-                GameTooltip:Show()
+                showEnchantTooltip(selfIcon, selfIcon.enchantId)
             elseif selfIcon.enchantAvailable then
                 GameTooltip:SetOwner(selfIcon, "ANCHOR_RIGHT")
                 GameTooltip:SetText("Empty enchant slot")
@@ -2137,6 +2259,12 @@ function UI:CreateWishlistTab(page)
             end
             self.selectedWishlistSlot = slotDef.key
             self:UpdateWishlistUI()
+            if self.wishlistActiveTab == "search" and UI and UI.OpenWishlistSocketPicker then
+                local gemAvailable, enchantAvailable = self:GetWishlistSocketAvailability()
+                if gemAvailable or enchantAvailable then
+                    UI:OpenWishlistSocketPicker("AUTO", slotDef.key, 1)
+                end
+            end
         end)
 
         return button
@@ -2302,6 +2430,9 @@ function UI:CreateWishlistTab(page)
         selfBox:ClearFocus()
         UI:UpdateWishlistSearchResults()
     end)
+    bindLiveSearch(searchBox, function()
+        UI:UpdateWishlistSearchResults()
+    end, 0.15)
     self.wishlistSearchBox = searchBox
 
     local linkHint = createLabel(searchPage, "Paste item link or item:ID", "GameFontHighlightSmall")
@@ -2356,6 +2487,12 @@ function UI:CreateWishlistTab(page)
             UI.selectedWishlistResult = selfRow.entry
             UI:UpdateWishlistSearchResults()
             UI:UpdateWishlistUI()
+            if UI.wishlistActiveTab == "search" and UI.selectedWishlistSlot and UI.OpenWishlistSocketPicker then
+                local gemAvailable, enchantAvailable = UI:GetWishlistSocketAvailability()
+                if gemAvailable or enchantAvailable then
+                    UI:OpenWishlistSocketPicker("AUTO", UI.selectedWishlistSlot, 1)
+                end
+            end
         end)
         row:SetScript("OnEnter", function(selfRow)
             if selfRow.entry and selfRow.entry.link then
@@ -3109,6 +3246,28 @@ function UI:CreateSettingsTab(page)
         self.wishlistDbmIntegrationCheck = dbmWishlistCheck
     end
 
+    local bindsTitle = createLabel(leftInset, "Keybindings", "GameFontNormal")
+    bindsTitle:SetPoint("BOTTOMLEFT", leftInset, "BOTTOMLEFT", 12, 10)
+    self.keybindsTitle = bindsTitle
+
+    local uiBindLabel = createLabel(leftInset, "Toggle GOALS UI:", "GameFontHighlightSmall")
+    uiBindLabel:SetPoint("BOTTOMLEFT", bindsTitle, "TOPLEFT", 0, 4)
+    self.keybindUiLabel = uiBindLabel
+
+    local uiBindValue = createLabel(leftInset, "", "GameFontHighlightSmall")
+    uiBindValue:SetPoint("LEFT", uiBindLabel, "RIGHT", 6, 0)
+    uiBindValue:SetJustifyH("LEFT")
+    self.keybindUiValue = uiBindValue
+
+    local miniBindLabel = createLabel(leftInset, "Toggle Mini Viewer:", "GameFontHighlightSmall")
+    miniBindLabel:SetPoint("BOTTOMLEFT", uiBindLabel, "TOPLEFT", 0, 4)
+    self.keybindMiniLabel = miniBindLabel
+
+    local miniBindValue = createLabel(leftInset, "", "GameFontHighlightSmall")
+    miniBindValue:SetPoint("LEFT", miniBindLabel, "RIGHT", 6, 0)
+    miniBindValue:SetJustifyH("LEFT")
+    self.keybindMiniValue = miniBindValue
+
     setupSudoDevPopup()
     setupSaveTableHelpPopup()
 
@@ -3230,6 +3389,571 @@ function UI:CreateSettingsTab(page)
     end)
     sudoBtn:SetPoint("TOPLEFT", editTitle, "BOTTOMLEFT", 2, -8)
     self.sudoDevButton = sudoBtn
+end
+
+function UI:BuildHelpNavList()
+    local list = {}
+    local state = self.helpNavState or {}
+    local function addNode(node, depth)
+        table.insert(list, { node = node, depth = depth })
+        if node.type == "folder" and state[node.id] then
+            for _, child in ipairs(node.children or {}) do
+                addNode(child, depth + 1)
+            end
+        end
+    end
+    for _, node in ipairs(self.helpNodes or {}) do
+        addNode(node, 0)
+    end
+    self.helpNavList = list
+    return list
+end
+
+function UI:SelectHelpPage(id)
+    if not id or not self.helpNodeById then
+        return
+    end
+    local node = self.helpNodeById[id]
+    if not node or node.type ~= "page" then
+        return
+    end
+    self.helpSelectedId = id
+    if self.helpContentText then
+        self.helpContentText:SetText(node.content or "")
+    end
+    if self.helpContentTitle then
+        self.helpContentTitle:SetText(node.title or "Help")
+    end
+    if self.helpContentChild and self.helpContentText then
+        local height = (self.helpContentText:GetStringHeight() or 0) + 12
+        self.helpContentChild:SetHeight(height)
+    end
+    if self.helpContentScroll then
+        self.helpContentScroll:SetVerticalScroll(0)
+        local scrollBar = self.helpContentScroll.ScrollBar
+        if scrollBar then
+            local viewHeight = self.helpContentScroll:GetHeight() or 0
+            local contentHeight = self.helpContentChild and self.helpContentChild:GetHeight() or 0
+            scrollBar:SetShown(contentHeight > viewHeight + 2)
+        end
+    end
+    self:RefreshHelpNav()
+end
+
+function UI:RefreshHelpNav()
+    if not self.helpNavScroll or not self.helpNavRows then
+        return
+    end
+    local list = self:BuildHelpNavList()
+    local offset = FauxScrollFrame_GetOffset(self.helpNavScroll)
+    local scrollHeight = self.helpNavScroll:GetHeight() or 0
+    local visible = math.max(1, math.floor(scrollHeight / 18))
+    if visible > #self.helpNavRows then
+        visible = #self.helpNavRows
+    end
+    for i = 1, visible do
+        local row = self.helpNavRows[i]
+        local entry = list[i + offset]
+        if entry then
+            local node = entry.node
+            row.nodeId = node.id
+            row.nodeType = node.type
+            row:Show()
+            local indent = entry.depth * 14
+            if row.expandBtn then
+                if node.type == "folder" then
+                    row.expandBtn:Show()
+                    if self.helpNavState and self.helpNavState[node.id] then
+                        row.expandBtn:SetNormalTexture("Interface\\Buttons\\UI-MinusButton-Up")
+                        row.expandBtn:SetPushedTexture("Interface\\Buttons\\UI-MinusButton-Down")
+                    else
+                        row.expandBtn:SetNormalTexture("Interface\\Buttons\\UI-PlusButton-Up")
+                        row.expandBtn:SetPushedTexture("Interface\\Buttons\\UI-PlusButton-Down")
+                    end
+                    row.expandBtn:ClearAllPoints()
+                    row.expandBtn:SetPoint("LEFT", row, "LEFT", 4 + indent, 0)
+                else
+                    row.expandBtn:Hide()
+                end
+            end
+            if row.text then
+                row.text:ClearAllPoints()
+                local textOffset = 6 + indent + (node.type == "folder" and 16 or 0)
+                row.text:SetPoint("LEFT", row, "LEFT", textOffset, 0)
+                row.text:SetText(node.title or "")
+                if node.type == "folder" then
+                    row.text:SetTextColor(1, 0.82, 0)
+                else
+                    row.text:SetTextColor(0.95, 0.95, 0.95)
+                end
+            end
+            if row.selected then
+                row.selected:SetShown(node.id == self.helpSelectedId)
+            end
+        else
+            row:Hide()
+        end
+    end
+    for i = visible + 1, #self.helpNavRows do
+        self.helpNavRows[i]:Hide()
+    end
+    FauxScrollFrame_Update(self.helpNavScroll, #list, visible, 18)
+    if self.helpNavScroll.ScrollBar then
+        self.helpNavScroll.ScrollBar:SetShown(#list > visible)
+    end
+end
+
+function UI:CreateHelpTab(page)
+    local navInset = CreateFrame("Frame", "GoalsHelpNavInset", page, "GoalsInsetTemplate")
+    navInset:SetPoint("TOPLEFT", page, "TOPLEFT", 2, -8)
+    navInset:SetPoint("BOTTOMLEFT", page, "BOTTOMLEFT", 2, 2)
+    navInset:SetWidth(190)
+    self.helpNavInset = navInset
+
+    local contentInset = CreateFrame("Frame", "GoalsHelpContentInset", page, "GoalsInsetTemplate")
+    contentInset:SetPoint("TOPLEFT", navInset, "TOPRIGHT", 12, 0)
+    contentInset:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -2, 2)
+    self.helpContentInset = contentInset
+
+    local navTitle = createLabel(navInset, "Help Topics", "GameFontNormal")
+    navTitle:SetPoint("TOPLEFT", navInset, "TOPLEFT", 10, -10)
+
+    local navScroll = CreateFrame("ScrollFrame", "GoalsHelpNavScroll", navInset, "FauxScrollFrameTemplate")
+    navScroll:SetPoint("TOPLEFT", navTitle, "BOTTOMLEFT", -2, -6)
+    navScroll:SetPoint("BOTTOMRIGHT", navInset, "BOTTOMRIGHT", -26, 10)
+    self.helpNavScroll = navScroll
+
+    local rowHeight = 18
+    local maxRows = 24
+    self.helpNavRows = {}
+    for i = 1, maxRows do
+        local row = CreateFrame("Button", nil, navInset)
+        row:SetHeight(rowHeight)
+        row:SetPoint("TOPLEFT", navScroll, "TOPLEFT", 0, -6 - (i - 1) * rowHeight)
+        row:SetPoint("RIGHT", navInset, "RIGHT", -6, 0)
+        local highlight = row:CreateTexture(nil, "HIGHLIGHT")
+        highlight:SetTexture("Interface\\Buttons\\UI-Listbox-Highlight")
+        highlight:SetBlendMode("ADD")
+        highlight:SetAllPoints(row)
+        row.highlight = highlight
+        local selected = row:CreateTexture(nil, "ARTWORK")
+        selected:SetTexture("Interface\\Buttons\\UI-Listbox-Highlight")
+        selected:SetBlendMode("ADD")
+        selected:SetAllPoints(row)
+        selected:Hide()
+        row.selected = selected
+        local expandBtn = CreateFrame("Button", nil, row)
+        expandBtn:SetSize(14, 14)
+        expandBtn:SetScript("OnClick", function()
+            if row.nodeType ~= "folder" then
+                return
+            end
+            self.helpNavState = self.helpNavState or {}
+            self.helpNavState[row.nodeId] = not self.helpNavState[row.nodeId]
+            self:RefreshHelpNav()
+        end)
+        row.expandBtn = expandBtn
+        local text = row:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+        text:SetJustifyH("LEFT")
+        row.text = text
+        row:SetScript("OnClick", function()
+            if row.nodeType == "folder" then
+                self.helpNavState = self.helpNavState or {}
+                self.helpNavState[row.nodeId] = not self.helpNavState[row.nodeId]
+                self:RefreshHelpNav()
+                return
+            end
+            if row.nodeId then
+                self:SelectHelpPage(row.nodeId)
+            end
+        end)
+        self.helpNavRows[i] = row
+    end
+
+    local contentTitle = createLabel(contentInset, "Help", "GameFontNormalLarge")
+    contentTitle:SetPoint("TOPLEFT", contentInset, "TOPLEFT", 12, -12)
+    self.helpContentTitle = contentTitle
+
+    local contentScroll = CreateFrame("ScrollFrame", "GoalsHelpContentScroll", contentInset, "UIPanelScrollFrameTemplate")
+    contentScroll:SetPoint("TOPLEFT", contentTitle, "BOTTOMLEFT", -2, -8)
+    contentScroll:SetPoint("BOTTOMRIGHT", contentInset, "BOTTOMRIGHT", -26, 12)
+    self.helpContentScroll = contentScroll
+
+    local contentChild = CreateFrame("Frame", nil, contentScroll)
+    contentChild:SetPoint("TOPLEFT", contentScroll, "TOPLEFT", 0, 0)
+    contentChild:SetPoint("TOPRIGHT", contentScroll, "TOPRIGHT", -20, 0)
+    contentChild:SetHeight(200)
+    contentScroll:SetScrollChild(contentChild)
+    self.helpContentChild = contentChild
+
+    local contentText = contentChild:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    contentText:SetPoint("TOPLEFT", contentChild, "TOPLEFT", 8, -4)
+    contentText:SetPoint("TOPRIGHT", contentChild, "TOPRIGHT", -8, -4)
+    contentText:SetJustifyH("LEFT")
+    contentText:SetText("")
+    self.helpContentText = contentText
+
+    local function updateHelpContentWidth()
+        local width = contentScroll:GetWidth() or 0
+        if width > 0 then
+            local childWidth = math.max(1, width - 24)
+            contentChild:SetWidth(childWidth)
+            contentText:SetWidth(childWidth - 16)
+            if self.helpContentText then
+                local height = (self.helpContentText:GetStringHeight() or 0) + 12
+                self.helpContentChild:SetHeight(height)
+            end
+        end
+    end
+
+    contentInset:SetScript("OnSizeChanged", updateHelpContentWidth)
+    contentScroll:SetScript("OnShow", updateHelpContentWidth)
+    navScroll:SetScript("OnSizeChanged", function()
+        self:RefreshHelpNav()
+    end)
+
+    self.helpNodes = {
+        {
+            id = "home",
+            title = "Home / About",
+            type = "page",
+            content = "GOALS is a DKP-style boss and loot tracker for Wrath 3.3.5a.\n\n" ..
+                "What it does:\n" ..
+                "- Track boss kills, attendance, and point changes.\n" ..
+                "- Record loot assignments and history.\n" ..
+                "- Maintain a wishlist with gems, enchants, and required tokens.\n" ..
+                "- Notify you when wishlist items are found.\n\n" ..
+                "Who it is for:\n" ..
+                "- Raid leaders, loot masters, and guild admins.\n" ..
+                "- Players who want a clean, searchable wishlist.\n\n" ..
+                "Project:\n" ..
+                "- GitHub: https://github.com/ErebusAres/GOALS/\n" ..
+                "- Author: ErebusAres\n" ..
+                "- Discord: erebusares\n" ..
+                "- Bug reports: open an issue on GitHub with steps and errors.\n\n" ..
+                "Tip: After updates, use /reload to refresh UI state.",
+        },
+                {
+                    id = "getting_started",
+                    title = "Getting Started",
+                    type = "page",
+                    content = "Quick start:\n" ..
+                        "1) Open GOALS and choose the tab you need.\n" ..
+                        "2) Use Overview to see the roster and points.\n" ..
+                        "3) Use Loot to assign items and adjust points.\n" ..
+                        "4) Use Wishlist to track personal upgrades.\n\n" ..
+                        "Commands and shortcuts:\n" ..
+                        "- /goals opens the main UI.\n" ..
+                        "- /dkp opens the main UI.\n" ..
+                        "- /goalsui opens the main UI.\n" ..
+                        "- /goals mini toggles the Mini Viewer.\n" ..
+                        "- Alt-click the minimap icon to toggle the Mini Viewer.\n\n" ..
+                        "Keybindings:\n" ..
+                        "- Toggle GOALS UI (set in Key Bindings).\n" ..
+                        "- Toggle Mini Viewer (set in Key Bindings).\n\n" ..
+                        "Example: first raid flow:\n" ..
+                        "- Track boss kills to award points.\n" ..
+                        "- Assign loot as it drops.\n" ..
+                        "- Check History to verify assignments.\n\n" ..
+                        "Tip: Use Search to cache items by name, ID, or in-game link.",
+                },
+        {
+            id = "overview_folder",
+            title = "Overview",
+            type = "folder",
+            children = {
+                {
+                    id = "overview_basics",
+                    title = "Overview Basics",
+                    type = "page",
+                    content = "Overview shows roster, attendance, and points at a glance.\n\n" ..
+                        "Use filters to focus on present players, and watch point changes after boss kills or loot.\n\n" ..
+                        "Tip: Keep Overview open during raids to monitor point swings.",
+                },
+                {
+                    id = "overview_mini_viewer",
+                    title = "Mini Viewer",
+                    type = "page",
+                    content = "Mini Viewer is a compact tracker that stays on screen during raids.\n\n" ..
+                        "Use it to watch key info without keeping the full UI open.\n\n" ..
+                        "Commands and shortcuts:\n" ..
+                        "- Alt-click the minimap icon to toggle it.\n\n" ..
+                        "Keybinding:\n" ..
+                        "- Toggle Mini Viewer (set in Key Bindings).\n\n" ..
+                        "Tip: Toggle it in Settings and reposition it if needed.",
+                },
+                {
+                    id = "overview_roster",
+                    title = "Roster and Filters",
+                    type = "page",
+                    content = "Use roster filters to focus on roles or specific players.\n\n" ..
+                        "The Present Only toggle helps hide absentees.\n\n" ..
+                        "Example: switch to Present Only before loot assignment.",
+                },
+                {
+                    id = "overview_points",
+                    title = "Point Tracking",
+                    type = "page",
+                    content = "Point tracking updates from boss kills and loot assignments.\n\n" ..
+                        "Admins can disable tracking for testing or special events.\n\n" ..
+                        "Note: When disabled, kills and minimum rank items do not change points.",
+                },
+                {
+                    id = "overview_present",
+                    title = "Present Only",
+                    type = "page",
+                    content = "Present Only limits the roster to players currently in raid.\n\n" ..
+                        "Useful when distributing loot mid-raid.\n\n" ..
+                        "Tip: Toggle off to review absent players after the raid.",
+                },
+            },
+        },
+        {
+            id = "loot_folder",
+            title = "Loot",
+            type = "folder",
+            children = {
+                {
+                    id = "loot_assign",
+                    title = "Assigning Loot",
+                    type = "page",
+                    content = "Use the Loot tab to assign items to players.\n\n" ..
+                        "You can set amounts, reasons, and see who is eligible.\n\n" ..
+                        "Example:\n" ..
+                        "- Select an item.\n" ..
+                        "- Choose the recipient(s).\n" ..
+                        "- Confirm to log the entry.",
+                },
+                {
+                    id = "loot_found",
+                    title = "Found Loot",
+                    type = "page",
+                    content = "Found Loot lists nearby drops and lets you assign quickly.\n\n" ..
+                        "Right-click entries to move them into assignments.\n\n" ..
+                        "Tip: This is fastest for farm content or badge runs.",
+                },
+                {
+                    id = "loot_multi",
+                    title = "Multi-Recipient Loot",
+                    type = "page",
+                    content = "When more than two players receive the same item, the history entry shows a grouped line.\n\n" ..
+                        "This keeps logs readable for badge-style drops.\n\n" ..
+                        "Example: \"Gave 5 Players: Badge of Justice\".",
+                },
+                {
+                    id = "loot_manual",
+                    title = "Manual Adjustments",
+                    type = "page",
+                    content = "Use Manual Adjust for point changes outside normal loot flow.\n\n" ..
+                        "Always record a reason for auditing.\n\n" ..
+                        "Tip: Use consistent reasons to keep logs clean.",
+                },
+            },
+        },
+        {
+            id = "history_folder",
+            title = "History",
+            type = "folder",
+            children = {
+                {
+                    id = "history_boss",
+                    title = "Boss History",
+                    type = "page",
+                    content = "Boss history shows kills and point awards.\n\n" ..
+                        "Use it to review attendance and raid pace.\n\n" ..
+                        "Tip: Confirm kill counts after raid end.",
+                },
+                {
+                    id = "history_loot",
+                    title = "Loot History",
+                    type = "page",
+                    content = "Loot history records item awards and point changes.\n\n" ..
+                        "Entries show time, recipient(s), and item links.\n\n" ..
+                        "Tip: Use it to resolve loot disputes quickly.",
+                },
+                {
+                    id = "history_filters",
+                    title = "Filtering History",
+                    type = "page",
+                    content = "Use filters to narrow results by player or item.\n\n" ..
+                        "This helps resolve disputes quickly.\n\n" ..
+                        "Example: filter to a player to audit their loot.",
+                },
+            },
+        },
+        {
+            id = "wishlist_folder",
+            title = "Wishlist",
+            type = "folder",
+            children = {
+                {
+                    id = "wishlist_basics",
+                    title = "Wishlist Basics",
+                    type = "page",
+                    content = "Wishlist stores gear goals by slot.\n\n" ..
+                        "Select a slot and add items from Search to track upgrades.\n\n" ..
+                        "Tip: The icon border highlights the selected slot.",
+                },
+                {
+                    id = "wishlist_search",
+                    title = "Search",
+                    type = "page",
+                    content = "Search supports item names, IDs, or in-game item links.\n\n" ..
+                        "Paste a link to cache it instantly.\n\n" ..
+                        "Examples:\n" ..
+                        "- Name: \"Cataclysm Headguard\"\n" ..
+                        "- ID: 30166\n" ..
+                        "- Link: |cff...|Hitem:30166:...|h[Cataclysm Headguard]|h|r",
+                },
+                {
+                    id = "wishlist_slots",
+                    title = "Slots and Claims",
+                    type = "page",
+                    content = "Click a slot to select it. Right-click clears the slot.\n\n" ..
+                        "Alt-click marks found/unfound manually.\n\n" ..
+                        "Tip: The green checkmark means the item is claimed.",
+                },
+                {
+                    id = "wishlist_gems",
+                    title = "Gems and Enchants",
+                    type = "page",
+                    content = "Use the socket picker to add gems or enchants for a slot.\n\n" ..
+                        "Hover icons to view tooltips and IDs.\n\n" ..
+                        "Flow:\n" ..
+                        "1) Select a slot.\n" ..
+                        "2) Open the socket picker.\n" ..
+                        "3) Search and Apply.",
+                },
+                {
+                    id = "wishlist_tokens",
+                    title = "Required Tokens",
+                    type = "page",
+                    content = "Required tokens list updates as wishlist items are added.\n\n" ..
+                        "Claimed items are removed from the token list.\n\n" ..
+                        "Tip: On custom servers, token rules may be adjusted.",
+                },
+                {
+                    id = "wishlist_import",
+                    title = "Import / Export",
+                    type = "page",
+                    content = "Import supports wishlist strings and Wowhead links.\n\n" ..
+                        "Export copies your current list for sharing or backup.\n\n" ..
+                        "Example: paste a Wowhead gear planner link to import.",
+                },
+                {
+                    id = "wishlist_alerts",
+                    title = "Alerts and Popups",
+                    type = "page",
+                    content = "Wishlist alerts can post to chat and show a popup.\n\n" ..
+                        "Toggle sound and popup options in Actions.\n\n" ..
+                        "Tip: Use local popup if chat spam is an issue.",
+                },
+            },
+        },
+        {
+            id = "settings_folder",
+            title = "Settings",
+            type = "folder",
+            children = {
+                {
+                    id = "settings_general",
+                    title = "General Settings",
+                    type = "page",
+                    content = "Configure minimap, auto-minimize, and sync options here.\n\n" ..
+                        "Table tools help manage saved data across sessions.\n\n" ..
+                        "Tip: Keep auto-minimize enabled for raid combat.",
+                },
+                {
+                    id = "settings_minimap",
+                    title = "Minimap and UI",
+                    type = "page",
+                    content = "Toggle the minimap icon and configure auto-minimize.\n\n" ..
+                        "Use this to keep the UI tidy during combat.\n\n" ..
+                        "Tip: You can hide the minimap icon if it gets in the way.",
+                },
+                {
+                    id = "settings_data",
+                    title = "Data Management",
+                    type = "page",
+                    content = "Clear points, players, or history when needed.\n\n" ..
+                        "Use these tools carefully before raids.\n\n" ..
+                        "Warning: Clear actions are permanent.",
+                },
+                {
+                    id = "settings_dbm",
+                    title = "DBM Integration",
+                    type = "page",
+                    content = "If DBM is installed, you can enable wishlist loot integration.\n\n" ..
+                        "Disable it if you prefer the local popup only.\n\n" ..
+                        "Tip: DBM integration is auto-detected when available.",
+                },
+            },
+        },
+        {
+            id = "update_folder",
+            title = "Updates",
+            type = "folder",
+            children = {
+                {
+                    id = "update_check",
+                    title = "Checking for Updates",
+                    type = "page",
+                    content = "The Update tab compares your version with the latest.\n\n" ..
+                        "Use the download link shown to update manually.\n\n" ..
+                        "Tip: The tab will glow if an update is available.",
+                },
+                {
+                    id = "update_versions",
+                    title = "Versioning",
+                    type = "page",
+                    content = "Versions follow the addon major/minor scheme.\n\n" ..
+                        "The title bar and minimap tooltip show the current version.\n\n" ..
+                        "Example: v2.11 means major 2, minor 11.",
+                },
+            },
+        },
+        {
+            id = "faq",
+            title = "FAQ / Troubleshooting",
+            type = "page",
+            content = "Common fixes:\n" ..
+                "- Search results missing: press Refresh in Wishlist.\n" ..
+                "- Enchants missing: clear search and reselect the slot.\n" ..
+                "- Popups missing: check Actions settings.\n" ..
+                "- Sync issues: verify local-only is disabled.\n\n" ..
+                "If issues persist:\n" ..
+                "- /reload and retry.\n" ..
+                "- Report on GitHub with steps and errors.",
+        },
+    }
+
+    self.helpNodeById = {}
+    for _, node in ipairs(self.helpNodes) do
+        self.helpNodeById[node.id] = node
+        if node.children then
+            for _, child in ipairs(node.children) do
+                self.helpNodeById[child.id] = child
+            end
+        end
+    end
+
+    self.helpNavState = self.helpNavState or {
+        overview_folder = true,
+        loot_folder = true,
+        history_folder = true,
+        wishlist_folder = true,
+        settings_folder = true,
+        update_folder = true,
+    }
+
+    navScroll:SetScript("OnVerticalScroll", function(selfScroll, offset)
+        FauxScrollFrame_OnVerticalScroll(selfScroll, offset, rowHeight, function()
+            UI:RefreshHelpNav()
+        end)
+    end)
+
+    self.helpSelectedId = self.helpSelectedId or "home"
+    self:SelectHelpPage(self.helpSelectedId)
 end
 
 function UI:CreateUpdateTab(page)
@@ -3473,6 +4197,68 @@ function UI:CreateDevTab(page)
             Goals.WishlistBannerTextureTest = true
             Goals:ApplyWishlistBannerTexture(path)
             Goals:TestWishlistNotification(nil, false)
+        end
+    end)
+
+    local socketLinkBtn = CreateFrame("Button", nil, inset, "UIPanelButtonTemplate")
+    socketLinkBtn:SetSize(170, 20)
+    socketLinkBtn:SetText("Socket Link (29991)")
+    socketLinkBtn:SetPoint("TOPLEFT", testDbmBtn, "TOPRIGHT", 190, 0)
+    socketLinkBtn:SetScript("OnClick", function()
+        if Goals and Goals.BuildFullItemLinkWithSockets then
+            local link = Goals:BuildFullItemLinkWithSockets(29991, nil, 0, { 24029, 24029, 24029 })
+            if link and DEFAULT_CHAT_FRAME and DEFAULT_CHAT_FRAME.AddMessage then
+                DEFAULT_CHAT_FRAME:AddMessage(link)
+                DEFAULT_CHAT_FRAME:AddMessage(link:gsub("|", "||"))
+            end
+        end
+    end)
+
+    local socketLinkBtn2 = CreateFrame("Button", nil, inset, "UIPanelButtonTemplate")
+    socketLinkBtn2:SetSize(170, 20)
+    socketLinkBtn2:SetText("Socket Link (30166)")
+    socketLinkBtn2:SetPoint("TOPLEFT", socketLinkBtn, "BOTTOMLEFT", 0, -6)
+    socketLinkBtn2:SetScript("OnClick", function()
+        if Goals and Goals.BuildFullItemLinkWithSockets then
+            local link = Goals:BuildFullItemLinkWithSockets(30166, nil, 35445, { 25901, 30547 })
+            if link and DEFAULT_CHAT_FRAME and DEFAULT_CHAT_FRAME.AddMessage then
+                DEFAULT_CHAT_FRAME:AddMessage(link)
+                DEFAULT_CHAT_FRAME:AddMessage(link:gsub("|", "||"))
+            end
+        end
+    end)
+
+    local enchantInfoBtn = CreateFrame("Button", nil, inset, "UIPanelButtonTemplate")
+    enchantInfoBtn:SetSize(170, 20)
+    enchantInfoBtn:SetText("Print Enchant IDs")
+    enchantInfoBtn:SetPoint("TOPLEFT", socketLinkBtn2, "BOTTOMLEFT", 0, -6)
+    enchantInfoBtn:SetScript("OnClick", function()
+        local entry = nil
+        if Goals and Goals.UI and Goals.UI.selectedWishlistEnchantResult then
+            entry = Goals.UI.selectedWishlistEnchantResult
+        end
+        local enchantId = entry and entry.id or nil
+        if not enchantId and Goals and Goals.GetActiveWishlist and Goals.UI then
+            local slotKey = Goals.UI.selectedWishlistSlot
+            local list = Goals:GetActiveWishlist()
+            local slotEntry = slotKey and list and list.items and list.items[slotKey] or nil
+            enchantId = slotEntry and slotEntry.enchantId or nil
+        end
+        if not enchantId then
+            if Goals and Goals.Print then
+                Goals:Print("No enchant selected.")
+            end
+            return
+        end
+        local info = Goals.GetEnchantInfoById and Goals:GetEnchantInfoById(enchantId) or nil
+        local spellId = info and info.spellId or nil
+        local name = info and info.name or ("Enchant " .. tostring(enchantId))
+        local match = spellId and tostring(spellId) == tostring(enchantId) or false
+        local msg = string.format("Enchant ID: %s, Spell ID: %s, Match: %s, Name: %s", tostring(enchantId), tostring(spellId or "nil"), match and "yes" or "no", name)
+        if Goals and Goals.Print then
+            Goals:Print(msg)
+        elseif DEFAULT_CHAT_FRAME and DEFAULT_CHAT_FRAME.AddMessage then
+            DEFAULT_CHAT_FRAME:AddMessage(msg)
         end
     end)
 
@@ -3991,8 +4777,8 @@ function UI:UpdateWishlistTokenDisplay()
 end
 
 function UI:OpenWishlistSocketPicker(mode, slotKey, socketIndex)
-    if mode ~= "ENCHANT" then
-        mode = "GEM"
+    if mode ~= "ENCHANT" and mode ~= "GEM" then
+        mode = "AUTO"
     end
     self.wishlistSocketPickerOpen = true
     self.wishlistSocketPickerMode = mode
@@ -4005,16 +4791,27 @@ function UI:OpenWishlistSocketPicker(mode, slotKey, socketIndex)
             self:UpdateWishlistHelpVisibility()
         end
     end
-    self.selectedWishlistSocketMode = mode
     if mode == "GEM" then
+        self.selectedWishlistSocketMode = "GEM"
         self.selectedWishlistSocketIndex = socketIndex or 1
-    else
+    elseif mode == "ENCHANT" then
+        self.selectedWishlistSocketMode = "ENCHANT"
         self.selectedWishlistSocketIndex = nil
+    else
+        self.selectedWishlistSocketMode = nil
+        self.selectedWishlistSocketIndex = socketIndex or 1
     end
     self.selectedWishlistSocketResult = nil
     self.selectedWishlistSocketResultId = nil
-    if self.wishlistSocketSearchBox then
-        self.wishlistSocketSearchBox:SetText("")
+    self.selectedWishlistGemResult = nil
+    self.selectedWishlistGemResultId = nil
+    self.selectedWishlistEnchantResult = nil
+    self.selectedWishlistEnchantResultId = nil
+    if self.wishlistSocketGemBlock and self.wishlistSocketGemBlock.searchBox then
+        self.wishlistSocketGemBlock.searchBox:SetText("")
+    end
+    if self.wishlistSocketEnchantBlock and self.wishlistSocketEnchantBlock.searchBox then
+        self.wishlistSocketEnchantBlock.searchBox:SetText("")
     end
     self:UpdateWishlistSocketPickerVisibility()
     self:UpdateWishlistSocketPickerResults()
@@ -4027,111 +4824,139 @@ function UI:CloseWishlistSocketPicker()
     self.selectedWishlistSocketIndex = nil
     self.selectedWishlistSocketResult = nil
     self.selectedWishlistSocketResultId = nil
+    self.selectedWishlistGemResult = nil
+    self.selectedWishlistGemResultId = nil
+    self.selectedWishlistEnchantResult = nil
+    self.selectedWishlistEnchantResultId = nil
     self:UpdateWishlistSocketPickerVisibility()
     self:UpdateWishlistUI()
 end
 
 function UI:UpdateWishlistSocketPickerResults()
-    if not self.wishlistSocketResultsRows or not self.wishlistSocketResultsScroll then
+    if not self.wishlistSocketGemBlock or not self.wishlistSocketEnchantBlock then
         return
     end
-    local mode = self.wishlistSocketPickerMode or "GEM"
-    local query = self.wishlistSocketSearchBox and self.wishlistSocketSearchBox:GetText() or ""
-    local results = {}
-    if mode == "ENCHANT" and Goals.SearchEnchantments then
-        results = Goals:SearchEnchantments(query, { slotKey = self.selectedWishlistSlot })
-    elseif Goals.SearchGemItems then
-        results = Goals:SearchGemItems(query)
-    end
-    self.wishlistSocketResults = results
 
-    if self.wishlistSocketPickerTitle then
-        self.wishlistSocketPickerTitle:SetText(mode == "ENCHANT" and "Select Enchant" or "Select Gem")
-    end
+    local gemAvailable, enchantAvailable = self:GetWishlistSocketAvailability()
+    local slotKey = self.selectedWishlistSlot
+    local slotDef = slotKey and Goals.GetWishlistSlotDef and Goals:GetWishlistSlotDef(slotKey) or nil
+    local slotName = slotDef and slotDef.label or (slotKey or "")
     if self.wishlistSocketPickerSlotLabel then
-        local slotKey = self.selectedWishlistSlot
-        local slotDef = slotKey and Goals.GetWishlistSlotDef and Goals:GetWishlistSlotDef(slotKey) or nil
-        local slotName = slotDef and slotDef.label or (slotKey or "")
-        if mode == "ENCHANT" then
-            self.wishlistSocketPickerSlotLabel:SetText(slotName ~= "" and (slotName .. " - Enchant") or "")
-        else
-            local index = self.selectedWishlistSocketIndex or 1
-            if slotName ~= "" then
-                self.wishlistSocketPickerSlotLabel:SetText(string.format("%s - Gem %d", slotName, index))
-            else
-                self.wishlistSocketPickerSlotLabel:SetText(string.format("Gem %d", index))
-            end
-        end
+        self.wishlistSocketPickerSlotLabel:SetText(slotName)
     end
 
-    local offset = FauxScrollFrame_GetOffset(self.wishlistSocketResultsScroll) or 0
-    FauxScrollFrame_Update(self.wishlistSocketResultsScroll, #results, #self.wishlistSocketResultsRows, ROW_HEIGHT)
-    for i = 1, #self.wishlistSocketResultsRows do
-        local row = self.wishlistSocketResultsRows[i]
-        local index = i + offset
-        local entry = results[index]
-        if entry then
-            row:Show()
-            row.entry = entry
-            if mode == "ENCHANT" and Goals.CacheEnchantByEntry then
-                Goals:CacheEnchantByEntry(entry)
-            end
-            setShown(row.selected, self.selectedWishlistSocketResultId == entry.id)
-            local rowName = entry.name or (mode == "ENCHANT" and tostring(entry.id or 0) or ("Item " .. tostring(entry.id or 0)))
-            if mode == "ENCHANT" then
-                if rowName and rowName:sub(1, 8) == "Enchant " then
+    if self.wishlistSocketGemBlock then
+        setShown(self.wishlistSocketGemBlock.title, gemAvailable)
+        setShown(self.wishlistSocketGemBlock.searchBox, gemAvailable)
+        setShown(self.wishlistSocketGemBlock.resultsInset, gemAvailable)
+        setShown(self.wishlistSocketGemBlock.applyBtn, gemAvailable)
+        setShown(self.wishlistSocketGemBlock.clearBtn, gemAvailable)
+    end
+
+    if self.wishlistSocketEnchantBlock then
+        if gemAvailable then
+            self.wishlistSocketEnchantBlock.title:ClearAllPoints()
+            self.wishlistSocketEnchantBlock.title:SetPoint("TOPLEFT", self.wishlistSocketGemBlock.applyBtn, "BOTTOMLEFT", 0, -12)
+        else
+            self.wishlistSocketEnchantBlock.title:ClearAllPoints()
+            self.wishlistSocketEnchantBlock.title:SetPoint("TOPLEFT", self.wishlistSocketPickerSlotLabel, "BOTTOMLEFT", 0, -10)
+        end
+        setShown(self.wishlistSocketEnchantBlock.title, enchantAvailable)
+        setShown(self.wishlistSocketEnchantBlock.searchBox, enchantAvailable)
+        setShown(self.wishlistSocketEnchantBlock.resultsInset, enchantAvailable)
+        setShown(self.wishlistSocketEnchantBlock.applyBtn, enchantAvailable)
+        setShown(self.wishlistSocketEnchantBlock.clearBtn, enchantAvailable)
+    end
+
+    local function updateBlock(block, mode, query, selectedId)
+        if not block then
+            return
+        end
+        local results = {}
+        if mode == "ENCHANT" and Goals.SearchEnchantments then
+            results = Goals:SearchEnchantments(query, { slotKey = slotKey })
+        elseif mode == "GEM" and Goals.SearchGemItems then
+            results = Goals:SearchGemItems(query)
+        end
+        block.results = results
+        local offset = 0
+        if block.resultsScroll and block.resultsScroll.GetName and block.resultsScroll:GetName() then
+            offset = FauxScrollFrame_GetOffset(block.resultsScroll) or 0
+            FauxScrollFrame_Update(block.resultsScroll, #results, #block.rows, ROW_HEIGHT)
+        end
+        for i = 1, #block.rows do
+            local row = block.rows[i]
+            local index = i + offset
+            local entry = results[index]
+            if entry then
+                row:Show()
+                row.entry = entry
+                if mode == "ENCHANT" and Goals.CacheEnchantByEntry then
+                    Goals:CacheEnchantByEntry(entry)
+                end
+                setShown(row.selected, selectedId == entry.id)
+                local rowName = entry.name or (mode == "ENCHANT" and tostring(entry.id or 0) or ("Item " .. tostring(entry.id or 0)))
+                if mode == "ENCHANT" and rowName and rowName:sub(1, 8) == "Enchant " then
                     rowName = rowName:sub(9)
                 end
-            end
-            if mode == "ENCHANT" and entry.slotKey and Goals.GetWishlistSlotDef then
-                local slotDef = Goals:GetWishlistSlotDef(entry.slotKey)
-                if slotDef and slotDef.label then
-                    local labelLower = string.lower(slotDef.label)
-                    local nameLower = rowName and string.lower(rowName) or ""
-                    if not string.find(nameLower, labelLower, 1, true) then
-                        rowName = rowName .. " (" .. slotDef.label .. ")"
+                if mode == "ENCHANT" and entry.slotKey and Goals.GetWishlistSlotDef then
+                    local def = Goals:GetWishlistSlotDef(entry.slotKey)
+                    if def and def.label then
+                        local labelLower = string.lower(def.label)
+                        local nameLower = rowName and string.lower(rowName) or ""
+                        if not string.find(nameLower, labelLower, 1, true) then
+                            rowName = rowName .. " (" .. def.label .. ")"
+                        end
                     end
                 end
-            end
-            row.text:SetText(rowName)
-            if mode == "ENCHANT" then
-                row.icon:SetTexture(entry.icon or "Interface\\Icons\\inv_enchant_formulagood_01")
-                row.text:SetTextColor(1, 1, 1)
-            else
-                row.icon:SetTexture(entry.texture)
-                if entry.quality and ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[entry.quality] then
-                    local color = ITEM_QUALITY_COLORS[entry.quality]
-                    row.text:SetTextColor(color.r, color.g, color.b)
-                else
+                row.text:SetText(rowName)
+                if mode == "ENCHANT" then
+                    row.icon:SetTexture(entry.icon or "Interface\\Icons\\inv_enchant_formulagood_01")
                     row.text:SetTextColor(1, 1, 1)
+                else
+                    row.icon:SetTexture(entry.texture)
+                    if entry.quality and ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[entry.quality] then
+                        local color = ITEM_QUALITY_COLORS[entry.quality]
+                        row.text:SetTextColor(color.r, color.g, color.b)
+                    else
+                        row.text:SetTextColor(1, 1, 1)
+                    end
                 end
+            else
+                row:Hide()
+                row.entry = nil
             end
-        else
-            row:Hide()
-            row.entry = nil
+        end
+        setShown(block.emptyLabel, #results == 0)
+        if block.applyBtn then
+            if selectedId then
+                block.applyBtn:Enable()
+            else
+                block.applyBtn:Disable()
+            end
+        end
+        if block.clearBtn then
+            if slotKey then
+                block.clearBtn:Enable()
+            else
+                block.clearBtn:Disable()
+            end
         end
     end
-    if self.wishlistSocketResultsEmpty then
-        setShown(self.wishlistSocketResultsEmpty, #results == 0)
+
+    if gemAvailable then
+        local gemQuery = self.wishlistSocketGemBlock.searchBox and self.wishlistSocketGemBlock.searchBox:GetText() or ""
+        updateBlock(self.wishlistSocketGemBlock, "GEM", gemQuery, self.selectedWishlistGemResultId)
     end
-    if self.wishlistSocketApplyButton then
-        if self.selectedWishlistSocketResultId then
-            self.wishlistSocketApplyButton:Enable()
-        else
-            self.wishlistSocketApplyButton:Disable()
-        end
-    end
-    if self.wishlistSocketClearButton then
-        if self.selectedWishlistSlot then
-            self.wishlistSocketClearButton:Enable()
-        else
-            self.wishlistSocketClearButton:Disable()
-        end
+    if enchantAvailable then
+        local enchantQuery = self.wishlistSocketEnchantBlock.searchBox and self.wishlistSocketEnchantBlock.searchBox:GetText() or ""
+        updateBlock(self.wishlistSocketEnchantBlock, "ENCHANT", enchantQuery, self.selectedWishlistEnchantResultId)
     end
 end
 
-function UI:ApplyWishlistSocketSelection()
-    if not self.selectedWishlistSlot or not self.selectedWishlistSocketMode then
+function UI:ApplyWishlistSocketSelection(mode, result, socketIndex)
+    local useMode = mode or self.selectedWishlistSocketMode
+    if not self.selectedWishlistSlot or not useMode then
         return
     end
     local list = Goals:GetActiveWishlist()
@@ -4139,17 +4964,17 @@ function UI:ApplyWishlistSocketSelection()
     if not entry or not entry.itemId then
         return
     end
-    local result = self.selectedWishlistSocketResult
-    if not result then
+    local selectedResult = result or self.selectedWishlistSocketResult
+    if not selectedResult then
         return
     end
-    if self.selectedWishlistSocketMode == "GEM" then
-        local itemId = result.itemId or result.id
+    if useMode == "GEM" then
+        local itemId = selectedResult.itemId or selectedResult.id
         if not itemId or itemId <= 0 then
             return
         end
         local gems = entry.gemIds or {}
-        local index = self.selectedWishlistSocketIndex or (#gems + 1)
+        local index = socketIndex or self.selectedWishlistSocketIndex or (#gems + 1)
         if index < 1 then
             index = 1
         elseif index > 3 then
@@ -4161,18 +4986,19 @@ function UI:ApplyWishlistSocketSelection()
         gems[index] = itemId
         entry.gemIds = gems
     else
-        if not result.id or result.id <= 0 then
+        if not selectedResult.id or selectedResult.id <= 0 then
             return
         end
-        entry.enchantId = result.id
+        entry.enchantId = selectedResult.id
     end
     Goals:SetWishlistItem(self.selectedWishlistSlot, entry)
     self:UpdateWishlistSocketPickerResults()
     self:UpdateWishlistUI()
 end
 
-function UI:ClearWishlistSocketSelection()
-    if not self.selectedWishlistSlot or not self.selectedWishlistSocketMode then
+function UI:ClearWishlistSocketSelection(mode, socketIndex)
+    local useMode = mode or self.selectedWishlistSocketMode
+    if not self.selectedWishlistSlot or not useMode then
         return
     end
     local list = Goals:GetActiveWishlist()
@@ -4180,8 +5006,8 @@ function UI:ClearWishlistSocketSelection()
     if not entry or not entry.itemId then
         return
     end
-    if self.selectedWishlistSocketMode == "GEM" then
-        local index = self.selectedWishlistSocketIndex or 1
+    if useMode == "GEM" then
+        local index = socketIndex or self.selectedWishlistSocketIndex or 1
         if entry.gemIds and entry.gemIds[index] then
             table.remove(entry.gemIds, index)
         end
@@ -4246,6 +5072,7 @@ function UI:UpdateWishlistUI()
             end
             button.itemId = cached.id
             button.itemLink = cached.link
+            button.previewLink = nil
         else
             if iconTexture then
                 button.icon:SetTexture(iconTexture)
@@ -4266,6 +5093,24 @@ function UI:UpdateWishlistUI()
             button.border:Hide()
             button.itemId = entry and entry.itemId or nil
             button.itemLink = nil
+            button.previewLink = nil
+        end
+        if entry and entry.itemId then
+            local hasEnchant = entry.enchantId and entry.enchantId > 0
+            local hasGems = false
+            if entry.gemIds then
+                for _, gemId in pairs(entry.gemIds) do
+                    if tonumber(gemId) and tonumber(gemId) > 0 then
+                        hasGems = true
+                        break
+                    end
+                end
+            end
+            if hasEnchant or hasGems then
+                if Goals.BuildItemLinkWithSockets then
+                    button.previewLink = Goals:BuildItemLinkWithSockets(entry.itemId, button.itemLink, entry.enchantId, entry.gemIds)
+                end
+            end
         end
         if button.foundIcon then
             local found = false
@@ -4288,6 +5133,7 @@ function UI:UpdateWishlistUI()
                 end
             end
         end
+        button.entry = entry
         local socketTypes = entry and entry.itemId and Goals.GetItemSocketTypes and Goals:GetItemSocketTypes(entry.itemId) or nil
         local socketCount = socketTypes and #socketTypes or 0
         local maxSockets = button.gems and #button.gems or 0
@@ -4345,10 +5191,15 @@ function UI:UpdateWishlistUI()
         if enchantable then
             local hasEnchant = entry and entry.enchantId and entry.enchantId > 0
             button.enchantIcon:Show()
-            button.enchantIcon.enchantId = hasEnchant and entry.enchantId or nil
+            local enchantId = hasEnchant and (tonumber(entry.enchantId) or entry.enchantId) or nil
+            button.enchantIcon.enchantId = enchantId
             button.enchantIcon.enchantAvailable = not hasEnchant
             if hasEnchant and Goals.GetEnchantInfoById then
                 local info = Goals:GetEnchantInfoById(entry.enchantId)
+                if info and info.matchedSpellId and info.id and info.id ~= entry.enchantId then
+                    entry.enchantId = info.id
+                    Goals:SetWishlistItem(slotKey, entry)
+                end
                 if info and info.icon then
                     button.enchantIcon.icon:SetTexture(info.icon)
                 else
@@ -4794,6 +5645,35 @@ function UI:Refresh()
     end
     if self.wishlistChatCheck then
         self.wishlistChatCheck:SetChecked(Goals.db.settings.devTestWishlistChat and true or false)
+    end
+
+    local function formatBinding(action)
+        if not GetBindingKey then
+            return "Unbound"
+        end
+        local key1, key2 = GetBindingKey(action)
+        local function normalizeKey(key)
+            if not key or key == "" then
+                return nil
+            end
+            if GetBindingText then
+                return GetBindingText(key, "KEY_") or key
+            end
+            return key
+        end
+        local text1 = normalizeKey(key1)
+        local text2 = normalizeKey(key2)
+        if text1 and text2 then
+            return text1 .. " / " .. text2
+        end
+        return text1 or text2 or "Unbound"
+    end
+
+    if self.keybindUiValue then
+        self.keybindUiValue:SetText(formatBinding("GOALS_TOGGLE_UI"))
+    end
+    if self.keybindMiniValue then
+        self.keybindMiniValue:SetText(formatBinding("GOALS_TOGGLE_MINI"))
     end
     if self.wishlistTestCountBox then
         local value = tonumber(Goals.db.settings.devTestWishlistItems) or 1

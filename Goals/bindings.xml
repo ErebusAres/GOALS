@@ -1,0 +1,8 @@
+<Bindings>
+    <Binding name="GOALS_TOGGLE_UI" header="GOALS" category="ADDONS">
+        Goals_ToggleUIBinding()
+    </Binding>
+    <Binding name="GOALS_TOGGLE_MINI" header="GOALS" category="ADDONS">
+        Goals_ToggleMiniBinding()
+    </Binding>
+</Bindings>
