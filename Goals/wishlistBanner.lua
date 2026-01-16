@@ -1402,6 +1402,30 @@ local function BossBanner_IsExclusiveQueued() -- moved up from retail source cod
 	return true
 end
 
+local function BossBanner_GetEncounterName(encounterID, fallbackName)
+	if fallbackName and fallbackName ~= "" then
+		return fallbackName
+	end
+
+	if DBM and DBM.GetModByName then
+		local mod = DBM:GetModByName(encounterID)
+		if mod then
+			if mod.localization and mod.localization.general and mod.localization.general.name then
+				return mod.localization.general.name
+			end
+			if mod.name and mod.name ~= "" then
+				return mod.name
+			end
+		end
+	end
+
+	if encounterID then
+		return tostring(encounterID)
+	end
+
+	return "Unknown encounter"
+end
+
 
 function BossBanner:OnEvent(event, ...)
 	if not DBM.Options.EnableBB then return end
@@ -1425,8 +1449,8 @@ function BossBanner:OnEvent(event, ...)
 				BossBanner.SetAnimState(self, BB_STATE_LOOT_EXPAND)
 			elseif ( not self.animState and self.lootShown == 0 ) then
 				-- banner is not displaying and have not done loot for this encounter yet
-				-- TODO: animate in kill banner
-				TopBannerManager_Show(self, { encounterID = encounterID, name = nil, mode = "LOOT" }, BossBanner_IsExclusiveQueued)
+				local encounterName = BossBanner_GetEncounterName(encounterID, self.encounterName)
+				TopBannerManager_Show(self, { encounterID = encounterID, name = encounterName, mode = "KILL" }, BossBanner_IsExclusiveQueued)
 			end
 		end
 	end
