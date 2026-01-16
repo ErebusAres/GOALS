@@ -6,312 +6,313 @@ local Goals = _G.Goals or {}
 _G.Goals = Goals
 
 Goals.GemSearchList = Goals.GemSearchList or {
-    774,
-    818,
-    1206,
-    1210,
-    1529,
-    1705,
-    3864,
-    5498,
-    5500,
-    7909,
-    7910,
-    7971,
-    11382,
-    12361,
-    12363,
-    12364,
-    12799,
-    12800,
-    13926,
-    19774,
-    21929,
-    22459,
-    22460,
-    23077,
-    23079,
-    23094,
-    23095,
-    23096,
-    23097,
-    23098,
-    23099,
-    23100,
-    23101,
-    23103,
-    23104,
-    23105,
-    23106,
-    23107,
-    23108,
-    23109,
-    23110,
-    23111,
-    23112,
-    23113,
-    23114,
-    23115,
-    23116,
-    23117,
-    23118,
-    23119,
-    23120,
-    23121,
-    23436,
-    23437,
-    23438,
-    23439,
-    23440,
-    23441,
-    24027,
-    24028,
-    24029,
-    24030,
-    24031,
-    24032,
-    24033,
-    24035,
-    24036,
-    24037,
-    24039,
-    24047,
-    24048,
-    24050,
-    24051,
-    24052,
-    24053,
-    24054,
-    24055,
-    24056,
-    24057,
-    24058,
-    24059,
-    24060,
-    24061,
-    24062,
-    24065,
-    24066,
-    24067,
-    24478,
-    24479,
-    25867,
-    25868,
-    25890,
-    25893,
-    25894,
-    25895,
-    25896,
-    25897,
-    25898,
-    25899,
-    25901,
-    27679,
-    27777,
-    27785,
-    27786,
-    27809,
-    27812,
-    27820,
-    28118,
-    28119,
-    28120,
-    28123,
-    28290,
-    28360,
-    28361,
-    28362,
-    28363,
-    28458,
-    28459,
-    28460,
-    28461,
-    28462,
-    28463,
-    28464,
-    28465,
-    28466,
-    28467,
-    28468,
-    28469,
-    28470,
-    28556,
-    28557,
-    28595,
-    30546,
-    30547,
-    30548,
-    30549,
-    30550,
-    30551,
-    30552,
-    30553,
-    30554,
-    30555,
-    30556,
-    30558,
-    30559,
-    30560,
-    30563,
-    30564,
-    30565,
-    30566,
-    30571,
-    30572,
-    30573,
-    30574,
-    30575,
-    30581,
-    30582,
-    30583,
-    30584,
-    30585,
-    30586,
-    30587,
-    30588,
-    30589,
-    30590,
-    30591,
-    30592,
-    30593,
-    30594,
-    30598,
-    30600,
-    30601,
-    30602,
-    30603,
-    30604,
-    30605,
-    30606,
-    30607,
-    30608,
-    31116,
-    31117,
-    31118,
-    31860,
-    31861,
-    31862,
-    31863,
-    31864,
-    31865,
-    31866,
-    31867,
-    31868,
-    31869,
-    32193,
-    32194,
-    32195,
-    32196,
-    32197,
-    32198,
-    32199,
-    32200,
-    32201,
-    32202,
-    32203,
-    32204,
-    32205,
-    32206,
-    32207,
-    32208,
-    32209,
-    32210,
-    32211,
-    32212,
-    32213,
-    32214,
-    32215,
-    32216,
-    32217,
-    32218,
-    32219,
-    32220,
-    32221,
-    32222,
-    32223,
-    32224,
-    32225,
-    32226,
-    32227,
-    32228,
-    32229,
-    32230,
-    32231,
-    32249,
-    32409,
-    32410,
-    32634,
-    32635,
-    32636,
-    32637,
-    32638,
-    32639,
-    32640,
-    32641,
-    32735,
-    32833,
-    32836,
-    33060,
-    33131,
-    33132,
-    33133,
-    33134,
-    33135,
-    33137,
-    33138,
-    33139,
-    33140,
-    33141,
-    33142,
-    33143,
-    33144,
-    33782,
-    34142,
-    34143,
-    34220,
-    34256,
-    34627,
-    34831,
-    35315,
-    35316,
-    35318,
-    35487,
-    35488,
-    35489,
-    35501,
-    35503,
-    35707,
-    35758,
-    35759,
-    35760,
-    35761,
-    36766,
-    36767,
-    36783,
-    36784,
-    36917,
-    36918,
-    36920,
-    36921,
-    36923,
-    36924,
-    36926,
-    36927,
-    36929,
-    36930,
-    36932,
-    36933,
-    37430,
-    37503,
-    38292,
-    38498,
-    38538,
-    38545,
-    38546,
-    38547,
-    38548,
-    38549,
-    38550,
+    774, -- Malachite
+    818, -- Tigerseye
+    1206, -- Moss Agate
+    1210, -- Shadowgem
+    1529, -- Jade
+    1705, -- Lesser Moonstone
+    3864, -- Citrine
+    5498, -- Small Lustrous Pearl
+    5500, -- Iridescent Pearl
+    7909, -- Aquamarine
+    7910, -- Star Ruby
+    7971, -- Black Pearl
+    11382, -- Blood of the Mountain
+    12361, -- Blue Sapphire
+    12363, -- Arcane Crystal
+    12364, -- Huge Emerald
+    12799, -- Large Opal
+    12800, -- Azerothian Diamond
+    13926, -- Golden Pearl
+    19774, -- Souldarite
+    21929, -- Flame Spessarite
+    22459, -- Void Sphere
+    22460, -- Prismatic Sphere
+    23077, -- Blood Garnet
+    23079, -- Deep Peridot
+    23094, -- Teardrop Blood Garnet
+    23095, -- Bold Blood Garnet
+    23096, -- Runed Blood Garnet
+    23097, -- Delicate Blood Garnet
+    23098, -- Inscribed Flame Spessarite
+    23099, -- Luminous Flame Spessarite
+    23100, -- Glinting Flame Spessarite
+    23101, -- Potent Flame Spessarite
+    23103, -- Radiant Deep Peridot
+    23104, -- Jagged Deep Peridot
+    23105, -- Enduring Deep Peridot
+    23106, -- Dazzling Deep Peridot
+    23107, -- Shadow Draenite
+    23108, -- Glowing Shadow Draenite
+    23109, -- Royal Shadow Draenite
+    23110, -- Shifting Shadow Draenite
+    23111, -- Sovereign Shadow Draenite
+    23112, -- Golden Draenite
+    23113, -- Brilliant Golden Draenite
+    23114, -- Gleaming Golden Draenite
+    23115, -- Thick Golden Draenite
+    23116, -- Rigid Golden Draenite
+    23117, -- Azure Moonstone
+    23118, -- Solid Azure Moonstone
+    23119, -- Sparkling Azure Moonstone
+    23120, -- Stormy Azure Moonstone
+    23121, -- Lustrous Azure Moonstone
+    23436, -- Living Ruby
+    23437, -- Talasite
+    23438, -- Star of Elune
+    23439, -- Noble Topaz
+    23440, -- Dawnstone
+    23441, -- Nightseye
+    24027, -- Bold Living Ruby
+    24028, -- Delicate Living Ruby
+    24029, -- Teardrop Living Ruby
+    24030, -- Runed Living Ruby
+    24031, -- Bright Living Ruby
+    24032, -- Subtle Living Ruby
+    24033, -- Solid Star of Elune
+    24035, -- Sparkling Star of Elune
+    24036, -- Flashing Living Ruby
+    24037, -- Lustrous Star of Elune
+    24039, -- Stormy Star of Elune
+    24047, -- Brilliant Dawnstone
+    24048, -- Smooth Dawnstone
+    24050, -- Gleaming Dawnstone
+    24051, -- Rigid Dawnstone
+    24052, -- Thick Dawnstone
+    24053, -- Mystic Dawnstone
+    24054, -- Sovereign Nightseye
+    24055, -- Shifting Nightseye
+    24056, -- Glowing Nightseye
+    24057, -- Royal Nightseye
+    24058, -- Inscribed Noble Topaz
+    24059, -- Potent Noble Topaz
+    24060, -- Luminous Noble Topaz
+    24061, -- Glinting Noble Topaz
+    24062, -- Enduring Talasite
+    24065, -- Dazzling Talasite
+    24066, -- Radiant Talasite
+    24067, -- Jagged Talasite
+    24478, -- Jaggal Pearl
+    24479, -- Shadow Pearl
+    25867, -- Earthstorm Diamond
+    25868, -- Skyfire Diamond
+    25890, -- Destructive Skyfire Diamond
+    25893, -- Mystical Skyfire Diamond
+    25894, -- Swift Skyfire Diamond
+    25895, -- Enigmatic Skyfire Diamond
+    25896, -- Powerful Earthstorm Diamond
+    25897, -- Bracing Earthstorm Diamond
+    25898, -- Tenacious Earthstorm Diamond
+    25899, -- Brutal Earthstorm Diamond
+    25901, -- Insightful Earthstorm Diamond
+    27679, -- Sublime Mystic Dawnstone
+    27777, -- Stark Blood Garnet
+    27785, -- Notched Deep Peridot
+    27786, -- Barbed Deep Peridot
+    27809, -- Barbed Deep Peridot
+    27812, -- Stark Blood Garnet
+    27820, -- Notched Deep Peridot
+    28118, -- Runed Ornate Ruby
+    28119, -- Smooth Ornate Dawnstone
+    28120, -- Gleaming Ornate Dawnstone
+    28123, -- Potent Ornate Topaz
+    28290, -- Smooth Golden Draenite
+    28360, -- Mighty Blood Garnet
+    28361, -- Mighty Blood Garnet
+    28362, -- Bold Ornate Ruby
+    28363, -- Inscribed Ornate Topaz
+    28458, -- Bold Tourmaline
+    28459, -- Delicate Tourmaline
+    28460, -- Teardrop Tourmaline
+    28461, -- Runed Tourmaline
+    28462, -- Bright Tourmaline
+    28463, -- Solid Zircon
+    28464, -- Sparkling Zircon
+    28465, -- Lustrous Zircon
+    28466, -- Brilliant Amber
+    28467, -- Smooth Amber
+    28468, -- Rigid Amber
+    28469, -- Gleaming Amber
+    28470, -- Thick Amber
+    28556, -- Swift Windfire Diamond
+    28557, -- Swift Starfire Diamond
+    28595, -- Bright Blood Garnet
+    30546, -- Sovereign Tanzanite
+    30547, -- Luminous Fire Opal
+    30548, -- Polished Chrysoprase
+    30549, -- Shifting Tanzanite
+    30550, -- Sundered Chrysoprase
+    30551, -- Infused Fire Opal
+    30552, -- Blessed Tanzanite
+    30553, -- Pristine Fire Opal
+    30554, -- Stalwart Fire Opal
+    30555, -- Glowing Tanzanite
+    30556, -- Glinting Fire Opal
+    30558, -- Glimmering Fire Opal
+    30559, -- Etched Fire Opal
+    30560, -- Rune Covered Chrysoprase
+    30563, -- Regal Tanzanite
+    30564, -- Shining Fire Opal
+    30565, -- Assassin's Fire Opal
+    30566, -- Defender's Tanzanite
+    30571, -- Don Rodrigo's Heart
+    30572, -- Imperial Tanzanite
+    30573, -- Mysterious Fire Opal
+    30574, -- Brutal Tanzanite
+    30575, -- Nimble Fire Opal
+    30581, -- Durable Fire Opal
+    30582, -- Deadly Fire Opal
+    30583, -- Timeless Chrysoprase
+    30584, -- Enscribed Fire Opal
+    30585, -- Glistening Fire Opal
+    30586, -- Seer's Chrysoprase
+    30587, -- Champion's Fire Opal
+    30588, -- Potent Fire Opal
+    30589, -- Dazzling Chrysoprase
+    30590, -- Enduring Chrysoprase
+    30591, -- Empowered Fire Opal
+    30592, -- Steady Chrysoprase
+    30593, -- Iridescent Fire Opal
+    30594, -- Effulgent Chrysoprase
+    30598, -- Don Amancio's Heart
+    30600, -- Fluorescent Tanzanite
+    30601, -- Beaming Fire Opal
+    30602, -- Jagged Chrysoprase
+    30603, -- Royal Tanzanite
+    30604, -- Resplendent Fire Opal
+    30605, -- Vivid Chrysoprase
+    30606, -- Lambent Chrysoprase
+    30607, -- Splendid Fire Opal
+    30608, -- Radiant Chrysoprase
+    31116, -- Infused Amethyst
+    31117, -- Soothing Amethyst
+    31118, -- Pulsing Amethyst
+    31860, -- Great Golden Draenite
+    31861, -- Great Dawnstone
+    31862, -- Balanced Shadow Draenite
+    31863, -- Balanced Nightseye
+    31864, -- Infused Shadow Draenite
+    31865, -- Infused Nightseye
+    31866, -- Veiled Flame Spessarite
+    31867, -- Veiled Noble Topaz
+    31868, -- Wicked Noble Topaz
+    31869, -- Wicked Flame Spessarite
+    32193, -- Bold Crimson Spinel
+    32194, -- Delicate Crimson Spinel
+    32195, -- Teardrop Crimson Spinel
+    32196, -- Runed Crimson Spinel
+    32197, -- Bright Crimson Spinel
+    32198, -- Subtle Crimson Spinel
+    32199, -- Flashing Crimson Spinel
+    32200, -- Solid Empyrean Sapphire
+    32201, -- Sparkling Empyrean Sapphire
+    32202, -- Lustrous Empyrean Sapphire
+    32203, -- Stormy Empyrean Sapphire
+    32204, -- Brilliant Lionseye
+    32205, -- Smooth Lionseye
+    32206, -- Rigid Lionseye
+    32207, -- Gleaming Lionseye
+    32208, -- Thick Lionseye
+    32209, -- Mystic Lionseye
+    32210, -- Great Lionseye
+    32211, -- Sovereign Shadowsong Amethyst
+    32212, -- Shifting Shadowsong Amethyst
+    32213, -- Balanced Shadowsong Amethyst
+    32214, -- Infused Shadowsong Amethyst
+    32215, -- Glowing Shadowsong Amethyst
+    32216, -- Royal Shadowsong Amethyst
+    32217, -- Inscribed Pyrestone
+    32218, -- Potent Pyrestone
+    32219, -- Luminous Pyrestone
+    32220, -- Glinting Pyrestone
+    32221, -- Veiled Pyrestone
+    32222, -- Wicked Pyrestone
+    32223, -- Enduring Seaspray Emerald
+    32224, -- Radiant Seaspray Emerald
+    32225, -- Dazzling Seaspray Emerald
+    32226, -- Jagged Seaspray Emerald
+    32227, -- Crimson Spinel
+    32228, -- Empyrean Sapphire
+    32229, -- Lionseye
+    32230, -- Shadowsong Amethyst
+    32231, -- Pyrestone
+    32249, -- Seaspray Emerald
+    32409, -- Relentless Earthstorm Diamond
+    32410, -- Thundering Skyfire Diamond
+    32634, -- Unstable Amethyst
+    32635, -- Unstable Peridot
+    32636, -- Unstable Sapphire
+    32637, -- Unstable Citrine
+    32638, -- Unstable Topaz
+    32639, -- Unstable Talasite
+    32640, -- Potent Unstable Diamond
+    32641, -- Imbued Unstable Diamond
+    32735, -- Radiant Spencerite
+    32833, -- Purified Jaggal Pearl
+    32836, -- Purified Shadow Pearl
+    33060, -- Soulbound Test Gem
+    33131, -- Crimson Sun
+    33132, -- Delicate Fire Ruby
+    33133, -- Don Julio's Heart
+    33134, -- Kailee's Rose
+    33135, -- Falling Star
+    33137, -- Sparkling Falling Star
+    33138, -- Mystic Bladestone
+    33139, -- Brilliant Bladestone
+    33140, -- Blood of Amber
+    33141, -- Great Bladestone
+    33142, -- Rigid Bladestone
+    33143, -- Stone of Blades
+    33144, -- Facet of Eternity
+    33782, -- Steady Talasite
+    34142, -- Infinite Sphere
+    34143, -- Chromatic Sphere
+    34220, -- Chaotic Skyfire Diamond
+    34256, -- Charmed Amani Jewel
+    34627, -- Heavy Tonk Armor
+    34831, -- Eye of the Sea
+    35315, -- Quick Dawnstone
+    35316, -- Reckless Noble Topaz
+    35318, -- Forceful Talasite
+    35487, -- Bright Crimson Spinel
+    35488, -- Runed Crimson Spinel
+    35489, -- Teardrop Crimson Spinel
+    35501, -- Eternal Earthstorm Diamond
+    35503, -- Ember Skyfire Diamond
+    35707, -- Regal Nightseye
+    35758, -- Steady Seaspray Emerald
+    35759, -- Forceful Seaspray Emerald
+    35760, -- Reckless Pyrestone
+    35761, -- Quick Lionseye
+    36766, -- Bright Dragon's Eye
+    36767, -- Solid Dragon's Eye
+    36783, -- Northsea Pearl
+    36784, -- Siren's Tear
+    36917, -- Bloodstone
+    36918, -- Scarlet Ruby
+    36920, -- Sun Crystal
+    36921, -- Autumn's Glow
+    36923, -- Chalcedony
+    36924, -- Sky Sapphire
+    36926, -- Shadow Crystal
+    36927, -- Twilight Opal
+    36929, -- Huge Citrine
+    36930, -- Monarch Topaz
+    36932, -- Dark Jade
+    36933, -- Forest Emerald
+    37430, -- Solid Sky Sapphire (Unused)
+    37503, -- Purified Shadowsong Amethyst
+    38292, -- Test Living Ruby
+    38498, -- QA Test Blank Purple Gem
+    38538, -- Riding Crop
+    38545, -- Bold Ornate Ruby
+    38546, -- Gleaming Ornate Dawnstone
+    38547, -- Inscribed Ornate Topaz
+    38548, -- Potent Ornate Topaz
+    38549, -- Runed Ornate Ruby
+    38550, -- Smooth Ornate Dawnstone
+
 }
 
 Goals.EnchantSearchList = Goals.EnchantSearchList or {
