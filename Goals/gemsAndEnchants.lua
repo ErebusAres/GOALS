@@ -579,4 +579,7 @@ Goals.EnchantSearchList = Goals.EnchantSearchList or {
     { id = 3855, name = "Enchant Staff - Spellpower", spellId = 62959 },
     { id = 3858, name = "Enchant Boots - Lesser Accuracy", spellId = 63746 },
     { id = 846, name = "Enchant Gloves - Angler", spellId = 71692 },
+    { id = 35445, spellId = 35445, slot = "HEAD" },
+    { id = 35404, spellId = 35404, slot = "SHOULDER" },
+    { id = 31370, spellId = 31370, slot = "LEGS" },
 }
