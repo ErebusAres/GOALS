@@ -1830,6 +1830,68 @@ function Goals:CacheItemById(itemId)
     return nil
 end
 
+function Goals:CacheEnchantByEntry(entry)
+    if not entry then
+        return nil
+    end
+    local id = entry.id or entry.enchantId
+    if not id then
+        return nil
+    end
+    self.enchantCache = self.enchantCache or {}
+    local cached = self.enchantCache[id]
+    if cached and cached.name then
+        return cached
+    end
+    local name = entry.name
+    local icon = entry.icon
+    if entry.spellId and GetSpellInfo then
+        local spellName, _, spellIcon = GetSpellInfo(entry.spellId)
+        if not name or name == "" then
+            name = spellName
+        end
+        if not icon or icon == "" then
+            icon = spellIcon
+        end
+    end
+    name = name or ("Enchant " .. tostring(id))
+    cached = {
+        id = id,
+        name = name,
+        icon = icon,
+        spellId = entry.spellId,
+    }
+    self.enchantCache[id] = cached
+    entry.name = name
+    if icon then
+        entry.icon = icon
+    end
+    return cached
+end
+
+function Goals:GetEnchantInfoById(enchantId)
+    if not enchantId or enchantId <= 0 then
+        return nil
+    end
+    self.enchantById = self.enchantById or {}
+    local cached = self.enchantById[enchantId]
+    if cached then
+        return cached
+    end
+    local list = self:GetEnchantSearchList() or {}
+    for _, entry in ipairs(list) do
+        local entryId = entry and (entry.id or entry.enchantId)
+        if entryId == enchantId then
+            cached = self:CacheEnchantByEntry(entry)
+            self.enchantById[enchantId] = cached
+            return cached
+        end
+    end
+    cached = { id = enchantId, name = "Enchant " .. tostring(enchantId) }
+    self.enchantById[enchantId] = cached
+    return cached
+end
+
 function Goals:GetItemSocketTypes(itemId)
     if not itemId then
         return nil
@@ -2740,6 +2802,16 @@ function Goals:BuildWishlistItemCache()
     end
 end
 
+function Goals:RefreshWishlistItemCache()
+    self.itemCache = {}
+    self.pendingWishlistInfo = {}
+    self:BuildWishlistItemCache()
+    self:ProcessPendingWishlistInfo()
+    if self.UI and self.UI.UpdateWishlistUI then
+        self.UI:UpdateWishlistUI()
+    end
+end
+
 function Goals:MapEquipSlotToGroup(equipSlot)
     local map = {
         INVTYPE_HEAD = "HEAD",
@@ -3150,25 +3222,215 @@ function Goals:GetEnchantSearchList()
     return self.EnchantSearchList or {}
 end
 
-function Goals:SearchEnchantments(query)
+function Goals:SearchEnchantments(query, filters)
     local results = {}
     local clean = query and tostring(query) or ""
     clean = clean:gsub("^%s+", ""):gsub("%s+$", "")
     local queryLower = string.lower(clean)
     local seen = {}
+    local slotFilter = filters and filters.slotKey or nil
+    local blockedTokens = {
+        "poison",
+        "oil",
+        "flametongue",
+        "frostbrand",
+        "rockbiter",
+        "windfury",
+        "sharpened",
+        "weighted",
+        "fishing lure",
+        "spellstone",
+        "firestone",
+        "flametongue totem",
+        "mind-numbing",
+        "crippling",
+        "instant poison",
+        "wound poison",
+        "deadly poison",
+        "anesthetic poison",
+    }
+    local function isBlockedEnchantName(name)
+        if not name or name == "" then
+            return false
+        end
+        local lower = string.lower(name)
+        for _, token in ipairs(blockedTokens) do
+            if string.find(lower, token, 1, true) then
+                return true
+            end
+        end
+        return false
+    end
+    local function inferSlotsFromName(name)
+        if not name or name == "" then
+            return nil
+        end
+        local lower = string.lower(name)
+        local slots = {}
+        if string.find(lower, "arcanum", 1, true) then
+            slots.HEAD = true
+        end
+        if string.find(lower, "inscription", 1, true) then
+            slots.SHOULDER = true
+        end
+        if string.find(lower, "bracer", 1, true) or string.find(lower, "wrist", 1, true) then
+            slots.WRIST = true
+        end
+        if string.find(lower, "cloak", 1, true) then
+            slots.BACK = true
+        end
+        if string.find(lower, "chest", 1, true) then
+            slots.CHEST = true
+        end
+        if string.find(lower, "gloves", 1, true) then
+            slots.HANDS = true
+        end
+        if string.find(lower, "boots", 1, true) then
+            slots.FEET = true
+        end
+        if string.find(lower, "shoulder", 1, true) then
+            slots.SHOULDER = true
+        end
+        if string.find(lower, "head", 1, true) or string.find(lower, "helm", 1, true) then
+            slots.HEAD = true
+        end
+        if string.find(lower, "leg", 1, true) or string.find(lower, "pants", 1, true) then
+            slots.LEGS = true
+        end
+        if string.find(lower, "leg armor", 1, true) or string.find(lower, "spellthread", 1, true) then
+            slots.LEGS = true
+        end
+        if string.find(lower, "ring", 1, true) then
+            slots.RING1 = true
+            slots.RING2 = true
+        end
+        if string.find(lower, "shield", 1, true) then
+            slots.OFFHAND = true
+        end
+        if string.find(lower, "off%-hand", 1) or string.find(lower, "off hand", 1, true) then
+            slots.OFFHAND = true
+        end
+        local twoHand = string.find(lower, "2h weapon", 1, true)
+            or string.find(lower, "two%-hand", 1)
+            or string.find(lower, "two hand", 1, true)
+        if string.find(lower, "weapon", 1, true) then
+            slots.MAINHAND = true
+            if not twoHand then
+                slots.OFFHAND = true
+            end
+        elseif twoHand then
+            slots.MAINHAND = true
+        end
+        for _ in pairs(slots) do
+            return slots
+        end
+        return nil
+    end
 
-    local function addEntry(entry)
+    local slotKeywords = {
+        HEAD = { "head", "helm", "helmet", "hood", "circlet", "diadem", "cowl", "arcanum" },
+        SHOULDER = { "shoulder", "inscription" },
+        BACK = { "cloak", "cape" },
+        CHEST = { "chest" },
+        WRIST = { "bracer", "wrist" },
+        HANDS = { "gloves" },
+        LEGS = { "leg", "pants", "trousers", "leg armor", "spellthread" },
+        FEET = { "boots" },
+        RING1 = { "ring" },
+        RING2 = { "ring" },
+        MAINHAND = { "weapon", "two hand", "two-hand", "2h weapon" },
+        OFFHAND = { "weapon", "off hand", "off-hand", "shield" },
+    }
+
+    local function matchesSlot(entry)
+        if not slotFilter or slotFilter == "" then
+            return true, nil
+        end
+        if not entry or not entry.slot then
+            local name = entry and entry.name or nil
+            if name and slotKeywords[slotFilter] then
+                local lower = string.lower(name)
+                for _, token in ipairs(slotKeywords[slotFilter]) do
+                    if string.find(lower, token, 1, true) then
+                        return true, slotFilter
+                    end
+                end
+            end
+            return false, nil
+        end
+        if type(entry.slot) == "table" then
+            for _, slotKey in ipairs(entry.slot) do
+                if slotKey == slotFilter then
+                    return true, slotKey
+                end
+            end
+            return false, nil
+        end
+        if entry.slot == slotFilter then
+            return true, entry.slot
+        end
+        return false, nil
+    end
+
+    local function addEntry(entry, bypassSlotFilter)
         local id = entry and (entry.id or entry.enchantId)
         if not id or id <= 0 or seen[id] then
             return
         end
-        local name = entry.name or ("Enchant " .. tostring(id))
+        local name = entry and entry.name or nil
+        local icon = entry and entry.icon or nil
+        local iconNeedsResolve = (not icon or icon == "" or icon == "Interface\\Icons\\INV_Misc_QuestionMark")
+        if entry and entry.spellId and GetSpellInfo then
+            local spellName, _, spellIcon = GetSpellInfo(entry.spellId)
+            if not name or name == "" then
+                name = spellName
+            end
+            if iconNeedsResolve then
+                icon = spellIcon
+            end
+        end
+        name = name or ("Enchant " .. tostring(id))
+        if entry and (not entry.name or entry.name == "") then
+            entry.name = name
+        end
+        if entry and (not entry.icon or entry.icon == "") and icon then
+            entry.icon = icon
+        end
+        if entry and not entry.slot then
+            local inferred = inferSlotsFromName(name)
+            if inferred then
+                local slotList = {}
+                for key in pairs(inferred) do
+                    table.insert(slotList, key)
+                end
+                table.sort(slotList)
+                entry.slot = slotList
+            end
+        end
+        local matchedSlot = nil
+        if not bypassSlotFilter then
+            local slotOk, slotMatch = matchesSlot(entry)
+            if not slotOk then
+                return
+            end
+            matchedSlot = slotMatch
+            if not matchedSlot and entry and type(entry.slot) == "string" then
+                matchedSlot = entry.slot
+            end
+        else
+            matchedSlot = slotFilter or nil
+        end
+        if isBlockedEnchantName(name) then
+            return
+        end
         if clean == "" or tostring(id) == clean or string.find(string.lower(name), queryLower, 1, true) then
             seen[id] = true
             table.insert(results, {
                 id = id,
                 name = name,
-                icon = entry.icon,
+                icon = icon,
+                spellId = entry and entry.spellId or nil,
+                slotKey = matchedSlot,
             })
         end
     end
@@ -3178,12 +3440,13 @@ function Goals:SearchEnchantments(query)
     if directId and directId > 0 then
         for _, entry in ipairs(list) do
             local entryId = entry and (entry.id or entry.enchantId)
-            if entryId == directId then
-                addEntry(entry)
+            local entrySpellId = entry and entry.spellId or nil
+            if entryId == directId or entrySpellId == directId then
+                addEntry(entry, true)
                 return results
             end
         end
-        addEntry({ id = directId, name = "Enchant " .. tostring(directId) })
+        addEntry({ id = directId, name = "Enchant " .. tostring(directId) }, true)
         return results
     end
 
