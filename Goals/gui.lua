@@ -1640,9 +1640,9 @@ function UI:CreateWishlistTab(page)
     actionsPage:Hide()
 
     local function selectWishlistTab(key)
-        managerPage:SetShown(key == "manage")
-        searchPage:SetShown(key == "search")
-        actionsPage:SetShown(key == "actions")
+        setShown(managerPage, key == "manage")
+        setShown(searchPage, key == "search")
+        setShown(actionsPage, key == "actions")
         if self.wishlistSubTabs then
             for name, button in pairs(self.wishlistSubTabs) do
                 if name == key then
@@ -3396,7 +3396,7 @@ function UI:UpdateRosterList()
     end
     if self.disablePointGainCheck then
         self.disablePointGainCheck:SetChecked(Goals.db.settings.disablePointGain and true or false)
-        self.disablePointGainCheck:SetShown(hasPointGainAccess())
+        setShown(self.disablePointGainCheck, hasPointGainAccess())
     end
 end
 
@@ -3661,7 +3661,7 @@ function UI:UpdateWishlistTokenDisplay()
         return a.id < b.id
     end)
     if self.wishlistTokenEmpty then
-        self.wishlistTokenEmpty:SetShown(#ordered == 0)
+        setShown(self.wishlistTokenEmpty, #ordered == 0)
     end
     local visibleRows = math.min(#self.wishlistTokenRows, math.max(#ordered, 1))
     local insetHeight = (visibleRows * ROW_HEIGHT) + 12
