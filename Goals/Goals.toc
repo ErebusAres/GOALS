@@ -9,6 +9,7 @@
 ## OptionalDeps:
 
 armorTokens.lua
+gemsAndEnchants.lua
 wishlistBanner.lua
 Core.lua
 loc.lua

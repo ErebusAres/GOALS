@@ -98,6 +98,29 @@ for _, entry in ipairs(Goals.WishlistSlots) do
     Goals.WishlistSlotIndex[entry.key] = entry
 end
 
+Goals.EnchantableSlots = Goals.EnchantableSlots or {
+    HEAD = true,
+    SHOULDER = true,
+    BACK = true,
+    CHEST = true,
+    WRIST = true,
+    HANDS = true,
+    LEGS = true,
+    FEET = true,
+    MAINHAND = true,
+    OFFHAND = true,
+    RING1 = true,
+    RING2 = true,
+}
+
+Goals.SocketTextureMap = Goals.SocketTextureMap or {
+    META = "Interface\\ItemSocketingFrame\\UI-EmptySocket-Meta",
+    RED = "Interface\\ItemSocketingFrame\\UI-EmptySocket-Red",
+    YELLOW = "Interface\\ItemSocketingFrame\\UI-EmptySocket-Yellow",
+    BLUE = "Interface\\ItemSocketingFrame\\UI-EmptySocket-Blue",
+    PRISMATIC = "Interface\\ItemSocketingFrame\\UI-EmptySocket-Prismatic",
+}
+
 local function prefixMessage(msg)
     DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffGoals|r: " .. msg)
 end
@@ -1755,6 +1778,16 @@ function Goals:GetWishlistSlotDef(slotKey)
     return self.WishlistSlotIndex and self.WishlistSlotIndex[slotKey] or nil
 end
 
+function Goals:IsWishlistSlotEnchantable(slotKey)
+    if not slotKey then
+        return false
+    end
+    if self.EnchantableSlots and self.EnchantableSlots[slotKey] then
+        return true
+    end
+    return false
+end
+
 function Goals:GetItemIdFromLink(link)
     if not link or link == "" then
         return nil
@@ -1795,6 +1828,42 @@ function Goals:CacheItemById(itemId)
     self.pendingWishlistInfo[itemId] = true
     self:RequestItemInfo("item:" .. tostring(itemId))
     return nil
+end
+
+function Goals:GetItemSocketTypes(itemId)
+    if not itemId then
+        return nil
+    end
+    self.itemCache = self.itemCache or {}
+    local cached = self.itemCache[itemId]
+    if cached and cached.socketTypes then
+        return cached.socketTypes
+    end
+    local link = cached and cached.link
+    local stats = GetItemStats and GetItemStats(link or ("item:" .. tostring(itemId))) or nil
+    if not stats then
+        return nil
+    end
+    local sockets = {}
+    local function addSockets(statKey, socketType)
+        local count = stats[statKey]
+        if count and count > 0 then
+            for _ = 1, count do
+                table.insert(sockets, socketType)
+            end
+        end
+    end
+    addSockets("EMPTY_SOCKET_META", "META")
+    addSockets("EMPTY_SOCKET_RED", "RED")
+    addSockets("EMPTY_SOCKET_YELLOW", "YELLOW")
+    addSockets("EMPTY_SOCKET_BLUE", "BLUE")
+    addSockets("EMPTY_SOCKET_PRISMATIC", "PRISMATIC")
+    if cached then
+        cached.socketTypes = sockets
+    else
+        self.itemCache[itemId] = { socketTypes = sockets }
+    end
+    return sockets
 end
 
 function Goals:CacheItemByLink(itemLink)
@@ -3013,6 +3082,115 @@ function Goals:SearchWishlistItems(query, filters)
             end
         end
     end
+    table.sort(results, function(a, b)
+        return (a.name or "") < (b.name or "")
+    end)
+    return results
+end
+
+function Goals:GetGemSearchList()
+    return self.GemSearchList or {}
+end
+
+function Goals:SearchGemItems(query)
+    self.itemCache = self.itemCache or {}
+    local results = {}
+    local seen = {}
+    local clean = query and tostring(query) or ""
+    clean = clean:gsub("^%s+", ""):gsub("%s+$", "")
+    local queryLower = string.lower(clean)
+
+    local function addItem(itemId)
+        if not itemId or itemId <= 0 or seen[itemId] then
+            return
+        end
+        seen[itemId] = true
+        local cached = self:CacheItemById(itemId)
+        local name = cached and cached.name or ("Item " .. tostring(itemId))
+        if clean == "" or tostring(itemId) == clean or string.find(string.lower(name), queryLower, 1, true) then
+            table.insert(results, {
+                id = itemId,
+                itemId = itemId,
+                name = name,
+                link = cached and cached.link or nil,
+                texture = cached and cached.texture or nil,
+                quality = cached and cached.quality or nil,
+            })
+        end
+    end
+
+    local directId = tonumber(clean)
+    if directId and directId > 0 then
+        addItem(directId)
+        return results
+    end
+    local linkId = self:GetItemIdFromLink(clean)
+    if linkId then
+        addItem(linkId)
+        return results
+    end
+
+    for _, entry in ipairs(self:GetGemSearchList()) do
+        local itemId = nil
+        if type(entry) == "table" then
+            itemId = tonumber(entry.id or entry.itemId)
+        else
+            itemId = tonumber(entry)
+        end
+        addItem(itemId)
+    end
+
+    table.sort(results, function(a, b)
+        return (a.name or "") < (b.name or "")
+    end)
+    return results
+end
+
+function Goals:GetEnchantSearchList()
+    return self.EnchantSearchList or {}
+end
+
+function Goals:SearchEnchantments(query)
+    local results = {}
+    local clean = query and tostring(query) or ""
+    clean = clean:gsub("^%s+", ""):gsub("%s+$", "")
+    local queryLower = string.lower(clean)
+    local seen = {}
+
+    local function addEntry(entry)
+        local id = entry and (entry.id or entry.enchantId)
+        if not id or id <= 0 or seen[id] then
+            return
+        end
+        local name = entry.name or ("Enchant " .. tostring(id))
+        if clean == "" or tostring(id) == clean or string.find(string.lower(name), queryLower, 1, true) then
+            seen[id] = true
+            table.insert(results, {
+                id = id,
+                name = name,
+                icon = entry.icon,
+            })
+        end
+    end
+
+    local list = self:GetEnchantSearchList()
+    local directId = tonumber(clean)
+    if directId and directId > 0 then
+        for _, entry in ipairs(list) do
+            local entryId = entry and (entry.id or entry.enchantId)
+            if entryId == directId then
+                addEntry(entry)
+                return results
+            end
+        end
+        addEntry({ id = directId, name = "Enchant " .. tostring(directId) })
+        return results
+    end
+
+    for _, entry in ipairs(list) do
+        addEntry(entry)
+    end
+
     table.sort(results, function(a, b)
         return (a.name or "") < (b.name or "")
     end)

@@ -966,6 +966,9 @@ function UI:SelectTab(id)
     if self.UpdateWishlistHelpVisibility then
         self:UpdateWishlistHelpVisibility()
     end
+    if self.UpdateWishlistSocketPickerVisibility then
+        self:UpdateWishlistSocketPickerVisibility()
+    end
     self:Refresh()
 end
 
@@ -989,6 +992,17 @@ function UI:UpdateWishlistHelpVisibility()
         setShown(self.wishlistHelpOuter, show)
     end
     setShown(self.wishlistHelpFrame, show)
+end
+
+function UI:UpdateWishlistSocketPickerVisibility()
+    if not self.wishlistSocketPickerFrame then
+        return
+    end
+    local show = self.currentTab == self.wishlistTabId and self.wishlistSocketPickerOpen
+    if self.wishlistSocketPickerOuter then
+        setShown(self.wishlistSocketPickerOuter, show)
+    end
+    setShown(self.wishlistSocketPickerFrame, show)
 end
 
 function UI:CreateOverviewTab(page)
@@ -1680,6 +1694,12 @@ function UI:CreateWishlistTab(page)
     helpBtn:SetPoint("RIGHT", tabBar, "RIGHT", 0, 0)
     helpBtn:SetScript("OnClick", function()
         self.wishlistHelpOpen = not self.wishlistHelpOpen
+        if self.wishlistHelpOpen then
+            self.wishlistSocketPickerOpen = false
+            if self.UpdateWishlistSocketPickerVisibility then
+                self:UpdateWishlistSocketPickerVisibility()
+            end
+        end
         if self.UpdateWishlistHelpVisibility then
             self:UpdateWishlistHelpVisibility()
         end
@@ -1732,6 +1752,152 @@ function UI:CreateWishlistTab(page)
             "- Required tokens update as items are marked found."
         )
         self.wishlistHelpText = helpText
+    end
+
+    if self.wishlistSocketPickerOpen == nil then
+        self.wishlistSocketPickerOpen = false
+    end
+    if not self.wishlistSocketPickerFrame then
+        local outer = CreateFrame("Frame", "GoalsWishlistSocketPickerOuter", self.frame)
+        outer:SetPoint("TOPLEFT", self.frame, "TOPRIGHT", -2, -34)
+        outer:SetPoint("BOTTOMLEFT", self.frame, "BOTTOMRIGHT", -2, 26)
+        outer:SetWidth(260)
+        outer:SetBackdrop({
+            edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+            edgeSize = 16,
+            insets = { left = 3, right = 3, top = 3, bottom = 3 },
+        })
+        outer:SetBackdropBorderColor(0.85, 0.85, 0.85, 1)
+        outer:Hide()
+        self.wishlistSocketPickerOuter = outer
+
+        local pickerFrame = CreateFrame("Frame", "GoalsWishlistSocketPickerFrame", outer, "GoalsInsetTemplate")
+        pickerFrame:SetPoint("TOPLEFT", outer, "TOPLEFT", 4, -4)
+        pickerFrame:SetPoint("BOTTOMRIGHT", outer, "BOTTOMRIGHT", -4, 4)
+        pickerFrame:Hide()
+        self.wishlistSocketPickerFrame = pickerFrame
+
+        local title = createLabel(pickerFrame, "Socket Picker", "GameFontNormal")
+        title:SetPoint("TOPLEFT", pickerFrame, "TOPLEFT", 10, -10)
+        self.wishlistSocketPickerTitle = title
+
+        local slotLabel = pickerFrame:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+        slotLabel:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -4)
+        slotLabel:SetJustifyH("LEFT")
+        self.wishlistSocketPickerSlotLabel = slotLabel
+
+        local closeBtn = CreateFrame("Button", nil, pickerFrame, "UIPanelButtonTemplate")
+        closeBtn:SetSize(20, 18)
+        closeBtn:SetText("X")
+        closeBtn:SetPoint("TOPRIGHT", pickerFrame, "TOPRIGHT", -8, -8)
+        closeBtn:SetScript("OnClick", function()
+            if UI and UI.CloseWishlistSocketPicker then
+                UI:CloseWishlistSocketPicker()
+            end
+        end)
+        self.wishlistSocketPickerClose = closeBtn
+
+        local searchLabel = createLabel(pickerFrame, "Search", "GameFontNormal")
+        searchLabel:SetPoint("TOPLEFT", slotLabel, "BOTTOMLEFT", 0, -10)
+
+        local searchBox = CreateFrame("EditBox", "GoalsWishlistSocketSearchBox", pickerFrame, "InputBoxTemplate")
+        searchBox:SetPoint("LEFT", searchLabel, "RIGHT", 8, 0)
+        searchBox:SetSize(150, 18)
+        searchBox:SetAutoFocus(false)
+        bindEscapeClear(searchBox)
+        searchBox:SetScript("OnEnterPressed", function(selfBox)
+            selfBox:ClearFocus()
+            UI:UpdateWishlistSocketPickerResults()
+        end)
+        self.wishlistSocketSearchBox = searchBox
+
+        local resultsInset = CreateFrame("Frame", "GoalsWishlistSocketResultsInset", pickerFrame, "GoalsInsetTemplate")
+        resultsInset:SetPoint("TOPLEFT", searchLabel, "BOTTOMLEFT", -4, -6)
+        resultsInset:SetPoint("TOPRIGHT", pickerFrame, "TOPRIGHT", -10, 0)
+        resultsInset:SetHeight(120)
+        self.wishlistSocketResultsInset = resultsInset
+
+        local resultsScroll = CreateFrame("ScrollFrame", "GoalsWishlistSocketResultsScroll", resultsInset, "FauxScrollFrameTemplate")
+        resultsScroll:SetPoint("TOPLEFT", resultsInset, "TOPLEFT", 2, -6)
+        resultsScroll:SetPoint("BOTTOMRIGHT", resultsInset, "BOTTOMRIGHT", -26, 6)
+        resultsScroll:SetScript("OnVerticalScroll", function(selfScroll, offset)
+            FauxScrollFrame_OnVerticalScroll(selfScroll, offset, ROW_HEIGHT, function()
+                UI:UpdateWishlistSocketPickerResults()
+            end)
+        end)
+        self.wishlistSocketResultsScroll = resultsScroll
+
+        self.wishlistSocketResultsRows = {}
+        for i = 1, 5 do
+            local row = CreateFrame("Button", nil, resultsInset)
+            row:SetHeight(ROW_HEIGHT)
+            row:SetPoint("TOPLEFT", resultsInset, "TOPLEFT", 8, -6 - (i - 1) * ROW_HEIGHT)
+            row:SetPoint("RIGHT", resultsInset, "RIGHT", -26, 0)
+            local icon = row:CreateTexture(nil, "ARTWORK")
+            icon:SetSize(16, 16)
+            icon:SetPoint("LEFT", row, "LEFT", 0, 0)
+            row.icon = icon
+            local text = row:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+            text:SetPoint("LEFT", icon, "RIGHT", 6, 0)
+            text:SetPoint("RIGHT", row, "RIGHT", -4, 0)
+            row.text = text
+            local selected = row:CreateTexture(nil, "ARTWORK")
+            selected:SetAllPoints(row)
+            selected:SetTexture("Interface\\Buttons\\UI-Listbox-Highlight")
+            selected:SetBlendMode("ADD")
+            selected:Hide()
+            row.selected = selected
+            row:SetScript("OnClick", function(selfRow)
+                UI.selectedWishlistSocketResult = selfRow.entry
+                UI.selectedWishlistSocketResultId = selfRow.entry and selfRow.entry.id or nil
+                UI:UpdateWishlistSocketPickerResults()
+            end)
+            row:SetScript("OnEnter", function(selfRow)
+                if UI.wishlistSocketPickerMode == "ENCHANT" then
+                    if selfRow.entry and selfRow.entry.id then
+                        GameTooltip:SetOwner(selfRow, "ANCHOR_RIGHT")
+                        GameTooltip:SetText("Enchant ID: " .. tostring(selfRow.entry.id))
+                        GameTooltip:Show()
+                    end
+                elseif selfRow.entry and selfRow.entry.link then
+                    GameTooltip:SetOwner(selfRow, "ANCHOR_RIGHT")
+                    GameTooltip:SetHyperlink(selfRow.entry.link)
+                    GameTooltip:Show()
+                end
+            end)
+            row:SetScript("OnLeave", function()
+                GameTooltip:Hide()
+            end)
+            self.wishlistSocketResultsRows[i] = row
+        end
+
+        local emptyLabel = resultsInset:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+        emptyLabel:SetPoint("TOPLEFT", resultsInset, "TOPLEFT", 8, -10)
+        emptyLabel:SetText("No results.")
+        emptyLabel:Hide()
+        self.wishlistSocketResultsEmpty = emptyLabel
+
+        local applyBtn = CreateFrame("Button", nil, pickerFrame, "UIPanelButtonTemplate")
+        applyBtn:SetPoint("TOPLEFT", resultsInset, "BOTTOMLEFT", 0, -8)
+        applyBtn:SetSize(60, 20)
+        applyBtn:SetText(L.BUTTON_APPLY)
+        applyBtn:SetScript("OnClick", function()
+            if UI and UI.ApplyWishlistSocketSelection then
+                UI:ApplyWishlistSocketSelection()
+            end
+        end)
+        self.wishlistSocketApplyButton = applyBtn
+
+        local clearBtn = CreateFrame("Button", nil, pickerFrame, "UIPanelButtonTemplate")
+        clearBtn:SetPoint("LEFT", applyBtn, "RIGHT", 6, 0)
+        clearBtn:SetSize(60, 20)
+        clearBtn:SetText("Clear")
+        clearBtn:SetScript("OnClick", function()
+            if UI and UI.ClearWishlistSocketSelection then
+                UI:ClearWishlistSocketSelection()
+            end
+        end)
+        self.wishlistSocketClearButton = clearBtn
     end
 
     local slotsLabel = createLabel(leftInset, L.LABEL_WISHLIST_SLOTS, "GameFontNormal")
@@ -1819,16 +1985,32 @@ function UI:CreateWishlistTab(page)
             local gemTex = gemBtn:CreateTexture(nil, "ARTWORK")
             gemTex:SetAllPoints(gemBtn)
             gemBtn.icon = gemTex
+            local gemSelected = gemBtn:CreateTexture(nil, "OVERLAY")
+            gemSelected:SetTexture("Interface\\Buttons\\CheckButtonHilight")
+            gemSelected:SetBlendMode("ADD")
+            gemSelected:SetAllPoints(gemBtn)
+            gemSelected:Hide()
+            gemBtn.selected = gemSelected
             gemBtn:SetScript("OnEnter", function(selfGem)
                 if selfGem.itemId then
                     GameTooltip:SetOwner(selfGem, "ANCHOR_RIGHT")
                     GameTooltip:SetHyperlink("item:" .. tostring(selfGem.itemId))
+                    GameTooltip:Show()
+                elseif selfGem.socketType then
+                    GameTooltip:SetOwner(selfGem, "ANCHOR_RIGHT")
+                    GameTooltip:SetText(selfGem.socketType .. " Socket")
                     GameTooltip:Show()
                 end
             end)
             gemBtn:SetScript("OnLeave", function()
                 GameTooltip:Hide()
             end)
+            gemBtn:SetScript("OnClick", function(selfGem)
+                if UI and UI.OpenWishlistSocketPicker then
+                    UI:OpenWishlistSocketPicker("GEM", slotDef.key, selfGem.socketIndex or i)
+                end
+            end)
+            gemBtn.socketIndex = i
             button.gems[i] = gemBtn
         end
 
@@ -1839,15 +2021,30 @@ function UI:CreateWishlistTab(page)
         enchantTex:SetAllPoints(enchantBtn)
         enchantTex:SetTexture("Interface\\Icons\\inv_enchant_formulagood_01")
         enchantBtn.icon = enchantTex
+        local enchantSelected = enchantBtn:CreateTexture(nil, "OVERLAY")
+        enchantSelected:SetTexture("Interface\\Buttons\\CheckButtonHilight")
+        enchantSelected:SetBlendMode("ADD")
+        enchantSelected:SetAllPoints(enchantBtn)
+        enchantSelected:Hide()
+        enchantBtn.selected = enchantSelected
         enchantBtn:SetScript("OnEnter", function(selfIcon)
             if selfIcon.enchantId then
                 GameTooltip:SetOwner(selfIcon, "ANCHOR_RIGHT")
                 GameTooltip:SetText("Enchant ID: " .. tostring(selfIcon.enchantId))
                 GameTooltip:Show()
+            elseif selfIcon.enchantAvailable then
+                GameTooltip:SetOwner(selfIcon, "ANCHOR_RIGHT")
+                GameTooltip:SetText("Empty enchant slot")
+                GameTooltip:Show()
             end
         end)
         enchantBtn:SetScript("OnLeave", function()
             GameTooltip:Hide()
+        end)
+        enchantBtn:SetScript("OnClick", function()
+            if UI and UI.OpenWishlistSocketPicker then
+                UI:OpenWishlistSocketPicker("ENCHANT", slotDef.key)
+            end
         end)
         button.enchantIcon = enchantBtn
 
@@ -3712,6 +3909,190 @@ function UI:UpdateWishlistTokenDisplay()
     end
 end
 
+function UI:OpenWishlistSocketPicker(mode, slotKey, socketIndex)
+    if mode ~= "ENCHANT" then
+        mode = "GEM"
+    end
+    self.wishlistSocketPickerOpen = true
+    self.wishlistSocketPickerMode = mode
+    if slotKey then
+        self.selectedWishlistSlot = slotKey
+    end
+    if self.wishlistHelpOpen then
+        self.wishlistHelpOpen = false
+        if self.UpdateWishlistHelpVisibility then
+            self:UpdateWishlistHelpVisibility()
+        end
+    end
+    self.selectedWishlistSocketMode = mode
+    if mode == "GEM" then
+        self.selectedWishlistSocketIndex = socketIndex or 1
+    else
+        self.selectedWishlistSocketIndex = nil
+    end
+    self.selectedWishlistSocketResult = nil
+    self.selectedWishlistSocketResultId = nil
+    if self.wishlistSocketSearchBox then
+        self.wishlistSocketSearchBox:SetText("")
+    end
+    self:UpdateWishlistSocketPickerVisibility()
+    self:UpdateWishlistSocketPickerResults()
+    self:UpdateWishlistUI()
+end
+
+function UI:CloseWishlistSocketPicker()
+    self.wishlistSocketPickerOpen = false
+    self.selectedWishlistSocketMode = nil
+    self.selectedWishlistSocketIndex = nil
+    self.selectedWishlistSocketResult = nil
+    self.selectedWishlistSocketResultId = nil
+    self:UpdateWishlistSocketPickerVisibility()
+    self:UpdateWishlistUI()
+end
+
+function UI:UpdateWishlistSocketPickerResults()
+    if not self.wishlistSocketResultsRows or not self.wishlistSocketResultsScroll then
+        return
+    end
+    local mode = self.wishlistSocketPickerMode or "GEM"
+    local query = self.wishlistSocketSearchBox and self.wishlistSocketSearchBox:GetText() or ""
+    local results = {}
+    if mode == "ENCHANT" and Goals.SearchEnchantments then
+        results = Goals:SearchEnchantments(query)
+    elseif Goals.SearchGemItems then
+        results = Goals:SearchGemItems(query)
+    end
+    self.wishlistSocketResults = results
+
+    if self.wishlistSocketPickerTitle then
+        self.wishlistSocketPickerTitle:SetText(mode == "ENCHANT" and "Select Enchant" or "Select Gem")
+    end
+    if self.wishlistSocketPickerSlotLabel then
+        local slotKey = self.selectedWishlistSlot
+        local slotDef = slotKey and Goals.GetWishlistSlotDef and Goals:GetWishlistSlotDef(slotKey) or nil
+        local slotName = slotDef and slotDef.label or (slotKey or "")
+        if mode == "ENCHANT" then
+            self.wishlistSocketPickerSlotLabel:SetText(slotName ~= "" and (slotName .. " - Enchant") or "")
+        else
+            local index = self.selectedWishlistSocketIndex or 1
+            if slotName ~= "" then
+                self.wishlistSocketPickerSlotLabel:SetText(string.format("%s - Gem %d", slotName, index))
+            else
+                self.wishlistSocketPickerSlotLabel:SetText(string.format("Gem %d", index))
+            end
+        end
+    end
+
+    local offset = FauxScrollFrame_GetOffset(self.wishlistSocketResultsScroll) or 0
+    FauxScrollFrame_Update(self.wishlistSocketResultsScroll, #results, #self.wishlistSocketResultsRows, ROW_HEIGHT)
+    for i = 1, #self.wishlistSocketResultsRows do
+        local row = self.wishlistSocketResultsRows[i]
+        local index = i + offset
+        local entry = results[index]
+        if entry then
+            row:Show()
+            row.entry = entry
+            setShown(row.selected, self.selectedWishlistSocketResultId == entry.id)
+            row.text:SetText(entry.name or (mode == "ENCHANT" and ("Enchant " .. tostring(entry.id or 0)) or ("Item " .. tostring(entry.id or 0))))
+            if mode == "ENCHANT" then
+                row.icon:SetTexture(entry.icon or "Interface\\Icons\\inv_enchant_formulagood_01")
+                row.text:SetTextColor(1, 1, 1)
+            else
+                row.icon:SetTexture(entry.texture)
+                if entry.quality and ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[entry.quality] then
+                    local color = ITEM_QUALITY_COLORS[entry.quality]
+                    row.text:SetTextColor(color.r, color.g, color.b)
+                else
+                    row.text:SetTextColor(1, 1, 1)
+                end
+            end
+        else
+            row:Hide()
+            row.entry = nil
+        end
+    end
+    if self.wishlistSocketResultsEmpty then
+        setShown(self.wishlistSocketResultsEmpty, #results == 0)
+    end
+    if self.wishlistSocketApplyButton then
+        if self.selectedWishlistSocketResultId then
+            self.wishlistSocketApplyButton:Enable()
+        else
+            self.wishlistSocketApplyButton:Disable()
+        end
+    end
+    if self.wishlistSocketClearButton then
+        if self.selectedWishlistSlot then
+            self.wishlistSocketClearButton:Enable()
+        else
+            self.wishlistSocketClearButton:Disable()
+        end
+    end
+end
+
+function UI:ApplyWishlistSocketSelection()
+    if not self.selectedWishlistSlot or not self.selectedWishlistSocketMode then
+        return
+    end
+    local list = Goals:GetActiveWishlist()
+    local entry = list and list.items and list.items[self.selectedWishlistSlot] or nil
+    if not entry or not entry.itemId then
+        return
+    end
+    local result = self.selectedWishlistSocketResult
+    if not result then
+        return
+    end
+    if self.selectedWishlistSocketMode == "GEM" then
+        local itemId = result.itemId or result.id
+        if not itemId or itemId <= 0 then
+            return
+        end
+        local gems = entry.gemIds or {}
+        local index = self.selectedWishlistSocketIndex or (#gems + 1)
+        if index < 1 then
+            index = 1
+        elseif index > 3 then
+            index = 3
+        end
+        if index > #gems + 1 then
+            index = #gems + 1
+        end
+        gems[index] = itemId
+        entry.gemIds = gems
+    else
+        if not result.id or result.id <= 0 then
+            return
+        end
+        entry.enchantId = result.id
+    end
+    Goals:SetWishlistItem(self.selectedWishlistSlot, entry)
+    self:UpdateWishlistSocketPickerResults()
+    self:UpdateWishlistUI()
+end
+
+function UI:ClearWishlistSocketSelection()
+    if not self.selectedWishlistSlot or not self.selectedWishlistSocketMode then
+        return
+    end
+    local list = Goals:GetActiveWishlist()
+    local entry = list and list.items and list.items[self.selectedWishlistSlot] or nil
+    if not entry or not entry.itemId then
+        return
+    end
+    if self.selectedWishlistSocketMode == "GEM" then
+        local index = self.selectedWishlistSocketIndex or 1
+        if entry.gemIds and entry.gemIds[index] then
+            table.remove(entry.gemIds, index)
+        end
+    else
+        entry.enchantId = 0
+    end
+    Goals:SetWishlistItem(self.selectedWishlistSlot, entry)
+    self:UpdateWishlistSocketPickerResults()
+    self:UpdateWishlistUI()
+end
+
 function UI:UpdateWishlistUI()
     if not self.wishlistSlotButtons then
         return
@@ -3807,24 +4188,35 @@ function UI:UpdateWishlistUI()
                 end
             end
         end
-        local gemCount = 0
-        if entry and entry.gemIds then
-            for i = 1, 3 do
-                if entry.gemIds[i] then
-                    gemCount = gemCount + 1
-                end
-            end
+        local socketTypes = entry and entry.itemId and Goals.GetItemSocketTypes and Goals:GetItemSocketTypes(entry.itemId) or nil
+        local socketCount = socketTypes and #socketTypes or 0
+        local maxSockets = button.gems and #button.gems or 0
+        if socketCount > maxSockets then
+            socketCount = maxSockets
         end
-        local gemOffset = (gemCount - 1) * 0.5
-        for i = 1, 3 do
-            local gemTexture = nil
-            if entry and entry.gemIds and entry.gemIds[i] then
-                local gemCache = Goals:CacheItemById(entry.gemIds[i])
-                gemTexture = gemCache and gemCache.texture or nil
-            end
+        local gemOffset = (socketCount - 1) * 0.5
+        for i = 1, maxSockets do
             local gem = button.gems[i]
-            if gemTexture then
-                gem.icon:SetTexture(gemTexture)
+            if i <= socketCount then
+                local gemId = entry and entry.gemIds and entry.gemIds[i] or nil
+                local gemTexture = nil
+                if gemId then
+                    local gemCache = Goals:CacheItemById(gemId)
+                    gemTexture = gemCache and gemCache.texture or nil
+                end
+                gem.icon:SetVertexColor(1, 1, 1, 1)
+                if gemTexture then
+                    gem.icon:SetTexture(gemTexture)
+                    gem.itemId = gemId
+                    gem.socketType = socketTypes and socketTypes[i] or nil
+                else
+                    local socketType = socketTypes and socketTypes[i] or nil
+                    local emptyTexture = Goals.SocketTextureMap and socketType and Goals.SocketTextureMap[socketType] or nil
+                    gem.icon:SetTexture(emptyTexture or "Interface\\ItemSocketingFrame\\UI-EmptySocket-Prismatic")
+                    gem.icon:SetVertexColor(1, 1, 1, 0.7)
+                    gem.itemId = nil
+                    gem.socketType = socketType or "Socket"
+                end
                 gem:Show()
                 gem:ClearAllPoints()
                 local yOffset = (gemOffset - (i - 1)) * 14
@@ -3833,15 +4225,29 @@ function UI:UpdateWishlistUI()
                 else
                     gem:SetPoint("CENTER", button, "RIGHT", 8, yOffset)
                 end
-                gem.itemId = entry.gemIds[i]
+                if gem.selected then
+                    if self.selectedWishlistSlot == slotKey and self.selectedWishlistSocketMode == "GEM" and self.selectedWishlistSocketIndex == i then
+                        gem.selected:Show()
+                    else
+                        gem.selected:Hide()
+                    end
+                end
             else
                 gem:Hide()
                 gem.itemId = nil
+                gem.socketType = nil
+                if gem.selected then
+                    gem.selected:Hide()
+                end
             end
         end
-        if entry and entry.enchantId and entry.enchantId > 0 then
+        local enchantable = entry and entry.itemId and Goals.IsWishlistSlotEnchantable and Goals:IsWishlistSlotEnchantable(slotKey)
+        if enchantable then
+            local hasEnchant = entry and entry.enchantId and entry.enchantId > 0
             button.enchantIcon:Show()
-            button.enchantIcon.enchantId = entry.enchantId
+            button.enchantIcon.enchantId = hasEnchant and entry.enchantId or nil
+            button.enchantIcon.enchantAvailable = not hasEnchant
+            button.enchantIcon.icon:SetVertexColor(1, 1, 1, hasEnchant and 1 or 0.4)
             button.enchantIcon:ClearAllPoints()
             if button.column == 2 then
                 button.enchantIcon:SetPoint("CENTER", button, "RIGHT", 12, 0)
@@ -3850,9 +4256,20 @@ function UI:UpdateWishlistUI()
             else
                 button.enchantIcon:SetPoint("CENTER", button, "LEFT", -12, 0)
             end
+            if button.enchantIcon.selected then
+                if self.selectedWishlistSlot == slotKey and self.selectedWishlistSocketMode == "ENCHANT" then
+                    button.enchantIcon.selected:Show()
+                else
+                    button.enchantIcon.selected:Hide()
+                end
+            end
         else
             button.enchantIcon:Hide()
             button.enchantIcon.enchantId = nil
+            button.enchantIcon.enchantAvailable = nil
+            if button.enchantIcon.selected then
+                button.enchantIcon.selected:Hide()
+            end
         end
         if self.selectedWishlistSlot == slotKey then
             button.selected:Show()
@@ -3884,6 +4301,9 @@ function UI:UpdateWishlistUI()
     end
     self:UpdateWishlistManagerList()
     self:UpdateWishlistSearchResults()
+    if self.wishlistSocketPickerOpen then
+        self:UpdateWishlistSocketPickerResults()
+    end
     if self.wishlistAddSlotButton then
         if self.selectedWishlistSlot and self.selectedWishlistResult then
             self.wishlistAddSlotButton:Enable()
