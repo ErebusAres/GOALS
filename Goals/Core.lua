@@ -2740,6 +2740,16 @@ function Goals:BuildWishlistItemCache()
     end
 end
 
+function Goals:RefreshWishlistItemCache()
+    self.itemCache = {}
+    self.pendingWishlistInfo = {}
+    self:BuildWishlistItemCache()
+    self:ProcessPendingWishlistInfo()
+    if self.UI and self.UI.UpdateWishlistUI then
+        self.UI:UpdateWishlistUI()
+    end
+end
+
 function Goals:MapEquipSlotToGroup(equipSlot)
     local map = {
         INVTYPE_HEAD = "HEAD",
@@ -3150,25 +3160,102 @@ function Goals:GetEnchantSearchList()
     return self.EnchantSearchList or {}
 end
 
-function Goals:SearchEnchantments(query)
+function Goals:SearchEnchantments(query, filters)
     local results = {}
     local clean = query and tostring(query) or ""
     clean = clean:gsub("^%s+", ""):gsub("%s+$", "")
     local queryLower = string.lower(clean)
     local seen = {}
+    local slotFilter = filters and filters.slotKey or nil
+    local blockedTokens = {
+        "poison",
+        "oil",
+        "flametongue",
+        "frostbrand",
+        "rockbiter",
+        "windfury",
+        "sharpened",
+        "weighted",
+        "fishing lure",
+        "spellstone",
+        "firestone",
+        "flametongue totem",
+        "mind-numbing",
+        "crippling",
+        "instant poison",
+        "wound poison",
+        "deadly poison",
+        "anesthetic poison",
+    }
+    local function isBlockedEnchantName(name)
+        if not name or name == "" then
+            return false
+        end
+        local lower = string.lower(name)
+        for _, token in ipairs(blockedTokens) do
+            if string.find(lower, token, 1, true) then
+                return true
+            end
+        end
+        return false
+    end
+    local function matchesSlot(entry)
+        if not slotFilter or slotFilter == "" then
+            return true, nil
+        end
+        if not entry or not entry.slot then
+            return true, nil
+        end
+        if type(entry.slot) == "table" then
+            for _, slotKey in ipairs(entry.slot) do
+                if slotKey == slotFilter then
+                    return true, slotKey
+                end
+            end
+            return false, nil
+        end
+        if entry.slot == slotFilter then
+            return true, entry.slot
+        end
+        return false, nil
+    end
 
     local function addEntry(entry)
         local id = entry and (entry.id or entry.enchantId)
         if not id or id <= 0 or seen[id] then
             return
         end
-        local name = entry.name or ("Enchant " .. tostring(id))
+        local slotOk, matchedSlot = matchesSlot(entry)
+        if not slotOk then
+            return
+        end
+        if not matchedSlot and entry and type(entry.slot) == "string" then
+            matchedSlot = entry.slot
+        end
+        local name = entry and entry.name or nil
+        local icon = entry and entry.icon or nil
+        local iconNeedsResolve = (not icon or icon == "" or icon == "Interface\\Icons\\INV_Misc_QuestionMark")
+        if entry and entry.spellId and GetSpellInfo then
+            local spellName, _, spellIcon = GetSpellInfo(entry.spellId)
+            if not name or name == "" then
+                name = spellName
+            end
+            if iconNeedsResolve then
+                icon = spellIcon
+            end
+        end
+        name = name or ("Enchant " .. tostring(id))
+        if isBlockedEnchantName(name) then
+            return
+        end
         if clean == "" or tostring(id) == clean or string.find(string.lower(name), queryLower, 1, true) then
             seen[id] = true
             table.insert(results, {
                 id = id,
                 name = name,
-                icon = entry.icon,
+                icon = icon,
+                spellId = entry and entry.spellId or nil,
+                slotKey = matchedSlot,
             })
         end
     end
@@ -3178,7 +3265,8 @@ function Goals:SearchEnchantments(query)
     if directId and directId > 0 then
         for _, entry in ipairs(list) do
             local entryId = entry and (entry.id or entry.enchantId)
-            if entryId == directId then
+            local entrySpellId = entry and entry.spellId or nil
+            if entryId == directId or entrySpellId == directId then
                 addEntry(entry)
                 return results
             end

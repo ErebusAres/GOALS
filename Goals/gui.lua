@@ -369,6 +369,18 @@ local function setShown(frame, show)
     end
 end
 
+local function createSmallIconButton(parent, size, texture)
+    local btn = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
+    btn:SetSize(size, size)
+    btn:SetText("")
+    local icon = btn:CreateTexture(nil, "ARTWORK")
+    icon:SetAllPoints(btn)
+    icon:SetTexture(texture)
+    icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    btn.icon = icon
+    return btn
+end
+
 function UI:GetAllPlayerNames()
     local names = {}
     if Goals.db and Goals.db.players then
@@ -1688,9 +1700,7 @@ function UI:CreateWishlistTab(page)
     self.wishlistSubTabs.search = createTabButton("Search", "search", self.wishlistSubTabs.manage)
     self.wishlistSubTabs.actions = createTabButton("Actions", "actions", self.wishlistSubTabs.search)
 
-    local helpBtn = CreateFrame("Button", nil, tabBar, "UIPanelButtonTemplate")
-    helpBtn:SetSize(22, 20)
-    helpBtn:SetText("?")
+    local helpBtn = createSmallIconButton(tabBar, 18, "Interface\\Buttons\\UI-HelpButton")
     helpBtn:SetPoint("RIGHT", tabBar, "RIGHT", 0, 0)
     helpBtn:SetScript("OnClick", function()
         self.wishlistHelpOpen = not self.wishlistHelpOpen
@@ -1703,6 +1713,14 @@ function UI:CreateWishlistTab(page)
         if self.UpdateWishlistHelpVisibility then
             self:UpdateWishlistHelpVisibility()
         end
+    end)
+    helpBtn:SetScript("OnEnter", function(selfBtn)
+        GameTooltip:SetOwner(selfBtn, "ANCHOR_RIGHT")
+        GameTooltip:SetText("Wishlist help")
+        GameTooltip:Show()
+    end)
+    helpBtn:SetScript("OnLeave", function()
+        GameTooltip:Hide()
     end)
     self.wishlistHelpButton = helpBtn
 
@@ -1902,6 +1920,22 @@ function UI:CreateWishlistTab(page)
 
     local slotsLabel = createLabel(leftInset, L.LABEL_WISHLIST_SLOTS, "GameFontNormal")
     slotsLabel:SetPoint("TOPLEFT", leftInset, "TOPLEFT", 10, -8)
+    local refreshBtn = createSmallIconButton(leftInset, 18, "Interface\\Buttons\\UI-RefreshButton")
+    refreshBtn:SetPoint("TOPRIGHT", leftInset, "TOPRIGHT", -8, -6)
+    refreshBtn:SetScript("OnClick", function()
+        if Goals.RefreshWishlistItemCache then
+            Goals:RefreshWishlistItemCache()
+        end
+    end)
+    refreshBtn:SetScript("OnEnter", function(selfBtn)
+        GameTooltip:SetOwner(selfBtn, "ANCHOR_RIGHT")
+        GameTooltip:SetText("Refresh wishlist cache")
+        GameTooltip:Show()
+    end)
+    refreshBtn:SetScript("OnLeave", function()
+        GameTooltip:Hide()
+    end)
+    self.wishlistRefreshButton = refreshBtn
 
     self.wishlistSlotButtons = {}
     local slots = Goals:GetWishlistSlotDefs() or {}
@@ -2923,19 +2957,31 @@ function UI:CreateWishlistTab(page)
     end)
     self.wishlistAnnounceCheck = announceCheck
 
-    local soundToggle = CreateFrame("Button", nil, popout, "UIPanelButtonTemplate")
+    local soundToggle = createSmallIconButton(popout, 20, "Interface\\Common\\VoiceChat-Speaker")
     soundToggle:SetPoint("LEFT", announceLabel, "RIGHT", 6, 0)
-    soundToggle:SetSize(36, 20)
-    soundToggle:SetText("SND")
     soundToggle:SetScript("OnClick", function()
         local enabled = Goals.db.settings.wishlistPopupSound and true or false
         Goals.db.settings.wishlistPopupSound = not enabled
-        if Goals.db.settings.wishlistPopupSound then
-            soundToggle:SetText("SND")
-        else
-            soundToggle:SetText("MUT")
+        if soundToggle.icon then
+            if Goals.db.settings.wishlistPopupSound then
+                soundToggle.icon:SetTexture("Interface\\Common\\VoiceChat-Speaker")
+            else
+                soundToggle.icon:SetTexture("Interface\\Common\\VoiceChat-Muted")
+            end
         end
         Goals:NotifyDataChanged()
+    end)
+    soundToggle:SetScript("OnEnter", function(selfBtn)
+        GameTooltip:SetOwner(selfBtn, "ANCHOR_RIGHT")
+        if Goals.db.settings.wishlistPopupSound then
+            GameTooltip:SetText("Sound on")
+        else
+            GameTooltip:SetText("Sound muted")
+        end
+        GameTooltip:Show()
+    end)
+    soundToggle:SetScript("OnLeave", function()
+        GameTooltip:Hide()
     end)
     self.wishlistPopupSoundToggle = soundToggle
 
@@ -3098,14 +3144,20 @@ function UI:CreateSettingsTab(page)
     local tableTitle = createLabel(rightInset, L.LABEL_SAVE_TABLES, "GameFontNormal")
     tableTitle:SetPoint("TOPLEFT", miniResetBtn, "BOTTOMLEFT", 0, -16)
 
-    local helpBtn = CreateFrame("Button", nil, rightInset, "UIPanelButtonTemplate")
-    helpBtn:SetSize(22, 20)
-    helpBtn:SetText("?")
+    local helpBtn = createSmallIconButton(rightInset, 18, "Interface\\Buttons\\UI-HelpButton")
     helpBtn:SetPoint("LEFT", tableTitle, "RIGHT", 6, 0)
     helpBtn:SetScript("OnClick", function()
         if StaticPopup_Show then
             StaticPopup_Show("GOALS_SAVE_TABLE_HELP")
         end
+    end)
+    helpBtn:SetScript("OnEnter", function(selfBtn)
+        GameTooltip:SetOwner(selfBtn, "ANCHOR_RIGHT")
+        GameTooltip:SetText("Table save help")
+        GameTooltip:Show()
+    end)
+    helpBtn:SetScript("OnLeave", function()
+        GameTooltip:Hide()
     end)
     self.saveTableHelpButton = helpBtn
 
@@ -3958,7 +4010,7 @@ function UI:UpdateWishlistSocketPickerResults()
     local query = self.wishlistSocketSearchBox and self.wishlistSocketSearchBox:GetText() or ""
     local results = {}
     if mode == "ENCHANT" and Goals.SearchEnchantments then
-        results = Goals:SearchEnchantments(query)
+        results = Goals:SearchEnchantments(query, { slotKey = self.selectedWishlistSlot })
     elseif Goals.SearchGemItems then
         results = Goals:SearchGemItems(query)
     end
@@ -3993,7 +4045,14 @@ function UI:UpdateWishlistSocketPickerResults()
             row:Show()
             row.entry = entry
             setShown(row.selected, self.selectedWishlistSocketResultId == entry.id)
-            row.text:SetText(entry.name or (mode == "ENCHANT" and ("Enchant " .. tostring(entry.id or 0)) or ("Item " .. tostring(entry.id or 0))))
+            local rowName = entry.name or (mode == "ENCHANT" and ("Enchant " .. tostring(entry.id or 0)) or ("Item " .. tostring(entry.id or 0)))
+            if mode == "ENCHANT" and entry.slotKey and Goals.GetWishlistSlotDef then
+                local slotDef = Goals:GetWishlistSlotDef(entry.slotKey)
+                if slotDef and slotDef.label then
+                    rowName = rowName .. " (" .. slotDef.label .. ")"
+                end
+            end
+            row.text:SetText(rowName)
             if mode == "ENCHANT" then
                 row.icon:SetTexture(entry.icon or "Interface\\Icons\\inv_enchant_formulagood_01")
                 row.text:SetTextColor(1, 1, 1)
@@ -4665,11 +4724,11 @@ function UI:Refresh()
     if self.wishlistPopupDisableCheck then
         self.wishlistPopupDisableCheck:SetChecked(Goals.db.settings.wishlistPopupDisabled and true or false)
     end
-    if self.wishlistPopupSoundToggle then
+    if self.wishlistPopupSoundToggle and self.wishlistPopupSoundToggle.icon then
         if Goals.db.settings.wishlistPopupSound == false then
-            self.wishlistPopupSoundToggle:SetText("MUT")
+            self.wishlistPopupSoundToggle.icon:SetTexture("Interface\\Common\\VoiceChat-Muted")
         else
-            self.wishlistPopupSoundToggle:SetText("SND")
+            self.wishlistPopupSoundToggle.icon:SetTexture("Interface\\Common\\VoiceChat-Speaker")
         end
     end
     if Goals.db and Goals.db.settings then
