@@ -120,10 +120,12 @@ function Comm:HandleMessage(msgType, payload, sender, channel)
         return
     end
     if msgType == "SYNC_POINTS" then
+        Goals.lastSyncReceivedAt = time()
         self:ApplyPoints(payload)
         return
     end
     if msgType == "SYNC_SETTINGS" then
+        Goals.lastSyncReceivedAt = time()
         self:ApplySettings(payload)
         return
     end
@@ -131,37 +133,44 @@ function Comm:HandleMessage(msgType, payload, sender, channel)
         return
     end
     if msgType == "BOSSKILL" then
+        Goals.lastSyncReceivedAt = time()
         local encounter, list = payload:match("^(.-)|(.*)$")
         local names = split(list or "", ",")
         Goals:ApplyBossKillFromSync(encounter or "Boss", names)
         return
     end
     if msgType == "ADJUST" then
+        Goals.lastSyncReceivedAt = time()
         local name, delta, reason = payload:match("^(.-)|(-?%d+)|?(.*)$")
         Goals:AdjustPoints(name, tonumber(delta) or 0, reason or "Sync adjustment", true, true)
         return
     end
     if msgType == "SETPOINTS" then
+        Goals.lastSyncReceivedAt = time()
         local name, points, reason = payload:match("^(.-)|(-?%d+)|?(.*)$")
         Goals:SetPoints(name, tonumber(points) or 0, reason or "Sync set", true, false, true)
         return
     end
     if msgType == "LOOTRESET" then
+        Goals.lastSyncReceivedAt = time()
         local name, itemLink = payload:match("^(.-)|(.+)$")
         Goals:ApplyLootReset(name, itemLink)
         return
     end
     if msgType == "LOOT" then
+        Goals.lastSyncReceivedAt = time()
         local name, itemLink = payload:match("^(.-)|(.+)$")
         Goals:ApplyLootAssignment(name, itemLink)
         return
     end
     if msgType == "LOOTFOUND" then
+        Goals.lastSyncReceivedAt = time()
         local id, ts, itemLink = payload:match("^(%d+)|(%d+)|(.+)$")
         Goals:ApplyLootFound(tonumber(id) or 0, tonumber(ts) or 0, itemLink, sender)
         return
     end
     if msgType == "SETTING" then
+        Goals.lastSyncReceivedAt = time()
         local key, value = payload:match("^(.-)|(.+)$")
         self:ApplySetting(key, value)
         return
