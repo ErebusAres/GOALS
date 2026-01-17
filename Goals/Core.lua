@@ -745,6 +745,9 @@ function Goals:AwardBossKill(encounterName, members, skipSync)
     if not roster or #roster == 0 then
         return
     end
+    if not skipSync and not self:IsSyncMaster() then
+        return
+    end
     if self.db and self.db.settings and self.db.settings.disablePointGain then
         return
     end
@@ -1333,6 +1336,7 @@ function Goals:ApplyLootAssignment(playerName, itemLink)
         return
     end
     self:RecordLootAssignment(playerName, itemLink, false)
+    self:HandleWishlistLoot(itemLink)
     self:NotifyDataChanged()
 end
 
@@ -1344,6 +1348,7 @@ function Goals:ApplyLootReset(playerName, itemLink)
     local before = entry and entry.points or 0
     self:RecordLootAssignment(playerName, itemLink, true, before)
     self:SetPoints(playerName, 0, "Loot reset: " .. itemLink, true, true)
+    self:HandleWishlistLoot(itemLink)
 end
 
 function Goals:RecordUndo(name, points)
@@ -4161,7 +4166,55 @@ function Goals:Init()
         self.UI:Init()
     end
     self:UpdateSyncStatus()
+    if self.StartAutoSyncPush then
+        self:StartAutoSyncPush()
+    end
     self:Debug("Loaded v" .. self.version)
+end
+
+function Goals:StartAutoSyncPush()
+    if self.autoSyncFrame then
+        return
+    end
+    local interval = 60
+    local elapsed = 0
+    self.autoSyncInterval = interval
+    self.nextAutoSyncAt = time() + interval
+    local frame = CreateFrame("Frame")
+    frame:SetScript("OnUpdate", function(_, delta)
+        elapsed = elapsed + (delta or 0)
+        if elapsed < interval then
+            return
+        end
+        elapsed = 0
+        if self.Dev and self.Dev.enabled then
+            return
+        end
+        if not self:IsSyncMaster() then
+            return
+        end
+        if not self:IsInRaid() and not self:IsInParty() then
+            return
+        end
+        if self.Comm and self.Comm.SendPointsSync then
+            self.Comm:SendPointsSync(nil)
+        elseif self.Comm and self.Comm.SerializePoints then
+            self.Comm:Send("SYNC_POINTS", self.Comm:SerializePoints())
+        end
+        self.nextAutoSyncAt = time() + interval
+    end)
+    self.autoSyncFrame = frame
+end
+
+function Goals:GetAutoSyncRemaining()
+    if not self.nextAutoSyncAt then
+        return nil
+    end
+    local remaining = self.nextAutoSyncAt - time()
+    if remaining < 0 then
+        remaining = 0
+    end
+    return remaining
 end
 
 function Goals:CheckBuild()

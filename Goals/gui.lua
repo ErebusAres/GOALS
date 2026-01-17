@@ -1123,6 +1123,13 @@ function UI:CreateOverviewTab(page)
     end)
     self.disablePointGainCheck = disableGainCheck
 
+    local disableGainStatus = createLabel(page, "", "GameFontHighlightSmall")
+    disableGainStatus:SetPoint("LEFT", presentCheck.Text or presentCheck, "RIGHT", 12, 0)
+    disableGainStatus:SetPoint("CENTER", presentCheck, "CENTER", 0, 0)
+    disableGainStatus:SetJustifyH("LEFT")
+    disableGainStatus:Hide()
+    self.disablePointGainStatus = disableGainStatus
+
     local rosterInset = CreateFrame("Frame", "GoalsOverviewRosterInset", page, "GoalsInsetTemplate")
     rosterInset:SetPoint("TOPLEFT", page, "TOPLEFT", 2, -30)
     rosterInset:SetPoint("BOTTOMLEFT", page, "BOTTOMLEFT", 2, 2)
@@ -1131,6 +1138,10 @@ function UI:CreateOverviewTab(page)
 
     local pointsLabel = createLabel(rosterInset, L.LABEL_POINTS, "GameFontNormal")
     pointsLabel:SetPoint("TOPLEFT", rosterInset, "TOPLEFT", 10, -6)
+    local autoSyncLabel = createLabel(rosterInset, "", "GameFontHighlightSmall")
+    autoSyncLabel:SetPoint("TOPRIGHT", rosterInset, "TOPRIGHT", -10, -8)
+    autoSyncLabel:SetJustifyH("RIGHT")
+    self.autoSyncLabel = autoSyncLabel
 
     local rosterScroll = CreateFrame("ScrollFrame", "GoalsRosterScroll", rosterInset, "FauxScrollFrameTemplate")
     rosterScroll:SetPoint("TOPLEFT", rosterInset, "TOPLEFT", 2, -22)
@@ -1141,6 +1152,20 @@ function UI:CreateOverviewTab(page)
         end)
     end)
     self.rosterScroll = rosterScroll
+
+    local autoSyncTicker = CreateFrame("Frame", nil, rosterInset)
+    autoSyncTicker.elapsed = 0
+    autoSyncTicker:SetScript("OnUpdate", function(selfFrame, elapsed)
+        selfFrame.elapsed = selfFrame.elapsed + (elapsed or 0)
+        if selfFrame.elapsed < 0.5 then
+            return
+        end
+        selfFrame.elapsed = 0
+        if UI and UI.UpdateAutoSyncLabel then
+            UI:UpdateAutoSyncLabel()
+        end
+    end)
+    self.autoSyncTicker = autoSyncTicker
 
     self.rosterRows = {}
     for i = 1, ROSTER_ROWS do
@@ -1678,14 +1703,15 @@ function UI:CreateHistoryTab(page)
     end
 end
 
-local function fitWishlistLabel(label, text)
+local function fitWishlistLabel(label, text, maxLines)
     if not label then
         return
     end
     label:SetText(text or "")
     local font, size = label:GetFont()
     local lineHeight = (size or 12) + 2
-    local maxHeight = lineHeight * 3
+    local limit = maxLines or 3
+    local maxHeight = lineHeight * limit
     if label:GetStringHeight() <= maxHeight then
         return
     end
@@ -2091,11 +2117,10 @@ function UI:CreateWishlistTab(page)
     local rightColumnX = leftInset:GetWidth() - WISHLIST_SLOT_SIZE - 30
     local columnCenter = leftInset:GetWidth() * 0.5
     local centerGap = 3
-    local gemColumnWidth = 12
-    local gemNameGap = 2
-    local nameOffset = gemColumnWidth + gemNameGap + 6
-    local leftLabelWidth = math.max(80, (columnCenter - centerGap) - (leftColumnX + WISHLIST_SLOT_SIZE + nameOffset) - 4)
-    local rightLabelWidth = math.max(80, (rightColumnX - nameOffset) - (columnCenter + centerGap) - 4)
+    local nameOffset = 2
+    self.wishlistNameOffset = nameOffset
+    local leftLabelWidth = math.max(80, (columnCenter - centerGap) - (leftColumnX + WISHLIST_SLOT_SIZE + nameOffset))
+    local rightLabelWidth = math.max(80, (rightColumnX - nameOffset) - (columnCenter + centerGap))
     local topY = -28
     local bottomRowY = 60
     local bottomRowX = {
@@ -2165,9 +2190,14 @@ function UI:CreateWishlistTab(page)
             local gemBtn = CreateFrame("Button", nil, button)
             gemBtn:SetSize(12, 12)
             gemBtn:Hide()
+            local gemFrame = gemBtn:CreateTexture(nil, "BACKGROUND")
+            gemFrame:SetAllPoints(gemBtn)
+            gemBtn.frame = gemFrame
             local gemTex = gemBtn:CreateTexture(nil, "ARTWORK")
-            gemTex:SetAllPoints(gemBtn)
+            gemTex:SetPoint("TOPLEFT", gemBtn, "TOPLEFT", 1, -1)
+            gemTex:SetPoint("BOTTOMRIGHT", gemBtn, "BOTTOMRIGHT", -1, 1)
             gemBtn.icon = gemTex
+            gemTex:SetDrawLayer("OVERLAY", 1)
             local gemSelected = gemBtn:CreateTexture(nil, "OVERLAY")
             gemSelected:SetTexture("Interface\\Buttons\\CheckButtonHilight")
             gemSelected:SetBlendMode("ADD")
@@ -2274,27 +2304,32 @@ function UI:CreateWishlistTab(page)
         local button = createSlotButton(slotDef)
         if slotDef.column == 1 then
             button:SetPoint("TOPLEFT", leftInset, "TOPLEFT", leftColumnX, topY - (slotDef.row - 1) * WISHLIST_ROW_SPACING)
-            button.label:SetPoint("LEFT", button, "RIGHT", nameOffset, 0)
+            button.label:SetPoint("TOPLEFT", button, "TOPRIGHT", nameOffset, -2)
+            button.label:SetFontObject("GameFontHighlightSmall")
             button.label:SetWidth(leftLabelWidth)
+            button.label:SetHeight(26)
             button.label:SetJustifyH("LEFT")
             if button.label.SetJustifyV then
-                button.label:SetJustifyV("MIDDLE")
+                button.label:SetJustifyV("TOP")
             end
             button.label:SetWordWrap(true)
         elseif slotDef.column == 2 then
             button:SetPoint("TOPLEFT", leftInset, "TOPLEFT", rightColumnX, topY - (slotDef.row - 1) * WISHLIST_ROW_SPACING)
-            button.label:SetPoint("RIGHT", button, "LEFT", -nameOffset, 0)
+            button.label:SetPoint("TOPRIGHT", button, "TOPLEFT", -nameOffset, -2)
+            button.label:SetFontObject("GameFontHighlightSmall")
             button.label:SetJustifyH("RIGHT")
             if button.label.SetJustifyV then
-                button.label:SetJustifyV("MIDDLE")
+                button.label:SetJustifyV("TOP")
             end
             button.label:SetWidth(rightLabelWidth)
+            button.label:SetHeight(26)
             button.label:SetWordWrap(true)
         else
             local x = bottomRowX[slotDef.key] or 90
             button:SetPoint("BOTTOMLEFT", leftInset, "BOTTOMLEFT", x, bottomRowY)
             button.label:SetPoint("TOP", button, "BOTTOM", 0, -6)
-            button.label:SetWidth(104)
+            button.label:SetFontObject("GameFontHighlightSmall")
+            button.label:SetWidth(86)
             button.label:SetJustifyH("CENTER")
             if button.label.SetJustifyV then
                 button.label:SetJustifyV("MIDDLE")
@@ -3389,6 +3424,22 @@ function UI:CreateSettingsTab(page)
     end)
     sudoBtn:SetPoint("TOPLEFT", editTitle, "BOTTOMLEFT", 2, -8)
     self.sudoDevButton = sudoBtn
+
+    local syncRequestBtn = createActionButton("Ask for sync", function()
+        if Goals and Goals.Comm and Goals.Comm.RequestSync then
+            Goals.Comm:RequestSync()
+        end
+    end)
+    syncRequestBtn:SetPoint("TOPLEFT", sudoBtn, "BOTTOMLEFT", 0, -6)
+    syncRequestBtn:SetScript("OnEnter", function(selfBtn)
+        GameTooltip:SetOwner(selfBtn, "ANCHOR_RIGHT")
+        GameTooltip:SetText("Ask the loot master to send a full roster/points sync.")
+        GameTooltip:Show()
+    end)
+    syncRequestBtn:SetScript("OnLeave", function()
+        GameTooltip:Hide()
+    end)
+    self.syncRequestButton = syncRequestBtn
 end
 
 function UI:BuildHelpNavList()
@@ -4460,7 +4511,24 @@ function UI:UpdateRosterList()
     end
     if self.disablePointGainCheck then
         self.disablePointGainCheck:SetChecked(Goals.db.settings.disablePointGain and true or false)
-        setShown(self.disablePointGainCheck, hasPointGainAccess())
+        local isMaster = Goals and Goals.IsSyncMaster and Goals:IsSyncMaster()
+        local canToggle = isMaster and not (Goals.Dev and Goals.Dev.enabled)
+        setShown(self.disablePointGainCheck, canToggle)
+        if self.disablePointGainStatus then
+            if canToggle then
+                self.disablePointGainStatus:Hide()
+            else
+                local enabled = not Goals.db.settings.disablePointGain
+                if enabled then
+                    self.disablePointGainStatus:SetText("Point tracking: enabled")
+                    self.disablePointGainStatus:SetTextColor(0.2, 1, 0.2)
+                else
+                    self.disablePointGainStatus:SetText("Point tracking: disabled")
+                    self.disablePointGainStatus:SetTextColor(1, 0.25, 0.25)
+                end
+                self.disablePointGainStatus:Show()
+            end
+        end
     end
 end
 
@@ -5028,7 +5096,8 @@ function UI:UpdateWishlistUI()
     if list and list.id and Goals.GetWishlistFoundMap then
         foundMap = Goals:GetWishlistFoundMap(list.id)
     end
-    if list and foundMap and Goals.IsWishlistItemOwned then
+    local allowAutoFound = Goals and Goals.sync and Goals.sync.isMaster and not (Goals.Dev and Goals.Dev.enabled)
+    if list and foundMap and Goals.IsWishlistItemOwned and allowAutoFound then
         for _, entry in pairs(list.items or {}) do
             if entry and entry.itemId then
                 local owned = Goals:IsWishlistItemOwned(entry.itemId)
@@ -5060,7 +5129,7 @@ function UI:UpdateWishlistUI()
             button.icon:SetTexture(cached.texture)
             button.icon:SetVertexColor(1, 1, 1)
             local labelText = cached.name or slotDef.label or slotKey
-            fitWishlistLabel(button.label, labelText)
+            fitWishlistLabel(button.label, labelText, button.column == 3 and 3 or 2)
             if cached.quality and ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[cached.quality] then
                 local color = ITEM_QUALITY_COLORS[cached.quality]
             button.label:SetTextColor(color.r, color.g, color.b)
@@ -5081,12 +5150,12 @@ function UI:UpdateWishlistUI()
                 button.icon:SetTexture(nil)
             end
             if entry and entry.itemId and entry.itemId > 0 then
-                fitWishlistLabel(button.label, "Item " .. tostring(entry.itemId))
+                fitWishlistLabel(button.label, "Item " .. tostring(entry.itemId), button.column == 3 and 3 or 2)
             else
                 if slotDef and slotDef.key == "RELIC" then
-                    fitWishlistLabel(button.label, "Relic / Ranged")
+                    fitWishlistLabel(button.label, "Relic / Ranged", button.column == 3 and 3 or 2)
                 else
-                    fitWishlistLabel(button.label, (slotDef and slotDef.label) or slotKey)
+                    fitWishlistLabel(button.label, (slotDef and slotDef.label) or slotKey, button.column == 3 and 3 or 2)
                 end
             end
             button.label:SetTextColor(0.9, 0.9, 0.9)
@@ -5140,34 +5209,105 @@ function UI:UpdateWishlistUI()
         if socketCount > maxSockets then
             socketCount = maxSockets
         end
+        if button.label then
+            local nameOffset = self.wishlistNameOffset or 2
+            if (button.column == 1 or button.column == 2) and socketCount == 0 then
+                button.label:ClearAllPoints()
+                if button.column == 1 then
+                    button.label:SetPoint("LEFT", button, "RIGHT", nameOffset, 0)
+                else
+                    button.label:SetPoint("RIGHT", button, "LEFT", -nameOffset, 0)
+                end
+                if button.label.SetJustifyV then
+                    button.label:SetJustifyV("MIDDLE")
+                end
+            elseif button.column == 1 then
+                button.label:ClearAllPoints()
+                button.label:SetPoint("TOPLEFT", button, "TOPRIGHT", nameOffset, -2)
+                if button.label.SetJustifyV then
+                    button.label:SetJustifyV("TOP")
+                end
+            elseif button.column == 2 then
+                button.label:ClearAllPoints()
+                button.label:SetPoint("TOPRIGHT", button, "TOPLEFT", -nameOffset, -2)
+                if button.label.SetJustifyV then
+                    button.label:SetJustifyV("TOP")
+                end
+            end
+        end
         local gemOffset = (socketCount - 1) * 0.5
         for i = 1, maxSockets do
             local gem = button.gems[i]
             if i <= socketCount then
                 local gemId = entry and entry.gemIds and entry.gemIds[i] or nil
                 local gemTexture = nil
+                local socketType = socketTypes and socketTypes[i] or nil
+                local function getSocketFrameTexture(socketKind)
+                    local socketFrame = Goals.SocketTextureMap and socketKind and Goals.SocketTextureMap[socketKind] or nil
+                    if socketFrame then
+                        return socketFrame
+                    end
+                    local key = socketKind and string.lower(socketKind) or ""
+                    if string.find(key, "meta", 1, true) then
+                        return "Interface\\ItemSocketingFrame\\UI-EmptySocket-Meta"
+                    end
+                    if string.find(key, "blue", 1, true) then
+                        return "Interface\\ItemSocketingFrame\\UI-EmptySocket-Blue"
+                    end
+                    if string.find(key, "red", 1, true) then
+                        return "Interface\\ItemSocketingFrame\\UI-EmptySocket-Red"
+                    end
+                    if string.find(key, "yellow", 1, true) then
+                        return "Interface\\ItemSocketingFrame\\UI-EmptySocket-Yellow"
+                    end
+                    if string.find(key, "prismatic", 1, true) then
+                        return "Interface\\ItemSocketingFrame\\UI-EmptySocket-Prismatic"
+                    end
+                    return "Interface\\ItemSocketingFrame\\UI-EmptySocket-Prismatic"
+                end
+                local socketFrame = getSocketFrameTexture(socketType)
+                if gem.frame then
+                    gem.frame:SetTexture(socketFrame)
+                    gem.frame:SetDrawLayer("ARTWORK", 0)
+                end
                 if gemId then
                     local gemCache = Goals:CacheItemById(gemId)
                     gemTexture = gemCache and gemCache.texture or nil
+                    if not gemTexture and GetItemIcon then
+                        gemTexture = GetItemIcon(gemId)
+                    end
                 end
-                gem.icon:SetVertexColor(1, 1, 1, 1)
                 if gemTexture then
                     gem.icon:SetTexture(gemTexture)
+                    gem.icon:SetVertexColor(1, 1, 1, 1)
+                    gem.icon:SetDrawLayer("ARTWORK", 1)
+                    if gem.frame then
+                        gem.frame:Hide()
+                    end
                     gem.itemId = gemId
-                    gem.socketType = socketTypes and socketTypes[i] or nil
+                    gem.socketType = socketType
                 else
-                    local socketType = socketTypes and socketTypes[i] or nil
-                    local emptyTexture = Goals.SocketTextureMap and socketType and Goals.SocketTextureMap[socketType] or nil
-                    gem.icon:SetTexture(emptyTexture or "Interface\\ItemSocketingFrame\\UI-EmptySocket-Prismatic")
-                    gem.icon:SetVertexColor(1, 1, 1, 0.7)
+                    gem.icon:SetTexture(nil)
+                    gem.icon:SetVertexColor(1, 1, 1, 0)
+                    if gem.frame then
+                        gem.frame:SetVertexColor(1, 1, 1, 0.7)
+                        gem.frame:Show()
+                    end
                     gem.itemId = nil
                     gem.socketType = socketType or "Socket"
                 end
                 gem:Show()
                 gem:ClearAllPoints()
                 local yOffset = (gemOffset - (i - 1)) * 14
-                if button.column == 2 then
-                    gem:SetPoint("CENTER", button, "LEFT", -8, yOffset)
+                if button.column == 1 or button.column == 2 then
+                    local xOffset = (i - 1) * 13
+                    local yOffsetRow = 4
+                    local nameOffset = self.wishlistNameOffset or 2
+                    if button.column == 1 then
+                        gem:SetPoint("LEFT", button, "BOTTOMRIGHT", nameOffset + xOffset, yOffsetRow)
+                    else
+                        gem:SetPoint("RIGHT", button, "BOTTOMLEFT", -nameOffset - xOffset, yOffsetRow)
+                    end
                 else
                     gem:SetPoint("CENTER", button, "RIGHT", 8, yOffset)
                 end
@@ -5564,6 +5704,37 @@ function UI:RefreshStatus()
     end
     self:RefreshUpdateTab()
     self:UpdateUpdateTabGlow()
+    if self.UpdateAutoSyncLabel then
+        self:UpdateAutoSyncLabel()
+    end
+end
+
+function UI:UpdateAutoSyncLabel()
+    if not self.autoSyncLabel then
+        return
+    end
+    local isMaster = Goals and Goals.IsSyncMaster and Goals:IsSyncMaster()
+    if Goals and Goals.Dev and Goals.Dev.enabled then
+        isMaster = false
+    end
+    if not isMaster then
+        local last = Goals and Goals.lastSyncReceivedAt or nil
+        if last then
+            self.autoSyncLabel:SetText("Last sync: " .. date("%H:%M:%S", last))
+        else
+            self.autoSyncLabel:SetText("Last sync: --:--:--")
+        end
+        return
+    end
+    local remaining = Goals and Goals.GetAutoSyncRemaining and Goals:GetAutoSyncRemaining() or nil
+    if not remaining then
+        self.autoSyncLabel:SetText("Auto sync: --")
+        return
+    end
+    local seconds = math.floor(remaining + 0.5)
+    local mins = math.floor(seconds / 60)
+    local secs = seconds % 60
+    self.autoSyncLabel:SetText(string.format("Auto sync: %d:%02d", mins, secs))
 end
 
 function UI:Refresh()

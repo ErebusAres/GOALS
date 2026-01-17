@@ -127,16 +127,7 @@ function Comm:HandleMessage(msgType, payload, sender, channel)
         self:ApplySettings(payload)
         return
     end
-    if msgType == "SYNC_WISHLIST" then
-        if Goals.ApplyWishlistSync then
-            Goals:ApplyWishlistSync(payload)
-        end
-        return
-    end
     if msgType == "WISHLIST_SYNC_REQUEST" then
-        if Goals:IsSyncMaster() then
-            self:SendWishlistSync(sender)
-        end
         return
     end
     if msgType == "BOSSKILL" then
@@ -200,9 +191,11 @@ function Comm:SendSync(target)
     local channel = target and "WHISPER" or nil
     self:Send("SYNC_POINTS", self:SerializePoints(), channel, target)
     self:Send("SYNC_SETTINGS", self:SerializeSettings(), channel, target)
-    if Goals.SerializeAllWishlists then
-        self:Send("SYNC_WISHLIST", Goals:SerializeAllWishlists(), channel, target)
-    end
+end
+
+function Comm:SendPointsSync(target)
+    local channel = target and "WHISPER" or nil
+    self:Send("SYNC_POINTS", self:SerializePoints(), channel, target)
 end
 
 function Comm:BroadcastFullSync()
@@ -281,6 +274,7 @@ function Comm:ApplyPoints(payload)
         end
     end
     Goals.db.players = players
+    Goals.lastSyncReceivedAt = time()
     Goals:NotifyDataChanged()
 end
 
