@@ -211,10 +211,13 @@ local function hasModifyAccess()
 end
 
 local function hasPointGainAccess()
-    if Goals and Goals.Dev and Goals.Dev.enabled then
+    if Goals and Goals.db and Goals.db.settings and Goals.db.settings.sudoDev then
         return true
     end
-    if Goals and Goals.db and Goals.db.settings and Goals.db.settings.sudoDev then
+    if Goals and Goals.IsMasterLooter and Goals:IsMasterLooter() then
+        return true
+    end
+    if Goals and Goals.IsGroupLeader and Goals:IsGroupLeader() then
         return true
     end
     return Goals and Goals.sync and Goals.sync.isMaster
@@ -2442,14 +2445,16 @@ function UI:CreateWishlistTab(page)
             text = L.WISHLIST_DELETE_CONFIRM,
             button1 = L.WISHLIST_DELETE_ACCEPT,
             button2 = CANCEL,
-            OnAccept = function()
-                Goals:DeleteWishlist(list.id)
+            OnAccept = function(selfPopup)
+                if selfPopup and selfPopup.data then
+                    Goals:DeleteWishlist(selfPopup.data)
+                end
             end,
             timeout = 0,
             whileDead = 1,
             hideOnEscape = 1,
         }
-        local dialog = StaticPopup_Show("GOALS_DELETE_WISHLIST", list.name or "")
+        local dialog = StaticPopup_Show("GOALS_DELETE_WISHLIST", list.name or "", nil, list.id)
     end)
     self.wishlistDeleteButton = deleteBtn
 
@@ -2773,45 +2778,6 @@ function UI:CreateWishlistTab(page)
         end
         importScroll:SetVerticalScroll(scroll)
     end)
-    local function wrapImportText(text, maxWidth)
-        local output = {}
-        local index = 1
-        local length = #text
-        if length == 0 then
-            return ""
-        end
-        while index <= length do
-            local remaining = text:sub(index)
-            importMeasure:SetText(remaining)
-            if importMeasure:GetStringWidth() <= maxWidth then
-                table.insert(output, remaining)
-                break
-            end
-            local low, high, best = 1, #remaining, 1
-            while low <= high do
-                local mid = math.floor((low + high) / 2)
-                importMeasure:SetText(remaining:sub(1, mid))
-                if importMeasure:GetStringWidth() <= maxWidth then
-                    best = mid
-                    low = mid + 1
-                else
-                    high = mid - 1
-                end
-            end
-            local cut = best
-            local space = remaining:sub(1, cut):match(".*()%s")
-            if space and space > 1 then
-                cut = space
-            end
-            table.insert(output, remaining:sub(1, cut))
-            index = index + cut
-            if remaining:sub(cut, cut):match("%s") then
-                index = index + 1
-            end
-        end
-        return table.concat(output, "\n")
-    end
-
     local function updateImportBoxSize()
         local width = importScroll:GetWidth() or 0
         local height = importScroll:GetHeight() or 0
@@ -2833,20 +2799,11 @@ function UI:CreateWishlistTab(page)
             return
         end
         local text = importBox:GetText() or ""
-        local raw = text:gsub("\r", ""):gsub("\n", "")
+        local raw = text:gsub("\r", "")
         importBox.rawText = raw
-        local width = importScroll:GetWidth() or 0
-        if width <= 0 then
-            updateImportBoxSize()
-            return
-        end
         importBox.isWrapping = true
-        local wrapped = wrapImportText(raw, width - 6)
-        if wrapped ~= text then
-            importBox:SetText(wrapped)
-        end
-        importBox.isWrapping = false
         updateImportBoxSize()
+        importBox.isWrapping = false
     end
     importBox:SetScript("OnTextChanged", function()
         normalizeImportText()
@@ -2924,6 +2881,7 @@ function UI:CreateWishlistTab(page)
         local text = Goals:ExportActiveWishlist() or ""
         importBox.rawText = text
         importBox:SetText(text)
+        updateImportBoxSize()
         importBox:HighlightText()
     end)
     self.wishlistExportButton = exportBtn
@@ -4511,8 +4469,7 @@ function UI:UpdateRosterList()
     end
     if self.disablePointGainCheck then
         self.disablePointGainCheck:SetChecked(Goals.db.settings.disablePointGain and true or false)
-        local isMaster = Goals and Goals.IsSyncMaster and Goals:IsSyncMaster()
-        local canToggle = isMaster and not (Goals.Dev and Goals.Dev.enabled)
+        local canToggle = hasPointGainAccess()
         setShown(self.disablePointGainCheck, canToggle)
         if self.disablePointGainStatus then
             if canToggle then
@@ -5713,10 +5670,7 @@ function UI:UpdateAutoSyncLabel()
     if not self.autoSyncLabel then
         return
     end
-    local isMaster = Goals and Goals.IsSyncMaster and Goals:IsSyncMaster()
-    if Goals and Goals.Dev and Goals.Dev.enabled then
-        isMaster = false
-    end
+    local isMaster = (Goals and Goals.IsSyncMaster and Goals:IsSyncMaster()) or (Goals and Goals.IsMasterLooter and Goals:IsMasterLooter())
     if not isMaster then
         local last = Goals and Goals.lastSyncReceivedAt or nil
         if last then

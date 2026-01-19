@@ -1592,6 +1592,23 @@ function Goals:CreateWishlist(name)
             end
         end
         clean = string.format("%s %d", baseName, maxIndex + 1)
+    else
+        local baseName = clean
+        local maxIndex = -1
+        for _, list in ipairs(data.lists) do
+            local listName = self:NormalizeWishlistName(list.name or "")
+            if listName == baseName then
+                maxIndex = math.max(maxIndex, 0)
+            else
+                local idx = listName:match("^" .. baseName .. " (%d+)$")
+                if idx then
+                    maxIndex = math.max(maxIndex, tonumber(idx) or -1)
+                end
+            end
+        end
+        if maxIndex >= 0 then
+            clean = string.format("%s %d", baseName, maxIndex + 1)
+        end
     end
     local list = {
         id = data.nextId,
@@ -4187,10 +4204,7 @@ function Goals:StartAutoSyncPush()
             return
         end
         elapsed = 0
-        if self.Dev and self.Dev.enabled then
-            return
-        end
-        if not self:IsSyncMaster() then
+        if not self:IsSyncMaster() and not (self.IsMasterLooter and self:IsMasterLooter()) then
             return
         end
         if not self:IsInRaid() and not self:IsInParty() then
