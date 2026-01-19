@@ -30,6 +30,51 @@ local function getUnitNameIfExists(unit)
     return nil
 end
 
+local lootPatterns = nil
+local function buildLootPatterns()
+    if lootPatterns then
+        return
+    end
+    local function toPattern(fmt)
+        if not fmt or fmt == "" then
+            return nil
+        end
+        local pattern = fmt:gsub("([%(%)%.%+%-%*%?%[%]%^%$])", "%%%1")
+        pattern = pattern:gsub("%%d", "(%%d+)")
+        pattern = pattern:gsub("%%s", "(.+)")
+        return "^" .. pattern .. "$"
+    end
+    lootPatterns = {
+        { pattern = toPattern(LOOT_ITEM_SELF), selfLoot = true },
+        { pattern = toPattern(LOOT_ITEM_SELF_MULTIPLE), selfLoot = true },
+        { pattern = toPattern(LOOT_ITEM_PUSHED_SELF), selfLoot = true },
+        { pattern = toPattern(LOOT_ITEM_PUSHED_SELF_MULTIPLE), selfLoot = true },
+        { pattern = toPattern(LOOT_ITEM), selfLoot = false },
+        { pattern = toPattern(LOOT_ITEM_MULTIPLE), selfLoot = false },
+        { pattern = toPattern(LOOT_ITEM_PUSHED), selfLoot = false },
+        { pattern = toPattern(LOOT_ITEM_PUSHED_MULTIPLE), selfLoot = false },
+    }
+end
+
+local function matchLootSender(message)
+    buildLootPatterns()
+    if not lootPatterns then
+        return nil
+    end
+    for _, entry in ipairs(lootPatterns) do
+        if entry.pattern then
+            local a = message:match(entry.pattern)
+            if a then
+                if entry.selfLoot then
+                    return Goals:GetPlayerName()
+                end
+                return a
+            end
+        end
+    end
+    return nil
+end
+
 function Events:Init()
     if self.frame then
         return
@@ -281,9 +326,12 @@ function Events:HandleLootMessage(message)
     if not itemLink then
         return
     end
-    local playerName = message:match("^(.+) receives loot")
-    if playerName == "You" or (not playerName and message:find("^You receive loot")) then
-        playerName = Goals:GetPlayerName()
+    local playerName = matchLootSender(message)
+    if not playerName then
+        playerName = message:match("^(.+) receives loot")
+        if playerName == "You" or (not playerName and message:find("^You receive loot")) then
+            playerName = Goals:GetPlayerName()
+        end
     end
     if not playerName then
         return

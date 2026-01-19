@@ -129,14 +129,17 @@ function Comm:HandleMessage(msgType, payload, sender, channel)
         self:ApplySettings(payload)
         return
     end
-    if msgType == "WISHLIST_SYNC_REQUEST" then
-        return
-    end
     if msgType == "BOSSKILL" then
         Goals.lastSyncReceivedAt = time()
         local encounter, list = payload:match("^(.-)|(.*)$")
         local names = split(list or "", ",")
         Goals:ApplyBossKillFromSync(encounter or "Boss", names)
+        return
+    end
+    if msgType == "WISHLIST_BUILD" then
+        if Goals.HandleIncomingBuild then
+            Goals:HandleIncomingBuild(payload, sender)
+        end
         return
     end
     if msgType == "ADJUST" then
@@ -211,16 +214,17 @@ function Comm:BroadcastFullSync()
     self:SendSync(nil)
 end
 
-function Comm:SendWishlistSync(target)
-    if not Goals.SerializeAllWishlists then
-        return
+function Comm:SendWishlistBuild(target, payload)
+    if not target or target == "" then
+        return false
     end
-    local channel = target and "WHISPER" or nil
-    self:Send("SYNC_WISHLIST", Goals:SerializeAllWishlists(), channel, target)
-end
-
-function Comm:RequestWishlistSync()
-    self:Send("WISHLIST_SYNC_REQUEST", Goals.version)
+    if not payload or payload == "" then
+        return false
+    end
+    local ok = pcall(function()
+        self:Send("WISHLIST_BUILD", payload, "WHISPER", target)
+    end)
+    return ok
 end
 
 function Comm:SendBossKill(encounterName, names)

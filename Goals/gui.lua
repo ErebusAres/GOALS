@@ -27,6 +27,122 @@ local LOOT_ROWS = 18
 local WISHLIST_SLOT_SIZE = 36
 local WISHLIST_ROW_SPACING = 46
 
+local THEME = {
+    frameBg = { 0.06, 0.07, 0.09, 0.95 },
+    frameLight = { 0.12, 0.13, 0.16, 0.35 },
+    frameBorder = { 0.18, 0.2, 0.24, 0.7 },
+    insetBg = { 0.08, 0.09, 0.12, 0.95 },
+    insetBorder = { 0.15, 0.17, 0.21, 0.8 },
+    titleText = { 0.9, 0.92, 0.98, 1.0 },
+}
+
+local function applyTextureColor(texture, color)
+    if not texture or not color then
+        return
+    end
+    texture:SetVertexColor(color[1], color[2], color[3], color[4] or 1)
+end
+
+local function applyFrameTheme(frame)
+    if not frame or not frame.GetName then
+        return
+    end
+    local name = frame:GetName()
+    if not name then
+        return
+    end
+    applyTextureColor(_G[name .. "Bg"], THEME.frameBg)
+    applyTextureColor(_G[name .. "BgLight"], THEME.frameLight)
+    applyTextureColor(_G[name .. "TitleBg"], THEME.frameBorder)
+    applyTextureColor(_G[name .. "TopBorder"], THEME.frameBorder)
+    applyTextureColor(_G[name .. "BottomBorder"], THEME.frameBorder)
+    applyTextureColor(_G[name .. "LeftBorder"], THEME.frameBorder)
+    applyTextureColor(_G[name .. "RightBorder"], THEME.frameBorder)
+    applyTextureColor(_G[name .. "TopTileStreaks"], THEME.frameBorder)
+    applyTextureColor(_G[name .. "TopLeftCorner"], THEME.frameBorder)
+    applyTextureColor(_G[name .. "TopRightCorner"], THEME.frameBorder)
+    applyTextureColor(_G[name .. "BotLeftCorner"], THEME.frameBorder)
+    applyTextureColor(_G[name .. "BotRightCorner"], THEME.frameBorder)
+end
+
+local function applyInsetTheme(frame)
+    if not frame or not frame.GetName then
+        return
+    end
+    local name = frame:GetName()
+    if not name then
+        return
+    end
+    applyTextureColor(_G[name .. "InsetBg"], THEME.insetBg)
+    applyTextureColor(_G[name .. "InsetTopBorder"], THEME.insetBorder)
+    applyTextureColor(_G[name .. "InsetBottomBorder"], THEME.insetBorder)
+    applyTextureColor(_G[name .. "InsetLeftBorder"], THEME.insetBorder)
+    applyTextureColor(_G[name .. "InsetRightBorder"], THEME.insetBorder)
+    applyTextureColor(_G[name .. "InsetTopLeftCorner"], THEME.insetBorder)
+    applyTextureColor(_G[name .. "InsetTopRightCorner"], THEME.insetBorder)
+    applyTextureColor(_G[name .. "InsetBotLeftCorner"], THEME.insetBorder)
+    applyTextureColor(_G[name .. "InsetBotRightCorner"], THEME.insetBorder)
+end
+
+local function applySectionHeader(label, parent, yOffset)
+    if not label or not parent then
+        return nil
+    end
+    local bar = parent:CreateTexture(nil, "BORDER")
+    bar:SetHeight(18)
+    bar:SetPoint("TOPLEFT", parent, "TOPLEFT", 4, yOffset or -6)
+    bar:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -4, yOffset or -6)
+    bar:SetTexture(0, 0, 0, 0.35)
+    label:ClearAllPoints()
+    label:SetPoint("LEFT", bar, "LEFT", 6, 0)
+    return bar
+end
+
+local function applySectionHeaderAfter(label, parent, anchor, yOffset)
+    if not label or not parent or not anchor then
+        return nil
+    end
+    local bar = parent:CreateTexture(nil, "BORDER")
+    bar:SetHeight(18)
+    bar:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 4, yOffset or -8)
+    bar:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -4, yOffset or -8)
+    bar:SetTexture(0, 0, 0, 0.35)
+    label:ClearAllPoints()
+    label:SetPoint("LEFT", bar, "LEFT", 6, 0)
+    return bar
+end
+local function applySectionCaption(bar, text)
+    if not bar or not text or text == "" then
+        return nil
+    end
+    local caption = bar:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    caption:SetPoint("RIGHT", bar, "RIGHT", -6, 0)
+    caption:SetText(text)
+    caption:SetTextColor(0.7, 0.75, 0.85, 1)
+    return caption
+end
+
+local function createDivider(parent, anchor, yOffset)
+    if not parent or not anchor then
+        return nil
+    end
+    local line = parent:CreateTexture(nil, "BORDER")
+    line:SetHeight(1)
+    line:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 4, yOffset or -8)
+    line:SetPoint("TOPRIGHT", anchor, "BOTTOMRIGHT", -4, yOffset or -8)
+    line:SetTexture(1, 1, 1, 0.08)
+    return line
+end
+
+local function addRowStripe(row)
+    if not row or row.stripe then
+        return
+    end
+    local stripe = row:CreateTexture(nil, "BACKGROUND")
+    stripe:SetAllPoints(row)
+    stripe:SetTexture(1, 1, 1, 0.04)
+    row.stripe = stripe
+end
 local function createLabel(parent, text, template)
     local label = parent:CreateFontString(nil, "ARTWORK", template or "GameFontNormal")
     label:SetText(text or "")
@@ -273,6 +389,40 @@ local function setupSaveTableHelpPopup()
     }
 end
 
+local function setupBuildSharePopup()
+    if not StaticPopupDialogs or StaticPopupDialogs.GOALS_BUILD_SHARE then
+        return
+    end
+    StaticPopupDialogs.GOALS_BUILD_SHARE = {
+        text = "",
+        button1 = L.POPUP_BUILD_SHARE_ACCEPT,
+        button2 = L.POPUP_BUILD_SHARE_DECLINE,
+        OnShow = function(self)
+            local pending = Goals and Goals.state and Goals.state.pendingBuildShare or nil
+            local sender = pending and pending.sender or "Someone"
+            local name = pending and pending.data and pending.data.name or "Wishlist"
+            local text = string.format(L.POPUP_BUILD_SHARE, sender, name)
+            local textRegion = _G[self:GetName() .. "Text"]
+            if textRegion then
+                textRegion:SetText(text)
+            end
+        end,
+        OnAccept = function()
+            if Goals and Goals.AcceptPendingBuildShare then
+                Goals:AcceptPendingBuildShare()
+            end
+        end,
+        OnCancel = function()
+            if Goals and Goals.DeclinePendingBuildShare then
+                Goals:DeclinePendingBuildShare()
+            end
+        end,
+        timeout = 0,
+        whileDead = 1,
+        hideOnEscape = 1,
+    }
+end
+
 local function setDropdownEnabled(dropdown, enabled)
     if not dropdown then
         return
@@ -432,6 +582,22 @@ function UI:GetPresentPlayerNames()
     local names = {}
     for name in pairs(present) do
         table.insert(names, name)
+    end
+    table.sort(names)
+    return names
+end
+
+function UI:GetBuildShareCandidates()
+    if not (Goals:IsInRaid() or Goals:IsInParty()) then
+        return {}
+    end
+    local present = Goals:GetPresenceMap()
+    local names = {}
+    local playerName = Goals:GetPlayerName()
+    for name in pairs(present) do
+        if name ~= playerName then
+            table.insert(names, name)
+        end
     end
     table.sort(names)
     return names
@@ -648,6 +814,109 @@ function UI:SyncResetQualityDropdown()
     UIDropDownMenu_SetText(self.resetQualityDropdown, getQualityLabel(value))
 end
 
+function UI:ShowBuildSharePrompt()
+    setupBuildSharePopup()
+    if StaticPopup_Show then
+        StaticPopup_Show("GOALS_BUILD_SHARE")
+    end
+end
+
+function UI:CreateBuildShareTargetFrame()
+    if self.buildShareTargetFrame then
+        return
+    end
+    local frame = CreateFrame("Frame", "GoalsBuildShareTargetFrame", UIParent, "GoalsInsetTemplate")
+    applyInsetTheme(frame)
+    frame:SetSize(280, 140)
+    frame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
+    frame:SetFrameStrata("DIALOG")
+    frame:EnableMouse(true)
+    frame:SetMovable(true)
+    frame:RegisterForDrag("LeftButton")
+    frame:SetScript("OnDragStart", frame.StartMoving)
+    frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
+    frame:Hide()
+
+    local title = createLabel(frame, L.BUTTON_SEND_BUILD, "GameFontNormal")
+    title:SetPoint("TOPLEFT", frame, "TOPLEFT", 12, -10)
+    frame.title = title
+
+    local dropdown = CreateFrame("Frame", "GoalsBuildShareTargetDropdown", frame, "UIDropDownMenuTemplate")
+    dropdown:SetPoint("TOPLEFT", title, "BOTTOMLEFT", -12, -6)
+    dropdown.colorize = true
+    self:SetupDropdown(dropdown, function()
+        return self:GetBuildShareCandidates()
+    end, function(name)
+        frame.selectedTarget = name
+    end, L.SELECT_OPTION)
+    styleDropdown(dropdown, 180)
+    frame.dropdown = dropdown
+
+    local editBox = CreateFrame("EditBox", "GoalsBuildShareTargetEditBox", frame, "InputBoxTemplate")
+    editBox:SetSize(180, 20)
+    editBox:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -8)
+    editBox:SetAutoFocus(false)
+    bindEscapeClear(editBox)
+    frame.editBox = editBox
+
+    local sendBtn = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+    sendBtn:SetSize(90, 20)
+    sendBtn:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -10, 10)
+    sendBtn:SetText(L.BUTTON_SEND_BUILD)
+    sendBtn:SetScript("OnClick", function()
+        local target = frame.selectedTarget
+        if frame.editBox:IsShown() then
+            target = frame.editBox:GetText()
+        end
+        if not target or target == "" then
+            Goals:Print("No target selected.")
+            return
+        end
+        local ok, err = Goals:SendWishlistBuildTo(target)
+        if ok then
+            Goals:Print(err)
+            frame:Hide()
+        else
+            if err == "SEND_FAILED" or not err or err == "" then
+                Goals:Print("Failed to send build.")
+            else
+                Goals:Print(err)
+            end
+        end
+    end)
+    frame.sendBtn = sendBtn
+
+    local cancelBtn = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+    cancelBtn:SetSize(80, 20)
+    cancelBtn:SetPoint("RIGHT", sendBtn, "LEFT", -6, 0)
+    cancelBtn:SetText(CANCEL)
+    cancelBtn:SetScript("OnClick", function()
+        frame:Hide()
+    end)
+    frame.cancelBtn = cancelBtn
+
+    self.buildShareTargetFrame = frame
+end
+
+function UI:ShowBuildShareTargetPrompt()
+    self:CreateBuildShareTargetFrame()
+    local frame = self.buildShareTargetFrame
+    local candidates = self:GetBuildShareCandidates()
+    if #candidates > 0 then
+        frame.editBox:Hide()
+        frame.dropdown:Show()
+        frame.selectedTarget = candidates[1]
+        UIDropDownMenu_SetSelectedValue(frame.dropdown, candidates[1])
+        self:SetDropdownText(frame.dropdown, candidates[1])
+    else
+        frame.dropdown:Hide()
+        frame.editBox:Show()
+        frame.editBox:SetText("")
+        frame.selectedTarget = nil
+    end
+    frame:Show()
+end
+
 function UI:Init()
     if self.frame then
         return
@@ -729,6 +998,7 @@ function UI:CreateMainFrame()
     frame:SetScript("OnDragStart", frame.StartMoving)
     frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
     frame:Hide()
+    applyFrameTheme(frame)
 
     local titleText = frame.TitleText
     if not titleText then
@@ -744,6 +1014,7 @@ function UI:CreateMainFrame()
     titleText:SetPoint("TOPLEFT", frame, "TOPLEFT", 16, -6)
     titleText:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -70, -6)
     titleText:SetJustifyH("LEFT")
+    titleText:SetTextColor(THEME.titleText[1], THEME.titleText[2], THEME.titleText[3], THEME.titleText[4])
     frame.titleText = titleText
 
     local close = _G[frame:GetName() .. "CloseButton"]
@@ -1100,7 +1371,7 @@ end
 
 function UI:CreateOverviewTab(page)
     local sortLabel = createLabel(page, L.LABEL_SORT, "GameFontNormal")
-    sortLabel:SetPoint("TOPLEFT", page, "TOPLEFT", 2, -4)
+    sortLabel:SetPoint("TOPLEFT", page, "TOPLEFT", 8, -10)
 
     local sortDrop = CreateFrame("Frame", "GoalsSortDropdown", page, "UIDropDownMenuTemplate")
     sortDrop:SetPoint("LEFT", sortLabel, "RIGHT", -6, 0)
@@ -1134,20 +1405,26 @@ function UI:CreateOverviewTab(page)
     self.disablePointGainStatus = disableGainStatus
 
     local rosterInset = CreateFrame("Frame", "GoalsOverviewRosterInset", page, "GoalsInsetTemplate")
-    rosterInset:SetPoint("TOPLEFT", page, "TOPLEFT", 2, -30)
-    rosterInset:SetPoint("BOTTOMLEFT", page, "BOTTOMLEFT", 2, 2)
+    applyInsetTheme(rosterInset)
+    rosterInset:SetPoint("TOPLEFT", page, "TOPLEFT", 8, -38)
+    rosterInset:SetPoint("BOTTOMLEFT", page, "BOTTOMLEFT", 8, 8)
     rosterInset:SetWidth(360)
     self.rosterInset = rosterInset
 
     local pointsLabel = createLabel(rosterInset, L.LABEL_POINTS, "GameFontNormal")
-    pointsLabel:SetPoint("TOPLEFT", rosterInset, "TOPLEFT", 10, -6)
+    local pointsBar = applySectionHeader(pointsLabel, rosterInset, -6)
+    applySectionCaption(pointsBar, "Roster and points")
     local autoSyncLabel = createLabel(rosterInset, "", "GameFontHighlightSmall")
-    autoSyncLabel:SetPoint("TOPRIGHT", rosterInset, "TOPRIGHT", -10, -8)
+    if pointsBar then
+        autoSyncLabel:SetPoint("RIGHT", pointsBar, "RIGHT", -6, 0)
+    else
+        autoSyncLabel:SetPoint("TOPRIGHT", rosterInset, "TOPRIGHT", -10, -8)
+    end
     autoSyncLabel:SetJustifyH("RIGHT")
     self.autoSyncLabel = autoSyncLabel
 
     local rosterScroll = CreateFrame("ScrollFrame", "GoalsRosterScroll", rosterInset, "FauxScrollFrameTemplate")
-    rosterScroll:SetPoint("TOPLEFT", rosterInset, "TOPLEFT", 2, -22)
+    rosterScroll:SetPoint("TOPLEFT", rosterInset, "TOPLEFT", 2, -28)
     rosterScroll:SetPoint("BOTTOMRIGHT", rosterInset, "BOTTOMRIGHT", -26, 4)
     rosterScroll:SetScript("OnVerticalScroll", function(selfScroll, offset)
         FauxScrollFrame_OnVerticalScroll(selfScroll, offset, ROW_HEIGHT, function()
@@ -1176,6 +1453,7 @@ function UI:CreateOverviewTab(page)
         row:SetHeight(ROW_HEIGHT)
         row:SetPoint("TOPLEFT", rosterInset, "TOPLEFT", 8, -22 - (i - 1) * ROW_HEIGHT)
         row:SetPoint("RIGHT", rosterInset, "RIGHT", -26, 0)
+        addRowStripe(row)
 
         local icon = row:CreateTexture(nil, "ARTWORK")
         icon:SetSize(12, 12)
@@ -1254,14 +1532,16 @@ function UI:CreateOverviewTab(page)
     end
 
     local rightInset = CreateFrame("Frame", "GoalsOverviewRightInset", page, "GoalsInsetTemplate")
+    applyInsetTheme(rightInset)
     rightInset:SetPoint("TOPLEFT", rosterInset, "TOPRIGHT", 12, 0)
-    rightInset:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -2, 2)
+    rightInset:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -8, 8)
     self.overviewRightInset = rightInset
 
     local syncLabel = createLabel(rightInset, L.LABEL_SYNC, "GameFontNormal")
-    syncLabel:SetPoint("TOPLEFT", rightInset, "TOPLEFT", 10, -10)
+    local syncBar = applySectionHeader(syncLabel, rightInset, -6)
+    applySectionCaption(syncBar, "Status and leader")
     local syncValue = createLabel(rightInset, "", "GameFontHighlight")
-    syncValue:SetPoint("TOPLEFT", syncLabel, "BOTTOMLEFT", 0, -4)
+    syncValue:SetPoint("TOPLEFT", syncLabel, "BOTTOMLEFT", 0, -6)
     self.syncValue = syncValue
 
     local disLabel = createLabel(rightInset, L.LABEL_DISENCHANTER, "GameFontNormal")
@@ -1291,7 +1571,9 @@ function UI:CreateOverviewTab(page)
     end, L.NONE_OPTION)
 
     local manualTitle = createLabel(rightInset, L.LABEL_MANUAL, "GameFontNormal")
-    manualTitle:SetPoint("TOPLEFT", disDrop, "BOTTOMLEFT", 10, -12)
+    local manualDivider = createDivider(rightInset, disDrop, -6)
+    local manualBar = applySectionHeaderAfter(manualTitle, rightInset, manualDivider or disDrop, -6)
+    applySectionCaption(manualBar, "Adjust points")
 
     local playerLabel = createLabel(rightInset, L.LABEL_PLAYER, "GameFontNormal")
     playerLabel:SetPoint("TOPLEFT", manualTitle, "BOTTOMLEFT", 0, -10)
@@ -1362,7 +1644,7 @@ end
 
 function UI:CreateLootTab(page)
     local lootLabel = createLabel(page, L.LABEL_LOOT_METHOD, "GameFontNormal")
-    lootLabel:SetPoint("TOPLEFT", page, "TOPLEFT", 2, -6)
+    lootLabel:SetPoint("TOPLEFT", page, "TOPLEFT", 8, -10)
 
     local masterBtn = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
     masterBtn:SetSize(150, 20)
@@ -1421,18 +1703,20 @@ function UI:CreateLootTab(page)
     self.lootHistoryMinQuality = minFilterDrop
 
     local historyInset = CreateFrame("Frame", "GoalsLootHistoryInset", page, "GoalsInsetTemplate")
-    historyInset:SetPoint("TOPLEFT", page, "TOPLEFT", 2, -60)
-    historyInset:SetPoint("BOTTOMLEFT", page, "BOTTOMLEFT", 2, 2)
+    applyInsetTheme(historyInset)
+    historyInset:SetPoint("TOPLEFT", page, "TOPLEFT", 8, -68)
+    historyInset:SetPoint("BOTTOMLEFT", page, "BOTTOMLEFT", 8, 8)
     historyInset:SetWidth(350)
     self.lootHistoryInset = historyInset
 
     local historyLabel = createLabel(historyInset, L.LABEL_LOOT_HISTORY, "GameFontNormal")
-    historyLabel:SetPoint("TOPLEFT", historyInset, "TOPLEFT", 8, -6)
+    local historyBar = applySectionHeader(historyLabel, historyInset, -6)
+    applySectionCaption(historyBar, "Recent assignments")
 
     local optionsBtn = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
     optionsBtn:SetSize(130, 20)
     optionsBtn:SetText(L.LABEL_LOOT_OPTIONS)
-    optionsBtn:SetPoint("TOPRIGHT", page, "TOPRIGHT", -6, -6)
+    optionsBtn:SetPoint("TOPRIGHT", page, "TOPRIGHT", -8, -10)
 
     local optionsIcon = optionsBtn:CreateTexture(nil, "ARTWORK")
     optionsIcon:SetTexture("Interface\\Buttons\\UI-OptionsButton")
@@ -1468,6 +1752,7 @@ function UI:CreateLootTab(page)
         self.lootOptionsOuter = outer
 
         local optionsFrame = CreateFrame("Frame", "GoalsLootOptionsFrame", outer, "GoalsInsetTemplate")
+        applyInsetTheme(optionsFrame)
         optionsFrame:SetPoint("TOPLEFT", outer, "TOPLEFT", 4, -4)
         optionsFrame:SetPoint("BOTTOMRIGHT", outer, "BOTTOMRIGHT", -4, 4)
         optionsFrame:Hide()
@@ -1530,7 +1815,7 @@ function UI:CreateLootTab(page)
     end
 
     local historyScroll = CreateFrame("ScrollFrame", "GoalsLootHistoryScroll", historyInset, "FauxScrollFrameTemplate")
-    historyScroll:SetPoint("TOPLEFT", historyInset, "TOPLEFT", 2, -22)
+    historyScroll:SetPoint("TOPLEFT", historyInset, "TOPLEFT", 2, -28)
     historyScroll:SetPoint("BOTTOMRIGHT", historyInset, "BOTTOMRIGHT", -26, 4)
     historyScroll:SetScript("OnVerticalScroll", function(selfScroll, offset)
         FauxScrollFrame_OnVerticalScroll(selfScroll, offset, LOOT_HISTORY_ROW_HEIGHT, function()
@@ -1545,6 +1830,7 @@ function UI:CreateLootTab(page)
         row:SetHeight(LOOT_HISTORY_ROW_HEIGHT)
         row:SetPoint("TOPLEFT", historyInset, "TOPLEFT", 8, -22 - (i - 1) * LOOT_HISTORY_ROW_HEIGHT)
         row:SetPoint("RIGHT", historyInset, "RIGHT", -6, 0)
+        addRowStripe(row)
 
         local timeText = row:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
         timeText:SetPoint("TOPLEFT", row, "TOPLEFT", 4, -2)
@@ -1599,11 +1885,13 @@ function UI:CreateLootTab(page)
     end
 
     local foundInset = CreateFrame("Frame", "GoalsFoundLootInset", page, "GoalsInsetTemplate")
+    applyInsetTheme(foundInset)
     foundInset:SetPoint("TOPLEFT", historyInset, "TOPRIGHT", 12, 0)
-    foundInset:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -2, 2)
+    foundInset:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -8, 8)
 
     local foundLabel = createLabel(foundInset, L.LABEL_FOUND_LOOT, "GameFontNormal")
-    foundLabel:SetPoint("TOPLEFT", foundInset, "TOPLEFT", 8, -6)
+    local foundBar = applySectionHeader(foundLabel, foundInset, -6)
+    applySectionCaption(foundBar, "Unassigned loot")
 
     local foundHint = createLabel(foundInset, L.LABEL_FOUND_LOOT_HINT, "GameFontHighlightSmall")
     foundHint:SetPoint("TOPLEFT", foundLabel, "BOTTOMLEFT", 0, -2)
@@ -1614,7 +1902,7 @@ function UI:CreateLootTab(page)
     self.foundLockedLabel = foundLocked
 
     local foundScroll = CreateFrame("ScrollFrame", "GoalsFoundLootScroll", foundInset, "FauxScrollFrameTemplate")
-    foundScroll:SetPoint("TOPLEFT", foundInset, "TOPLEFT", 2, -36)
+    foundScroll:SetPoint("TOPLEFT", foundInset, "TOPLEFT", 2, -38)
     foundScroll:SetPoint("BOTTOMRIGHT", foundInset, "BOTTOMRIGHT", -26, 4)
     foundScroll:SetScript("OnVerticalScroll", function(selfScroll, offset)
         FauxScrollFrame_OnVerticalScroll(selfScroll, offset, ROW_HEIGHT, function()
@@ -1629,6 +1917,7 @@ function UI:CreateLootTab(page)
         row:SetHeight(ROW_HEIGHT)
         row:SetPoint("TOPLEFT", foundInset, "TOPLEFT", 8, -36 - (i - 1) * ROW_HEIGHT)
         row:SetPoint("RIGHT", foundInset, "RIGHT", -6, 0)
+        addRowStripe(row)
 
         local highlight = row:CreateTexture(nil, "HIGHLIGHT")
         highlight:SetTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight")
@@ -1666,15 +1955,17 @@ end
 
 function UI:CreateHistoryTab(page)
     local inset = CreateFrame("Frame", "GoalsHistoryInset", page, "GoalsInsetTemplate")
-    inset:SetPoint("TOPLEFT", page, "TOPLEFT", 2, -8)
-    inset:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -2, 2)
+    applyInsetTheme(inset)
+    inset:SetPoint("TOPLEFT", page, "TOPLEFT", 8, -12)
+    inset:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -8, 8)
     self.historyInset = inset
 
     local label = createLabel(inset, L.LABEL_HISTORY, "GameFontNormal")
-    label:SetPoint("TOPLEFT", inset, "TOPLEFT", 8, -6)
+    local histBar = applySectionHeader(label, inset, -6)
+    applySectionCaption(histBar, "Timeline")
 
     local scroll = CreateFrame("ScrollFrame", "GoalsHistoryScroll", inset, "FauxScrollFrameTemplate")
-    scroll:SetPoint("TOPLEFT", inset, "TOPLEFT", 2, -22)
+    scroll:SetPoint("TOPLEFT", inset, "TOPLEFT", 2, -28)
     scroll:SetPoint("BOTTOMRIGHT", inset, "BOTTOMRIGHT", -26, 4)
     scroll:SetScript("OnVerticalScroll", function(selfScroll, offset)
         FauxScrollFrame_OnVerticalScroll(selfScroll, offset, ROW_HEIGHT, function()
@@ -1689,6 +1980,7 @@ function UI:CreateHistoryTab(page)
         row:SetHeight(ROW_HEIGHT)
         row:SetPoint("TOPLEFT", inset, "TOPLEFT", 8, -22 - (i - 1) * ROW_HEIGHT)
         row:SetPoint("RIGHT", inset, "RIGHT", -6, 0)
+        addRowStripe(row)
 
         local timeText = row:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
         timeText:SetPoint("TOPLEFT", row, "TOPLEFT", 4, -2)
@@ -1743,12 +2035,14 @@ end
 
 function UI:CreateWishlistTab(page)
     local leftInset = CreateFrame("Frame", "GoalsWishlistLeftInset", page, "GoalsInsetTemplate")
+    applyInsetTheme(leftInset)
     leftInset:SetPoint("TOPLEFT", page, "TOPLEFT", 2, -8)
     leftInset:SetPoint("BOTTOMLEFT", page, "BOTTOMLEFT", 2, 2)
     leftInset:SetWidth(380)
     self.wishlistLeftInset = leftInset
 
     local rightInset = CreateFrame("Frame", "GoalsWishlistRightInset", page, "GoalsInsetTemplate")
+    applyInsetTheme(rightInset)
     rightInset:SetPoint("TOPLEFT", leftInset, "TOPRIGHT", 12, 0)
     rightInset:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -2, 2)
     self.wishlistRightInset = rightInset
@@ -1859,6 +2153,7 @@ function UI:CreateWishlistTab(page)
         self.wishlistHelpOuter = outer
 
         local helpFrame = CreateFrame("Frame", "GoalsWishlistHelpFrame", outer, "GoalsInsetTemplate")
+        applyInsetTheme(helpFrame)
         helpFrame:SetPoint("TOPLEFT", outer, "TOPLEFT", 4, -4)
         helpFrame:SetPoint("BOTTOMRIGHT", outer, "BOTTOMRIGHT", -4, 4)
         helpFrame:Hide()
@@ -1941,6 +2236,7 @@ function UI:CreateWishlistTab(page)
         self.wishlistSocketPickerOuter = outer
 
         local pickerFrame = CreateFrame("Frame", "GoalsWishlistSocketPickerFrame", outer, "GoalsInsetTemplate")
+        applyInsetTheme(pickerFrame)
         pickerFrame:SetPoint("TOPLEFT", outer, "TOPLEFT", 4, -4)
         pickerFrame:SetPoint("BOTTOMRIGHT", outer, "BOTTOMRIGHT", -4, 4)
         pickerFrame:Hide()
@@ -1990,6 +2286,7 @@ function UI:CreateWishlistTab(page)
             end, 0.15)
 
             block.resultsInset = CreateFrame("Frame", "GoalsWishlistSocket" .. mode .. "ResultsInset", pickerFrame, "GoalsInsetTemplate")
+            applyInsetTheme(block.resultsInset)
             block.resultsInset:SetPoint("TOPLEFT", block.title, "BOTTOMLEFT", -4, -6)
             block.resultsInset:SetPoint("TOPRIGHT", pickerFrame, "TOPRIGHT", -10, 0)
             block.resultsInset:SetHeight((ROW_HEIGHT * 5) + 12)
@@ -2349,6 +2646,7 @@ function UI:CreateWishlistTab(page)
     managerLabel:SetPoint("TOPLEFT", managerPage, "TOPLEFT", 4, -4)
 
     local managerInset = CreateFrame("Frame", "GoalsWishlistManagerInset", managerPage, "GoalsInsetTemplate")
+    applyInsetTheme(managerInset)
     managerInset:SetPoint("TOPLEFT", managerPage, "TOPLEFT", 0, -24)
     managerInset:SetPoint("TOPRIGHT", managerPage, "TOPRIGHT", 0, -24)
     managerInset:SetHeight(110)
@@ -2488,6 +2786,7 @@ function UI:CreateWishlistTab(page)
     resultsLabel:SetPoint("TOPLEFT", searchLabel, "BOTTOMLEFT", 0, -14)
 
     local resultsInset = CreateFrame("Frame", "GoalsWishlistResultsInset", searchPage, "GoalsInsetTemplate")
+    applyInsetTheme(resultsInset)
     resultsInset:SetPoint("TOPLEFT", resultsLabel, "BOTTOMLEFT", -4, -6)
     resultsInset:SetPoint("TOPRIGHT", searchPage, "TOPRIGHT", -6, 0)
     resultsInset:SetHeight(110)
@@ -2641,6 +2940,7 @@ function UI:CreateWishlistTab(page)
     tokenLabel:SetPoint("LEFT", searchLabel, "LEFT", 0, 0)
 
     local tokenInset = CreateFrame("Frame", "GoalsWishlistTokenInset", searchPage, "GoalsInsetTemplate")
+    applyInsetTheme(tokenInset)
     tokenInset:SetPoint("TOPLEFT", tokenLabel, "BOTTOMLEFT", -4, -6)
     tokenInset:SetPoint("TOPRIGHT", searchPage, "TOPRIGHT", -6, 0)
     tokenInset:SetHeight(ROW_HEIGHT * 5 + 12)
@@ -2740,6 +3040,7 @@ function UI:CreateWishlistTab(page)
     importLabel:SetPoint("TOPLEFT", applyNotesBtn, "BOTTOMLEFT", 0, -10)
 
     local importFrame = CreateFrame("Frame", "GoalsWishlistImportFrame", popout, "GoalsInsetTemplate")
+    applyInsetTheme(importFrame)
     importFrame:SetPoint("TOPLEFT", importLabel, "BOTTOMLEFT", 0, -4)
     importFrame:SetPoint("TOPRIGHT", popout, "TOPRIGHT", -10, 0)
     importFrame:SetHeight(110)
@@ -3077,30 +3378,33 @@ function UI:CreateWishlistTab(page)
         end
     end
 
-    local syncLabel = createLabel(popout, L.LABEL_WISHLIST_SYNC, "GameFontNormal")
+    local syncLabel = createLabel(popout, L.LABEL_BUILD_SHARE, "GameFontNormal")
     syncLabel:SetPoint("TOPLEFT", wowheadBtn, "BOTTOMLEFT", 0, -10)
 
-    local syncLoadBtn = CreateFrame("Button", nil, popout, "UIPanelButtonTemplate")
-    syncLoadBtn:SetPoint("TOPLEFT", syncLabel, "BOTTOMLEFT", -6, -4)
-    syncLoadBtn:SetSize(90, 20)
-    syncLoadBtn:SetText(L.BUTTON_SYNC_LOAD)
-    syncLoadBtn:SetScript("OnClick", function()
-        if Goals.Comm and Goals.Comm.RequestWishlistSync then
-            Goals.Comm:RequestWishlistSync()
+    local sendBuildBtn = CreateFrame("Button", nil, popout, "UIPanelButtonTemplate")
+    sendBuildBtn:SetPoint("TOPLEFT", syncLabel, "BOTTOMLEFT", -6, -4)
+    sendBuildBtn:SetSize(120, 20)
+    sendBuildBtn:SetText(L.BUTTON_SEND_BUILD)
+    sendBuildBtn:SetScript("OnClick", function()
+        if UnitExists and UnitIsPlayer and UnitExists("target") and UnitIsPlayer("target") then
+            local targetName = UnitName("target")
+            local ok, err = Goals:SendWishlistBuildTo(targetName)
+            if ok then
+                Goals:Print(err)
+            else
+                if err == "SEND_FAILED" or not err or err == "" then
+                    Goals:Print("Failed to send build.")
+                else
+                    Goals:Print(err)
+                end
+            end
+            return
+        end
+        if UI and UI.ShowBuildShareTargetPrompt then
+            UI:ShowBuildShareTargetPrompt()
         end
     end)
-    self.wishlistSyncLoadButton = syncLoadBtn
-
-    local syncSaveBtn = CreateFrame("Button", nil, popout, "UIPanelButtonTemplate")
-    syncSaveBtn:SetPoint("LEFT", syncLoadBtn, "RIGHT", 6, 0)
-    syncSaveBtn:SetSize(90, 20)
-    syncSaveBtn:SetText(L.BUTTON_SYNC_SAVE)
-    syncSaveBtn:SetScript("OnClick", function()
-        if Goals.Comm and Goals.Comm.SendWishlistSync then
-            Goals.Comm:SendWishlistSync(nil)
-        end
-    end)
-    self.wishlistSyncSaveButton = syncSaveBtn
+    self.wishlistSendBuildButton = sendBuildBtn
 
     local announceLabel = createLabel(popout, L.LABEL_WISHLIST_ANNOUNCE, "GameFontNormal")
     announceLabel:SetPoint("TOPLEFT", syncLoadBtn, "BOTTOMLEFT", 0, -8)
@@ -3154,9 +3458,7 @@ function UI:CreateWishlistTab(page)
     self.wishlistPopupDisableCheck = disablePopupCheck
 
     self.wishlistChannelDrop = nil
-    if Goals and Goals.db and Goals.db.settings then
-        Goals.db.settings.wishlistAnnounceChannel = "AUTO"
-    end
+    -- Auto-only announcement channel; no user selection.
 
     if slots[1] then
         self.selectedWishlistSlot = slots[1].key
@@ -3165,18 +3467,24 @@ end
 
 function UI:CreateSettingsTab(page)
     local leftInset = CreateFrame("Frame", "GoalsSettingsInset", page, "GoalsInsetTemplate")
-    leftInset:SetPoint("TOPLEFT", page, "TOPLEFT", 2, -8)
-    leftInset:SetPoint("BOTTOMLEFT", page, "BOTTOMLEFT", 2, 2)
+    applyInsetTheme(leftInset)
+    leftInset:SetPoint("TOPLEFT", page, "TOPLEFT", 8, -12)
+    leftInset:SetPoint("BOTTOMLEFT", page, "BOTTOMLEFT", 8, 8)
     leftInset:SetWidth(350)
     self.settingsInset = leftInset
 
     local rightInset = CreateFrame("Frame", "GoalsSettingsActionsInset", page, "GoalsInsetTemplate")
+    applyInsetTheme(rightInset)
     rightInset:SetPoint("TOPLEFT", leftInset, "TOPRIGHT", 12, 0)
-    rightInset:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -2, 2)
+    rightInset:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -8, 8)
     self.settingsActionsInset = rightInset
 
+    local settingsTitle = createLabel(leftInset, L.TAB_SETTINGS, "GameFontNormal")
+    local settingsBar = applySectionHeader(settingsTitle, leftInset, -6)
+    applySectionCaption(settingsBar, "General toggles")
+
     local combineCheck = CreateFrame("CheckButton", nil, leftInset, "UICheckButtonTemplate")
-    combineCheck:SetPoint("TOPLEFT", leftInset, "TOPLEFT", 12, -12)
+    combineCheck:SetPoint("TOPLEFT", settingsTitle, "BOTTOMLEFT", 0, -10)
     setCheckText(combineCheck, L.CHECK_COMBINE_HISTORY)
     combineCheck:SetScript("OnClick", function(selfBtn)
         Goals:SetRaidSetting("combineBossHistory", selfBtn:GetChecked() and true or false)
@@ -3263,9 +3571,11 @@ function UI:CreateSettingsTab(page)
 
     setupSudoDevPopup()
     setupSaveTableHelpPopup()
+    setupBuildSharePopup()
 
     local actionsTitle = createLabel(rightInset, "Data Management", "GameFontNormal")
-    actionsTitle:SetPoint("TOPLEFT", rightInset, "TOPLEFT", 10, -10)
+    local actionsBar = applySectionHeader(actionsTitle, rightInset, -6)
+    applySectionCaption(actionsBar, "Local maintenance")
 
     local function createActionButton(text, onClick)
         local btn = CreateFrame("Button", nil, rightInset, "UIPanelButtonTemplate")
@@ -3303,8 +3613,27 @@ function UI:CreateSettingsTab(page)
     end)
     clearAllBtn:SetPoint("TOPLEFT", clearHistoryBtn, "BOTTOMLEFT", 0, -10)
 
+    local miniDivider = createDivider(rightInset, clearAllBtn, -6)
     local miniTitle = createLabel(rightInset, L.LABEL_MINI_TRACKER, "GameFontNormal")
-    miniTitle:SetPoint("TOPLEFT", clearAllBtn, "BOTTOMLEFT", 0, -16)
+    local miniBar = applySectionHeaderAfter(miniTitle, rightInset, miniDivider or clearAllBtn, -6)
+    applySectionCaption(miniBar, "Quick view")
+    if miniBar then
+        local resetMiniBtn = createSmallIconButton(rightInset, 16, "Interface\\Buttons\\UI-RefreshButton")
+        resetMiniBtn:SetPoint("RIGHT", miniBar, "RIGHT", -6, 0)
+        resetMiniBtn:SetScript("OnClick", function()
+            if UI and UI.ResetMiniTrackerPosition then
+                UI:ResetMiniTrackerPosition()
+            end
+        end)
+        resetMiniBtn:SetScript("OnEnter", function(selfBtn)
+            GameTooltip:SetOwner(selfBtn, "ANCHOR_RIGHT")
+            GameTooltip:SetText("Reset Mini Position")
+            GameTooltip:Show()
+        end)
+        resetMiniBtn:SetScript("OnLeave", function()
+            GameTooltip:Hide()
+        end)
+    end
 
     local miniBtn = createActionButton(L.BUTTON_TOGGLE_MINI_TRACKER, function()
         if UI and UI.ToggleMiniTracker then
@@ -3314,16 +3643,10 @@ function UI:CreateSettingsTab(page)
     miniBtn:SetPoint("TOPLEFT", miniTitle, "BOTTOMLEFT", 0, -6)
     self.miniTrackerButton = miniBtn
 
-    local miniResetBtn = createActionButton("Reset Mini Position", function()
-        if UI and UI.ResetMiniTrackerPosition then
-            UI:ResetMiniTrackerPosition()
-        end
-    end)
-    miniResetBtn:SetPoint("TOPLEFT", miniBtn, "BOTTOMLEFT", 0, -6)
-    self.miniTrackerResetButton = miniResetBtn
-
+    local tableDivider = createDivider(rightInset, miniBtn, -6)
     local tableTitle = createLabel(rightInset, L.LABEL_SAVE_TABLES, "GameFontNormal")
-    tableTitle:SetPoint("TOPLEFT", miniResetBtn, "BOTTOMLEFT", 0, -16)
+    local tableBar = applySectionHeaderAfter(tableTitle, rightInset, tableDivider or miniBtn, -6)
+    applySectionCaption(tableBar, "Per character")
 
     local helpBtn = createSmallIconButton(rightInset, 18, "Interface\\Buttons\\UI-HelpButton")
     helpBtn:SetPoint("LEFT", tableTitle, "RIGHT", 6, 0)
@@ -3367,8 +3690,10 @@ function UI:CreateSettingsTab(page)
     syncSeenBtn:SetPoint("TOPLEFT", combinedCheck, "BOTTOMLEFT", 4, -8)
     self.syncSeenButton = syncSeenBtn
 
+    local editDivider = createDivider(rightInset, syncSeenBtn, -6)
     local editTitle = createLabel(rightInset, "Local Editing", "GameFontNormal")
-    editTitle:SetPoint("TOPLEFT", syncSeenBtn, "BOTTOMLEFT", -2, -16)
+    local editBar = applySectionHeaderAfter(editTitle, rightInset, editDivider or syncSeenBtn, -6)
+    applySectionCaption(editBar, "Admin tools")
 
     local sudoBtn = createActionButton("", function()
         if Goals.db.settings.sudoDev then
@@ -3380,7 +3705,7 @@ function UI:CreateSettingsTab(page)
             StaticPopup_Show("GOALS_SUDO_DEV")
         end
     end)
-    sudoBtn:SetPoint("TOPLEFT", editTitle, "BOTTOMLEFT", 2, -8)
+    sudoBtn:SetPoint("TOPLEFT", editTitle, "BOTTOMLEFT", 2, -10)
     self.sudoDevButton = sudoBtn
 
     local syncRequestBtn = createActionButton("Ask for sync", function()
@@ -3514,14 +3839,16 @@ end
 
 function UI:CreateHelpTab(page)
     local navInset = CreateFrame("Frame", "GoalsHelpNavInset", page, "GoalsInsetTemplate")
-    navInset:SetPoint("TOPLEFT", page, "TOPLEFT", 2, -8)
-    navInset:SetPoint("BOTTOMLEFT", page, "BOTTOMLEFT", 2, 2)
+    applyInsetTheme(navInset)
+    navInset:SetPoint("TOPLEFT", page, "TOPLEFT", 8, -12)
+    navInset:SetPoint("BOTTOMLEFT", page, "BOTTOMLEFT", 8, 8)
     navInset:SetWidth(190)
     self.helpNavInset = navInset
 
     local contentInset = CreateFrame("Frame", "GoalsHelpContentInset", page, "GoalsInsetTemplate")
+    applyInsetTheme(contentInset)
     contentInset:SetPoint("TOPLEFT", navInset, "TOPRIGHT", 12, 0)
-    contentInset:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -2, 2)
+    contentInset:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -8, 8)
     self.helpContentInset = contentInset
 
     local navTitle = createLabel(navInset, "Help Topics", "GameFontNormal")
@@ -3967,8 +4294,9 @@ end
 
 function UI:CreateUpdateTab(page)
     local inset = CreateFrame("Frame", "GoalsUpdateInset", page, "GoalsInsetTemplate")
-    inset:SetPoint("TOPLEFT", page, "TOPLEFT", 2, -8)
-    inset:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -2, 2)
+    applyInsetTheme(inset)
+    inset:SetPoint("TOPLEFT", page, "TOPLEFT", 8, -12)
+    inset:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -8, 8)
 
     local title = createLabel(inset, L.UPDATE_TITLE, "GameFontNormalLarge")
     title:SetPoint("TOPLEFT", inset, "TOPLEFT", 12, -12)
@@ -4057,8 +4385,9 @@ end
 
 function UI:CreateDevTab(page)
     local inset = CreateFrame("Frame", "GoalsDevInset", page, "GoalsInsetTemplate")
-    inset:SetPoint("TOPLEFT", page, "TOPLEFT", 2, -8)
-    inset:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -2, 2)
+    applyInsetTheme(inset)
+    inset:SetPoint("TOPLEFT", page, "TOPLEFT", 8, -12)
+    inset:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -8, 8)
 
     local killBtn = CreateFrame("Button", nil, inset, "UIPanelButtonTemplate")
     killBtn:SetSize(160, 20)
@@ -4328,11 +4657,13 @@ end
 
 function UI:CreateDebugTab(page)
     local inset = CreateFrame("Frame", "GoalsDebugInset", page, "GoalsInsetTemplate")
-    inset:SetPoint("TOPLEFT", page, "TOPLEFT", 2, -8)
-    inset:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -2, 2)
+    applyInsetTheme(inset)
+    inset:SetPoint("TOPLEFT", page, "TOPLEFT", 8, -12)
+    inset:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -8, 8)
 
     local title = createLabel(inset, "Debug Log", "GameFontNormal")
-    title:SetPoint("TOPLEFT", inset, "TOPLEFT", 10, -10)
+    local debugBar = applySectionHeader(title, inset, -6)
+    applySectionCaption(debugBar, "Logs")
 
     local clearBtn = CreateFrame("Button", nil, inset, "UIPanelButtonTemplate")
     clearBtn:SetSize(100, 20)
@@ -4376,6 +4707,7 @@ function UI:CreateDebugTab(page)
         row:SetHeight(DEBUG_ROW_HEIGHT)
         row:SetPoint("TOPLEFT", inset, "TOPLEFT", 8, -34 - (i - 1) * DEBUG_ROW_HEIGHT)
         row:SetPoint("RIGHT", inset, "RIGHT", -6, 0)
+        addRowStripe(row)
 
         local text = row:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
         text:SetPoint("LEFT", row, "LEFT", 0, 0)
@@ -4417,6 +4749,9 @@ function UI:UpdateRosterList()
         local entry = data[offset + i]
         if entry then
             row:Show()
+            if row.stripe then
+                setShown(row.stripe, ((offset + i) % 2) == 0)
+            end
             row.playerName = entry.name
             row.nameText:SetText(entry.name)
             row.nameText:SetTextColor(Goals:GetClassColor(entry.class))
@@ -4545,6 +4880,9 @@ function UI:UpdateHistoryList()
         local entry = data[offset + i]
         if entry then
             row:Show()
+            if row.stripe then
+                setShown(row.stripe, ((offset + i) % 2) == 0)
+            end
             row.timeText:SetText(formatTime(entry.ts))
             row.rainbowData = nil
             if entry.kind == "BOSSKILL" and entry.data and entry.data.players then
@@ -4601,6 +4939,9 @@ function UI:UpdateDebugLogList()
         local entry = data[offset + i]
         if entry then
             row:Show()
+            if row.stripe then
+                setShown(row.stripe, ((offset + i) % 2) == 0)
+            end
             local ts = entry.ts and formatTime(entry.ts) or ""
             row.text:SetText(string.format("%s %s", ts, entry.msg or ""))
         else
@@ -5447,6 +5788,9 @@ function UI:UpdateLootHistoryList()
         local entry = data[offset + i]
         if entry then
             row:Show()
+            if row.stripe then
+                setShown(row.stripe, ((offset + i) % 2) == 0)
+            end
             row.timeText:SetText(formatTime(entry.ts))
             if entry.kind == "LOOT_ASSIGN" then
                 local itemLink = entry.data and entry.data.item or ""
@@ -5539,6 +5883,9 @@ function UI:UpdateFoundLootList()
         local entry = data[offset + i]
         if entry then
             row:Show()
+            if row.stripe then
+                setShown(row.stripe, ((offset + i) % 2) == 0)
+            end
             row.entry = entry
             row.text:SetText(entry.link or "")
             if self.foundSelected == row then
@@ -5821,9 +6168,7 @@ function UI:Refresh()
             setShown(self.wishlistPopupSoundToggle.waveIcon, Goals.db.settings.wishlistPopupSound ~= false)
         end
     end
-    if Goals.db and Goals.db.settings then
-        Goals.db.settings.wishlistAnnounceChannel = "AUTO"
-    end
+    -- Auto-only announcement channel; no user selection.
     if self.wishlistTemplateBox then
         self.wishlistTemplateBox:SetText(Goals.db.settings.wishlistAnnounceTemplate or "%s is on my wishlist")
     end
@@ -6012,6 +6357,7 @@ function UI:CreateMiniTracker()
         return
     end
     local frame = CreateFrame("Frame", "GoalsMiniTracker", UIParent, "GoalsInsetTemplate")
+    applyInsetTheme(frame)
     frame:SetSize(MINI_FRAME_WIDTH, MINI_HEADER_HEIGHT + 10)
     frame:SetPoint("CENTER", UIParent, "CENTER", MINI_DEFAULT_X, MINI_DEFAULT_Y)
     frame:SetMovable(true)

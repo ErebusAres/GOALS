@@ -7,6 +7,6 @@ _G.Goals = Goals
 
 Goals.UpdateInfo = {
     major = 2,
-    version = 12,
+    version = 14,
     url = "https://github.com/ErebusAres/GOALS/archive/refs/heads/main.zip",
 }

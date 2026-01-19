@@ -28,10 +28,15 @@ Goals.state = Goals.state or {
     lootFound = {},
     lootFoundSeen = {},
     recentAssignments = {},
+    buildShareCooldown = {},
+    buildReceiveCooldown = {},
+    pendingBuildShare = nil,
 }
 Goals.state.lootFound = Goals.state.lootFound or {}
 Goals.state.lootFoundSeen = Goals.state.lootFoundSeen or {}
 Goals.state.recentAssignments = Goals.state.recentAssignments or {}
+Goals.state.buildShareCooldown = Goals.state.buildShareCooldown or {}
+Goals.state.buildReceiveCooldown = Goals.state.buildReceiveCooldown or {}
 Goals.pendingLoot = Goals.pendingLoot or {}
 Goals.pendingItemInfo = Goals.pendingItemInfo or {}
 Goals.undo = Goals.undo or {}
@@ -178,7 +183,14 @@ function Goals:GetGroupChannel()
 end
 
 function Goals:AnnounceWipe(encounterName)
-    self:Print(string.format("%s wiped.", encounterName or "Group"))
+    local count = #wipeMessages
+    if count == 0 then
+        self:Print(string.format("%s wiped.", encounterName or "Group"))
+        return
+    end
+    local index = math.random(count)
+    local template = wipeMessages[index] or "%s wiped."
+    self:Print(string.format(template, encounterName or "Group"))
 end
 
 function Goals:AnnounceEncounterStart(encounterName)
@@ -2209,6 +2221,137 @@ function Goals:ApplyWishlistSync(payload)
     self:NotifyDataChanged()
 end
 
+local BUILD_SHARE_COOLDOWN = 30
+
+local function buildShareKey(senderOrTarget, buildName)
+    return tostring(senderOrTarget or "") .. "\n" .. tostring(buildName or "")
+end
+
+function Goals:GetBuildShareCooldownRemaining(senderOrTarget, buildName, map)
+    local key = buildShareKey(senderOrTarget, buildName)
+    local lastSent = map and map[key] or nil
+    if not lastSent then
+        return 0
+    end
+    local remaining = (lastSent + BUILD_SHARE_COOLDOWN) - time()
+    if remaining < 0 then
+        remaining = 0
+    end
+    return remaining
+end
+
+function Goals:CanSendBuildTo(targetName, buildName)
+    if not targetName or targetName == "" then
+        return false, "No target selected."
+    end
+    local remaining = self:GetBuildShareCooldownRemaining(targetName, buildName, self.state.buildShareCooldown or {})
+    if remaining > 0 then
+        return false, string.format("Please wait %d seconds before sending that build again.", math.ceil(remaining))
+    end
+    return true
+end
+
+function Goals:MarkBuildShareCooldown(targetName, buildName)
+    self.state.buildShareCooldown[buildShareKey(targetName, buildName)] = time()
+end
+
+function Goals:CanReceiveBuildFrom(senderName, buildName)
+    local remaining = self:GetBuildShareCooldownRemaining(senderName, buildName, self.state.buildReceiveCooldown or {})
+    return remaining <= 0
+end
+
+function Goals:MarkBuildReceiveCooldown(senderName, buildName)
+    self.state.buildReceiveCooldown[buildShareKey(senderName, buildName)] = time()
+end
+
+function Goals:SendWishlistBuildTo(targetName)
+    local list = self:GetActiveWishlist()
+    if not list then
+        return false, "No active wishlist."
+    end
+    local buildName = list.name or "Wishlist"
+    local normalized = self:NormalizeName(targetName)
+    if normalized == "" then
+        return false, "No target selected."
+    end
+    local ok, err = self:CanSendBuildTo(normalized, buildName)
+    if not ok then
+        return false, err
+    end
+    if self:IsInRaid() or self:IsInParty() then
+        local present = self:GetPresenceMap()
+        if not present[normalized] then
+            return false, normalized .. " is not online or not in your group."
+        end
+    end
+    local payload = self:SerializeWishlist(list)
+    if self.Comm and self.Comm.SendWishlistBuild then
+        local sent = self.Comm:SendWishlistBuild(normalized, payload)
+        if sent then
+            self:MarkBuildShareCooldown(normalized, buildName)
+            return true, "Sent build '" .. buildName .. "' to " .. normalized .. "."
+        end
+        return false, "SEND_FAILED"
+    end
+    return false, "Build share unavailable."
+end
+
+function Goals:HandleIncomingBuild(payload, sender)
+    if not payload or payload == "" or not sender or sender == "" then
+        return
+    end
+    local data = self:DeserializeWishlist(payload)
+    if not data then
+        return
+    end
+    local buildName = data.name or "Wishlist"
+    local senderName = self:NormalizeName(sender)
+    if not self:CanReceiveBuildFrom(senderName, buildName) then
+        return
+    end
+    self.state.pendingBuildShare = {
+        sender = senderName,
+        data = data,
+    }
+    if self.UI and self.UI.ShowBuildSharePrompt then
+        self.UI:ShowBuildSharePrompt()
+    elseif StaticPopup_Show then
+        StaticPopup_Show("GOALS_BUILD_SHARE")
+    end
+end
+
+function Goals:AcceptPendingBuildShare()
+    local pending = self.state.pendingBuildShare
+    if not pending then
+        return
+    end
+    local sender = pending.sender or "Unknown"
+    local data = pending.data or {}
+    local baseName = data.name or "Wishlist"
+    local listName = string.format("%s - %s", sender, baseName)
+    local list = self:CreateWishlist(listName)
+    if list then
+        list.items = data.items or {}
+        list.updated = time()
+        self:SetActiveWishlist(list.id)
+        self:NotifyDataChanged()
+        self:Print("Saved build '" .. (list.name or baseName) .. "' from " .. sender .. ".")
+    end
+    self:MarkBuildReceiveCooldown(sender, baseName)
+    self.state.pendingBuildShare = nil
+end
+
+function Goals:DeclinePendingBuildShare()
+    local pending = self.state.pendingBuildShare
+    if not pending then
+        return
+    end
+    local sender = pending.sender or "Unknown"
+    local baseName = (pending.data and pending.data.name) or "Wishlist"
+    self:MarkBuildReceiveCooldown(sender, baseName)
+    self.state.pendingBuildShare = nil
+end
+
 function Goals:EnqueueWishlistAnnounce(itemLink)
     if not itemLink or itemLink == "" then
         return
@@ -3944,37 +4087,6 @@ function Goals:SelectSaveTable(name)
     self:EnsureWishlistData()
 end
 
-function Goals:SaveCurrentTableAs(name)
-    if not self.dbRoot or not self.db or not name or name == "" then
-        return
-    end
-    local target = self:EnsureSaveTable(name)
-    if not target then
-        return
-    end
-    self:CopyTableData(self.db, target)
-    self:Print("Saving Table: " .. name)
-end
-
-function Goals:FindLatestTableForPlayer(name)
-    if not self.dbRoot or not self.dbRoot.tables then
-        return nil
-    end
-    local key = self:NormalizeName(name or "")
-    if key == "" then
-        return nil
-    end
-    local latestTable
-    local latestTs = 0
-    for _, tableData in pairs(self.dbRoot.tables) do
-        local players = tableData.players or {}
-        if players[key] and (tableData.lastUpdated or 0) > latestTs then
-            latestTable = tableData
-            latestTs = tableData.lastUpdated or 0
-        end
-    end
-    return latestTable
-end
 
 function Goals:GetSeenPlayersSnapshot()
     local snapshot = {}
