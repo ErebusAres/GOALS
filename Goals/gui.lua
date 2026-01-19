@@ -28,11 +28,11 @@ local WISHLIST_SLOT_SIZE = 36
 local WISHLIST_ROW_SPACING = 46
 
 local THEME = {
-    frameBg = { 0.06, 0.07, 0.09, 0.95 },
-    frameLight = { 0.12, 0.13, 0.16, 0.35 },
-    frameBorder = { 0.18, 0.2, 0.24, 0.7 },
-    insetBg = { 0.08, 0.09, 0.12, 0.95 },
-    insetBorder = { 0.15, 0.17, 0.21, 0.8 },
+    frameBg = { 0.08, 0.09, 0.12, 0.95 },
+    frameLight = { 0.14, 0.15, 0.19, 0.4 },
+    frameBorder = { 0.2, 0.22, 0.26, 0.75 },
+    insetBg = { 0.1, 0.11, 0.15, 0.95 },
+    insetBorder = { 0.17, 0.19, 0.24, 0.85 },
     titleText = { 0.9, 0.92, 0.98, 1.0 },
 }
 
@@ -115,7 +115,11 @@ local function applySectionCaption(bar, text)
     if not bar or not text or text == "" then
         return nil
     end
-    local caption = bar:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    local parent = bar.GetParent and bar:GetParent() or nil
+    if not parent then
+        return nil
+    end
+    local caption = parent:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
     caption:SetPoint("RIGHT", bar, "RIGHT", -6, 0)
     caption:SetText(text)
     caption:SetTextColor(0.7, 0.75, 0.85, 1)
@@ -1415,12 +1419,8 @@ function UI:CreateOverviewTab(page)
     local pointsBar = applySectionHeader(pointsLabel, rosterInset, -6)
     applySectionCaption(pointsBar, "Roster and points")
     local autoSyncLabel = createLabel(rosterInset, "", "GameFontHighlightSmall")
-    if pointsBar then
-        autoSyncLabel:SetPoint("RIGHT", pointsBar, "RIGHT", -6, 0)
-    else
-        autoSyncLabel:SetPoint("TOPRIGHT", rosterInset, "TOPRIGHT", -10, -8)
-    end
-    autoSyncLabel:SetJustifyH("RIGHT")
+    autoSyncLabel:SetPoint("LEFT", pointsLabel, "RIGHT", 12, 0)
+    autoSyncLabel:SetJustifyH("LEFT")
     self.autoSyncLabel = autoSyncLabel
 
     local rosterScroll = CreateFrame("ScrollFrame", "GoalsRosterScroll", rosterInset, "FauxScrollFrameTemplate")
@@ -3585,12 +3585,42 @@ function UI:CreateSettingsTab(page)
         return btn
     end
 
+    local function createAlignedDivider(anchor, yOffset)
+        if not anchor then
+            return nil
+        end
+        local line = rightInset:CreateTexture(nil, "BORDER")
+        line:SetHeight(1)
+        line:SetPoint("TOP", anchor, "BOTTOM", 0, yOffset or -8)
+        line:SetPoint("LEFT", rightInset, "LEFT", 4, 0)
+        line:SetPoint("RIGHT", rightInset, "RIGHT", -4, 0)
+        line:SetTexture(1, 1, 1, 0.08)
+        return line
+    end
+
+    local function applyAlignedSectionHeader(label, anchor, yOffset)
+        if not label or not anchor then
+            return nil
+        end
+        local bar = rightInset:CreateTexture(nil, "BORDER")
+        bar:SetHeight(18)
+        bar:SetPoint("TOP", anchor, "BOTTOM", 0, yOffset or -8)
+        bar:SetPoint("LEFT", rightInset, "LEFT", 4, 0)
+        bar:SetPoint("RIGHT", rightInset, "RIGHT", -4, 0)
+        bar:SetTexture(0, 0, 0, 0.35)
+        label:ClearAllPoints()
+        label:SetPoint("LEFT", bar, "LEFT", 6, 0)
+        return bar
+    end
+
+    local ACTIONS_LEFT = 2
+
     local clearPointsBtn = createActionButton("Clear All Points", function()
         if Goals and Goals.ClearAllPointsLocal then
             Goals:ClearAllPointsLocal()
         end
     end)
-    clearPointsBtn:SetPoint("TOPLEFT", actionsTitle, "BOTTOMLEFT", 2, -10)
+    clearPointsBtn:SetPoint("TOPLEFT", actionsTitle, "BOTTOMLEFT", ACTIONS_LEFT, -10)
 
     local clearPlayersBtn = createActionButton("Clear Players List", function()
         if Goals and Goals.ClearPlayersLocal then
@@ -3613,9 +3643,9 @@ function UI:CreateSettingsTab(page)
     end)
     clearAllBtn:SetPoint("TOPLEFT", clearHistoryBtn, "BOTTOMLEFT", 0, -10)
 
-    local miniDivider = createDivider(rightInset, clearAllBtn, -6)
+    local miniDivider = createAlignedDivider(clearAllBtn, -6)
     local miniTitle = createLabel(rightInset, L.LABEL_MINI_TRACKER, "GameFontNormal")
-    local miniBar = applySectionHeaderAfter(miniTitle, rightInset, miniDivider or clearAllBtn, -6)
+    local miniBar = applyAlignedSectionHeader(miniTitle, miniDivider or clearAllBtn, -6)
     applySectionCaption(miniBar, "Quick view")
     if miniBar then
         local resetMiniBtn = createSmallIconButton(rightInset, 16, "Interface\\Buttons\\UI-RefreshButton")
@@ -3640,12 +3670,12 @@ function UI:CreateSettingsTab(page)
             UI:ToggleMiniTracker()
         end
     end)
-    miniBtn:SetPoint("TOPLEFT", miniTitle, "BOTTOMLEFT", 0, -6)
+    miniBtn:SetPoint("TOPLEFT", miniTitle, "BOTTOMLEFT", ACTIONS_LEFT, -6)
     self.miniTrackerButton = miniBtn
 
-    local tableDivider = createDivider(rightInset, miniBtn, -6)
+    local tableDivider = createAlignedDivider(miniBtn, -6)
     local tableTitle = createLabel(rightInset, L.LABEL_SAVE_TABLES, "GameFontNormal")
-    local tableBar = applySectionHeaderAfter(tableTitle, rightInset, tableDivider or miniBtn, -6)
+    local tableBar = applyAlignedSectionHeader(tableTitle, tableDivider or miniBtn, -6)
     applySectionCaption(tableBar, "Per character")
 
     local helpBtn = createSmallIconButton(rightInset, 18, "Interface\\Buttons\\UI-HelpButton")
@@ -3666,7 +3696,7 @@ function UI:CreateSettingsTab(page)
     self.saveTableHelpButton = helpBtn
 
     local autoSeenCheck = CreateFrame("CheckButton", nil, rightInset, "UICheckButtonTemplate")
-    autoSeenCheck:SetPoint("TOPLEFT", tableTitle, "BOTTOMLEFT", 0, -6)
+    autoSeenCheck:SetPoint("TOPLEFT", tableTitle, "BOTTOMLEFT", ACTIONS_LEFT, -6)
     setCheckText(autoSeenCheck, L.CHECK_AUTOLOAD_SEEN)
     autoSeenCheck:SetScript("OnClick", function(selfBtn)
         Goals.db.settings.tableAutoLoadSeen = selfBtn:GetChecked() and true or false
@@ -3687,12 +3717,12 @@ function UI:CreateSettingsTab(page)
             Goals:MergeSeenPlayersIntoCurrent()
         end
     end)
-    syncSeenBtn:SetPoint("TOPLEFT", combinedCheck, "BOTTOMLEFT", 4, -8)
+    syncSeenBtn:SetPoint("TOPLEFT", combinedCheck, "BOTTOMLEFT", 0, -8)
     self.syncSeenButton = syncSeenBtn
 
-    local editDivider = createDivider(rightInset, syncSeenBtn, -6)
+    local editDivider = createAlignedDivider(syncSeenBtn, -6)
     local editTitle = createLabel(rightInset, "Local Editing", "GameFontNormal")
-    local editBar = applySectionHeaderAfter(editTitle, rightInset, editDivider or syncSeenBtn, -6)
+    local editBar = applyAlignedSectionHeader(editTitle, editDivider or syncSeenBtn, -6)
     applySectionCaption(editBar, "Admin tools")
 
     local sudoBtn = createActionButton("", function()
@@ -3705,7 +3735,7 @@ function UI:CreateSettingsTab(page)
             StaticPopup_Show("GOALS_SUDO_DEV")
         end
     end)
-    sudoBtn:SetPoint("TOPLEFT", editTitle, "BOTTOMLEFT", 2, -10)
+    sudoBtn:SetPoint("TOPLEFT", editTitle, "BOTTOMLEFT", ACTIONS_LEFT, -10)
     self.sudoDevButton = sudoBtn
 
     local syncRequestBtn = createActionButton("Ask for sync", function()
@@ -4600,14 +4630,8 @@ function UI:CreateDevTab(page)
         end
     end)
 
-    local updateDebug = createLabel(inset, "", "GameFontHighlightSmall")
-    updateDebug:SetPoint("TOPLEFT", simulateUpdateBtn, "BOTTOMLEFT", 0, -12)
-    updateDebug:SetWidth(520)
-    updateDebug:SetJustifyH("LEFT")
-    self.updateDebugText = updateDebug
-
     local devBossCheck = CreateFrame("CheckButton", nil, inset, "UICheckButtonTemplate")
-    devBossCheck:SetPoint("TOPLEFT", updateDebug, "BOTTOMLEFT", 0, -8)
+    devBossCheck:SetPoint("TOPLEFT", simulateUpdateBtn, "BOTTOMLEFT", 0, -12)
     setCheckText(devBossCheck, L.DEV_TEST_BOSS)
     devBossCheck:SetScript("OnClick", function(selfBtn)
         Goals.db.settings.devTestBoss = selfBtn:GetChecked() and true or false
@@ -4653,6 +4677,12 @@ function UI:CreateDevTab(page)
         selfBox:SetText(tostring(value))
     end)
     self.wishlistTestCountBox = wishlistCountBox
+
+    local updateDebug = createLabel(inset, "", "GameFontHighlightSmall")
+    updateDebug:SetPoint("BOTTOMLEFT", inset, "BOTTOMLEFT", 12, 10)
+    updateDebug:SetWidth(520)
+    updateDebug:SetJustifyH("LEFT")
+    self.updateDebugText = updateDebug
 end
 
 function UI:CreateDebugTab(page)
@@ -5597,13 +5627,17 @@ function UI:UpdateWishlistUI()
                 gem:Show()
                 gem:ClearAllPoints()
                 local yOffset = (gemOffset - (i - 1)) * 14
-                if button.column == 1 or button.column == 2 then
-                    local xOffset = (i - 1) * 13
-                    local yOffsetRow = 4
-                    local nameOffset = self.wishlistNameOffset or 2
-                    if button.column == 1 then
-                        gem:SetPoint("LEFT", button, "BOTTOMRIGHT", nameOffset + xOffset, yOffsetRow)
-                    else
+                    if button.column == 1 or button.column == 2 then
+                        local positionIndex = i
+                        if button.column == 2 then
+                            positionIndex = socketCount - i + 1
+                        end
+                        local xOffset = (positionIndex - 1) * 13
+                        local yOffsetRow = 4
+                        local nameOffset = self.wishlistNameOffset or 2
+                        if button.column == 1 then
+                            gem:SetPoint("LEFT", button, "BOTTOMRIGHT", nameOffset + xOffset, yOffsetRow)
+                        else
                         gem:SetPoint("RIGHT", button, "BOTTOMLEFT", -nameOffset - xOffset, yOffsetRow)
                     end
                 else
@@ -5875,12 +5909,18 @@ function UI:UpdateFoundLootList()
     end
     self.foundLootScroll:Show()
     local data = Goals:GetFoundLoot() or {}
-    self.foundLootData = data
+    local filtered = {}
+    for _, entry in ipairs(data) do
+        if entry and not entry.assignedTo then
+            table.insert(filtered, entry)
+        end
+    end
+    self.foundLootData = filtered
     local offset = FauxScrollFrame_GetOffset(self.foundLootScroll) or 0
-    FauxScrollFrame_Update(self.foundLootScroll, #data, LOOT_ROWS, ROW_HEIGHT)
+    FauxScrollFrame_Update(self.foundLootScroll, #filtered, LOOT_ROWS, ROW_HEIGHT)
     for i = 1, LOOT_ROWS do
         local row = self.foundLootRows[i]
-        local entry = data[offset + i]
+        local entry = filtered[offset + i]
         if entry then
             row:Show()
             if row.stripe then
@@ -5915,58 +5955,20 @@ function UI:ShowFoundLootMenu(row, entry)
     local menu = self.foundLootMenu
     UIDropDownMenu_Initialize(menu, function(_, level)
         local info
-        local players = UI:GetPresentPlayerNames()
-        if #players == 0 and Goals.GetGroupMembers then
+        local players = {}
+        if Goals.GetGroupMembers then
             local members = Goals:GetGroupMembers()
             local seen = {}
-            for _, info in ipairs(members) do
-                local normalized = Goals:NormalizeName(info.name)
+            for _, member in ipairs(members) do
+                local normalized = Goals:NormalizeName(member.name)
                 if normalized ~= "" and not seen[normalized] then
                     seen[normalized] = true
-                    table.insert(players, info.name)
+                    table.insert(players, member.name)
                 end
             end
         end
-        if entry.slot and entry.slot > 0 and GetMasterLootCandidate then
-            local candidates = {}
-            local candidateList = {}
-            for i = 1, 40 do
-                local candidate = GetMasterLootCandidate(entry.slot, i)
-                if not candidate then
-                    break
-                end
-                local normalized = Goals:NormalizeName(candidate)
-                if normalized ~= "" and not candidates[normalized] then
-                    candidates[normalized] = true
-                    table.insert(candidateList, normalized)
-                end
-            end
-            if #candidateList > 0 then
-                players = candidateList
-            else
-                info = UIDropDownMenu_CreateInfo()
-                info.text = "Open loot window to assign."
-                info.notCheckable = true
-                UIDropDownMenu_AddButton(info, level)
-                return
-            end
-            if #players == 0 then
-                info = UIDropDownMenu_CreateInfo()
-                info.text = L.LABEL_NO_PLAYERS
-                info.notCheckable = true
-                UIDropDownMenu_AddButton(info, level)
-                return
-            end
-            for _, name in ipairs(players) do
-                info = UIDropDownMenu_CreateInfo()
-                info.text = colorizeName(name)
-                info.value = name
-                info.func = function()
-                    Goals:AssignLootSlot(entry.slot, name, entry.link)
-                end
-                UIDropDownMenu_AddButton(info, level)
-            end
-            return
+        if #players == 0 then
+            players = UI:GetPresentPlayerNames()
         end
         if #players == 0 then
             info = UIDropDownMenu_CreateInfo()

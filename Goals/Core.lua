@@ -1019,6 +1019,7 @@ function Goals:HandleLootAssignment(playerName, itemLink, skipSync, forceRecord)
             before = entry and entry.points or 0
         end
         self:RecordLootAssignment(playerName, itemLink, resetApplied, before)
+        self:RemoveFoundLootByLink(itemLink)
         if self:CanSync() and not skipSync and self.Comm then
             if resetApplied then
                 self.Comm:SendLootReset(playerName, itemLink)
@@ -1073,6 +1074,18 @@ function Goals:RecordLootFound(itemLink)
     self.state.lootFoundSeenLinks[itemLink] = time()
     if self.History then
         self.History:AddLootFound(itemLink)
+    end
+end
+
+function Goals:RemoveFoundLootByLink(itemLink)
+    if not itemLink or not self.state.lootFound then
+        return
+    end
+    for i = #self.state.lootFound, 1, -1 do
+        local entry = self.state.lootFound[i]
+        if entry and entry.link == itemLink then
+            table.remove(self.state.lootFound, i)
+        end
     end
 end
 
@@ -1348,6 +1361,7 @@ function Goals:ApplyLootAssignment(playerName, itemLink)
         return
     end
     self:RecordLootAssignment(playerName, itemLink, false)
+    self:RemoveFoundLootByLink(itemLink)
     self:HandleWishlistLoot(itemLink)
     self:NotifyDataChanged()
 end
@@ -1359,6 +1373,7 @@ function Goals:ApplyLootReset(playerName, itemLink)
     local entry = self.db and self.db.players and self.db.players[self:NormalizeName(playerName)] or nil
     local before = entry and entry.points or 0
     self:RecordLootAssignment(playerName, itemLink, true, before)
+    self:RemoveFoundLootByLink(itemLink)
     self:SetPoints(playerName, 0, "Loot reset: " .. itemLink, true, true)
     self:HandleWishlistLoot(itemLink)
 end
@@ -1748,11 +1763,11 @@ function Goals:GetCustomRealmTokenOverride(itemId, defaultToken)
         [30248] = 30250, [30249] = 30250, [30250] = 30250, -- Pauldrons of the Vanquished Hero
     }
     local t6Map = {
-        [31089] = 31090, [31090] = 31090, [31091] = 31090, -- Chestguard of the Forgotten Protector
-        [31092] = 31093, [31093] = 31093, [31094] = 31093, -- Gloves of the Forgotten Protector
-        [31095] = 31096, [31096] = 31096, [31097] = 31096, -- Helm of the Forgotten Protector
-        [31098] = 31099, [31099] = 31099, [31100] = 31099, -- Leggings of the Forgotten Protector
-        [31101] = 31102, [31102] = 31102, [31103] = 31102, -- Pauldrons of the Forgotten Protector
+        [31089] = 31091, [31090] = 31091, [31091] = 31091, -- Chestguard of the Forgotten Protector
+        [31092] = 31094, [31093] = 31094, [31094] = 31094, -- Gloves of the Forgotten Protector
+        [31095] = 31095, [31096] = 31095, [31097] = 31095, -- Helm of the Forgotten Protector
+        [31098] = 31100, [31099] = 31100, [31100] = 31100, -- Leggings of the Forgotten Protector
+        [31101] = 31103, [31102] = 31103, [31103] = 31103, -- Pauldrons of the Forgotten Protector
     }
     if t4Map[tokenId] then
         return t4Map[tokenId]
