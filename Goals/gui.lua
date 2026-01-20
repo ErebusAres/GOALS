@@ -2339,7 +2339,7 @@ function UI:CreateWishlistTab(page)
             PanelTemplates_TabResize(btn, 8)
         end
         if anchor then
-            btn:SetPoint("TOPLEFT", anchor, "TOPRIGHT", 6, 0)
+            btn:SetPoint("TOPLEFT", anchor, "TOPRIGHT", 2, 0)
         else
             btn:SetPoint("TOPLEFT", tabBar, "TOPLEFT", 0, 0)
         end
@@ -2389,6 +2389,7 @@ end)
     end)
     local helpLabel = createLabel(tabBar, "Help", "GameFontNormalSmall")
     helpLabel:SetPoint("RIGHT", helpBtn, "LEFT", -4, 0)
+    helpLabel:Hide()
     helpBtn:SetScript("OnClick", function()
         self.wishlistHelpOpen = not self.wishlistHelpOpen
         if self.wishlistHelpOpen then
