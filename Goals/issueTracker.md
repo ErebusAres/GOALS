@@ -18,6 +18,9 @@
 - The announcement options were removed during a recent update.
   - Status: Fixed. Announcement checkbox and sound toggle are anchored again.
 
+- Wishlist help icon overlaps the tabs; move it to the top-right corner under the close button.
+  - Status: Fixed. Help icon is anchored under the main close button.
+
 - Check for potential memory leaks, or anything that would cause slowdown extra pc memory usage and report your finding.
   - Status: Reviewed. No obvious leaks; history grows unbounded and wishlist announce cache can grow over long sessions.
 

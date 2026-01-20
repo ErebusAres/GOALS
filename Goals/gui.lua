@@ -2361,42 +2361,28 @@ function UI:CreateWishlistTab(page)
     self.wishlistSubTabs.actions = createTabButton("Actions", "actions", self.wishlistSubTabs.search)
     self.wishlistSubTabs.options = createTabButton("Options", "options", self.wishlistSubTabs.actions)
 
-local helpBtn = CreateFrame(
-    "Button",
-    "GoalsWishlistHelpButton",
-    tabBar
-)
-helpBtn:SetSize(18, 18)
-helpBtn:SetPoint("TOPRIGHT", page, "TOPRIGHT", -10, -6)
-
--- info icon
-local icon = helpBtn:CreateTexture(nil, "ARTWORK")
-icon:SetAllPoints(helpBtn)
-icon:SetTexture("Interface\\FriendsFrame\\InformationIcon")
-helpBtn.icon = icon
-
--- highlight
-helpBtn:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight")
-
--- tooltip
-helpBtn:SetScript("OnEnter", function(self)
-    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-    GameTooltip:SetText("Wishlist Help")
-    GameTooltip:Show()
-end)
-
-helpBtn:SetScript("OnLeave", function()
-    GameTooltip:Hide()
-end)
+    local helpBtn = CreateFrame("Button", "GoalsWishlistHelpButton", tabBar)
     helpBtn:SetSize(18, 18)
-    helpBtn:SetPoint("TOPRIGHT", page, "TOPRIGHT", -10, -6)
-    helpBtn:SetScript("OnMouseDown", function()
-    end)
-    helpBtn:SetScript("OnMouseUp", function()
-    end)
+    local closeBtn = self.frame and _G[self.frame:GetName() .. "CloseButton"] or nil
+    if closeBtn then
+        helpBtn:SetPoint("TOPRIGHT", closeBtn, "BOTTOMRIGHT", 0, -2)
+    else
+        helpBtn:SetPoint("TOPRIGHT", page, "TOPRIGHT", -10, -28)
+    end
+
+    -- info icon
+    local icon = helpBtn:CreateTexture(nil, "ARTWORK")
+    icon:SetAllPoints(helpBtn)
+    icon:SetTexture("Interface\\FriendsFrame\\InformationIcon")
+    helpBtn.icon = icon
+
+    -- highlight
+    helpBtn:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight")
+
     local helpLabel = createLabel(tabBar, "Help", "GameFontNormalSmall")
     helpLabel:SetPoint("RIGHT", helpBtn, "LEFT", -4, 0)
     helpLabel:Hide()
+
     helpBtn:SetScript("OnClick", function()
         self.wishlistHelpOpen = not self.wishlistHelpOpen
         if self.wishlistHelpOpen then
@@ -2411,7 +2397,7 @@ end)
     end)
     helpBtn:SetScript("OnEnter", function(selfBtn)
         GameTooltip:SetOwner(selfBtn, "ANCHOR_RIGHT")
-        GameTooltip:SetText("Wishlist help")
+        GameTooltip:SetText("Wishlist Help")
         GameTooltip:Show()
     end)
     helpBtn:SetScript("OnLeave", function()
