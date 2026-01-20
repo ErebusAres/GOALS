@@ -34,6 +34,7 @@ Goals.L = {
     LABEL_WISHLIST_FILTER_SOURCE = "Source",
     LABEL_WISHLIST_RESULTS = "Results",
     LABEL_WISHLIST_ACTIONS = "Actions",
+    LABEL_WISHLIST_OPTIONS = "Options",
     LABEL_WISHLIST_IMPORT = "Import / Export",
     LABEL_WISHLIST_SYNC = "Sync",
     LABEL_BUILD_SHARE = "Build Share",

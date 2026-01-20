@@ -2301,6 +2301,11 @@ function UI:CreateWishlistTab(page)
     actionsPage:SetPoint("BOTTOMRIGHT", rightInset, "BOTTOMRIGHT", -6, 6)
     actionsPage:Hide()
 
+    local optionsPage = CreateFrame("Frame", nil, rightInset)
+    optionsPage:SetPoint("TOPLEFT", rightInset, "TOPLEFT", 6, -32)
+    optionsPage:SetPoint("BOTTOMRIGHT", rightInset, "BOTTOMRIGHT", -6, 6)
+    optionsPage:Hide()
+
     local function setWishlistTabSelected(button, selected)
         if not button then
             return
@@ -2322,6 +2327,7 @@ function UI:CreateWishlistTab(page)
         setShown(managerPage, key == "manage")
         setShown(searchPage, key == "search")
         setShown(actionsPage, key == "actions")
+        setShown(optionsPage, key == "options")
         self.wishlistActiveTab = key
         if self.wishlistSubTabs then
             for name, button in pairs(self.wishlistSubTabs) do
@@ -2339,7 +2345,7 @@ function UI:CreateWishlistTab(page)
             PanelTemplates_TabResize(btn, 8)
         end
         if anchor then
-            btn:SetPoint("TOPLEFT", anchor, "TOPRIGHT", 2, 0)
+            btn:SetPoint("TOPLEFT", anchor, "TOPRIGHT", 0, 0)
         else
             btn:SetPoint("TOPLEFT", tabBar, "TOPLEFT", 0, 0)
         end
@@ -2353,6 +2359,7 @@ function UI:CreateWishlistTab(page)
     self.wishlistSubTabs.manage = createTabButton("Manage", "manage", nil)
     self.wishlistSubTabs.search = createTabButton("Search", "search", self.wishlistSubTabs.manage)
     self.wishlistSubTabs.actions = createTabButton("Actions", "actions", self.wishlistSubTabs.search)
+    self.wishlistSubTabs.options = createTabButton("Options", "options", self.wishlistSubTabs.actions)
 
 local helpBtn = CreateFrame(
     "Button",
@@ -3273,9 +3280,13 @@ end)
     self.wishlistTokenLabel = tokenLabel
 
     local popout = actionsPage
+    local optionsPopout = optionsPage
 
     local popoutTitle = createLabel(popout, L.LABEL_WISHLIST_ACTIONS, "GameFontNormal")
     popoutTitle:SetPoint("TOPLEFT", popout, "TOPLEFT", 4, -4)
+
+    local optionsTitle = createLabel(optionsPopout, L.LABEL_WISHLIST_OPTIONS, "GameFontNormal")
+    optionsTitle:SetPoint("TOPLEFT", optionsPopout, "TOPLEFT", 4, -4)
 
     local notesLabel = createLabel(popout, L.LABEL_WISHLIST_NOTES, "GameFontNormal")
     notesLabel:SetPoint("TOPLEFT", popout, "TOPLEFT", 10, -36)
@@ -3694,11 +3705,11 @@ end)
     end)
     self.wishlistSendBuildButton = sendBuildBtn
 
-    local announceLabel = createLabel(popout, L.LABEL_WISHLIST_ANNOUNCE, "GameFontNormal")
-    announceLabel:SetPoint("TOPLEFT", sendBuildBtn, "BOTTOMLEFT", 0, -8)
-    announceLabel:SetPoint("LEFT", popoutTitle, "LEFT", 0, 0)
+    local announceLabel = createLabel(optionsPopout, L.LABEL_WISHLIST_ANNOUNCE, "GameFontNormal")
+    announceLabel:SetPoint("TOPLEFT", optionsTitle, "BOTTOMLEFT", 0, -10)
+    announceLabel:SetPoint("LEFT", optionsTitle, "LEFT", 0, 0)
 
-    local announceCheck = CreateFrame("CheckButton", nil, popout, "UICheckButtonTemplate")
+    local announceCheck = CreateFrame("CheckButton", nil, optionsPopout, "UICheckButtonTemplate")
     announceCheck:SetPoint("TOPLEFT", announceLabel, "BOTTOMLEFT", -4, -2)
     setCheckText(announceCheck, L.CHECK_WISHLIST_ANNOUNCE)
     announceCheck:SetScript("OnClick", function(selfCheck)
@@ -3707,7 +3718,7 @@ end)
     end)
     self.wishlistAnnounceCheck = announceCheck
 
-    local soundToggle = createSmallIconButton(popout, 20, "Interface\\Common\\VoiceChat-Speaker")
+    local soundToggle = createSmallIconButton(optionsPopout, 20, "Interface\\Common\\VoiceChat-Speaker")
     soundToggle:SetPoint("LEFT", announceLabel, "RIGHT", 6, 0)
     local soundWave = soundToggle:CreateTexture(nil, "OVERLAY")
     soundWave:SetAllPoints(soundToggle)
@@ -3736,7 +3747,7 @@ end)
     end)
     self.wishlistPopupSoundToggle = soundToggle
 
-    local disablePopupCheck = CreateFrame("CheckButton", nil, popout, "UICheckButtonTemplate")
+    local disablePopupCheck = CreateFrame("CheckButton", nil, optionsPopout, "UICheckButtonTemplate")
     disablePopupCheck:SetPoint("LEFT", announceCheck, "RIGHT", 120, 0)
     setCheckText(disablePopupCheck, "Disable popup")
     disablePopupCheck:SetScript("OnClick", function(selfCheck)
