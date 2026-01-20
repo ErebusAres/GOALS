@@ -1026,8 +1026,20 @@ function Goals:HandleLootAssignment(playerName, itemLink, skipSync, forceRecord)
         self:RequestItemInfo(itemLink)
         return
     end
+    local itemId = self:GetItemIdFromLink(itemLink)
     local shouldTrack = self:ShouldTrackLoot(quality, itemType, itemSubType, equipSlot)
     local shouldReset = shouldTrack and self:ShouldResetForLoot(itemType, itemSubType, equipSlot, quality)
+    if shouldReset and itemId then
+        local tokenId = self:GetArmorTokenForItem(itemId)
+        if tokenId and tokenId ~= itemId then
+            shouldReset = false
+        end
+    end
+    if shouldReset and self.db and self.db.settings and self.db.settings.resetRequiresLootWindow then
+        if not self:WasLootFound(itemLink) then
+            shouldReset = false
+        end
+    end
     if self.db and self.db.settings and self.db.settings.disablePointGain then
         shouldReset = false
     end
@@ -1127,6 +1139,30 @@ function Goals:RemoveFoundLootByLink(itemLink)
             end
         end
     end
+end
+
+function Goals:WasLootFound(itemLink)
+    if not itemLink or not self.state.lootFound then
+        return false
+    end
+    for _, entry in ipairs(self.state.lootFound) do
+        if entry and entry.link == itemLink then
+            return true
+        end
+    end
+    local itemId = self:GetItemIdFromLink(itemLink)
+    if not itemId then
+        return false
+    end
+    for _, entry in ipairs(self.state.lootFound) do
+        if entry and entry.link then
+            local entryId = self:GetItemIdFromLink(entry.link)
+            if entryId and entryId == itemId then
+                return true
+            end
+        end
+    end
+    return false
 end
 
 function Goals:ApplyLootFound(id, ts, itemLink, sender)

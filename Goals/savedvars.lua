@@ -32,24 +32,20 @@ Goals.defaults = {
         resetQuestItems = false,
         resetTokens = true,
         resetMinQuality = 4,
+        resetRequiresLootWindow = false,
         showPresentOnly = false,
         disablePointGain = false,
         sortMode = "POINTS",
         lootHistoryMinQuality = 4,
         lootHistoryHiddenBefore = 0,
         historyLootMinQuality = 0,
-        historyFilterPointsAssigned = true,
-        historyFilterPointsReset = true,
-        historyFilterBuildSent = true,
-        historyFilterBuildAccepted = true,
-        historyFilterWishlistFound = true,
-        historyFilterWishlistClaimed = true,
-        historyFilterWishlistAdded = true,
-        historyFilterWishlistRemoved = true,
-        historyFilterWishlistSocketed = true,
-        historyFilterWishlistEnchanted = true,
-        historyFilterLootAssigned = true,
-        historyFilterLootFound = true,
+        historyFilterPoints = true,
+        historyFilterEncounter = true,
+        historyFilterBuild = true,
+        historyFilterWishlistStatus = true,
+        historyFilterWishlistItems = true,
+        historyFilterLoot = true,
+        historyFiltersMigrated = false,
         localOnly = false,
         dbmIntegration = true,
         wishlistDbmIntegration = true,
@@ -125,6 +121,52 @@ function Goals:InitDB()
             GoalsDB.settings.lootHistoryMinQuality = GoalsDB.settings.lootHistoryEpicOnly and 4 or 0
         end
         GoalsDB.settings.lootHistoryEpicOnly = nil
+    end
+    if GoalsDB.settings and not GoalsDB.settings.historyFiltersMigrated then
+        local settings = GoalsDB.settings
+        local function hasValue(value)
+            return value ~= nil
+        end
+        local hadOld = hasValue(settings.historyFilterPointsAssigned)
+            or hasValue(settings.historyFilterPointsReset)
+            or hasValue(settings.historyFilterBuildSent)
+            or hasValue(settings.historyFilterBuildAccepted)
+            or hasValue(settings.historyFilterWishlistFound)
+            or hasValue(settings.historyFilterWishlistClaimed)
+            or hasValue(settings.historyFilterWishlistAdded)
+            or hasValue(settings.historyFilterWishlistRemoved)
+            or hasValue(settings.historyFilterWishlistSocketed)
+            or hasValue(settings.historyFilterWishlistEnchanted)
+            or hasValue(settings.historyFilterLootAssigned)
+            or hasValue(settings.historyFilterLootFound)
+        if hadOld then
+            if hasValue(settings.historyFilterPointsAssigned) or hasValue(settings.historyFilterPointsReset) then
+                settings.historyFilterPoints = (settings.historyFilterPointsAssigned ~= false)
+                    or (settings.historyFilterPointsReset ~= false)
+            end
+            if hasValue(settings.historyFilterBuildSent) or hasValue(settings.historyFilterBuildAccepted) then
+                settings.historyFilterBuild = (settings.historyFilterBuildSent ~= false)
+                    or (settings.historyFilterBuildAccepted ~= false)
+            end
+            if hasValue(settings.historyFilterWishlistFound) or hasValue(settings.historyFilterWishlistClaimed) then
+                settings.historyFilterWishlistStatus = (settings.historyFilterWishlistFound ~= false)
+                    or (settings.historyFilterWishlistClaimed ~= false)
+            end
+            if hasValue(settings.historyFilterWishlistAdded)
+                or hasValue(settings.historyFilterWishlistRemoved)
+                or hasValue(settings.historyFilterWishlistSocketed)
+                or hasValue(settings.historyFilterWishlistEnchanted) then
+                settings.historyFilterWishlistItems = (settings.historyFilterWishlistAdded ~= false)
+                    or (settings.historyFilterWishlistRemoved ~= false)
+                    or (settings.historyFilterWishlistSocketed ~= false)
+                    or (settings.historyFilterWishlistEnchanted ~= false)
+            end
+            if hasValue(settings.historyFilterLootAssigned) or hasValue(settings.historyFilterLootFound) then
+                settings.historyFilterLoot = (settings.historyFilterLootAssigned ~= false)
+                    or (settings.historyFilterLootFound ~= false)
+            end
+        end
+        settings.historyFiltersMigrated = true
     end
     if GoalsDB.settings then
         if GoalsDB.settings.updateSeenMajor == nil then

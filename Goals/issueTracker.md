@@ -12,6 +12,9 @@
 - Assigned loot isn't properly being synced to be removed from found loot list, lingering even after it's been assigned.
   - Status: Fixed (needs verify). Master-looter sync fallback and itemId-based cleanup added.
 
+- Consider token turn-ins / quest rewards for resets.
+  - Status: Added. Token turn-ins no longer reset points (only the token does), and added a “Reset only for loot in window” toggle to avoid quest reward resets.
+
 - The announcement options were removed during a recent update.
   - Status: Fixed. Announcement checkbox and sound toggle are anchored again.
 

@@ -302,6 +302,7 @@ function Comm:SerializeSettings()
         "resetRecipes=" .. (settings.resetRecipes and "1" or "0"),
         "resetQuestItems=" .. (settings.resetQuestItems and "1" or "0"),
         "resetTokens=" .. (settings.resetTokens and "1" or "0"),
+        "resetRequiresLootWindow=" .. (settings.resetRequiresLootWindow and "1" or "0"),
         "resetMinQuality=" .. tostring(settings.resetMinQuality or 4),
     }
     return table.concat(parts, ";")
@@ -348,6 +349,10 @@ function Comm:ApplySetting(key, value)
     end
     if key == "resetTokens" then
         Goals.db.settings.resetTokens = value == "1" or value == "true"
+        return
+    end
+    if key == "resetRequiresLootWindow" then
+        Goals.db.settings.resetRequiresLootWindow = value == "1" or value == "true"
         return
     end
     if key == "resetMinQuality" then
