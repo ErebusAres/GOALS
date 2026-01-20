@@ -2332,16 +2332,16 @@ function UI:CreateWishlistTab(page)
 
     local function createTabButton(text, key, anchor)
         local name = "GoalsWishlistTab" .. tostring(key or "")
-        local btn = CreateFrame("Button", name, tabBar, "CharacterFrameTabButtonTemplate")
+        local btn = CreateFrame("Button", name, tabBar, "OptionsFrameTabButtonTemplate")
         btn:SetHeight(24)
         btn:SetText(text)
         if PanelTemplates_TabResize then
             PanelTemplates_TabResize(btn, 8)
         end
         if anchor then
-            btn:SetPoint("LEFT", anchor, "RIGHT", 6, 0)
+            btn:SetPoint("TOPLEFT", anchor, "TOPRIGHT", 6, 0)
         else
-            btn:SetPoint("LEFT", tabBar, "LEFT", 0, 0)
+            btn:SetPoint("TOPLEFT", tabBar, "TOPLEFT", 0, 0)
         end
         btn:SetScript("OnClick", function()
             selectWishlistTab(key)
