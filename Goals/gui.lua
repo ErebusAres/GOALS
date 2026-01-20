@@ -699,6 +699,118 @@ function UI:GetLootHistoryEntries()
     return list
 end
 
+local function getHistoryFilterValue(settings, key)
+    if not settings then
+        return true
+    end
+    local value = settings[key]
+    if value == nil then
+        return true
+    end
+    return value
+end
+
+local function getHistoryItemLink(entry)
+    local data = entry and entry.data or nil
+    if not data then
+        return nil
+    end
+    if data.item and data.item ~= "" then
+        return data.item
+    end
+    if data.itemId and Goals and Goals.CacheItemById then
+        local cached = Goals:CacheItemById(data.itemId)
+        if cached and cached.link then
+            return cached.link
+        end
+    end
+    return nil
+end
+
+function UI:HistoryEntryMatchesFilters(entry, settings)
+    if not entry then
+        return false
+    end
+    local kind = entry.kind
+    local data = entry.data or {}
+    local minQuality = settings and settings.historyLootMinQuality or 0
+    local function passesLootQuality()
+        if minQuality <= 0 then
+            return true
+        end
+        local itemLink = getHistoryItemLink(entry)
+        if itemLink and GetItemInfo then
+            local quality = select(3, GetItemInfo(itemLink))
+            if quality and quality < minQuality then
+                return false
+            end
+        end
+        return true
+    end
+
+    if kind == "BOSSKILL" or kind == "ADJUST" then
+        return getHistoryFilterValue(settings, "historyFilterPointsAssigned")
+    end
+    if kind == "SET" then
+        return getHistoryFilterValue(settings, "historyFilterPointsReset")
+    end
+    if kind == "LOOT_ASSIGN" then
+        if not passesLootQuality() then
+            return false
+        end
+        if data.reset then
+            return getHistoryFilterValue(settings, "historyFilterLootAssigned")
+                or getHistoryFilterValue(settings, "historyFilterPointsReset")
+        end
+        return getHistoryFilterValue(settings, "historyFilterLootAssigned")
+    end
+    if kind == "LOOT_FOUND" then
+        if not passesLootQuality() then
+            return false
+        end
+        return getHistoryFilterValue(settings, "historyFilterLootFound")
+    end
+    if kind == "BUILD_SENT" then
+        return getHistoryFilterValue(settings, "historyFilterBuildSent")
+    end
+    if kind == "BUILD_ACCEPTED" then
+        return getHistoryFilterValue(settings, "historyFilterBuildAccepted")
+    end
+    if kind == "WISHLIST_FOUND" then
+        return getHistoryFilterValue(settings, "historyFilterWishlistFound")
+    end
+    if kind == "WISHLIST_CLAIM" then
+        return getHistoryFilterValue(settings, "historyFilterWishlistClaimed")
+    end
+    if kind == "WISHLIST_ADD" then
+        return getHistoryFilterValue(settings, "historyFilterWishlistAdded")
+    end
+    if kind == "WISHLIST_REMOVE" then
+        return getHistoryFilterValue(settings, "historyFilterWishlistRemoved")
+    end
+    if kind == "WISHLIST_SOCKET" then
+        return getHistoryFilterValue(settings, "historyFilterWishlistSocketed")
+    end
+    if kind == "WISHLIST_ENCHANT" then
+        return getHistoryFilterValue(settings, "historyFilterWishlistEnchanted")
+    end
+    return true
+end
+
+function UI:GetHistoryEntries()
+    local list = {}
+    if not Goals.db or not Goals.db.history then
+        return list
+    end
+    local settings = Goals.db.settings or {}
+    for _, entry in ipairs(Goals.db.history) do
+        if self:HistoryEntryMatchesFilters(entry, settings) then
+            table.insert(list, entry)
+        end
+    end
+    return list
+end
+
 function UI:SetupDropdown(dropdown, getList, onSelect, fallbackText)
     dropdown.getList = getList
     dropdown.onSelect = onSelect
@@ -1095,6 +1207,9 @@ function UI:CreateMainFrame()
         if def.key == "loot" then
             self.lootTabId = i
         end
+        if def.key == "history" then
+            self.historyTabId = i
+        end
         if def.key == "wishlist" then
             self.wishlistTabId = i
         end
@@ -1301,6 +1416,9 @@ function UI:SelectTab(id)
     if self.UpdateLootOptionsVisibility then
         self:UpdateLootOptionsVisibility()
     end
+    if self.UpdateHistoryOptionsVisibility then
+        self:UpdateHistoryOptionsVisibility()
+    end
     if self.UpdateWishlistHelpVisibility then
         self:UpdateWishlistHelpVisibility()
     end
@@ -1319,6 +1437,17 @@ function UI:UpdateLootOptionsVisibility()
         setShown(self.lootOptionsOuter, show)
     end
     setShown(self.lootOptionsFrame, show)
+end
+
+function UI:UpdateHistoryOptionsVisibility()
+    if not self.historyOptionsFrame then
+        return
+    end
+    local show = self.currentTab == self.historyTabId and self.historyOptionsOpen
+    if self.historyOptionsOuter then
+        setShown(self.historyOptionsOuter, show)
+    end
+    setShown(self.historyOptionsFrame, show)
 end
 
 function UI:UpdateWishlistHelpVisibility()
@@ -1995,6 +2124,123 @@ function UI:CreateHistoryTab(page)
         row.text = text
 
         self.historyRows[i] = row
+    end
+
+    local optionsBtn = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
+    optionsBtn:SetSize(140, 20)
+    optionsBtn:SetText(L.LABEL_HISTORY_OPTIONS)
+    optionsBtn:SetPoint("TOPRIGHT", page, "TOPRIGHT", -8, -10)
+
+    local optionsIcon = optionsBtn:CreateTexture(nil, "ARTWORK")
+    optionsIcon:SetTexture("Interface\\Buttons\\UI-OptionsButton")
+    optionsIcon:SetSize(16, 16)
+    optionsIcon:SetPoint("LEFT", optionsBtn, "LEFT", 6, 0)
+    local optionsText = optionsBtn:GetFontString()
+    if optionsText then
+        optionsText:ClearAllPoints()
+        optionsText:SetPoint("LEFT", optionsIcon, "RIGHT", 4, 0)
+    end
+
+    optionsBtn:SetScript("OnClick", function()
+        UI.historyOptionsOpen = not UI.historyOptionsOpen
+        UI:UpdateHistoryOptionsVisibility()
+    end)
+    self.historyOptionsButton = optionsBtn
+    if self.historyOptionsOpen == nil then
+        self.historyOptionsOpen = false
+    end
+
+    if not self.historyOptionsFrame then
+        local outer = CreateFrame("Frame", "GoalsHistoryOptionsOuter", self.frame)
+        outer:SetPoint("TOPLEFT", self.frame, "TOPRIGHT", -2, -34)
+        outer:SetPoint("BOTTOMLEFT", self.frame, "BOTTOMRIGHT", -2, 26)
+        outer:SetWidth(260)
+        outer:SetBackdrop({
+            edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+            edgeSize = 16,
+            insets = { left = 3, right = 3, top = 3, bottom = 3 },
+        })
+        outer:SetBackdropBorderColor(0.85, 0.85, 0.85, 1)
+        outer:Hide()
+        self.historyOptionsOuter = outer
+
+        local optionsFrame = CreateFrame("Frame", "GoalsHistoryOptionsFrame", outer, "GoalsInsetTemplate")
+        applyInsetTheme(optionsFrame)
+        optionsFrame:SetPoint("TOPLEFT", outer, "TOPLEFT", 4, -4)
+        optionsFrame:SetPoint("BOTTOMRIGHT", outer, "BOTTOMRIGHT", -4, 4)
+        optionsFrame:Hide()
+        self.historyOptionsFrame = optionsFrame
+
+        local optionsTitle = createLabel(optionsFrame, L.LABEL_HISTORY_OPTIONS, "GameFontNormal")
+        optionsTitle:SetPoint("TOPLEFT", optionsFrame, "TOPLEFT", 10, -10)
+
+        local filtersTitle = createLabel(optionsFrame, L.LABEL_HISTORY_FILTERS, "GameFontNormal")
+        filtersTitle:SetPoint("TOPLEFT", optionsTitle, "BOTTOMLEFT", 0, -12)
+
+        local function createHistoryCheck(label, key, anchor)
+            local check = CreateFrame("CheckButton", nil, optionsFrame, "UICheckButtonTemplate")
+            if anchor then
+                check:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, -4)
+            else
+                check:SetPoint("TOPLEFT", filtersTitle, "BOTTOMLEFT", 0, -6)
+            end
+            setCheckText(check, label)
+            check:SetScript("OnClick", function(selfBtn)
+                Goals.db.settings[key] = selfBtn:GetChecked() and true or false
+                UI:UpdateHistoryList()
+            end)
+            return check
+        end
+
+        local pointsAssignedCheck = createHistoryCheck(L.CHECK_HISTORY_POINTS_ASSIGNED, "historyFilterPointsAssigned", nil)
+        local pointsResetCheck = createHistoryCheck(L.CHECK_HISTORY_POINTS_RESET, "historyFilterPointsReset", pointsAssignedCheck)
+        local buildSentCheck = createHistoryCheck(L.CHECK_HISTORY_BUILD_SENT, "historyFilterBuildSent", pointsResetCheck)
+        local buildAcceptedCheck = createHistoryCheck(L.CHECK_HISTORY_BUILD_ACCEPTED, "historyFilterBuildAccepted", buildSentCheck)
+        local wishlistFoundCheck = createHistoryCheck(L.CHECK_HISTORY_WISHLIST_FOUND, "historyFilterWishlistFound", buildAcceptedCheck)
+        local wishlistClaimedCheck = createHistoryCheck(L.CHECK_HISTORY_WISHLIST_CLAIMED, "historyFilterWishlistClaimed", wishlistFoundCheck)
+        local wishlistAddedCheck = createHistoryCheck(L.CHECK_HISTORY_WISHLIST_ADDED, "historyFilterWishlistAdded", wishlistClaimedCheck)
+        local wishlistRemovedCheck = createHistoryCheck(L.CHECK_HISTORY_WISHLIST_REMOVED, "historyFilterWishlistRemoved", wishlistAddedCheck)
+        local wishlistSocketedCheck = createHistoryCheck(L.CHECK_HISTORY_WISHLIST_SOCKETED, "historyFilterWishlistSocketed", wishlistRemovedCheck)
+        local wishlistEnchantedCheck = createHistoryCheck(L.CHECK_HISTORY_WISHLIST_ENCHANTED, "historyFilterWishlistEnchanted", wishlistSocketedCheck)
+        local lootAssignedCheck = createHistoryCheck(L.CHECK_HISTORY_LOOT_ASSIGNED, "historyFilterLootAssigned", wishlistEnchantedCheck)
+        local lootFoundCheck = createHistoryCheck(L.CHECK_HISTORY_LOOT_FOUND, "historyFilterLootFound", lootAssignedCheck)
+
+        self.historyPointsAssignedCheck = pointsAssignedCheck
+        self.historyPointsResetCheck = pointsResetCheck
+        self.historyBuildSentCheck = buildSentCheck
+        self.historyBuildAcceptedCheck = buildAcceptedCheck
+        self.historyWishlistFoundCheck = wishlistFoundCheck
+        self.historyWishlistClaimedCheck = wishlistClaimedCheck
+        self.historyWishlistAddedCheck = wishlistAddedCheck
+        self.historyWishlistRemovedCheck = wishlistRemovedCheck
+        self.historyWishlistSocketedCheck = wishlistSocketedCheck
+        self.historyWishlistEnchantedCheck = wishlistEnchantedCheck
+        self.historyLootAssignedCheck = lootAssignedCheck
+        self.historyLootFoundCheck = lootFoundCheck
+
+        local minQualityLabel = createLabel(optionsFrame, L.LABEL_HISTORY_LOOT_MIN_QUALITY, "GameFontNormal")
+        minQualityLabel:SetPoint("TOPLEFT", lootFoundCheck, "BOTTOMLEFT", 0, -10)
+
+        local minQualityDrop = CreateFrame("Frame", "GoalsHistoryMinQuality", optionsFrame, "UIDropDownMenuTemplate")
+        minQualityDrop:SetPoint("TOPLEFT", minQualityLabel, "BOTTOMLEFT", -16, -2)
+        styleDropdown(minQualityDrop, 140)
+        minQualityDrop.options = getQualityOptions()
+        UIDropDownMenu_Initialize(minQualityDrop, function(_, level)
+            for _, option in ipairs(minQualityDrop.options) do
+                local info = UIDropDownMenu_CreateInfo()
+                info.text = option.text
+                info.value = option.value
+                info.func = function()
+                    Goals.db.settings.historyLootMinQuality = option.value
+                    UIDropDownMenu_SetSelectedValue(minQualityDrop, option.value)
+                    UIDropDownMenu_SetText(minQualityDrop, option.text)
+                    UI:UpdateHistoryList()
+                end
+                info.checked = (Goals.db.settings.historyLootMinQuality or 0) == option.value
+                UIDropDownMenu_AddButton(info, level)
+            end
+        end)
+        self.historyLootMinQuality = minQualityDrop
     end
 end
 
@@ -3127,6 +3373,7 @@ end)
         end
         local text = importBox:GetText() or ""
         local raw = text:gsub("\r", "")
+        raw = raw:gsub("||", "|")
         importBox.rawText = raw
         importBox.isWrapping = true
         updateImportBoxSize()
@@ -3206,8 +3453,9 @@ end)
     exportBtn:SetText(L.BUTTON_EXPORT)
     exportBtn:SetScript("OnClick", function()
         local text = Goals:ExportActiveWishlist() or ""
+        local display = text:gsub("|", "||")
         importBox.rawText = text
-        importBox:SetText(text)
+        importBox:SetText(display)
         updateImportBoxSize()
         importBox:HighlightText()
     end)
@@ -3413,6 +3661,13 @@ end)
     sendBuildBtn:SetText(L.BUTTON_SEND_BUILD)
     sendBuildBtn:SetScript("OnClick", function()
         if UnitExists and UnitIsPlayer and UnitExists("target") and UnitIsPlayer("target") then
+            if UnitCanCooperate and not UnitCanCooperate("player", "target") then
+                Goals:Print("Build share requires a friendly target or party/raid member.")
+                if UI and UI.ShowBuildShareTargetPrompt then
+                    UI:ShowBuildShareTargetPrompt()
+                end
+                return
+            end
             local targetName = UnitName("target")
             local ok, err = Goals:SendWishlistBuildTo(targetName)
             if ok then
@@ -3433,7 +3688,7 @@ end)
     self.wishlistSendBuildButton = sendBuildBtn
 
     local announceLabel = createLabel(popout, L.LABEL_WISHLIST_ANNOUNCE, "GameFontNormal")
-    announceLabel:SetPoint("TOPLEFT", syncLoadBtn, "BOTTOMLEFT", 0, -8)
+    announceLabel:SetPoint("TOPLEFT", sendBuildBtn, "BOTTOMLEFT", 0, -8)
     announceLabel:SetPoint("LEFT", popoutTitle, "LEFT", 0, 0)
 
     local announceCheck = CreateFrame("CheckButton", nil, popout, "UICheckButtonTemplate")
@@ -4885,6 +5140,40 @@ function UI:FormatHistoryEntry(entry)
         return ""
     end
     local data = entry.data or {}
+    local function formatSlotLabel(slotKey)
+        if Goals and Goals.GetWishlistSlotDef then
+            local def = Goals:GetWishlistSlotDef(slotKey)
+            if def and def.label then
+                return def.label
+            end
+        end
+        return slotKey or "Slot"
+    end
+    local function formatItemLink(itemId, itemLink)
+        if itemLink and itemLink ~= "" then
+            return itemLink
+        end
+        if itemId and Goals and Goals.CacheItemById then
+            local cached = Goals:CacheItemById(itemId)
+            if cached and cached.link then
+                return cached.link
+            end
+        end
+        if itemId then
+            return "item:" .. tostring(itemId)
+        end
+        return "item"
+    end
+    local function formatGemList(gemIds)
+        if not gemIds or #gemIds == 0 then
+            return "none"
+        end
+        local gems = {}
+        for _, gemId in ipairs(gemIds) do
+            table.insert(gems, formatItemLink(gemId))
+        end
+        return table.concat(gems, ", ")
+    end
     if entry.kind == "BOSSKILL" and data.player then
         return string.format("%s: %s +%d", data.encounter or "Boss", colorizeName(data.player), data.points or 0)
     end
@@ -4919,6 +5208,49 @@ function UI:FormatHistoryEntry(entry)
     if entry.kind == "LOOT_FOUND" then
         return entry.text or ""
     end
+    if entry.kind == "BUILD_SENT" then
+        local target = data.target or "Unknown"
+        return string.format("Sent build '%s' to %s", data.build or "Wishlist", colorizeName(target))
+    end
+    if entry.kind == "BUILD_ACCEPTED" then
+        local sender = data.sender or "Unknown"
+        return string.format("Accepted build '%s' from %s", data.build or "Wishlist", colorizeName(sender))
+    end
+    if entry.kind == "WISHLIST_FOUND" then
+        return string.format("Wishlist found: %s", formatItemLink(data.itemId, data.item))
+    end
+    if entry.kind == "WISHLIST_CLAIM" then
+        local action = data.claimed and "Wishlist claimed" or "Wishlist unclaimed"
+        local slot = formatSlotLabel(data.slot)
+        return string.format("%s: %s %s", action, slot, formatItemLink(data.itemId, data.item))
+    end
+    if entry.kind == "WISHLIST_ADD" then
+        local slot = formatSlotLabel(data.slot)
+        return string.format("Wishlist add: %s %s", slot, formatItemLink(data.itemId, data.item))
+    end
+    if entry.kind == "WISHLIST_REMOVE" then
+        local slot = formatSlotLabel(data.slot)
+        return string.format("Wishlist remove: %s %s", slot, formatItemLink(data.itemId, data.item))
+    end
+    if entry.kind == "WISHLIST_SOCKET" then
+        local slot = formatSlotLabel(data.slot)
+        return string.format("Wishlist socketed: %s %s (gems: %s)", slot, formatItemLink(data.itemId, data.item), formatGemList(data.gemIds))
+    end
+    if entry.kind == "WISHLIST_ENCHANT" then
+        local slot = formatSlotLabel(data.slot)
+        local enchantId = tonumber(data.enchantId) or 0
+        local enchantName = nil
+        if enchantId > 0 and Goals and Goals.GetEnchantInfoById then
+            local info = Goals:GetEnchantInfoById(enchantId)
+            enchantName = info and info.name or nil
+        end
+        if enchantId <= 0 then
+            enchantName = "cleared"
+        elseif not enchantName or enchantName == "" then
+            enchantName = "Enchant " .. tostring(enchantId)
+        end
+        return string.format("Wishlist enchanted: %s %s (enchant: %s)", slot, formatItemLink(data.itemId, data.item), enchantName)
+    end
     return entry.text or ""
 end
 
@@ -4926,7 +5258,8 @@ function UI:UpdateHistoryList()
     if not self.historyScroll or not self.historyRows then
         return
     end
-    local data = Goals.db.history or {}
+    local data = self:GetHistoryEntries()
+    self.historyData = data
     local offset = FauxScrollFrame_GetOffset(self.historyScroll) or 0
     FauxScrollFrame_Update(self.historyScroll, #data, HISTORY_ROWS, ROW_HEIGHT)
     local yOffset = -22
@@ -6204,6 +6537,26 @@ function UI:Refresh()
         local value = Goals.db.settings.lootHistoryMinQuality or 0
         UIDropDownMenu_SetSelectedValue(self.lootHistoryMinQuality, value)
         UIDropDownMenu_SetText(self.lootHistoryMinQuality, getQualityLabel(value))
+    end
+    if self.historyPointsAssignedCheck then
+        local settings = Goals.db.settings or {}
+        self.historyPointsAssignedCheck:SetChecked(settings.historyFilterPointsAssigned ~= false)
+        self.historyPointsResetCheck:SetChecked(settings.historyFilterPointsReset ~= false)
+        self.historyBuildSentCheck:SetChecked(settings.historyFilterBuildSent ~= false)
+        self.historyBuildAcceptedCheck:SetChecked(settings.historyFilterBuildAccepted ~= false)
+        self.historyWishlistFoundCheck:SetChecked(settings.historyFilterWishlistFound ~= false)
+        self.historyWishlistClaimedCheck:SetChecked(settings.historyFilterWishlistClaimed ~= false)
+        self.historyWishlistAddedCheck:SetChecked(settings.historyFilterWishlistAdded ~= false)
+        self.historyWishlistRemovedCheck:SetChecked(settings.historyFilterWishlistRemoved ~= false)
+        self.historyWishlistSocketedCheck:SetChecked(settings.historyFilterWishlistSocketed ~= false)
+        self.historyWishlistEnchantedCheck:SetChecked(settings.historyFilterWishlistEnchanted ~= false)
+        self.historyLootAssignedCheck:SetChecked(settings.historyFilterLootAssigned ~= false)
+        self.historyLootFoundCheck:SetChecked(settings.historyFilterLootFound ~= false)
+    end
+    if self.historyLootMinQuality then
+        local value = Goals.db.settings.historyLootMinQuality or 0
+        UIDropDownMenu_SetSelectedValue(self.historyLootMinQuality, value)
+        UIDropDownMenu_SetText(self.historyLootMinQuality, getQualityLabel(value))
     end
     self:SyncResetQualityDropdown()
     if self.devBossCheck then

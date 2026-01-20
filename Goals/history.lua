@@ -13,6 +13,40 @@ function History:Init(db)
     self.db = db
 end
 
+local function getItemLink(itemId)
+    if not itemId then
+        return nil
+    end
+    if Goals and Goals.CacheItemById then
+        local cached = Goals:CacheItemById(itemId)
+        if cached and cached.link then
+            return cached.link
+        end
+    end
+    if GetItemInfo then
+        local _, link = GetItemInfo(itemId)
+        return link
+    end
+    return nil
+end
+
+local function getSlotLabel(slotKey)
+    if Goals and Goals.GetWishlistSlotDef then
+        local def = Goals:GetWishlistSlotDef(slotKey)
+        if def and def.label then
+            return def.label
+        end
+    end
+    return slotKey or "Slot"
+end
+
+local function formatItemFallback(itemId)
+    if not itemId then
+        return "item"
+    end
+    return "item:" .. tostring(itemId)
+end
+
 function History:AddEntry(kind, text, data)
     if not self.db or not self.db.history then
         return
@@ -118,5 +152,76 @@ function History:AddWipe(encounterName)
         "WIPE",
         string.format("%s: wipe", encounterName),
         { encounter = encounterName }
+    )
+end
+
+function History:AddBuildSent(targetName, buildName)
+    self:AddEntry(
+        "BUILD_SENT",
+        string.format("Sent build '%s' to %s", buildName or "Wishlist", targetName or "Unknown"),
+        { target = targetName, build = buildName }
+    )
+end
+
+function History:AddBuildAccepted(senderName, buildName, listName)
+    self:AddEntry(
+        "BUILD_ACCEPTED",
+        string.format("Accepted build '%s' from %s", buildName or "Wishlist", senderName or "Unknown"),
+        { sender = senderName, build = buildName, list = listName }
+    )
+end
+
+function History:AddWishlistItemAdded(slotKey, itemId)
+    local link = getItemLink(itemId) or formatItemFallback(itemId)
+    self:AddEntry(
+        "WISHLIST_ADD",
+        string.format("Wishlist add: %s %s", getSlotLabel(slotKey), link),
+        { slot = slotKey, itemId = itemId, item = link }
+    )
+end
+
+function History:AddWishlistItemRemoved(slotKey, itemId)
+    local link = getItemLink(itemId) or formatItemFallback(itemId)
+    self:AddEntry(
+        "WISHLIST_REMOVE",
+        string.format("Wishlist remove: %s %s", getSlotLabel(slotKey), link),
+        { slot = slotKey, itemId = itemId, item = link }
+    )
+end
+
+function History:AddWishlistItemSocketed(slotKey, itemId, gemIds)
+    local link = getItemLink(itemId) or formatItemFallback(itemId)
+    self:AddEntry(
+        "WISHLIST_SOCKET",
+        string.format("Wishlist socketed: %s %s", getSlotLabel(slotKey), link),
+        { slot = slotKey, itemId = itemId, item = link, gemIds = gemIds }
+    )
+end
+
+function History:AddWishlistItemEnchanted(slotKey, itemId, enchantId)
+    local link = getItemLink(itemId) or formatItemFallback(itemId)
+    self:AddEntry(
+        "WISHLIST_ENCHANT",
+        string.format("Wishlist enchanted: %s %s", getSlotLabel(slotKey), link),
+        { slot = slotKey, itemId = itemId, item = link, enchantId = enchantId }
+    )
+end
+
+function History:AddWishlistItemFound(itemId)
+    local link = getItemLink(itemId) or formatItemFallback(itemId)
+    self:AddEntry(
+        "WISHLIST_FOUND",
+        string.format("Wishlist found: %s", link),
+        { itemId = itemId, item = link }
+    )
+end
+
+function History:AddWishlistItemClaimed(slotKey, itemId, claimed)
+    local link = getItemLink(itemId) or formatItemFallback(itemId)
+    local action = claimed and "Wishlist claimed" or "Wishlist unclaimed"
+    self:AddEntry(
+        "WISHLIST_CLAIM",
+        string.format("%s: %s %s", action, getSlotLabel(slotKey), link),
+        { slot = slotKey, itemId = itemId, item = link, claimed = claimed and true or false }
     )
 end

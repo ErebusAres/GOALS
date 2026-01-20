@@ -108,6 +108,26 @@ Goals.WishlistSlots = Goals.WishlistSlots or {
     { key = "RELIC", label = "Relic", inv = "RangedSlot", column = 3, row = 1 },
 }
 
+Goals.WishlistExportOrder = Goals.WishlistExportOrder or {
+    "HEAD",
+    "NECK",
+    "SHOULDER",
+    "BACK",
+    "CHEST",
+    "WRIST",
+    "HANDS",
+    "WAIST",
+    "LEGS",
+    "FEET",
+    "RING1",
+    "RING2",
+    "TRINKET1",
+    "TRINKET2",
+    "MAINHAND",
+    "OFFHAND",
+    "RELIC",
+}
+
 Goals.WishlistSlotIndex = Goals.WishlistSlotIndex or {}
 for _, entry in ipairs(Goals.WishlistSlots) do
     Goals.WishlistSlotIndex[entry.key] = entry
@@ -1020,7 +1040,8 @@ function Goals:HandleLootAssignment(playerName, itemLink, skipSync, forceRecord)
         end
         self:RecordLootAssignment(playerName, itemLink, resetApplied, before)
         self:RemoveFoundLootByLink(itemLink)
-        if self:CanSync() and not skipSync and self.Comm then
+        local canSyncLoot = self:CanSync() or (self:IsMasterLooter() and not self:IsSyncMaster())
+        if canSyncLoot and not skipSync and self.Comm then
             if resetApplied then
                 self.Comm:SendLootReset(playerName, itemLink)
             else
@@ -1081,10 +1102,29 @@ function Goals:RemoveFoundLootByLink(itemLink)
     if not itemLink or not self.state.lootFound then
         return
     end
+    local removed = false
     for i = #self.state.lootFound, 1, -1 do
         local entry = self.state.lootFound[i]
         if entry and entry.link == itemLink then
             table.remove(self.state.lootFound, i)
+            removed = true
+        end
+    end
+    if removed then
+        return
+    end
+    local itemId = self:GetItemIdFromLink(itemLink)
+    if not itemId then
+        return
+    end
+    for i = #self.state.lootFound, 1, -1 do
+        local entry = self.state.lootFound[i]
+        if entry and entry.link then
+            local entryId = self:GetItemIdFromLink(entry.link)
+            if entryId and entryId == itemId then
+                table.remove(self.state.lootFound, i)
+                break
+            end
         end
     end
 end
@@ -1781,12 +1821,29 @@ function Goals:GetCustomRealmTokenOverride(itemId, defaultToken)
     return nil
 end
 
+local function gemsEqual(a, b)
+    a = a or {}
+    b = b or {}
+    local maxCount = math.max(#a, #b)
+    for i = 1, maxCount do
+        local left = tonumber(a[i] or 0) or 0
+        local right = tonumber(b[i] or 0) or 0
+        if left ~= right then
+            return false
+        end
+    end
+    return true
+end
+
 function Goals:SetWishlistItem(slotKey, itemData)
     local list = self:GetActiveWishlist()
     if not list or not slotKey or type(itemData) ~= "table" then
         return
     end
     local oldEntry = list.items and list.items[slotKey] or nil
+    local oldItemId = oldEntry and tonumber(oldEntry.itemId) or 0
+    local oldEnchantId = oldEntry and tonumber(oldEntry.enchantId) or 0
+    local oldGems = oldEntry and oldEntry.gemIds or {}
     if itemData.itemId then
         itemData.tokenId = self:GetArmorTokenForItem(itemData.itemId) or 0
     end
@@ -1807,6 +1864,24 @@ function Goals:SetWishlistItem(slotKey, itemData)
         end
     end
     list.items[slotKey] = itemData
+    local newItemId = tonumber(itemData.itemId) or 0
+    local newEnchantId = tonumber(itemData.enchantId) or 0
+    local newGems = itemData.gemIds or {}
+    if self.History and newItemId > 0 then
+        if oldItemId > 0 and oldItemId ~= newItemId then
+            self.History:AddWishlistItemRemoved(slotKey, oldItemId)
+        end
+        if oldItemId ~= newItemId then
+            self.History:AddWishlistItemAdded(slotKey, newItemId)
+        else
+            if oldEnchantId ~= newEnchantId then
+                self.History:AddWishlistItemEnchanted(slotKey, newItemId, newEnchantId)
+            end
+            if not gemsEqual(oldGems, newGems) then
+                self.History:AddWishlistItemSocketed(slotKey, newItemId, newGems)
+            end
+        end
+    end
     list.updated = time()
     self:NotifyDataChanged()
 end
@@ -1819,6 +1894,9 @@ function Goals:ClearWishlistItem(slotKey)
     list.items = list.items or {}
     local entry = list.items[slotKey]
     if entry then
+        if self.History and entry.itemId then
+            self.History:AddWishlistItemRemoved(slotKey, entry.itemId)
+        end
         local foundMap = self:GetWishlistFoundMap(list.id)
         if foundMap and entry.itemId then
             foundMap[entry.itemId] = nil
@@ -2081,14 +2159,21 @@ function Goals:SerializeWishlist(list)
         "name=" .. escapeWishlistText(list.name or ""),
     }
     local items = {}
-    for slotKey, entry in pairs(list.items or {}) do
+    local used = {}
+    local function addItem(slotKey, entry)
+        if not entry or not slotKey or slotKey == "" then
+            return
+        end
+        local exportKey = slotKey == "RANGED" and "RELIC" or slotKey
+        used[slotKey] = true
+        used[exportKey] = true
         local gems = entry.gemIds or {}
         local gemStrs = {}
         for i = 1, #gems do
             gemStrs[i] = tostring(gems[i])
         end
         local itemPart = table.concat({
-            slotKey or "",
+            exportKey,
             tostring(entry.itemId or 0),
             tostring(entry.enchantId or 0),
             table.concat(gemStrs, ","),
@@ -2098,6 +2183,24 @@ function Goals:SerializeWishlist(list)
         }, ":")
         table.insert(items, itemPart)
     end
+    local exportOrder = self.WishlistExportOrder or {}
+    local listItems = list.items or {}
+    for _, slotKey in ipairs(exportOrder) do
+        addItem(slotKey, listItems[slotKey])
+    end
+    if listItems.RANGED and not used.RANGED then
+        addItem("RANGED", listItems.RANGED)
+    end
+    local extraKeys = {}
+    for slotKey in pairs(listItems) do
+        if not used[slotKey] then
+            table.insert(extraKeys, slotKey)
+        end
+    end
+    table.sort(extraKeys)
+    for _, slotKey in ipairs(extraKeys) do
+        addItem(slotKey, listItems[slotKey])
+    end
     table.insert(parts, "items=" .. table.concat(items, "|"))
     return table.concat(parts, ";")
 end
@@ -2106,6 +2209,7 @@ function Goals:DeserializeWishlist(text)
     if not text or text == "" then
         return nil, "Empty import string."
     end
+    text = text:gsub("||", "|")
     if not text:find("^WL1") then
         return nil, "Unknown wishlist format."
     end
@@ -2122,6 +2226,10 @@ function Goals:DeserializeWishlist(text)
             for entry in string.gmatch(value or "", "([^|]+)") do
                 local slotKey, itemId, enchantId, gems, notes, source, manualFound = entry:match("([^:]*):([^:]*):([^:]*):([^:]*):([^:]*):?([^:]*):?(.*)")
                 if slotKey and slotKey ~= "" then
+                    local normalizedKey = strupper(slotKey)
+                    if normalizedKey == "RANGED" then
+                        normalizedKey = "RELIC"
+                    end
                     local gemIds = {}
                     for gem in string.gmatch(gems or "", "([^,]+)") do
                         local id = tonumber(gem)
@@ -2129,7 +2237,7 @@ function Goals:DeserializeWishlist(text)
                             table.insert(gemIds, id)
                         end
                     end
-                    items[slotKey] = {
+                    items[normalizedKey] = {
                         itemId = tonumber(itemId) or 0,
                         enchantId = tonumber(enchantId) or 0,
                         gemIds = gemIds,
@@ -2304,6 +2412,9 @@ function Goals:SendWishlistBuildTo(targetName)
         local sent = self.Comm:SendWishlistBuild(normalized, payload)
         if sent then
             self:MarkBuildShareCooldown(normalized, buildName)
+            if self.History then
+                self.History:AddBuildSent(normalized, buildName)
+            end
             return true, "Sent build '" .. buildName .. "' to " .. normalized .. "."
         end
         return false, "SEND_FAILED"
@@ -2350,6 +2461,9 @@ function Goals:AcceptPendingBuildShare()
         list.updated = time()
         self:SetActiveWishlist(list.id)
         self:NotifyDataChanged()
+        if self.History then
+            self.History:AddBuildAccepted(sender, baseName, list.name or listName)
+        end
         self:Print("Saved build '" .. (list.name or baseName) .. "' from " .. sender .. ".")
     end
     self:MarkBuildReceiveCooldown(sender, baseName)
@@ -2936,6 +3050,9 @@ function Goals:MarkWishlistFound(itemId)
         end
     end
     if updated then
+        if self.History then
+            self.History:AddWishlistItemFound(itemId)
+        end
         self:NotifyDataChanged()
     end
 end
@@ -2967,6 +3084,9 @@ function Goals:ToggleWishlistFoundForSlot(slotKey)
             foundMap[entry.tokenId] = nil
         end
         entry.manualFound = false
+    end
+    if self.History then
+        self.History:AddWishlistItemClaimed(slotKey, entry.itemId, nextState)
     end
     list.updated = time()
     self:NotifyDataChanged()
@@ -3016,8 +3136,17 @@ function Goals:BuildWishlistItemCache()
     end
     if self.db and self.db.history then
         for _, entry in ipairs(self.db.history) do
-            if entry and entry.data and entry.data.item then
-                self:CacheItemByLink(entry.data.item)
+            if entry and entry.data then
+                if entry.data.item then
+                    self:CacheItemByLink(entry.data.item)
+                elseif entry.data.itemId then
+                    self:CacheItemById(entry.data.itemId)
+                end
+                if entry.data.gemIds then
+                    for _, gemId in ipairs(entry.data.gemIds) do
+                        self:CacheItemById(gemId)
+                    end
+                end
             end
         end
     end

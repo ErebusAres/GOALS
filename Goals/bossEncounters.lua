@@ -232,7 +232,7 @@ _G.encounterRules = {
     ["Opera Event, Romulo and Julianne"] = {
         type = "pair_revive",
         bosses = { "Romulo", "Julianne" },
-        requiredKills = 2,
+        requiredKills = 1,
         reviveWindow = 10,
     },
     ["Al'ar"] = {
