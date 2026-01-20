@@ -2365,7 +2365,7 @@ function UI:CreateWishlistTab(page)
     helpBtn:SetSize(18, 18)
     local closeBtn = self.frame and _G[self.frame:GetName() .. "CloseButton"] or nil
     if closeBtn then
-        helpBtn:SetPoint("TOPRIGHT", closeBtn, "BOTTOMRIGHT", 0, -2)
+        helpBtn:SetPoint("TOPRIGHT", closeBtn, "BOTTOMRIGHT", -20, -2)
     else
         helpBtn:SetPoint("TOPRIGHT", page, "TOPRIGHT", -10, -28)
     end
