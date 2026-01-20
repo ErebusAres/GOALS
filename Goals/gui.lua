@@ -2367,7 +2367,7 @@ local helpBtn = CreateFrame(
     tabBar
 )
 helpBtn:SetSize(18, 18)
-helpBtn:SetPoint("TOPRIGHT", rightInset, "TOPRIGHT", -6, -6)
+helpBtn:SetPoint("TOPRIGHT", page, "TOPRIGHT", -10, -6)
 
 -- info icon
 local icon = helpBtn:CreateTexture(nil, "ARTWORK")
@@ -2389,7 +2389,7 @@ helpBtn:SetScript("OnLeave", function()
     GameTooltip:Hide()
 end)
     helpBtn:SetSize(18, 18)
-    helpBtn:SetPoint("TOPRIGHT", rightInset, "TOPRIGHT", -6, -6)
+    helpBtn:SetPoint("TOPRIGHT", page, "TOPRIGHT", -10, -6)
     helpBtn:SetScript("OnMouseDown", function()
     end)
     helpBtn:SetScript("OnMouseUp", function()
