@@ -2102,7 +2102,33 @@ function UI:CreateWishlistTab(page)
     self.wishlistSubTabs.search = createTabButton("Search", "search", self.wishlistSubTabs.manage)
     self.wishlistSubTabs.actions = createTabButton("Actions", "actions", self.wishlistSubTabs.search)
 
-    local helpBtn = CreateFrame("Button", "GoalsWishlistHelpButton", tabBar, "UIPanelInfoButton")
+local helpBtn = CreateFrame(
+    "Button",
+    "GoalsWishlistHelpButton",
+    tabBar
+)
+helpBtn:SetSize(18, 18)
+helpBtn:SetPoint("RIGHT", tabBar, "RIGHT", 0, 0)
+
+-- info icon
+local icon = helpBtn:CreateTexture(nil, "ARTWORK")
+icon:SetAllPoints(helpBtn)
+icon:SetTexture("Interface\\FriendsFrame\\InformationIcon")
+helpBtn.icon = icon
+
+-- highlight
+helpBtn:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight")
+
+-- tooltip
+helpBtn:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:SetText("Wishlist Help")
+    GameTooltip:Show()
+end)
+
+helpBtn:SetScript("OnLeave", function()
+    GameTooltip:Hide()
+end)
     helpBtn:SetSize(18, 18)
     helpBtn:SetPoint("RIGHT", tabBar, "RIGHT", 0, 0)
     helpBtn:SetScript("OnMouseDown", function()
@@ -3852,7 +3878,7 @@ function UI:RefreshHelpNav()
                 end
             end
             if row.selected then
-                row.selected:SetShown(node.id == self.helpSelectedId)
+setShown(row.selected, node.id == self.helpSelectedId)
             end
         else
             row:Hide()
@@ -3863,7 +3889,7 @@ function UI:RefreshHelpNav()
     end
     FauxScrollFrame_Update(self.helpNavScroll, #list, visible, 18)
     if self.helpNavScroll.ScrollBar then
-        self.helpNavScroll.ScrollBar:SetShown(#list > visible)
+setShown(self.helpNavScroll.ScrollBar, #list > visible)
     end
 end
 
