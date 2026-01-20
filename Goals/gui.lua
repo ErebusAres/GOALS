@@ -2285,7 +2285,7 @@ function UI:CreateWishlistTab(page)
     local tabBar = CreateFrame("Frame", nil, rightInset)
     tabBar:SetPoint("TOPLEFT", rightInset, "TOPLEFT", 8, -6)
     tabBar:SetPoint("TOPRIGHT", rightInset, "TOPRIGHT", -8, -6)
-    tabBar:SetHeight(22)
+    tabBar:SetHeight(26)
 
     local managerPage = CreateFrame("Frame", nil, rightInset)
     managerPage:SetPoint("TOPLEFT", rightInset, "TOPLEFT", 6, -32)
@@ -2301,6 +2301,23 @@ function UI:CreateWishlistTab(page)
     actionsPage:SetPoint("BOTTOMRIGHT", rightInset, "BOTTOMRIGHT", -6, 6)
     actionsPage:Hide()
 
+    local function setWishlistTabSelected(button, selected)
+        if not button then
+            return
+        end
+        if PanelTemplates_SelectTab and PanelTemplates_DeselectTab then
+            if selected then
+                PanelTemplates_SelectTab(button)
+            else
+                PanelTemplates_DeselectTab(button)
+            end
+        elseif selected then
+            button:LockHighlight()
+        else
+            button:UnlockHighlight()
+        end
+    end
+
     local function selectWishlistTab(key)
         setShown(managerPage, key == "manage")
         setShown(searchPage, key == "search")
@@ -2308,19 +2325,18 @@ function UI:CreateWishlistTab(page)
         self.wishlistActiveTab = key
         if self.wishlistSubTabs then
             for name, button in pairs(self.wishlistSubTabs) do
-                if name == key then
-                    button:LockHighlight()
-                else
-                    button:UnlockHighlight()
-                end
+                setWishlistTabSelected(button, name == key)
             end
         end
     end
 
     local function createTabButton(text, key, anchor)
-        local btn = CreateFrame("Button", nil, tabBar, "UIPanelButtonTemplate")
-        btn:SetSize(80, 20)
+        local btn = CreateFrame("Button", nil, tabBar, "CharacterFrameTabButtonTemplate")
+        btn:SetHeight(24)
         btn:SetText(text)
+        if PanelTemplates_TabResize then
+            PanelTemplates_TabResize(btn, 8)
+        end
         if anchor then
             btn:SetPoint("LEFT", anchor, "RIGHT", 6, 0)
         else
