@@ -2331,7 +2331,8 @@ function UI:CreateWishlistTab(page)
     end
 
     local function createTabButton(text, key, anchor)
-        local btn = CreateFrame("Button", nil, tabBar, "CharacterFrameTabButtonTemplate")
+        local name = "GoalsWishlistTab" .. tostring(key or "")
+        local btn = CreateFrame("Button", name, tabBar, "CharacterFrameTabButtonTemplate")
         btn:SetHeight(24)
         btn:SetText(text)
         if PanelTemplates_TabResize then
