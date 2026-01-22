@@ -768,9 +768,6 @@ function UI:HistoryEntryMatchesFilters(entry, settings)
         if not passesLootQuality() then
             return false
         end
-        if data.reset then
-            return lootEnabled or pointsEnabled
-        end
         return lootEnabled
     end
     if kind == "LOOT_FOUND" then
