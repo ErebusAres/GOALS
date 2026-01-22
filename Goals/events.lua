@@ -11,6 +11,14 @@ _G.Goals = Goals
 Goals.Events = Goals.Events or {}
 local Events = Goals.Events
 
+local function isRedusRealm()
+    local realm = GetRealmName and GetRealmName() or ""
+    if realm == "" then
+        return false
+    end
+    return string.lower(realm) == "redus"
+end
+
 local function normalizeBossName(name)
     if not name then
         return ""
@@ -176,9 +184,15 @@ function Events:BuildBossLookup()
     if type(_G.bossEncounters) ~= "table" then
         return
     end
+    local redusRealm = isRedusRealm()
     for encounterName, data in pairs(_G.bossEncounters) do
         local set = {}
-        self:CollectBossNames(data, set)
+        if encounterName == "Chess Event" and not redusRealm then
+            set["King Llane"] = true
+            set["Warchief Blackhand"] = true
+        else
+            self:CollectBossNames(data, set)
+        end
         self.encounterBosses[encounterName] = set
         for bossName in pairs(set) do
             self.bossToEncounter[bossName] = encounterName
@@ -266,7 +280,7 @@ function Events:OnEvent(event, ...)
     if event == "BOSS_KILL" then
         local _, bossName = ...
         if bossName then
-            self:MarkBossDead(bossName)
+            self:MarkBossDead(bossName, true)
         end
         return
     end
@@ -368,13 +382,14 @@ function Events:HandleCombatLog(...)
             Goals:Debug("Combat log: " .. eventType .. " " .. tostring(destName))
         end
     end
-    if sourceName then
+    local inCombat = Goals:IsGroupInCombat()
+    if inCombat and sourceName then
         local encounterName, canonicalBoss = self:GetEncounterForBossName(sourceName)
         if encounterName then
             self:StartEncounter(encounterName, canonicalBoss)
         end
     end
-    if destName then
+    if inCombat and destName then
         local encounterName, canonicalBoss = self:GetEncounterForBossName(destName)
         if encounterName then
             self:StartEncounter(encounterName, canonicalBoss)
@@ -389,7 +404,7 @@ function Events:HandleCombatLog(...)
         else
             local encounterName = self:GetEncounterForBossName(destName)
             if encounterName then
-                self:MarkBossDead(destName)
+                self:MarkBossDead(destName, false)
             end
         end
     end
@@ -422,7 +437,7 @@ function Events:HandleHostileDeath(message)
     end
     local encounterName = self:GetEncounterForBossName(name)
     if encounterName then
-        self:MarkBossDead(name)
+        self:MarkBossDead(name, false)
     end
 end
 
@@ -459,6 +474,9 @@ function Events:StartEncounter(encounterName, bossName)
     Goals.encounter.deathTimes = {}
     Goals.encounter.cycles = 0
     Goals.encounter.rule = _G.encounterRules and _G.encounterRules[encounterName] or nil
+    if Goals.encounter.rule and Goals.encounter.rule.type then
+        Goals:Debug("Encounter rule: " .. encounterName .. " (" .. Goals.encounter.rule.type .. ")")
+    end
     local bosses = self.encounterBosses[encounterName]
     if bosses then
         for name in pairs(bosses) do
@@ -478,7 +496,7 @@ function Events:StartEncounter(encounterName, bossName)
     end
 end
 
-function Events:MarkBossDead(bossName)
+function Events:MarkBossDead(bossName, allowOutOfCombat)
     local encounterName, canonicalBoss = self:GetEncounterForBossName(bossName)
     if not encounterName then
         return
@@ -488,6 +506,9 @@ function Events:MarkBossDead(bossName)
         if (time() - lastTs) < 30 then
             return
         end
+    end
+    if not Goals.encounter.active and not allowOutOfCombat and not Goals:IsGroupInCombat() then
+        return
     end
     if not Goals.encounter.active then
         self:StartEncounter(encounterName, canonicalBoss or bossName)
@@ -501,7 +522,10 @@ function Events:MarkBossDead(bossName)
         if rule.type == "multi_kill" then
             Goals.encounter.kills[bossKey] = (Goals.encounter.kills[bossKey] or 0) + 1
             local required = rule.requiredKills or 1
+            Goals:Debug(string.format("Rule multi_kill: %s %d/%d", bossKey, Goals.encounter.kills[bossKey], required))
             if Goals.encounter.kills[bossKey] >= required then
+                Goals.encounter.lastBossKillTs = time()
+                Goals:Debug("Rule multi_kill complete: " .. encounterName)
                 self:FinishEncounter(true)
             end
             return
@@ -518,12 +542,46 @@ function Events:MarkBossDead(bossName)
             Goals.encounter.deathTimes[bossKey] = now
             local otherTime = other and Goals.encounter.deathTimes[other] or nil
             local window = rule.reviveWindow or 10
+            Goals:Debug(string.format("Rule pair_revive: %s dead, window %ds", bossKey, window))
             if otherTime and (now - otherTime) <= window then
                 Goals.encounter.cycles = (Goals.encounter.cycles or 0) + 1
                 Goals.encounter.deathTimes[bossKey] = nil
                 Goals.encounter.deathTimes[other] = nil
                 local required = rule.requiredKills or 1
+                Goals:Debug(string.format("Rule pair_revive cycle %d/%d", Goals.encounter.cycles, required))
                 if Goals.encounter.cycles >= required then
+                    Goals.encounter.lastBossKillTs = now
+                    Goals:Debug("Rule pair_revive complete: " .. encounterName)
+                    self:FinishEncounter(true)
+                end
+            end
+            return
+        elseif rule.type == "multi_death_window" then
+            local now = time()
+            local bosses = rule.bosses or {}
+            Goals.encounter.deathTimes[bossKey] = now
+            local minTime
+            local maxTime
+            for _, name in ipairs(bosses) do
+                local ts = Goals.encounter.deathTimes[name]
+                if not ts then
+                    return
+                end
+                minTime = minTime and math.min(minTime, ts) or ts
+                maxTime = maxTime and math.max(maxTime, ts) or ts
+            end
+            local window = rule.reviveWindow or 10
+            Goals:Debug(string.format("Rule multi_death_window: all deaths seen, window %ds", window))
+            if minTime and maxTime and (maxTime - minTime) <= window then
+                Goals.encounter.cycles = (Goals.encounter.cycles or 0) + 1
+                for _, name in ipairs(bosses) do
+                    Goals.encounter.deathTimes[name] = nil
+                end
+                local required = rule.requiredKills or 1
+                Goals:Debug(string.format("Rule multi_death_window cycle %d/%d", Goals.encounter.cycles, required))
+                if Goals.encounter.cycles >= required then
+                    Goals.encounter.lastBossKillTs = now
+                    Goals:Debug("Rule multi_death_window complete: " .. encounterName)
                     self:FinishEncounter(true)
                 end
             end
