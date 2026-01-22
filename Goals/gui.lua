@@ -4298,6 +4298,7 @@ function UI:CreateHelpTab(page)
                         "- /dkp opens the main UI.\n" ..
                         "- /goalsui opens the main UI.\n" ..
                         "- /goals mini toggles the Mini Viewer.\n" ..
+                        "- /goals dev on|off|toggle|status controls dev mode.\n" ..
                         "- Alt-click the minimap icon to toggle the Mini Viewer.\n\n" ..
                         "Keybindings:\n" ..
                         "- Toggle GOALS UI (set in Key Bindings).\n" ..

@@ -23,6 +23,7 @@ Goals.defaults = {
         combineBossHistory = true,
         disenchanter = "",
         debug = false,
+        devMode = false,
         devTestBoss = false,
         devTestWishlistChat = true,
         devTestWishlistItems = 3,

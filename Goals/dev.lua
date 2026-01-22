@@ -9,15 +9,31 @@ _G.Goals = Goals
 Goals.Dev = Goals.Dev or {}
 local Dev = Goals.Dev
 
-Dev.overrideNames = {
-    erebusares = true,
-    locky = true,
-    shamy = true,
-}
-
 function Dev:Init()
-    local name = string.lower(UnitName("player") or "")
-    self.enabled = self.overrideNames[name] or false
+    if Goals and Goals.db and Goals.db.settings then
+        self.enabled = Goals.db.settings.devMode == true
+    else
+        self.enabled = false
+    end
+end
+
+function Dev:SetEnabled(enabled, silent)
+    if not Goals or not Goals.db or not Goals.db.settings then
+        return
+    end
+    self.enabled = enabled and true or false
+    Goals.db.settings.devMode = self.enabled
+    Goals:NotifyDataChanged()
+    if Goals.UI then
+        Goals.UI:Refresh()
+    end
+    if self.enabled and Goals.UI and Goals.UI.frame and not Goals.UI.devTab then
+        Goals:Print("Dev tab will appear after /reload or UI restart.")
+        Goals:Print("Reminder: type /reload to show the Dev tab now.")
+    end
+    if not silent then
+        Goals:Print(self.enabled and "Dev mode enabled." or "Dev mode disabled.")
+    end
 end
 
 function Dev:SimulateBossKill()

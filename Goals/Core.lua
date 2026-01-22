@@ -4361,6 +4361,26 @@ function Goals:InitSlashCommands()
     SLASH_GOALS3 = "/goalsui"
     SlashCmdList["GOALS"] = function(msg)
         local cmd = msg and msg:lower() or ""
+        if cmd:match("^dev") then
+            local action = cmd:match("^dev%s*(.*)$") or ""
+            action = action:gsub("^%s+", ""):gsub("%s+$", "")
+            if not self.Dev or not self.Dev.SetEnabled then
+                self:Print("Dev mode unavailable.")
+                return
+            end
+            if action == "" or action == "toggle" then
+                self.Dev:SetEnabled(not self.Dev.enabled)
+            elseif action == "on" or action == "enable" or action == "1" then
+                self.Dev:SetEnabled(true)
+            elseif action == "off" or action == "disable" or action == "0" then
+                self.Dev:SetEnabled(false)
+            elseif action == "status" then
+                self:Print(self.Dev.enabled and "Dev mode is enabled." or "Dev mode is disabled.")
+            else
+                self:Print("Usage: /goals dev on|off|toggle|status")
+            end
+            return
+        end
         if cmd:match("^mini") then
             if self.UI and self.UI.ToggleMiniTracker then
                 self.UI:ToggleMiniTracker()
