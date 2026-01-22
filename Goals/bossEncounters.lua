@@ -92,7 +92,13 @@ _G.bossEncounters = {
     ["Void Reaver"] = { "Void Reaver" },
     ["Al'ar"] = { "Al'ar" },
     ["High Astromancer Solarian"] = { "High Astromancer Solarian" },
-    ["Kael'thas Sunstrider"] = { "Kael'thas Sunstrider" },
+    ["Kael'thas Sunstrider"] = {
+        "Thaladred the Darkener",
+        "Master Engineer Telonicus",
+        "Grand Astromancer Capernian",
+        "Lord Sanguinar",
+        "Kael'thas Sunstrider",
+    },
     --T6 Hyjal Summit Bosses
     ["Rage Winterchill"] = { "Rage Winterchill" },
     ["Anetheron"] = { "Anetheron" },

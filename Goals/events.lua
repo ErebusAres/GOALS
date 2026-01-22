@@ -281,8 +281,12 @@ function Events:OnEvent(event, ...)
     end
 end
 
-function Events:CheckBossUnits()
-    local units = { "boss1", "boss2", "boss3", "boss4", "target", "focus" }
+function Events:CheckBossUnits(includeTargetFocus)
+    local units = { "boss1", "boss2", "boss3", "boss4" }
+    if includeTargetFocus then
+        units[5] = "target"
+        units[6] = "focus"
+    end
     for _, unit in ipairs(units) do
         local name = getUnitNameIfExists(unit)
         if name then
@@ -389,7 +393,7 @@ function Events:HandleCombatLog(...)
             end
         end
     end
-    local encounterName = self:CheckBossUnits()
+    local encounterName = self:CheckBossUnits(false)
     if encounterName then
         self:StartEncounter(encounterName)
     end
@@ -544,7 +548,7 @@ function Events:HandleCombatEnd()
         if lastKill > 0 and (time() - lastKill) < 20 then
             return
         end
-        if self:CheckBossUnits() then
+        if self:CheckBossUnits(true) then
             return
         end
         local lastBossUnit = Goals.encounter.lastBossUnitSeen or 0
@@ -558,7 +562,7 @@ function Events:HandleCombatEnd()
 end
 
 function Events:HandleCombatStart()
-    local encounterName = self:CheckBossUnits()
+    local encounterName = self:CheckBossUnits(false)
     if encounterName then
         self:StartEncounter(encounterName)
     end
