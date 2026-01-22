@@ -92,6 +92,7 @@ Goals.L = {
     CHECK_HISTORY_WISHLIST_STATUS = "Wishlist found/claimed",
     CHECK_HISTORY_WISHLIST_ITEMS = "Wishlist item edited",
     CHECK_HISTORY_LOOT = "Loot found/assigned",
+    CHECK_HISTORY_SYNC = "Sync messages",
     CHECK_HISTORY_POINTS_ASSIGNED = "Points assigned",
     CHECK_HISTORY_POINTS_RESET = "Points reset",
     CHECK_HISTORY_BUILD_SENT = "Build sent",

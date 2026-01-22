@@ -23,6 +23,10 @@ local function split(str, delim)
     return parts
 end
 
+local function isLocalOnly()
+    return Goals.db and Goals.db.settings and Goals.db.settings.localOnly
+end
+
 function Comm:Init()
     if RegisterAddonMessagePrefix then
         RegisterAddonMessagePrefix(self.prefix)
@@ -84,13 +88,13 @@ function Comm:OnMessage(prefix, message, channel, sender)
     end
     local base, index, total = msgType:match("^(.-)#(%d+)/(%d+)$")
     if base then
-        self:HandleChunk(base, tonumber(index), tonumber(total), payload, sender)
+        self:HandleChunk(base, tonumber(index), tonumber(total), payload, sender, channel)
         return
     end
     self:HandleMessage(msgType, payload, sender, channel)
 end
 
-function Comm:HandleChunk(base, index, total, payload, sender)
+function Comm:HandleChunk(base, index, total, payload, sender, channel)
     self.pending[base] = self.pending[base] or {}
     local entry = self.pending[base][sender] or { parts = {}, total = total }
     entry.parts[index] = payload
@@ -103,7 +107,7 @@ function Comm:HandleChunk(base, index, total, payload, sender)
     end
     local combined = table.concat(entry.parts, "")
     self.pending[base][sender] = nil
-    self:HandleMessage(base, combined, sender, nil)
+    self:HandleMessage(base, combined, sender, channel)
 end
 
 function Comm:HandleMessage(msgType, payload, sender, channel)
@@ -114,18 +118,27 @@ function Comm:HandleMessage(msgType, payload, sender, channel)
         return
     end
     if msgType == "SYNC_REQUEST" then
+        if Goals.History and Goals.History.AddSyncRequest then
+            Goals.History:AddSyncRequest(false, channel, sender)
+        end
         if Goals:IsSyncMaster() then
-            self:SendSync(sender)
+            self:SendSync(sender, "REQUEST")
         end
         return
     end
     if msgType == "SYNC_POINTS" then
         Goals.lastSyncReceivedAt = time()
+        if Goals.History and Goals.History.AddSyncReceived then
+            Goals.History:AddSyncReceived("POINTS", sender, channel)
+        end
         self:ApplyPoints(payload)
         return
     end
     if msgType == "SYNC_SETTINGS" then
         Goals.lastSyncReceivedAt = time()
+        if Goals.History and Goals.History.AddSyncReceived then
+            Goals.History:AddSyncReceived("SETTINGS", sender, channel)
+        end
         self:ApplySettings(payload)
         return
     end
@@ -180,8 +193,15 @@ function Comm:HandleMessage(msgType, payload, sender, channel)
     end
 end
 
-function Comm:RequestSync()
-    self:Send("SYNC_REQUEST", Goals.version)
+function Comm:RequestSync(source)
+    local channel = self:GetChannel()
+    if not channel then
+        return
+    end
+    self:Send("SYNC_REQUEST", Goals.version, channel)
+    if not isLocalOnly() and Goals.History and Goals.History.AddSyncRequest then
+        Goals.History:AddSyncRequest(true, channel, nil, source)
+    end
 end
 
 function Comm:SendVersion(target)
@@ -199,19 +219,37 @@ function Comm:BroadcastVersion()
     self:SendVersion(nil)
 end
 
-function Comm:SendSync(target)
-    local channel = target and "WHISPER" or nil
+function Comm:SendSync(target, source)
+    local channel = target and "WHISPER" or self:GetChannel()
+    if not channel then
+        return
+    end
     self:Send("SYNC_POINTS", self:SerializePoints(), channel, target)
     self:Send("SYNC_SETTINGS", self:SerializeSettings(), channel, target)
+    if Goals and Goals.MarkSyncSent then
+        Goals:MarkSyncSent()
+    end
+    if not isLocalOnly() and Goals.History and Goals.History.AddSyncSent then
+        Goals.History:AddSyncSent("FULL", target, channel, source)
+    end
 end
 
-function Comm:SendPointsSync(target)
-    local channel = target and "WHISPER" or nil
+function Comm:SendPointsSync(target, source)
+    local channel = target and "WHISPER" or self:GetChannel()
+    if not channel then
+        return
+    end
     self:Send("SYNC_POINTS", self:SerializePoints(), channel, target)
+    if Goals and Goals.MarkSyncSent then
+        Goals:MarkSyncSent()
+    end
+    if not isLocalOnly() and Goals.History and Goals.History.AddSyncSent then
+        Goals.History:AddSyncSent("POINTS", target, channel, source)
+    end
 end
 
-function Comm:BroadcastFullSync()
-    self:SendSync(nil)
+function Comm:BroadcastFullSync(source)
+    self:SendSync(nil, source)
 end
 
 function Comm:SendWishlistBuild(target, payload)

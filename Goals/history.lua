@@ -47,6 +47,84 @@ local function formatItemFallback(itemId)
     return "item:" .. tostring(itemId)
 end
 
+local function formatSyncChannel(channel)
+    if not channel or channel == "" then
+        return nil
+    end
+    if channel == "RAID" then
+        return "raid"
+    end
+    if channel == "PARTY" then
+        return "party"
+    end
+    if channel == "WHISPER" then
+        return "whisper"
+    end
+    return string.lower(channel)
+end
+
+local function getSyncTypeLabel(syncType)
+    if syncType == "FULL" then
+        return "full sync"
+    end
+    if syncType == "POINTS" then
+        return "points sync"
+    end
+    if syncType == "SETTINGS" then
+        return "settings sync"
+    end
+    return "sync"
+end
+
+local function buildSyncText(action, data)
+    local channel = formatSyncChannel(data and data.channel or nil)
+    local target = data and data.target or nil
+    local sender = data and data.sender or nil
+    local source = data and data.source or nil
+    local syncType = data and data.syncType or nil
+    local prefix = source == "AUTO" and "Auto " or ""
+    local suffix = source == "REQUEST" and " (request)" or ""
+    if action == "REQUEST_SENT" then
+        if target and target ~= "" then
+            return prefix .. "Requested sync from " .. target
+        end
+        if channel then
+            return prefix .. "Requested sync (" .. channel .. ")"
+        end
+        return prefix .. "Requested sync"
+    end
+    if action == "REQUEST_RECEIVED" then
+        if sender and sender ~= "" then
+            if channel then
+                return "Sync requested by " .. sender .. " (" .. channel .. ")"
+            end
+            return "Sync requested by " .. sender
+        end
+        return "Sync requested"
+    end
+    if action == "SENT" then
+        local label = getSyncTypeLabel(syncType)
+        if target and target ~= "" then
+            return prefix .. "Sent " .. label .. " to " .. target .. suffix
+        end
+        if channel then
+            return prefix .. "Sent " .. label .. " (" .. channel .. ")" .. suffix
+        end
+        return prefix .. "Sent " .. label .. suffix
+    end
+    if action == "RECEIVED" then
+        local label = getSyncTypeLabel(syncType)
+        if sender and sender ~= "" then
+            if channel then
+                return "Received " .. label .. " from " .. sender .. " (" .. channel .. ")"
+            end
+            return "Received " .. label .. " from " .. sender
+        end
+        return "Received " .. label
+    end
+    return "Sync"
+end
+
 function History:AddEntry(kind, text, data)
     if not self.db or not self.db.history then
         return
@@ -224,4 +302,41 @@ function History:AddWishlistItemClaimed(slotKey, itemId, claimed)
         string.format("%s: %s %s", action, getSlotLabel(slotKey), link),
         { slot = slotKey, itemId = itemId, item = link, claimed = claimed and true or false }
     )
+end
+
+function History:AddSyncEntry(action, data)
+    local payload = data or {}
+    payload.action = action
+    self:AddEntry("SYNC", buildSyncText(action, payload), payload)
+end
+
+function History:AddSyncRequest(outgoing, channel, otherName, source)
+    local data = {
+        channel = channel,
+        source = source,
+    }
+    if outgoing then
+        data.target = otherName
+        self:AddSyncEntry("REQUEST_SENT", data)
+    else
+        data.sender = otherName
+        self:AddSyncEntry("REQUEST_RECEIVED", data)
+    end
+end
+
+function History:AddSyncSent(syncType, targetName, channel, source)
+    self:AddSyncEntry("SENT", {
+        syncType = syncType,
+        target = targetName,
+        channel = channel,
+        source = source,
+    })
+end
+
+function History:AddSyncReceived(syncType, senderName, channel)
+    self:AddSyncEntry("RECEIVED", {
+        syncType = syncType,
+        sender = senderName,
+        channel = channel,
+    })
 end

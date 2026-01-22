@@ -46,6 +46,7 @@ Goals.defaults = {
         historyFilterWishlistStatus = true,
         historyFilterWishlistItems = true,
         historyFilterLoot = true,
+        historyFilterSync = true,
         historyFiltersMigrated = false,
         localOnly = false,
         dbmIntegration = true,

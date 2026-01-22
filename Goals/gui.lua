@@ -740,6 +740,7 @@ function UI:HistoryEntryMatchesFilters(entry, settings)
     local wishlistStatusEnabled = getHistoryFilterValue(settings, "historyFilterWishlistStatus")
     local wishlistItemsEnabled = getHistoryFilterValue(settings, "historyFilterWishlistItems")
     local lootEnabled = getHistoryFilterValue(settings, "historyFilterLoot")
+    local syncEnabled = getHistoryFilterValue(settings, "historyFilterSync")
     local function passesLootQuality()
         if minQuality <= 0 then
             return true
@@ -786,6 +787,9 @@ function UI:HistoryEntryMatchesFilters(entry, settings)
     end
     if kind == "WISHLIST_ADD" or kind == "WISHLIST_REMOVE" or kind == "WISHLIST_SOCKET" or kind == "WISHLIST_ENCHANT" then
         return wishlistItemsEnabled
+    end
+    if kind == "SYNC" then
+        return syncEnabled
     end
     return true
 end
@@ -2199,6 +2203,7 @@ function UI:CreateHistoryTab(page)
         local wishlistStatusCheck = createHistoryCheck(L.CHECK_HISTORY_WISHLIST_STATUS, "historyFilterWishlistStatus", buildCheck)
         local wishlistItemsCheck = createHistoryCheck(L.CHECK_HISTORY_WISHLIST_ITEMS, "historyFilterWishlistItems", wishlistStatusCheck)
         local lootCheck = createHistoryCheck(L.CHECK_HISTORY_LOOT, "historyFilterLoot", wishlistItemsCheck)
+        local syncCheck = createHistoryCheck(L.CHECK_HISTORY_SYNC, "historyFilterSync", lootCheck)
 
         self.historyEncounterCheck = encounterCheck
         self.historyPointsCheck = pointsCheck
@@ -2206,9 +2211,10 @@ function UI:CreateHistoryTab(page)
         self.historyWishlistStatusCheck = wishlistStatusCheck
         self.historyWishlistItemsCheck = wishlistItemsCheck
         self.historyLootCheck = lootCheck
+        self.historySyncCheck = syncCheck
 
         local minQualityLabel = createLabel(optionsFrame, L.LABEL_HISTORY_LOOT_MIN_QUALITY, "GameFontNormal")
-        minQualityLabel:SetPoint("TOPLEFT", lootCheck, "BOTTOMLEFT", 0, -10)
+        minQualityLabel:SetPoint("TOPLEFT", syncCheck, "BOTTOMLEFT", 0, -10)
 
         local minQualityDrop = CreateFrame("Frame", "GoalsHistoryMinQuality", optionsFrame, "UIDropDownMenuTemplate")
         minQualityDrop:SetPoint("TOPLEFT", minQualityLabel, "BOTTOMLEFT", -16, -2)
@@ -4025,7 +4031,7 @@ function UI:CreateSettingsTab(page)
 
     local syncRequestBtn = createActionButton("Ask for sync", function()
         if Goals and Goals.Comm and Goals.Comm.RequestSync then
-            Goals.Comm:RequestSync()
+            Goals.Comm:RequestSync("MANUAL")
         end
     end)
     syncRequestBtn:SetPoint("TOPLEFT", sudoBtn, "BOTTOMLEFT", 0, -6)
@@ -4735,7 +4741,7 @@ function UI:CreateDevTab(page)
     syncBtn:SetPoint("TOPLEFT", lootBtn, "BOTTOMLEFT", 0, -8)
     syncBtn:SetScript("OnClick", function()
         if Goals.Comm and Goals.Comm.BroadcastFullSync then
-            Goals.Comm:BroadcastFullSync()
+            Goals.Comm:BroadcastFullSync("MANUAL")
             Goals:Print("Sync sent.")
         end
     end)
@@ -5179,6 +5185,33 @@ function UI:FormatHistoryEntry(entry)
         end
         return table.concat(gems, ", ")
     end
+    local function formatChannelLabel(channel)
+        if not channel or channel == "" then
+            return nil
+        end
+        if channel == "RAID" then
+            return "raid"
+        end
+        if channel == "PARTY" then
+            return "party"
+        end
+        if channel == "WHISPER" then
+            return "whisper"
+        end
+        return string.lower(channel)
+    end
+    local function formatSyncTypeLabel(syncType)
+        if syncType == "FULL" then
+            return "full sync"
+        end
+        if syncType == "POINTS" then
+            return "points sync"
+        end
+        if syncType == "SETTINGS" then
+            return "settings sync"
+        end
+        return "sync"
+    end
     if entry.kind == "BOSSKILL" and data.player then
         return string.format("%s: %s +%d", data.encounter or "Boss", colorizeName(data.player), data.points or 0)
     end
@@ -5255,6 +5288,53 @@ function UI:FormatHistoryEntry(entry)
             enchantName = "Enchant " .. tostring(enchantId)
         end
         return string.format("Wishlist enchanted: %s %s (enchant: %s)", slot, formatItemLink(data.itemId, data.item), enchantName)
+    end
+    if entry.kind == "SYNC" then
+        local action = data.action or ""
+        local channel = formatChannelLabel(data.channel)
+        local sender = data.sender
+        local target = data.target
+        local syncLabel = formatSyncTypeLabel(data.syncType)
+        local source = data.source
+        local prefix = source == "AUTO" and "Auto " or ""
+        local suffix = source == "REQUEST" and " (request)" or ""
+        if action == "REQUEST_SENT" then
+            if target and target ~= "" then
+                return prefix .. "Requested sync from " .. colorizeName(target)
+            end
+            if channel then
+                return prefix .. "Requested sync (" .. channel .. ")"
+            end
+            return prefix .. "Requested sync"
+        end
+        if action == "REQUEST_RECEIVED" then
+            if sender and sender ~= "" then
+                if channel then
+                    return "Sync requested by " .. colorizeName(sender) .. " (" .. channel .. ")"
+                end
+                return "Sync requested by " .. colorizeName(sender)
+            end
+            return "Sync requested"
+        end
+        if action == "SENT" then
+            if target and target ~= "" then
+                return prefix .. "Sent " .. syncLabel .. " to " .. colorizeName(target) .. suffix
+            end
+            if channel then
+                return prefix .. "Sent " .. syncLabel .. " (" .. channel .. ")" .. suffix
+            end
+            return prefix .. "Sent " .. syncLabel .. suffix
+        end
+        if action == "RECEIVED" then
+            if sender and sender ~= "" then
+                if channel then
+                    return "Received " .. syncLabel .. " from " .. colorizeName(sender) .. " (" .. channel .. ")"
+                end
+                return "Received " .. syncLabel .. " from " .. colorizeName(sender)
+            end
+            return "Received " .. syncLabel
+        end
+        return entry.text or "Sync"
     end
     return entry.text or ""
 end
@@ -6554,6 +6634,9 @@ function UI:Refresh()
         self.historyWishlistStatusCheck:SetChecked(settings.historyFilterWishlistStatus ~= false)
         self.historyWishlistItemsCheck:SetChecked(settings.historyFilterWishlistItems ~= false)
         self.historyLootCheck:SetChecked(settings.historyFilterLoot ~= false)
+        if self.historySyncCheck then
+            self.historySyncCheck:SetChecked(settings.historyFilterSync ~= false)
+        end
     end
     if self.historyLootMinQuality then
         local value = Goals.db.settings.historyLootMinQuality or 0

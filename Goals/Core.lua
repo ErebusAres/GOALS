@@ -1104,6 +1104,14 @@ function Goals:RecordLootFound(itemLink)
     if lastSeen > 0 and (time() - lastSeen) < 120 then
         return
     end
+    if next(self.state.lootFoundSeenLinks) then
+        local now = time()
+        for link, ts in pairs(self.state.lootFoundSeenLinks) do
+            if (now - (ts or 0)) > 300 then
+                self.state.lootFoundSeenLinks[link] = nil
+            end
+        end
+    end
     self.state.lootFoundSeenLinks[itemLink] = time()
     if self.History then
         self.History:AddLootFound(itemLink)
@@ -1185,10 +1193,18 @@ function Goals:ApplyLootFound(id, ts, itemLink, sender)
         if sender then
             key = sender .. ":" .. key
         end
-        if self.state.lootFoundSeenIds[key] then
+        local seenAt = self.state.lootFoundSeenIds[key]
+        if seenAt and math.abs(now - seenAt) < 120 then
             return
         end
-        self.state.lootFoundSeenIds[key] = true
+        if next(self.state.lootFoundSeenIds) then
+            for seenKey, seenTs in pairs(self.state.lootFoundSeenIds) do
+                if (now - (seenTs or 0)) > 300 then
+                    self.state.lootFoundSeenIds[seenKey] = nil
+                end
+            end
+        end
+        self.state.lootFoundSeenIds[key] = now
     end
     table.insert(self.state.lootFound, 1, {
         slot = 0,
@@ -1233,7 +1249,8 @@ function Goals:UpdateLootSlots(resetSeen)
                 if seen[slot] ~= link then
                     seen[slot] = link
                     self:RecordLootFound(link)
-                    if self.Comm and self:CanSync() then
+                    local canSync = self:CanSync() or (self.IsMasterLooter and self:IsMasterLooter())
+                    if self.Comm and canSync then
                         self.Comm:SendLootFound(entryId, entryTs, link)
                     end
                 end
@@ -4523,11 +4540,11 @@ function Goals:StartAutoSyncPush()
             return
         end
         if self.Comm and self.Comm.SendPointsSync then
-            self.Comm:SendPointsSync(nil)
+            self.Comm:SendPointsSync(nil, "AUTO")
         elseif self.Comm and self.Comm.SerializePoints then
             self.Comm:Send("SYNC_POINTS", self.Comm:SerializePoints())
         end
-        self.nextAutoSyncAt = time() + interval
+        self:MarkSyncSent()
     end)
     self.autoSyncFrame = frame
 end
@@ -4541,6 +4558,13 @@ function Goals:GetAutoSyncRemaining()
         remaining = 0
     end
     return remaining
+end
+
+function Goals:MarkSyncSent()
+    if self.autoSyncInterval then
+        self.nextAutoSyncAt = time() + self.autoSyncInterval
+    end
+    self.lastSyncSentAt = time()
 end
 
 function Goals:CheckBuild()

@@ -325,12 +325,12 @@ function Events:HandleGroupUpdate()
     local wasMaster = Goals.sync.isMaster
     Goals:UpdateSyncStatus()
     if Goals:CanSync() and Goals:IsSyncMaster() and not wasMaster then
-        Goals.Comm:BroadcastFullSync()
+        Goals.Comm:BroadcastFullSync("AUTO")
     elseif Goals:CanSync() and not Goals:IsSyncMaster() then
         Goals.sync.lastRequest = Goals.sync.lastRequest or 0
         if (GetTime() - Goals.sync.lastRequest) > 5 then
             Goals.sync.lastRequest = GetTime()
-            Goals.Comm:RequestSync()
+            Goals.Comm:RequestSync("AUTO")
         end
     end
     if Goals.UI then
