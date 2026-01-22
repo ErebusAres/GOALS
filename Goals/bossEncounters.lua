@@ -63,14 +63,24 @@ _G.bossEncounters = {
     ["Prince Tenris Mirkblood"] = { "Prince Tenris Mirkblood" },
     ["Moroes"] = { "Moroes" },
     ["Maiden of Virtue"] = { "Maiden of Virtue" },
-    ["Opera Event, Romulo and Julianne"] = { 
-        { "Romulo", "Julianne" },  -- Phase 1
-        { "Romulo", "Julianne" }   -- Phase 2
-    },    
+    ["Opera Event, Romulo and Julianne"] = { "Romulo", "Julianne" },
     ["Opera Event, Wizard of Oz"] = { "The Crone" },
     ["Opera Event, Big Bad Wolf"] = { "The Big Bad Wolf" },
     ["The Curator"] = { "The Curator" },
-    ["Chess Event"] = { "Chess Event" },
+    ["Chess Event"] = {
+        "King Llane",
+        "Grand Marshal Bolvar Fordragon",
+        "Marshal Windsor",
+        "Conjurer",
+        "Cleric",
+        "Footman",
+        "Warchief Blackhand",
+        "High Warlord",
+        "Orc Wolf",
+        "Summoner",
+        "Necrolyte",
+        "Grunt",
+    },
     ["Terestian Illhoof"] = { "Terestian Illhoof" },
     ["Shade of Aran"] = { "Shade of Aran" },
     ["Netherspite"] = { "Netherspite" },
@@ -179,7 +189,7 @@ _G.bossEncounters = {
     ["Hodir"] = { "Hodir" },
     ["Thorim"] = { "Thorim" },
     ["Freya"] = { "Freya" },
-    ["Mimiron"] = { "Mimiron" },
+    ["Mimiron"] = { "Leviathan Mk II", "VX-001", "Aerial Command Unit", "Mimiron" },
     -- The Descent into Madness
     ["General Vezax"] = { "General Vezax" },
     ["Yogg-Saron"] = { "Yogg-Saron" },
@@ -238,6 +248,23 @@ _G.encounterRules = {
     ["Opera Event, Romulo and Julianne"] = {
         type = "pair_revive",
         bosses = { "Romulo", "Julianne" },
+        requiredKills = 1,
+        reviveWindow = 10,
+    },
+    ["Mimiron"] = {
+        type = "multi_death_window",
+        bosses = { "Leviathan Mk II", "VX-001", "Aerial Command Unit" },
+        requiredKills = 1,
+        reviveWindow = 15,
+    },
+    ["High Priest Thekal"] = {
+        type = "multi_kill",
+        bosses = { "High Priest Thekal" },
+        requiredKills = 2,
+    },
+    ["Kalecgos"] = {
+        type = "pair_revive",
+        bosses = { "Kalecgos", "Sathrovarr the Corruptor" },
         requiredKills = 1,
         reviveWindow = 10,
     },

@@ -34,3 +34,6 @@
 - When exporting can we sort the export like...
   - Status: Fixed. Export order is now deterministic and `RANGED` is accepted as `RELIC` on import.
   - Assumption: Neck is placed right after Head; confirm if you want a different order.
+
+- Encounter tracking oddities (revive/multi-part fights, realm-specific Chess Event, and debug visibility).
+  - Status: Fixed. Added encounter-rule debug logging, tightened encounter start/end guards to only fire when combat is active (except BOSS_KILL), added Redus realm-specific Chess Event boss lists, and expanded Mimiron component tracking to avoid premature completion. These changes improve accuracy for odd multi-part fights and provide debug visibility for diagnosing edge cases.
