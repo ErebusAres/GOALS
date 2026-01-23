@@ -12,6 +12,7 @@ local L = Goals.L
 local ROW_HEIGHT = 20
 local ROSTER_ROWS = 20
 local HISTORY_ROWS = 20
+local HISTORY_ROW_HEIGHT = 18
 local HISTORY_ROW_HEIGHT_DOUBLE = 26
 local LOOT_HISTORY_ROWS = 20
 local DEBUG_ROWS = 16
@@ -19,16 +20,16 @@ local DEBUG_ROW_HEIGHT = 16
 local DAMAGE_ROWS = 16
 local DAMAGE_ROW_HEIGHT = 18
 local DAMAGE_COL_TIME = 70
-local DAMAGE_COL_PLAYER = 120
+local DAMAGE_COL_PLAYER = 130
 local DAMAGE_COL_AMOUNT = 70
-local DAMAGE_COL_SPELL = 160
+local DAMAGE_COL_SPELL = 180
 local MINI_ROW_HEIGHT = 16
 local MINI_HEADER_HEIGHT = 22
 local MINI_FRAME_WIDTH = 200
 local MINI_DEFAULT_X = 260
 local MINI_DEFAULT_Y = 0
 local LOOT_HISTORY_ROW_HEIGHT = 28
-local LOOT_HISTORY_ROW_HEIGHT_COMPACT = 20
+local LOOT_HISTORY_ROW_HEIGHT_COMPACT = 18
 local LOOT_ROWS = 18
 local WISHLIST_SLOT_SIZE = 36
 local WISHLIST_ROW_SPACING = 46
@@ -105,9 +106,10 @@ local function applySectionHeader(label, parent, yOffset)
     bar:SetHeight(18)
     bar:SetPoint("TOPLEFT", parent, "TOPLEFT", 4, yOffset or -6)
     bar:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -4, yOffset or -6)
-    bar:SetTexture(0, 0, 0, 0.35)
+    bar:SetTexture(0, 0, 0, 0.45)
     label:ClearAllPoints()
     label:SetPoint("LEFT", bar, "LEFT", 6, 0)
+    label:SetTextColor(0.92, 0.8, 0.5, 1)
     return bar
 end
 
@@ -119,9 +121,10 @@ local function applySectionHeaderAfter(label, parent, anchor, yOffset)
     bar:SetHeight(18)
     bar:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 4, yOffset or -8)
     bar:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -4, yOffset or -8)
-    bar:SetTexture(0, 0, 0, 0.35)
+    bar:SetTexture(0, 0, 0, 0.45)
     label:ClearAllPoints()
     label:SetPoint("LEFT", bar, "LEFT", 6, 0)
+    label:SetTextColor(0.92, 0.8, 0.5, 1)
     return bar
 end
 local function applySectionCaption(bar, text)
@@ -157,7 +160,7 @@ local function addRowStripe(row)
     end
     local stripe = row:CreateTexture(nil, "BACKGROUND")
     stripe:SetAllPoints(row)
-    stripe:SetTexture(1, 1, 1, 0.04)
+    stripe:SetTexture(1, 1, 1, 0.06)
     row.stripe = stripe
 end
 
@@ -226,14 +229,29 @@ local function createTableWidget(parent, name, config)
     widget.rowHeight = config.rowHeight or ROW_HEIGHT
     widget.rows = {}
 
+    local headerLeft = 8
+    local headerRight = -28
+    local headerTop = -8
+    local headerHeight = config.headerHeight or 18
+    widget.headerLeft = headerLeft
+    widget.headerRight = headerRight
+    widget.rowTopOffset = -(headerHeight + 8)
+
     local header = CreateFrame("Frame", name .. "Header", parent)
-    header:SetHeight(config.headerHeight or 18)
-    header:SetPoint("TOPLEFT", parent, "TOPLEFT", 6, -8)
-    header:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -28, -8)
+    header:SetHeight(headerHeight)
+    header:SetPoint("TOPLEFT", parent, "TOPLEFT", headerLeft, headerTop)
+    header:SetPoint("TOPRIGHT", parent, "TOPRIGHT", headerRight, headerTop)
     local headerBg = header:CreateTexture(nil, "BORDER")
     headerBg:SetAllPoints(header)
-    headerBg:SetTexture(0, 0, 0, 0.35)
+    headerBg:SetTexture(0, 0, 0, 0.45)
     widget.header = header
+
+    local headerLine = parent:CreateTexture(nil, "BORDER")
+    headerLine:SetHeight(1)
+    headerLine:SetPoint("TOPLEFT", header, "BOTTOMLEFT", 0, -1)
+    headerLine:SetPoint("TOPRIGHT", header, "BOTTOMRIGHT", 0, -1)
+    headerLine:SetTexture(1, 1, 1, 0.08)
+    widget.headerLine = headerLine
 
     local prevHeader = nil
     for _, col in ipairs(widget.columns) do
@@ -241,7 +259,7 @@ local function createTableWidget(parent, name, config)
         if prevHeader then
             label:SetPoint("LEFT", prevHeader, "RIGHT", col.spacing or 8, 0)
         else
-            label:SetPoint("LEFT", header, "LEFT", 6, 0)
+            label:SetPoint("LEFT", header, "LEFT", 0, 0)
         end
         if col.fill then
             label:SetPoint("RIGHT", header, "RIGHT", -6, 0)
@@ -250,6 +268,7 @@ local function createTableWidget(parent, name, config)
         end
         label:SetJustifyH(col.justify or "LEFT")
         label:SetText(col.title or "")
+        label:SetTextColor(0.92, 0.8, 0.5, 1)
         col.header = label
         prevHeader = label
     end
@@ -262,8 +281,8 @@ local function createTableWidget(parent, name, config)
     for i = 1, (config.visibleRows or HISTORY_ROWS) do
         local row = CreateFrame("Frame", nil, parent)
         row:SetHeight(widget.rowHeight)
-        row:SetPoint("TOPLEFT", parent, "TOPLEFT", 8, -26 - (i - 1) * widget.rowHeight)
-        row:SetPoint("RIGHT", parent, "RIGHT", -6, 0)
+        row:SetPoint("TOPLEFT", parent, "TOPLEFT", headerLeft, widget.rowTopOffset - (i - 1) * widget.rowHeight)
+        row:SetPoint("RIGHT", parent, "RIGHT", headerRight, 0)
         addRowStripe(row)
 
         row.cols = {}
@@ -1606,7 +1625,7 @@ function UI:CreateMainFrame()
     tabBar:SetHeight(26)
     local tabBg = tabBar:CreateTexture(nil, "BORDER")
     tabBg:SetAllPoints(tabBar)
-    tabBg:SetTexture(0, 0, 0, 0.35)
+    tabBg:SetTexture(0, 0, 0, 0.45)
     self.tabBar = tabBar
 
     local tabDefs = {
@@ -2025,7 +2044,7 @@ function UI:CreateOverviewTab(page)
     local tableWidget = createTableWidget(rosterInset, "GoalsRosterTable", {
         columns = {
             { key = "status", title = "", width = 18, justify = "LEFT", wrap = false },
-            { key = "player", title = "Player", width = 200, justify = "LEFT", wrap = false },
+            { key = "player", title = "Player", width = 220, justify = "LEFT", wrap = false },
             { key = "points", title = "Points", width = 60, justify = "RIGHT", wrap = false },
             { key = "actions", title = "Actions", fill = true, justify = "LEFT", wrap = false },
         },
@@ -2171,9 +2190,10 @@ function UI:CreateOverviewTab(page)
         bar:SetHeight(18)
         bar:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 4, y)
         bar:SetPoint("TOPRIGHT", optionsContent, "TOPRIGHT", -4, y)
-        bar:SetTexture(0, 0, 0, 0.35)
+        bar:SetTexture(0, 0, 0, 0.45)
         local label = createLabel(optionsContent, text, "GameFontNormal")
         label:SetPoint("LEFT", bar, "LEFT", 6, 0)
+        label:SetTextColor(0.92, 0.8, 0.5, 1)
         y = y - 24
         return label, bar
     end
@@ -2547,7 +2567,7 @@ function UI:CreateLootTab(page)
     local tableWidget = createTableWidget(inset, "GoalsLootTable", {
         columns = {
             { key = "time", title = "Time", width = 60, justify = "LEFT", wrap = false },
-            { key = "item", title = "Item", width = 240, justify = "LEFT", wrap = false },
+            { key = "item", title = "Item", width = 260, justify = "LEFT", wrap = false },
             { key = "player", title = "Player", width = 120, justify = "LEFT", wrap = false },
             { key = "notes", title = "Notes", fill = true, justify = "LEFT", wrap = false },
         },
@@ -2645,9 +2665,10 @@ function UI:CreateLootTab(page)
         bar:SetHeight(18)
         bar:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 4, y)
         bar:SetPoint("TOPRIGHT", optionsContent, "TOPRIGHT", -4, y)
-        bar:SetTexture(0, 0, 0, 0.35)
+        bar:SetTexture(0, 0, 0, 0.45)
         local label = createLabel(optionsContent, text, "GameFontNormal")
         label:SetPoint("LEFT", bar, "LEFT", 6, 0)
+        label:SetTextColor(0.92, 0.8, 0.5, 1)
         y = y - 24
         return label, bar
     end
@@ -2823,11 +2844,11 @@ function UI:CreateHistoryTab(page)
     local tableWidget = createTableWidget(inset, "GoalsHistoryTable", {
         columns = {
             { key = "time", title = "Time", width = 60, justify = "LEFT", wrap = false },
-            { key = "event", title = "Event", width = 220, justify = "LEFT", wrap = false },
+            { key = "event", title = "Event", width = 240, justify = "LEFT", wrap = false },
             { key = "player", title = "Player", width = 120, justify = "LEFT", wrap = false },
             { key = "notes", title = "Notes", fill = true, justify = "LEFT", wrap = false },
         },
-        rowHeight = ROW_HEIGHT,
+        rowHeight = HISTORY_ROW_HEIGHT,
         visibleRows = HISTORY_ROWS,
         headerHeight = 18,
     })
@@ -2836,7 +2857,7 @@ function UI:CreateHistoryTab(page)
     self.historyRows = tableWidget.rows
 
     self.historyScroll:SetScript("OnVerticalScroll", function(selfScroll, offset)
-        FauxScrollFrame_OnVerticalScroll(selfScroll, offset, ROW_HEIGHT, function()
+        FauxScrollFrame_OnVerticalScroll(selfScroll, offset, HISTORY_ROW_HEIGHT, function()
             UI:UpdateHistoryList()
         end)
     end)
@@ -2847,9 +2868,10 @@ function UI:CreateHistoryTab(page)
         bar:SetHeight(18)
         bar:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 4, y)
         bar:SetPoint("TOPRIGHT", optionsContent, "TOPRIGHT", -4, y)
-        bar:SetTexture(0, 0, 0, 0.35)
+        bar:SetTexture(0, 0, 0, 0.45)
         local label = createLabel(optionsContent, text, "GameFontNormal")
         label:SetPoint("LEFT", bar, "LEFT", 6, 0)
+        label:SetTextColor(0.92, 0.8, 0.5, 1)
         y = y - 24
         return label, bar
     end
@@ -4616,9 +4638,10 @@ function UI:CreateSettingsTab(page)
         bar:SetPoint("TOP", anchor, "BOTTOM", 0, yOffset or -8)
         bar:SetPoint("LEFT", rightInset, "LEFT", 4, 0)
         bar:SetPoint("RIGHT", rightInset, "RIGHT", -4, 0)
-        bar:SetTexture(0, 0, 0, 0.35)
+        bar:SetTexture(0, 0, 0, 0.45)
         label:ClearAllPoints()
         label:SetPoint("LEFT", bar, "LEFT", 6, 0)
+        label:SetTextColor(0.92, 0.8, 0.5, 1)
         return bar
     end
 
@@ -4778,27 +4801,6 @@ function UI:CreateDamageTrackerTab(page)
     inset:SetPoint("BOTTOMLEFT", page, "BOTTOMLEFT", 8, 8)
     inset:SetPoint("RIGHT", optionsPanel, "LEFT", -12, 0)
 
-    local title = createLabel(inset, L.TAB_DAMAGE_TRACKER, "GameFontNormal")
-    applySectionHeader(title, inset, -6)
-
-    local filterLabel = createLabel(inset, "Filter", "GameFontHighlightSmall")
-    filterLabel:SetPoint("LEFT", title, "RIGHT", 14, 0)
-
-    local dropdown = CreateFrame("Frame", "GoalsDamageTrackerDropdown", inset, "UIDropDownMenuTemplate")
-    dropdown:SetPoint("LEFT", filterLabel, "RIGHT", 6, -1)
-    styleDropdown(dropdown, 140)
-    self:SetupDropdown(dropdown, function()
-        return self:GetDamageTrackerDropdownList()
-    end, function(value)
-        self.damageTrackerFilter = value
-        self:UpdateDamageTrackerList()
-    end, L.DAMAGE_TRACKER_ALL)
-    dropdown.selectedValue = L.DAMAGE_TRACKER_ALL
-    UIDropDownMenu_SetSelectedValue(dropdown, L.DAMAGE_TRACKER_ALL)
-    self:SetDropdownText(dropdown, L.DAMAGE_TRACKER_ALL)
-    self.damageTrackerDropdown = dropdown
-    self.damageTrackerFilter = L.DAMAGE_TRACKER_ALL
-
     local tableWidget = createTableWidget(inset, "GoalsDamageTrackerTable", {
         columns = {
             { key = "time", title = "Time", width = DAMAGE_COL_TIME, justify = "LEFT", wrap = false },
@@ -4870,9 +4872,10 @@ function UI:CreateDamageTrackerTab(page)
         bar:SetHeight(18)
         bar:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 4, y)
         bar:SetPoint("TOPRIGHT", optionsContent, "TOPRIGHT", -4, y)
-        bar:SetTexture(0, 0, 0, 0.35)
+        bar:SetTexture(0, 0, 0, 0.45)
         local label = createLabel(optionsContent, text, "GameFontNormal")
         label:SetPoint("LEFT", bar, "LEFT", 6, 0)
+        label:SetTextColor(0.92, 0.8, 0.5, 1)
         y = y - 24
         return label, bar
     end
@@ -4896,6 +4899,26 @@ function UI:CreateDamageTrackerTab(page)
         end
     end)
     self.combatLogTrackingCheck = combatLogCheck
+
+    local filterLabel = createLabel(optionsContent, "Filter", "GameFontNormal")
+    filterLabel:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
+    y = y - 20
+
+    local dropdown = CreateFrame("Frame", "GoalsDamageTrackerDropdown", optionsContent, "UIDropDownMenuTemplate")
+    dropdown:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", -10, y)
+    styleDropdown(dropdown, 160)
+    self:SetupDropdown(dropdown, function()
+        return self:GetDamageTrackerDropdownList()
+    end, function(value)
+        self.damageTrackerFilter = value
+        self:UpdateDamageTrackerList()
+    end, L.DAMAGE_TRACKER_ALL)
+    dropdown.selectedValue = L.DAMAGE_TRACKER_ALL
+    UIDropDownMenu_SetSelectedValue(dropdown, L.DAMAGE_TRACKER_ALL)
+    self:SetDropdownText(dropdown, L.DAMAGE_TRACKER_ALL)
+    self.damageTrackerDropdown = dropdown
+    self.damageTrackerFilter = L.DAMAGE_TRACKER_ALL
+    y = y - 30
 
     local combatLogHealingCheck = addCheck(L.CHECK_COMBAT_LOG_HEALING, function(selfBtn)
         Goals.db.settings.combatLogHealing = selfBtn:GetChecked() and true or false
@@ -6469,9 +6492,12 @@ function UI:UpdateHistoryList()
     local data = self:GetHistoryEntries()
     self.historyData = data
     local offset = FauxScrollFrame_GetOffset(self.historyScroll) or 0
-    FauxScrollFrame_Update(self.historyScroll, #data, HISTORY_ROWS, ROW_HEIGHT)
-    setScrollBarAlwaysVisible(self.historyScroll, #data * ROW_HEIGHT)
+    FauxScrollFrame_Update(self.historyScroll, #data, HISTORY_ROWS, HISTORY_ROW_HEIGHT)
+    setScrollBarAlwaysVisible(self.historyScroll, #data * HISTORY_ROW_HEIGHT)
     local hasRainbow = false
+    local rowTopOffset = self.historyTable and self.historyTable.rowTopOffset or -26
+    local rowLeft = self.historyTable and self.historyTable.headerLeft or 6
+    local rowRight = self.historyTable and self.historyTable.headerRight or -6
     for i = 1, HISTORY_ROWS do
         local row = self.historyRows[i]
         local entry = data[offset + i]
@@ -6549,10 +6575,10 @@ function UI:UpdateHistoryList()
                     row.text:SetText(self:FormatHistoryEntry(entry))
                 end
             end
-            row:SetHeight(ROW_HEIGHT)
+            row:SetHeight(HISTORY_ROW_HEIGHT)
             row:ClearAllPoints()
-            row:SetPoint("TOPLEFT", self.historyInset, "TOPLEFT", 6, -26 - (i - 1) * ROW_HEIGHT)
-            row:SetPoint("RIGHT", self.historyInset, "RIGHT", -6, 0)
+            row:SetPoint("TOPLEFT", self.historyInset, "TOPLEFT", rowLeft, rowTopOffset - (i - 1) * HISTORY_ROW_HEIGHT)
+            row:SetPoint("RIGHT", self.historyInset, "RIGHT", rowRight, 0)
         else
             row:Hide()
             row.rainbowData = nil
