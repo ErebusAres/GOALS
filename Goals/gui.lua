@@ -1735,15 +1735,9 @@ function UI:UpdateDamageTabVisibility()
     if not self.damageTab or not self.damageTabId then
         return
     end
-    local enabled = Goals and Goals.db and Goals.db.settings and Goals.db.settings.combatLogTracking
+    local enabled = true
     setShown(self.damageTab, enabled)
-    if not enabled and self.pages and self.pages[self.damageTabId] then
-        self.pages[self.damageTabId]:Hide()
-    end
     self:LayoutTabs()
-    if not enabled and self.currentTab == self.damageTabId then
-        self:SelectTab(1)
-    end
 end
 
 function UI:ShouldShowUpdateTab()
@@ -2567,7 +2561,7 @@ function UI:CreateLootTab(page)
     local tableWidget = createTableWidget(inset, "GoalsLootTable", {
         columns = {
             { key = "time", title = "Time", width = 60, justify = "LEFT", wrap = false },
-            { key = "item", title = "Item", width = 260, justify = "LEFT", wrap = false },
+            { key = "item", title = "Item", width = 200, justify = "LEFT", wrap = false },
             { key = "player", title = "Player", width = 120, justify = "LEFT", wrap = false },
             { key = "notes", title = "Notes", fill = true, justify = "LEFT", wrap = false },
         },
@@ -2985,6 +2979,50 @@ local function fitWishlistLabel(label, text, maxLines)
         label:SetText(best)
     else
         label:SetText("...")
+    end
+end
+
+local function fitLabelToWidth(label, text)
+    if not label then
+        return
+    end
+    local raw = text or ""
+    label:SetText(raw)
+    local maxWidth = label:GetWidth() or 0
+    if maxWidth <= 0 then
+        return
+    end
+    if label:GetStringWidth() <= maxWidth then
+        return
+    end
+    local left, right = 1, #raw
+    local best = "..."
+    while left <= right do
+        local mid = math.floor((left + right) / 2)
+        local candidate = raw:sub(1, mid) .. "..."
+        label:SetText(candidate)
+        if label:GetStringWidth() <= maxWidth then
+            best = candidate
+            left = mid + 1
+        else
+            right = mid - 1
+        end
+    end
+    label:SetText(best)
+end
+
+local function setLootItemLabelText(label, text)
+    if not label then
+        return
+    end
+    local raw = text or ""
+    local color, name = raw:match("|c(%x%x%x%x%x%x%x%x)|H.-|h%[(.-)%]|h|r")
+    if color and name then
+        fitLabelToWidth(label, name)
+        local trimmed = label:GetText() or ""
+        label:SetText("|c" .. color .. trimmed .. "|r")
+    else
+        fitLabelToWidth(label, raw)
     end
 end
 
@@ -4889,18 +4927,8 @@ function UI:CreateDamageTrackerTab(page)
         return check
     end
 
-    addSectionHeader("Tracking")
-    local combatLogCheck = addCheck(L.CHECK_COMBAT_LOG_TRACKING, function(selfBtn)
-        local enabled = selfBtn:GetChecked() and true or false
-        if Goals.DamageTracker and Goals.DamageTracker.SetEnabled then
-            Goals.DamageTracker:SetEnabled(enabled)
-        else
-            Goals.db.settings.combatLogTracking = enabled
-        end
-    end)
-    self.combatLogTrackingCheck = combatLogCheck
-
-    local filterLabel = createLabel(optionsContent, "Filter", "GameFontNormal")
+    addSectionHeader("Filter")
+    local filterLabel = createLabel(optionsContent, "Show", "GameFontNormal")
     filterLabel:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
     y = y - 20
 
@@ -4920,6 +4948,8 @@ function UI:CreateDamageTrackerTab(page)
     self.damageTrackerFilter = L.DAMAGE_TRACKER_ALL
     y = y - 30
 
+    y = y - 6
+    addSectionHeader("Tracking")
     local combatLogHealingCheck = addCheck(L.CHECK_COMBAT_LOG_HEALING, function(selfBtn)
         Goals.db.settings.combatLogHealing = selfBtn:GetChecked() and true or false
     end)
@@ -7791,7 +7821,7 @@ function UI:UpdateLootHistoryList()
 
             if row.cols then
                 if row.cols.item then
-                    row.cols.item:SetText(itemText or "")
+                    setLootItemLabelText(row.cols.item, itemText or "")
                 end
                 if row.cols.player then
                     row.cols.player:SetText(playerText or "")
@@ -8034,11 +8064,8 @@ function UI:Refresh()
     if self.autoMinimizeCheck then
         self.autoMinimizeCheck:SetChecked(Goals.db.settings.autoMinimizeCombat and true or false)
     end
-    if self.combatLogTrackingCheck then
-        self.combatLogTrackingCheck:SetChecked(Goals.db.settings.combatLogTracking and true or false)
-    end
     if self.combatLogHealingCheck then
-        local enabled = Goals.db.settings.combatLogTracking and true or false
+        local enabled = true
         self.combatLogHealingCheck:SetChecked(Goals.db.settings.combatLogHealing and true or false)
         if self.combatLogHealingCheck.SetAlpha then
             self.combatLogHealingCheck:SetAlpha(enabled and 1 or 0.6)
@@ -8054,7 +8081,7 @@ function UI:Refresh()
         end
     end
     if self.combatLogBigDamageCheck then
-        local enabled = Goals.db.settings.combatLogTracking and true or false
+        local enabled = true
         self.combatLogBigDamageCheck:SetChecked(Goals.db.settings.combatLogShowBig and true or false)
         if self.combatLogBigDamageCheck.SetAlpha then
             self.combatLogBigDamageCheck:SetAlpha(enabled and 1 or 0.6)
@@ -8070,7 +8097,7 @@ function UI:Refresh()
         end
     end
     if self.combatLogBigHealingCheck then
-        local enabled = Goals.db.settings.combatLogTracking and true or false
+        local enabled = true
         self.combatLogBigHealingCheck:SetChecked(Goals.db.settings.combatLogBigIncludeHealing and true or false)
         if self.combatLogBigHealingCheck.SetAlpha then
             local alpha = enabled and (Goals.db.settings.combatLogShowBig and 1 or 0.6) or 0.6
@@ -8087,7 +8114,7 @@ function UI:Refresh()
         end
     end
     if self.combatLogCombinePeriodicCheck then
-        local enabled = Goals.db.settings.combatLogTracking and true or false
+        local enabled = true
         self.combatLogCombinePeriodicCheck:SetChecked(Goals.db.settings.combatLogCombinePeriodic and true or false)
         if self.combatLogCombinePeriodicCheck.SetAlpha then
             self.combatLogCombinePeriodicCheck:SetAlpha(enabled and 1 or 0.6)

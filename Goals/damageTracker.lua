@@ -83,7 +83,7 @@ local function normalizeName(name)
 end
 
 function DamageTracker:IsEnabled()
-    return Goals.db and Goals.db.settings and Goals.db.settings.combatLogTracking and true or false
+    return true
 end
 
 function DamageTracker:IsHealingEnabled()
@@ -95,21 +95,20 @@ function DamageTracker:Init()
     Goals.state.damageLog = Goals.state.damageLog or {}
     self.rosterGuids = self.rosterGuids or {}
     self.rosterNames = self.rosterNames or {}
-    if self:IsEnabled() then
-        self:ClearLog()
-        self:RefreshRoster()
+    if Goals.db and Goals.db.settings then
+        Goals.db.settings.combatLogTracking = true
     end
+    self:ClearLog()
+    self:RefreshRoster()
 end
 
 function DamageTracker:SetEnabled(enabled)
     if not (Goals.db and Goals.db.settings) then
         return
     end
-    Goals.db.settings.combatLogTracking = enabled and true or false
-    if enabled then
-        self:ClearLog()
-        self:RefreshRoster()
-    end
+    Goals.db.settings.combatLogTracking = true
+    self:ClearLog()
+    self:RefreshRoster()
     if Goals.UI and Goals.UI.UpdateDamageTabVisibility then
         Goals.UI:UpdateDamageTabVisibility()
     end
