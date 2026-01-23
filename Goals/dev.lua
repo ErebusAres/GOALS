@@ -86,6 +86,12 @@ function Dev:ToggleDebug()
 end
 
 local function ensureCombatTrackerEnabled(requireHealing)
+    if not (Goals and Goals.DamageTracker and Goals.DamageTracker.AddEntry) then
+        if Goals and Goals.Print then
+            Goals:Print("Combat tracker module missing. Update the addon and /reload.")
+        end
+        return false
+    end
     local enabled = Goals and Goals.db and Goals.db.settings and Goals.db.settings.combatLogTracking
     if not enabled and Goals and Goals.DamageTracker and Goals.DamageTracker.IsEnabled then
         enabled = Goals.DamageTracker:IsEnabled()
