@@ -352,6 +352,9 @@ local function setCheckText(check, text)
         label:SetPoint("LEFT", check, "RIGHT", 2, 0)
         check.Text = label
     end
+    if label.SetFontObject then
+        label:SetFontObject("GameFontHighlightSmall")
+    end
     if label then
         label:SetText(text or "")
     end
@@ -424,7 +427,11 @@ function UI:UpdateRainbowRows()
             if data.kind == "loot" then
                 local eventCol = row.cols.event or row.cols.item
                 if eventCol then
-                    eventCol:SetText(data.itemLink or "")
+                    if row.cols and eventCol == row.cols.item then
+                        setLootItemLabelText(eventCol, data.itemLink or "")
+                    else
+                        eventCol:SetText(data.itemLink or "")
+                    end
                 end
                 if row.cols.player then
                     row.cols.player:SetText(formatPlayersCount(data.count))
@@ -2032,7 +2039,7 @@ function UI:CreateOverviewTab(page)
     applyInsetTheme(rosterInset)
     rosterInset:SetPoint("TOPLEFT", page, "TOPLEFT", 8, -12)
     rosterInset:SetPoint("BOTTOMLEFT", page, "BOTTOMLEFT", 8, 8)
-    rosterInset:SetPoint("RIGHT", optionsPanel, "LEFT", -12, 0)
+    rosterInset:SetPoint("RIGHT", optionsPanel, "LEFT", -10, 0)
     self.rosterInset = rosterInset
 
     local tableWidget = createTableWidget(rosterInset, "GoalsRosterTable", {
@@ -2188,23 +2195,23 @@ function UI:CreateOverviewTab(page)
         local label = createLabel(optionsContent, text, "GameFontNormal")
         label:SetPoint("LEFT", bar, "LEFT", 6, 0)
         label:SetTextColor(0.92, 0.8, 0.5, 1)
-        y = y - 24
+        y = y - 22
         return label, bar
     end
 
     local function addLabel(text)
-        local label = createLabel(optionsContent, text, "GameFontNormal")
+        local label = createLabel(optionsContent, text, "GameFontHighlightSmall")
         label:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
-        y = y - 20
+        y = y - 18
         return label
     end
 
     local function addCheck(text, onClick)
         local check = CreateFrame("CheckButton", nil, optionsContent, "UICheckButtonTemplate")
-        check:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 6, y)
+        check:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
         setCheckText(check, text)
         check:SetScript("OnClick", onClick)
-        y = y - 24
+        y = y - 22
         return check
     end
 
@@ -2212,7 +2219,7 @@ function UI:CreateOverviewTab(page)
     local sortLabel = addLabel(L.LABEL_SORT)
     local sortDrop = CreateFrame("Frame", "GoalsSortDropdown", optionsContent, "UIDropDownMenuTemplate")
     sortDrop:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", -6, y)
-    styleDropdown(sortDrop, 140)
+    styleDropdown(sortDrop, 160)
     self.sortDropdown = sortDrop
     self:SetupSortDropdown(sortDrop)
     y = y - 30
@@ -2233,7 +2240,7 @@ function UI:CreateOverviewTab(page)
     disableGainStatus:SetJustifyH("LEFT")
     disableGainStatus:Hide()
     self.disablePointGainStatus = disableGainStatus
-    y = y - 20
+    y = y - 18
 
     y = y - 6
     addSectionHeader("General")
@@ -2294,7 +2301,7 @@ function UI:CreateOverviewTab(page)
     y = y - 20
 
     local syncRequestBtn = CreateFrame("Button", nil, optionsContent, "UIPanelButtonTemplate")
-    syncRequestBtn:SetSize(170, 20)
+    syncRequestBtn:SetSize(160, 20)
     syncRequestBtn:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
     syncRequestBtn:SetText("Ask for sync")
     syncRequestBtn:SetScript("OnClick", function()
@@ -2345,7 +2352,7 @@ function UI:CreateOverviewTab(page)
     trackAdmin(playerLabel)
     local playerDrop = CreateFrame("Frame", "GoalsManualPlayerDropdown", optionsContent, "UIDropDownMenuTemplate")
     playerDrop:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", -10, y)
-    styleDropdown(playerDrop, 140)
+    styleDropdown(playerDrop, 160)
     playerDrop.colorize = true
     self.manualPlayerDropdown = playerDrop
     trackAdmin(playerDrop)
@@ -2422,11 +2429,11 @@ function UI:CreateOverviewTab(page)
 
     local function addActionButton(text, onClick)
         local btn = CreateFrame("Button", nil, optionsContent, "UIPanelButtonTemplate")
-        btn:SetSize(170, 20)
+        btn:SetSize(160, 20)
         btn:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
         btn:SetText(text)
         btn:SetScript("OnClick", onClick)
-        y = y - 24
+        y = y - 22
         return btn
     end
 
@@ -2555,7 +2562,7 @@ function UI:CreateLootTab(page)
     applyInsetTheme(inset)
     inset:SetPoint("TOPLEFT", page, "TOPLEFT", 8, -12)
     inset:SetPoint("BOTTOMLEFT", page, "BOTTOMLEFT", 8, 8)
-    inset:SetPoint("RIGHT", optionsPanel, "LEFT", -12, 0)
+    inset:SetPoint("RIGHT", optionsPanel, "LEFT", -10, 0)
     self.lootHistoryInset = inset
 
     local tableWidget = createTableWidget(inset, "GoalsLootTable", {
@@ -2663,33 +2670,33 @@ function UI:CreateLootTab(page)
         local label = createLabel(optionsContent, text, "GameFontNormal")
         label:SetPoint("LEFT", bar, "LEFT", 6, 0)
         label:SetTextColor(0.92, 0.8, 0.5, 1)
-        y = y - 24
+        y = y - 22
         return label, bar
     end
 
     local function addLabel(text)
-        local label = createLabel(optionsContent, text, "GameFontNormal")
+        local label = createLabel(optionsContent, text, "GameFontHighlightSmall")
         label:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
-        y = y - 20
+        y = y - 18
         return label
     end
 
     local function addCheck(text, onClick)
         local check = CreateFrame("CheckButton", nil, optionsContent, "UICheckButtonTemplate")
-        check:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 6, y)
+        check:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
         setCheckText(check, text)
         check:SetScript("OnClick", onClick)
-        y = y - 24
+        y = y - 22
         return check
     end
 
     local function addButton(text, onClick)
         local btn = CreateFrame("Button", nil, optionsContent, "UIPanelButtonTemplate")
-        btn:SetSize(170, 20)
+        btn:SetSize(160, 20)
         btn:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
         btn:SetText(text)
         btn:SetScript("OnClick", onClick)
-        y = y - 24
+        y = y - 22
         return btn
     end
 
@@ -2832,7 +2839,7 @@ function UI:CreateHistoryTab(page)
     applyInsetTheme(inset)
     inset:SetPoint("TOPLEFT", page, "TOPLEFT", 8, -12)
     inset:SetPoint("BOTTOMLEFT", page, "BOTTOMLEFT", 8, 8)
-    inset:SetPoint("RIGHT", optionsPanel, "LEFT", -12, 0)
+    inset:SetPoint("RIGHT", optionsPanel, "LEFT", -10, 0)
     self.historyInset = inset
 
     local tableWidget = createTableWidget(inset, "GoalsHistoryTable", {
@@ -2866,26 +2873,26 @@ function UI:CreateHistoryTab(page)
         local label = createLabel(optionsContent, text, "GameFontNormal")
         label:SetPoint("LEFT", bar, "LEFT", 6, 0)
         label:SetTextColor(0.92, 0.8, 0.5, 1)
-        y = y - 24
+        y = y - 22
         return label, bar
     end
 
     local function addLabel(text)
-        local label = createLabel(optionsContent, text, "GameFontNormal")
+        local label = createLabel(optionsContent, text, "GameFontHighlightSmall")
         label:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
-        y = y - 20
+        y = y - 18
         return label
     end
 
     local function addCheck(text, key)
         local check = CreateFrame("CheckButton", nil, optionsContent, "UICheckButtonTemplate")
-        check:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 6, y)
+        check:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
         setCheckText(check, text)
         check:SetScript("OnClick", function(selfBtn)
             Goals.db.settings[key] = selfBtn:GetChecked() and true or false
             UI:UpdateHistoryList()
         end)
-        y = y - 24
+        y = y - 22
         return check
     end
 
@@ -2922,7 +2929,7 @@ function UI:CreateHistoryTab(page)
 
     local minQualityDrop = CreateFrame("Frame", "GoalsHistoryMinQuality", optionsContent, "UIDropDownMenuTemplate")
     minQualityDrop:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", -4, y)
-    styleDropdown(minQualityDrop, 140)
+    styleDropdown(minQualityDrop, 160)
     minQualityDrop.options = getQualityOptions()
     UIDropDownMenu_Initialize(minQualityDrop, function(_, level)
         for _, option in ipairs(minQualityDrop.options) do
@@ -4837,7 +4844,7 @@ function UI:CreateDamageTrackerTab(page)
     applyInsetTheme(inset)
     inset:SetPoint("TOPLEFT", page, "TOPLEFT", 8, -12)
     inset:SetPoint("BOTTOMLEFT", page, "BOTTOMLEFT", 8, 8)
-    inset:SetPoint("RIGHT", optionsPanel, "LEFT", -12, 0)
+    inset:SetPoint("RIGHT", optionsPanel, "LEFT", -10, 0)
 
     local tableWidget = createTableWidget(inset, "GoalsDamageTrackerTable", {
         columns = {
@@ -4914,21 +4921,21 @@ function UI:CreateDamageTrackerTab(page)
         local label = createLabel(optionsContent, text, "GameFontNormal")
         label:SetPoint("LEFT", bar, "LEFT", 6, 0)
         label:SetTextColor(0.92, 0.8, 0.5, 1)
-        y = y - 24
+        y = y - 22
         return label, bar
     end
 
     local function addCheck(text, onClick)
         local check = CreateFrame("CheckButton", nil, optionsContent, "UICheckButtonTemplate")
-        check:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 6, y)
+        check:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
         setCheckText(check, text)
         check:SetScript("OnClick", onClick)
-        y = y - 24
+        y = y - 22
         return check
     end
 
     addSectionHeader("Filter")
-    local filterLabel = createLabel(optionsContent, "Show", "GameFontNormal")
+    local filterLabel = createLabel(optionsContent, "Show", "GameFontHighlightSmall")
     filterLabel:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
     y = y - 20
 
