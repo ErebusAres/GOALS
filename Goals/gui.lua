@@ -175,6 +175,16 @@ local function styleOptionsButton(button, width)
     end
 end
 
+local function styleOptionsCheck(check)
+    if not check then
+        return
+    end
+    check:SetSize(18, 18)
+    if check.SetHitRectInsets then
+        check:SetHitRectInsets(0, 0, 0, 0)
+    end
+end
+
 local function getScrollBar(frame)
     if not frame then
         return nil
@@ -771,24 +781,36 @@ local function styleDropdown(dropdown, width)
     if left then
         left:Show()
         left:SetAlpha(0.85)
+        left:SetHeight(18)
     end
     if middle then
         middle:Show()
         middle:SetAlpha(0.85)
+        middle:SetHeight(18)
     end
     if right then
         right:Show()
         right:SetAlpha(0.85)
+        right:SetHeight(18)
     end
     local button = getDropDownPart(dropdown, "Button")
     if button then
         button:ClearAllPoints()
         button:SetPoint("RIGHT", dropdown, "RIGHT", -2, 0)
         button:SetAlpha(0.9)
+        button:SetSize(18, 18)
+        button:SetNormalTexture("Interface\\ChatFrame\\UI-ChatIcon-ScrollDown-Up")
+        button:SetPushedTexture("Interface\\ChatFrame\\UI-ChatIcon-ScrollDown-Down")
+        button:SetDisabledTexture("Interface\\ChatFrame\\UI-ChatIcon-ScrollDown-Disabled")
+        button:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
     end
     local text = getDropDownPart(dropdown, "Text")
     if text and text.SetTextColor then
         text:SetTextColor(0.92, 0.8, 0.5, 1)
+        text:ClearAllPoints()
+        text:SetPoint("LEFT", dropdown, "LEFT", 8, 1)
+        text:SetPoint("RIGHT", dropdown, "RIGHT", -24, 0)
+        text:SetJustifyH("LEFT")
     end
 end
 
@@ -2265,6 +2287,11 @@ function UI:CreateOverviewTab(page)
         bar:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 4, y)
         bar:SetPoint("TOPRIGHT", optionsContent, "TOPRIGHT", -4, y)
         bar:SetTexture(0, 0, 0, 0.45)
+        local barLine = optionsContent:CreateTexture(nil, "BORDER")
+        barLine:SetHeight(1)
+        barLine:SetPoint("BOTTOMLEFT", bar, "BOTTOMLEFT", 0, 0)
+        barLine:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", 0, 0)
+        barLine:SetTexture(1, 1, 1, 0.08)
         local label = createLabel(optionsContent, text, "GameFontNormal")
         label:SetPoint("LEFT", bar, "LEFT", 6, 0)
         label:SetTextColor(0.92, 0.8, 0.5, 1)
@@ -2282,6 +2309,7 @@ function UI:CreateOverviewTab(page)
     local function addCheck(text, onClick)
         local check = CreateFrame("CheckButton", nil, optionsContent, "UICheckButtonTemplate")
         check:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
+        styleOptionsCheck(check)
         setCheckText(check, text)
         check:SetScript("OnClick", onClick)
         y = y - 22
@@ -2740,6 +2768,11 @@ function UI:CreateLootTab(page)
         bar:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 4, y)
         bar:SetPoint("TOPRIGHT", optionsContent, "TOPRIGHT", -4, y)
         bar:SetTexture(0, 0, 0, 0.45)
+        local barLine = optionsContent:CreateTexture(nil, "BORDER")
+        barLine:SetHeight(1)
+        barLine:SetPoint("BOTTOMLEFT", bar, "BOTTOMLEFT", 0, 0)
+        barLine:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", 0, 0)
+        barLine:SetTexture(1, 1, 1, 0.08)
         local label = createLabel(optionsContent, text, "GameFontNormal")
         label:SetPoint("LEFT", bar, "LEFT", 6, 0)
         label:SetTextColor(0.92, 0.8, 0.5, 1)
@@ -2757,6 +2790,7 @@ function UI:CreateLootTab(page)
     local function addCheck(text, onClick)
         local check = CreateFrame("CheckButton", nil, optionsContent, "UICheckButtonTemplate")
         check:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
+        styleOptionsCheck(check)
         setCheckText(check, text)
         check:SetScript("OnClick", onClick)
         y = y - 22
@@ -2943,6 +2977,11 @@ function UI:CreateHistoryTab(page)
         bar:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 4, y)
         bar:SetPoint("TOPRIGHT", optionsContent, "TOPRIGHT", -4, y)
         bar:SetTexture(0, 0, 0, 0.45)
+        local barLine = optionsContent:CreateTexture(nil, "BORDER")
+        barLine:SetHeight(1)
+        barLine:SetPoint("BOTTOMLEFT", bar, "BOTTOMLEFT", 0, 0)
+        barLine:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", 0, 0)
+        barLine:SetTexture(1, 1, 1, 0.08)
         local label = createLabel(optionsContent, text, "GameFontNormal")
         label:SetPoint("LEFT", bar, "LEFT", 6, 0)
         label:SetTextColor(0.92, 0.8, 0.5, 1)
@@ -2960,6 +2999,7 @@ function UI:CreateHistoryTab(page)
     local function addCheck(text, key)
         local check = CreateFrame("CheckButton", nil, optionsContent, "UICheckButtonTemplate")
         check:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
+        styleOptionsCheck(check)
         setCheckText(check, text)
         check:SetScript("OnClick", function(selfBtn)
             Goals.db.settings[key] = selfBtn:GetChecked() and true or false
@@ -4955,6 +4995,11 @@ function UI:CreateDamageTrackerTab(page)
         bar:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 4, y)
         bar:SetPoint("TOPRIGHT", optionsContent, "TOPRIGHT", -4, y)
         bar:SetTexture(0, 0, 0, 0.45)
+        local barLine = optionsContent:CreateTexture(nil, "BORDER")
+        barLine:SetHeight(1)
+        barLine:SetPoint("BOTTOMLEFT", bar, "BOTTOMLEFT", 0, 0)
+        barLine:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", 0, 0)
+        barLine:SetTexture(1, 1, 1, 0.08)
         local label = createLabel(optionsContent, text, "GameFontNormal")
         label:SetPoint("LEFT", bar, "LEFT", 6, 0)
         label:SetTextColor(0.92, 0.8, 0.5, 1)
@@ -4965,6 +5010,7 @@ function UI:CreateDamageTrackerTab(page)
     local function addCheck(text, onClick)
         local check = CreateFrame("CheckButton", nil, optionsContent, "UICheckButtonTemplate")
         check:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
+        styleOptionsCheck(check)
         setCheckText(check, text)
         check:SetScript("OnClick", onClick)
         y = y - 22

@@ -28,6 +28,8 @@ Goal: reshape GOALS UI to match Ouro Loot’s layout and readability while **kee
 - Dropdowns now show the WoW dropdown box again (soft alpha), gold-tinted text; options panel dropdowns set to ~156px to align with buttons.
 - Spacing tightened across the right panels.
 - Options panel buttons standardized to ~156px wide and 18px high; small action buttons sized proportionally.
+- Options panel checkboxes now use smaller 18px boxes; labels aligned consistently.
+- Options section headers now include a subtle bottom divider line (OL-like separation).
 
 ### Combat Log Tracking
 - Combat log is **always enabled** right now.
@@ -60,6 +62,7 @@ Goal: reshape GOALS UI to match Ouro Loot’s layout and readability while **kee
 - Continue tightening spacing where needed (labels, dropdowns, checkbox groups).
 - Validate options panel widths/spacing on Overview/Loot/History/Combat.
 - Ensure dropdowns/buttons align vertically in neat columns with consistent 156px width.
+- Verify dropdown box styling (alpha, arrow button textures) matches OL vibe.
 
 ### Table Look + Feel
 - Verify all tables use consistent header height/spacing across tabs.
