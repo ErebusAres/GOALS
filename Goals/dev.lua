@@ -86,7 +86,14 @@ function Dev:ToggleDebug()
 end
 
 local function ensureCombatTrackerEnabled(requireHealing)
-    if not (Goals and Goals.DamageTracker and Goals.DamageTracker.IsEnabled and Goals.DamageTracker:IsEnabled()) then
+    local enabled = Goals and Goals.db and Goals.db.settings and Goals.db.settings.combatLogTracking
+    if not enabled and Goals and Goals.DamageTracker and Goals.DamageTracker.IsEnabled then
+        enabled = Goals.DamageTracker:IsEnabled()
+    end
+    if enabled and Goals and Goals.DamageTracker and Goals.DamageTracker.Init then
+        Goals.DamageTracker:Init()
+    end
+    if not enabled then
         if Goals and Goals.Print then
             Goals:Print("Enable Combat Log Tracking first.")
         end

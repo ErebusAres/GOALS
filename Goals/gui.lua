@@ -3884,16 +3884,8 @@ function UI:CreateSettingsTab(page)
     end)
     self.combatLogTrackingCheck = combatLogCheck
 
-    local combatLogHealingCheck = CreateFrame("CheckButton", nil, leftInset, "UICheckButtonTemplate")
-    combatLogHealingCheck:SetPoint("TOPLEFT", combatLogCheck, "BOTTOMLEFT", 0, -8)
-    setCheckText(combatLogHealingCheck, L.CHECK_COMBAT_LOG_HEALING)
-    combatLogHealingCheck:SetScript("OnClick", function(selfBtn)
-        Goals.db.settings.combatLogHealing = selfBtn:GetChecked() and true or false
-    end)
-    self.combatLogHealingCheck = combatLogHealingCheck
-
     local localOnlyCheck = CreateFrame("CheckButton", nil, leftInset, "UICheckButtonTemplate")
-    localOnlyCheck:SetPoint("TOPLEFT", combatLogHealingCheck, "BOTTOMLEFT", 0, -8)
+    localOnlyCheck:SetPoint("TOPLEFT", combatLogCheck, "BOTTOMLEFT", 0, -8)
     setCheckText(localOnlyCheck, "Disable sync (local only)")
     localOnlyCheck:SetScript("OnClick", function(selfBtn)
         Goals.db.settings.localOnly = selfBtn:GetChecked() and true or false
@@ -4146,15 +4138,14 @@ function UI:CreateDamageTrackerTab(page)
     inset:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -8, 8)
 
     local title = createLabel(inset, L.TAB_DAMAGE_TRACKER, "GameFontNormal")
-    local bar = applySectionHeader(title, inset, -6)
-    applySectionCaption(bar, "Combat log")
+    applySectionHeader(title, inset, -6)
 
     local filterLabel = createLabel(inset, "Filter", "GameFontHighlightSmall")
-    filterLabel:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -8)
+    filterLabel:SetPoint("LEFT", title, "RIGHT", 14, 0)
 
     local dropdown = CreateFrame("Frame", "GoalsDamageTrackerDropdown", inset, "UIDropDownMenuTemplate")
-    dropdown:SetPoint("LEFT", filterLabel, "RIGHT", -6, 0)
-    styleDropdown(dropdown, 180)
+    dropdown:SetPoint("LEFT", filterLabel, "RIGHT", 6, -1)
+    styleDropdown(dropdown, 140)
     self:SetupDropdown(dropdown, function()
         return self:GetDamageTrackerDropdownList()
     end, function(value)
@@ -4167,7 +4158,15 @@ function UI:CreateDamageTrackerTab(page)
     self.damageTrackerDropdown = dropdown
     self.damageTrackerFilter = L.DAMAGE_TRACKER_ALL
 
-    local headerY = -40
+    local combatLogHealingCheck = CreateFrame("CheckButton", nil, inset, "UICheckButtonTemplate")
+    combatLogHealingCheck:SetPoint("LEFT", dropdown, "RIGHT", 10, 0)
+    setCheckText(combatLogHealingCheck, L.CHECK_COMBAT_LOG_HEALING)
+    combatLogHealingCheck:SetScript("OnClick", function(selfBtn)
+        Goals.db.settings.combatLogHealing = selfBtn:GetChecked() and true or false
+    end)
+    self.combatLogHealingCheck = combatLogHealingCheck
+
+    local headerY = -34
     local timeHeader = createLabel(inset, "Time", "GameFontHighlightSmall")
     timeHeader:SetPoint("TOPLEFT", inset, "TOPLEFT", 10, headerY)
     timeHeader:SetWidth(DAMAGE_COL_TIME)
