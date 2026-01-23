@@ -33,6 +33,11 @@ local LOOT_HISTORY_ROW_HEIGHT_COMPACT = 18
 local LOOT_ROWS = 18
 local WISHLIST_SLOT_SIZE = 36
 local WISHLIST_ROW_SPACING = 46
+local OPTIONS_PANEL_WIDTH = 220
+local OPTIONS_CONTROL_WIDTH = 156
+local OPTIONS_CONTROL_HEIGHT = 18
+local OPTIONS_HEADER_HEIGHT = 16
+local createLabel
 
 local THEME = {
     frameBg = { 0.08, 0.09, 0.12, 0.95 },
@@ -168,7 +173,7 @@ local function styleOptionsButton(button, width)
     if not button then
         return
     end
-    button:SetSize(width or 156, 18)
+    button:SetSize(width or OPTIONS_CONTROL_WIDTH, OPTIONS_CONTROL_HEIGHT)
     local font = button.GetFontString and button:GetFontString() or nil
     if font and font.SetFontObject then
         font:SetFontObject("GameFontHighlightSmall")
@@ -179,9 +184,101 @@ local function styleOptionsCheck(check)
     if not check then
         return
     end
-    check:SetSize(18, 18)
+    check:SetSize(OPTIONS_CONTROL_HEIGHT, OPTIONS_CONTROL_HEIGHT)
     if check.SetHitRectInsets then
         check:SetHitRectInsets(0, 0, 0, 0)
+    end
+end
+
+local function styleOptionsEditBox(editBox, width)
+    if not editBox then
+        return
+    end
+    editBox:SetHeight(OPTIONS_CONTROL_HEIGHT)
+    if width then
+        editBox:SetWidth(width)
+    else
+        editBox:SetWidth(OPTIONS_CONTROL_WIDTH)
+    end
+    if editBox.SetFontObject then
+        editBox:SetFontObject("GameFontHighlightSmall")
+    end
+    if editBox.SetTextInsets then
+        editBox:SetTextInsets(4, 4, 2, 2)
+    end
+end
+
+local function styleOptionsLabel(label)
+    if not label then
+        return
+    end
+    if label.SetFontObject then
+        label:SetFontObject("GameFontHighlightSmall")
+    end
+    if label.SetTextColor then
+        label:SetTextColor(0.82, 0.86, 0.92, 1)
+    end
+end
+
+local function createOptionsHeader(parent, text, y)
+    if not parent then
+        return nil, nil
+    end
+    local bar = parent:CreateTexture(nil, "BORDER")
+    bar:SetHeight(OPTIONS_HEADER_HEIGHT)
+    bar:SetPoint("TOPLEFT", parent, "TOPLEFT", 4, y or -6)
+    bar:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -4, y or -6)
+    bar:SetTexture(0, 0, 0, 0.5)
+
+    local barLine = parent:CreateTexture(nil, "BORDER")
+    barLine:SetHeight(1)
+    barLine:SetPoint("BOTTOMLEFT", bar, "BOTTOMLEFT", 0, 0)
+    barLine:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", 0, 0)
+    barLine:SetTexture(1, 1, 1, 0.08)
+
+    local label = createLabel(parent, text, "GameFontNormalSmall")
+    label:SetPoint("LEFT", bar, "LEFT", 6, 0)
+    label:SetTextColor(0.92, 0.8, 0.5, 1)
+    return label, bar, barLine
+end
+
+local function createTabFooter(ui, page, key)
+    if not ui or not page then
+        return nil
+    end
+    ui.tabFooters = ui.tabFooters or {}
+    local name = "GoalsTabFooter" .. tostring(key or "")
+    local footer = CreateFrame("Frame", name, page, "GoalsInsetTemplate")
+    applyInsetTheme(footer)
+    footer:SetPoint("BOTTOMLEFT", page, "BOTTOMLEFT", 6, 6)
+    footer:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -6, 6)
+    footer:SetHeight(24)
+
+    local leftText = createLabel(footer, "", "GameFontHighlightSmall")
+    leftText:SetPoint("LEFT", footer, "LEFT", 8, 0)
+    leftText:SetJustifyH("LEFT")
+    footer.leftText = leftText
+
+    local rightText = createLabel(footer, "", "GameFontHighlightSmall")
+    rightText:SetPoint("RIGHT", footer, "RIGHT", -8, 0)
+    rightText:SetJustifyH("RIGHT")
+    footer.rightText = rightText
+
+    footer.key = key
+    ui.tabFooters[key] = footer
+    return footer
+end
+
+local function anchorToFooter(frame, footer, leftOffset, rightOffset, yOffset)
+    if not frame or not footer then
+        return
+    end
+    local y = yOffset or 6
+    if leftOffset ~= nil then
+        frame:SetPoint("BOTTOMLEFT", footer, "TOPLEFT", leftOffset, y)
+    end
+    if rightOffset ~= nil then
+        frame:SetPoint("BOTTOMRIGHT", footer, "TOPRIGHT", rightOffset, y)
     end
 end
 
@@ -227,7 +324,7 @@ end
 local function createOptionsPanel(parent, name, width)
     local panel = CreateFrame("Frame", name, parent, "GoalsInsetTemplate")
     applyInsetTheme(panel)
-    panel:SetWidth(width or 230)
+    panel:SetWidth(width or OPTIONS_PANEL_WIDTH)
     panel:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -8, -12)
     panel:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -8, 8)
 
@@ -237,7 +334,7 @@ local function createOptionsPanel(parent, name, width)
     panel.scroll = scroll
 
     local content = CreateFrame("Frame", name .. "Content", scroll)
-    content:SetWidth((width or 230) - 30)
+    content:SetWidth((width or OPTIONS_PANEL_WIDTH) - 30)
     scroll:SetScrollChild(content)
     panel.content = content
 
@@ -342,7 +439,7 @@ local function createTableWidget(parent, name, config)
 
     return widget
 end
-local function createLabel(parent, text, template)
+createLabel = function(parent, text, template)
     local label = parent:CreateFontString(nil, "ARTWORK", template or "GameFontNormal")
     label:SetText(text or "")
     return label
@@ -377,11 +474,8 @@ local function setCheckText(check, text)
             label:ClearAllPoints()
         end
         label:SetPoint("LEFT", check, "RIGHT", 4, 0)
-        if label.SetFontObject then
-            label:SetFontObject("GameFontHighlightSmall")
-        end
+        styleOptionsLabel(label)
         label:SetText(text or "")
-        label:SetTextColor(0.85, 0.88, 0.95, 1)
     end
 end
 
@@ -773,40 +867,44 @@ local function getQualityOptions()
 end
 
 local function styleDropdown(dropdown, width)
-    UIDropDownMenu_SetWidth(dropdown, width or 120)
+    UIDropDownMenu_SetWidth(dropdown, width or OPTIONS_CONTROL_WIDTH)
     UIDropDownMenu_JustifyText(dropdown, "LEFT")
+    dropdown:SetHeight(OPTIONS_CONTROL_HEIGHT)
     local left = getDropDownPart(dropdown, "Left")
     local middle = getDropDownPart(dropdown, "Middle")
     local right = getDropDownPart(dropdown, "Right")
     if left then
         left:Show()
-        left:SetAlpha(0.85)
-        left:SetHeight(18)
+        left:SetAlpha(0.88)
+        left:SetHeight(OPTIONS_CONTROL_HEIGHT)
     end
     if middle then
         middle:Show()
-        middle:SetAlpha(0.85)
-        middle:SetHeight(18)
+        middle:SetAlpha(0.88)
+        middle:SetHeight(OPTIONS_CONTROL_HEIGHT)
     end
     if right then
         right:Show()
-        right:SetAlpha(0.85)
-        right:SetHeight(18)
+        right:SetAlpha(0.88)
+        right:SetHeight(OPTIONS_CONTROL_HEIGHT)
     end
     local button = getDropDownPart(dropdown, "Button")
     if button then
         button:ClearAllPoints()
         button:SetPoint("RIGHT", dropdown, "RIGHT", -2, 0)
         button:SetAlpha(0.9)
-        button:SetSize(18, 18)
+        button:SetSize(OPTIONS_CONTROL_HEIGHT, OPTIONS_CONTROL_HEIGHT)
         button:SetNormalTexture("Interface\\ChatFrame\\UI-ChatIcon-ScrollDown-Up")
         button:SetPushedTexture("Interface\\ChatFrame\\UI-ChatIcon-ScrollDown-Down")
         button:SetDisabledTexture("Interface\\ChatFrame\\UI-ChatIcon-ScrollDown-Disabled")
         button:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
     end
     local text = getDropDownPart(dropdown, "Text")
-    if text and text.SetTextColor then
-        text:SetTextColor(0.92, 0.8, 0.5, 1)
+    if text then
+        styleOptionsLabel(text)
+        if text.SetTextColor then
+            text:SetTextColor(0.92, 0.8, 0.5, 1)
+        end
         text:ClearAllPoints()
         text:SetPoint("LEFT", dropdown, "LEFT", 8, 1)
         text:SetPoint("RIGHT", dropdown, "RIGHT", -24, 0)
@@ -1795,6 +1893,7 @@ function UI:CreateMainFrame()
         page:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -14, 12)
         page:Hide()
         self.pages[i] = page
+        page.footer = createTabFooter(self, page, def.key)
 
         local createFunc = self[def.create]
         if createFunc then
@@ -1840,6 +1939,25 @@ function UI:UpdateDamageTabVisibility()
     local enabled = true
     setShown(self.damageTab, enabled)
     self:LayoutTabs()
+end
+
+function UI:UpdateTabFooters()
+    if not self.tabFooters then
+        return
+    end
+    local access = hasModifyAccess() and "Access: Admin" or "Access: Viewer (no changes)"
+    local localOnly = (Goals.db and Goals.db.settings and Goals.db.settings.localOnly) and "Local only" or "Sync enabled"
+    local dis = self.GetDisenchanterStatus and self:GetDisenchanterStatus() or "None set"
+    local rightText = string.format("Tracking: Enabled | Disenchanter: %s", dis)
+    local leftText = string.format("%s | %s", access, localOnly)
+    for _, footer in pairs(self.tabFooters) do
+        if footer.leftText then
+            footer.leftText:SetText(leftText)
+        end
+        if footer.rightText then
+            footer.rightText:SetText(rightText)
+        end
+    end
 end
 
 function UI:ShouldShowUpdateTab()
@@ -2136,6 +2254,10 @@ function UI:CreateOverviewTab(page)
     rosterInset:SetPoint("BOTTOMLEFT", page, "BOTTOMLEFT", 8, 8)
     rosterInset:SetPoint("RIGHT", optionsPanel, "LEFT", -10, 0)
     self.rosterInset = rosterInset
+    if page.footer then
+        anchorToFooter(rosterInset, page.footer, 2, nil, 6)
+        anchorToFooter(optionsPanel, page.footer, nil, -2, 6)
+    end
 
     local tableWidget = createTableWidget(rosterInset, "GoalsRosterTable", {
         columns = {
@@ -2282,19 +2404,7 @@ function UI:CreateOverviewTab(page)
     end
     self.overviewAdminControls = adminControls
     local function addSectionHeader(text)
-        local bar = optionsContent:CreateTexture(nil, "BORDER")
-        bar:SetHeight(16)
-        bar:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 4, y)
-        bar:SetPoint("TOPRIGHT", optionsContent, "TOPRIGHT", -4, y)
-        bar:SetTexture(0, 0, 0, 0.45)
-        local barLine = optionsContent:CreateTexture(nil, "BORDER")
-        barLine:SetHeight(1)
-        barLine:SetPoint("BOTTOMLEFT", bar, "BOTTOMLEFT", 0, 0)
-        barLine:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", 0, 0)
-        barLine:SetTexture(1, 1, 1, 0.08)
-        local label = createLabel(optionsContent, text, "GameFontNormal")
-        label:SetPoint("LEFT", bar, "LEFT", 6, 0)
-        label:SetTextColor(0.92, 0.8, 0.5, 1)
+        local label, bar = createOptionsHeader(optionsContent, text, y)
         y = y - 20
         return label, bar
     end
@@ -2302,6 +2412,7 @@ function UI:CreateOverviewTab(page)
     local function addLabel(text)
         local label = createLabel(optionsContent, text, "GameFontHighlightSmall")
         label:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
+        styleOptionsLabel(label)
         y = y - 18
         return label
     end
@@ -2319,7 +2430,7 @@ function UI:CreateOverviewTab(page)
     addSectionHeader("Roster")
     local sortLabel = addLabel(L.LABEL_SORT)
     local sortDrop = CreateFrame("Frame", "GoalsSortDropdown", optionsContent, "UIDropDownMenuTemplate")
-    sortDrop:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", -6, y)
+    sortDrop:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", -10, y)
     styleDropdown(sortDrop, 156)
     self.sortDropdown = sortDrop
     self:SetupSortDropdown(sortDrop)
@@ -2466,8 +2577,9 @@ function UI:CreateOverviewTab(page)
     y = y - 30
 
     local amountBox = CreateFrame("EditBox", nil, optionsContent, "InputBoxTemplate")
-    amountBox:SetSize(60, 20)
+    amountBox:SetSize(60, 18)
     amountBox:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
+    styleOptionsEditBox(amountBox, 60)
     amountBox:SetAutoFocus(false)
     amountBox:SetNumeric(true)
     amountBox:SetNumber(1)
@@ -2665,6 +2777,10 @@ function UI:CreateLootTab(page)
     inset:SetPoint("BOTTOMLEFT", page, "BOTTOMLEFT", 8, 8)
     inset:SetPoint("RIGHT", optionsPanel, "LEFT", -10, 0)
     self.lootHistoryInset = inset
+    if page.footer then
+        anchorToFooter(inset, page.footer, 2, nil, 6)
+        anchorToFooter(optionsPanel, page.footer, nil, -2, 6)
+    end
 
     local tableWidget = createTableWidget(inset, "GoalsLootTable", {
         columns = {
@@ -2763,19 +2879,7 @@ function UI:CreateLootTab(page)
 
     local y = -6
     local function addSectionHeader(text)
-        local bar = optionsContent:CreateTexture(nil, "BORDER")
-        bar:SetHeight(16)
-        bar:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 4, y)
-        bar:SetPoint("TOPRIGHT", optionsContent, "TOPRIGHT", -4, y)
-        bar:SetTexture(0, 0, 0, 0.45)
-        local barLine = optionsContent:CreateTexture(nil, "BORDER")
-        barLine:SetHeight(1)
-        barLine:SetPoint("BOTTOMLEFT", bar, "BOTTOMLEFT", 0, 0)
-        barLine:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", 0, 0)
-        barLine:SetTexture(1, 1, 1, 0.08)
-        local label = createLabel(optionsContent, text, "GameFontNormal")
-        label:SetPoint("LEFT", bar, "LEFT", 6, 0)
-        label:SetTextColor(0.92, 0.8, 0.5, 1)
+        local label, bar = createOptionsHeader(optionsContent, text, y)
         y = y - 20
         return label, bar
     end
@@ -2783,6 +2887,7 @@ function UI:CreateLootTab(page)
     local function addLabel(text)
         local label = createLabel(optionsContent, text, "GameFontHighlightSmall")
         label:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
+        styleOptionsLabel(label)
         y = y - 18
         return label
     end
@@ -2823,7 +2928,7 @@ function UI:CreateLootTab(page)
     addLabel(L.LABEL_LOOT_HISTORY_FILTER)
 
     local minFilterDrop = CreateFrame("Frame", "GoalsLootHistoryMinQuality", optionsContent, "UIDropDownMenuTemplate")
-    minFilterDrop:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", -6, y)
+    minFilterDrop:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", -10, y)
     styleDropdown(minFilterDrop, 156)
     minFilterDrop.options = getQualityOptions()
     UIDropDownMenu_Initialize(minFilterDrop, function(_, level)
@@ -2867,7 +2972,7 @@ function UI:CreateLootTab(page)
 
     local minLabel = addLabel(L.LABEL_MIN_RESET_QUALITY)
     local minDrop = CreateFrame("Frame", "GoalsResetQualityDropdown", optionsContent, "UIDropDownMenuTemplate")
-    minDrop:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", -6, y)
+    minDrop:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", -10, y)
     styleDropdown(minDrop, 156)
     self.resetQualityDropdown = minDrop
     self:SetupResetQualityDropdown(minDrop)
@@ -2878,6 +2983,7 @@ function UI:CreateLootTab(page)
 
     local selectedLabel = createLabel(optionsContent, "Selected:", "GameFontHighlightSmall")
     selectedLabel:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
+    styleOptionsLabel(selectedLabel)
     y = y - 18
     local selectedValue = createLabel(optionsContent, "None", "GameFontHighlightSmall")
     selectedValue:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
@@ -2889,6 +2995,7 @@ function UI:CreateLootTab(page)
     local notesBox = CreateFrame("EditBox", nil, optionsContent, "InputBoxTemplate")
     notesBox:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
     notesBox:SetSize(156, 18)
+    styleOptionsEditBox(notesBox, 156)
     notesBox:SetAutoFocus(false)
     bindEscapeClear(notesBox)
     notesBox:SetScript("OnEnterPressed", function(selfBox)
@@ -2948,6 +3055,10 @@ function UI:CreateHistoryTab(page)
     inset:SetPoint("BOTTOMLEFT", page, "BOTTOMLEFT", 8, 8)
     inset:SetPoint("RIGHT", optionsPanel, "LEFT", -10, 0)
     self.historyInset = inset
+    if page.footer then
+        anchorToFooter(inset, page.footer, 2, nil, 6)
+        anchorToFooter(optionsPanel, page.footer, nil, -2, 6)
+    end
 
     local tableWidget = createTableWidget(inset, "GoalsHistoryTable", {
         columns = {
@@ -2972,19 +3083,7 @@ function UI:CreateHistoryTab(page)
 
     local y = -6
     local function addSectionHeader(text)
-        local bar = optionsContent:CreateTexture(nil, "BORDER")
-        bar:SetHeight(16)
-        bar:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 4, y)
-        bar:SetPoint("TOPRIGHT", optionsContent, "TOPRIGHT", -4, y)
-        bar:SetTexture(0, 0, 0, 0.45)
-        local barLine = optionsContent:CreateTexture(nil, "BORDER")
-        barLine:SetHeight(1)
-        barLine:SetPoint("BOTTOMLEFT", bar, "BOTTOMLEFT", 0, 0)
-        barLine:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", 0, 0)
-        barLine:SetTexture(1, 1, 1, 0.08)
-        local label = createLabel(optionsContent, text, "GameFontNormal")
-        label:SetPoint("LEFT", bar, "LEFT", 6, 0)
-        label:SetTextColor(0.92, 0.8, 0.5, 1)
+        local label, bar = createOptionsHeader(optionsContent, text, y)
         y = y - 20
         return label, bar
     end
@@ -2992,6 +3091,7 @@ function UI:CreateHistoryTab(page)
     local function addLabel(text)
         local label = createLabel(optionsContent, text, "GameFontHighlightSmall")
         label:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
+        styleOptionsLabel(label)
         y = y - 18
         return label
     end
@@ -3038,10 +3138,11 @@ function UI:CreateHistoryTab(page)
     y = y - 6
     local minQualityLabel = createLabel(optionsContent, L.LABEL_HISTORY_LOOT_MIN_QUALITY, "GameFontHighlightSmall")
     minQualityLabel:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
+    styleOptionsLabel(minQualityLabel)
     y = y - 22
 
     local minQualityDrop = CreateFrame("Frame", "GoalsHistoryMinQuality", optionsContent, "UIDropDownMenuTemplate")
-    minQualityDrop:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", -4, y)
+    minQualityDrop:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", -10, y)
     styleDropdown(minQualityDrop, 156)
     minQualityDrop.options = getQualityOptions()
     UIDropDownMenu_Initialize(minQualityDrop, function(_, level)
@@ -3117,6 +3218,10 @@ function UI:CreateWishlistTab(page)
     rightInset:SetPoint("TOPLEFT", leftInset, "TOPRIGHT", 12, 0)
     rightInset:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -2, 2)
     self.wishlistRightInset = rightInset
+    if page.footer then
+        anchorToFooter(leftInset, page.footer, 0, nil, 6)
+        anchorToFooter(rightInset, page.footer, nil, -8, 6)
+    end
 
     local tabBar = CreateFrame("Frame", nil, rightInset)
     tabBar:SetPoint("TOPLEFT", rightInset, "TOPLEFT", 8, -6)
@@ -4922,6 +5027,10 @@ function UI:CreateDamageTrackerTab(page)
     inset:SetPoint("TOPLEFT", page, "TOPLEFT", 8, -12)
     inset:SetPoint("BOTTOMLEFT", page, "BOTTOMLEFT", 8, 8)
     inset:SetPoint("RIGHT", optionsPanel, "LEFT", -10, 0)
+    if page.footer then
+        anchorToFooter(inset, page.footer, 2, nil, 6)
+        anchorToFooter(optionsPanel, page.footer, nil, -2, 6)
+    end
 
     local tableWidget = createTableWidget(inset, "GoalsDamageTrackerTable", {
         columns = {
@@ -4990,19 +5099,7 @@ function UI:CreateDamageTrackerTab(page)
 
     local y = -6
     local function addSectionHeader(text)
-        local bar = optionsContent:CreateTexture(nil, "BORDER")
-        bar:SetHeight(16)
-        bar:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 4, y)
-        bar:SetPoint("TOPRIGHT", optionsContent, "TOPRIGHT", -4, y)
-        bar:SetTexture(0, 0, 0, 0.45)
-        local barLine = optionsContent:CreateTexture(nil, "BORDER")
-        barLine:SetHeight(1)
-        barLine:SetPoint("BOTTOMLEFT", bar, "BOTTOMLEFT", 0, 0)
-        barLine:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", 0, 0)
-        barLine:SetTexture(1, 1, 1, 0.08)
-        local label = createLabel(optionsContent, text, "GameFontNormal")
-        label:SetPoint("LEFT", bar, "LEFT", 6, 0)
-        label:SetTextColor(0.92, 0.8, 0.5, 1)
+        local label, bar = createOptionsHeader(optionsContent, text, y)
         y = y - 20
         return label, bar
     end
@@ -5020,6 +5117,7 @@ function UI:CreateDamageTrackerTab(page)
     addSectionHeader("Filter")
     local filterLabel = createLabel(optionsContent, "Show", "GameFontHighlightSmall")
     filterLabel:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
+    styleOptionsLabel(filterLabel)
     y = y - 20
 
     local dropdown = CreateFrame("Frame", "GoalsDamageTrackerDropdown", optionsContent, "UIDropDownMenuTemplate")
@@ -5093,6 +5191,10 @@ function UI:CreateHelpTab(page)
     contentInset:SetPoint("TOPLEFT", navInset, "TOPRIGHT", 12, 0)
     contentInset:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -8, 8)
     self.helpContentInset = contentInset
+    if page.footer then
+        anchorToFooter(navInset, page.footer, 2, nil, 6)
+        anchorToFooter(contentInset, page.footer, nil, -2, 6)
+    end
 
     local navTitle = createLabel(navInset, "Help Topics", "GameFontNormal")
     navTitle:SetPoint("TOPLEFT", navInset, "TOPLEFT", 10, -10)
@@ -5662,6 +5764,9 @@ function UI:CreateUpdateTab(page)
     applyInsetTheme(inset)
     inset:SetPoint("TOPLEFT", page, "TOPLEFT", 8, -12)
     inset:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -8, 8)
+    if page.footer then
+        anchorToFooter(inset, page.footer, 2, -2, 6)
+    end
 
     local title = createLabel(inset, L.UPDATE_TITLE, "GameFontNormalLarge")
     title:SetPoint("TOPLEFT", inset, "TOPLEFT", 12, -12)
@@ -5753,6 +5858,9 @@ function UI:CreateDevTab(page)
     applyInsetTheme(inset)
     inset:SetPoint("TOPLEFT", page, "TOPLEFT", 8, -12)
     inset:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -8, 8)
+    if page.footer then
+        anchorToFooter(inset, page.footer, 2, -2, 6)
+    end
 
     local killBtn = CreateFrame("Button", nil, inset, "UIPanelButtonTemplate")
     killBtn:SetSize(160, 20)
@@ -6113,6 +6221,9 @@ function UI:CreateDebugTab(page)
     applyInsetTheme(inset)
     inset:SetPoint("TOPLEFT", page, "TOPLEFT", 8, -12)
     inset:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -8, 8)
+    if page.footer then
+        anchorToFooter(inset, page.footer, 2, -2, 6)
+    end
 
     local title = createLabel(inset, "Debug Log", "GameFontNormal")
     local debugBar = applySectionHeader(title, inset, -6)
@@ -8314,6 +8425,9 @@ function UI:Refresh()
         if self.wishlistPopupSoundToggle.waveIcon then
             setShown(self.wishlistPopupSoundToggle.waveIcon, Goals.db.settings.wishlistPopupSound ~= false)
         end
+    end
+    if self.UpdateTabFooters then
+        self:UpdateTabFooters()
     end
     -- Auto-only announcement channel; no user selection.
     if self.wishlistTemplateBox then
