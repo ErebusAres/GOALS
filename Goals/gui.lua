@@ -11,9 +11,9 @@ local L = Goals.L
 
 local ROW_HEIGHT = 20
 local ROSTER_ROWS = 20
-local HISTORY_ROWS = 17
+local HISTORY_ROWS = 20
 local HISTORY_ROW_HEIGHT_DOUBLE = 26
-local LOOT_HISTORY_ROWS = 15
+local LOOT_HISTORY_ROWS = 20
 local DEBUG_ROWS = 16
 local DEBUG_ROW_HEIGHT = 16
 local DAMAGE_ROWS = 16
@@ -1626,7 +1626,7 @@ function UI:CreateMainFrame()
             UI:SelectTab(i)
         end)
         if i == 1 then
-            tab:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 12, -4)
+            tab:SetPoint("TOPLEFT", frame, "TOPLEFT", 12, -32)
         else
             tab:SetPoint("LEFT", self.tabs[i - 1], "RIGHT", -12, 0)
         end
@@ -1660,8 +1660,8 @@ function UI:CreateMainFrame()
         self.tabs[i] = tab
 
         local page = CreateFrame("Frame", nil, frame)
-        page:SetPoint("TOPLEFT", frame, "TOPLEFT", 14, -34)
-        page:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -14, 26)
+        page:SetPoint("TOPLEFT", frame, "TOPLEFT", 14, -62)
+        page:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -14, 12)
         page:Hide()
         self.pages[i] = page
 
@@ -1688,7 +1688,7 @@ function UI:LayoutTabs()
         if tab ~= self.helpTab and tab:IsShown() then
             tab:ClearAllPoints()
             if not previous then
-                tab:SetPoint("BOTTOMLEFT", self.frame, "BOTTOMLEFT", 12, -4)
+                tab:SetPoint("TOPLEFT", self.frame, "TOPLEFT", 12, -32)
             else
                 tab:SetPoint("LEFT", previous, "RIGHT", -12, 0)
             end
@@ -1697,7 +1697,7 @@ function UI:LayoutTabs()
     end
     if self.helpTab then
         self.helpTab:ClearAllPoints()
-        self.helpTab:SetPoint("BOTTOMRIGHT", self.frame, "BOTTOMRIGHT", -12, -4)
+        self.helpTab:SetPoint("TOPRIGHT", self.frame, "TOPRIGHT", -12, -32)
     end
 end
 
@@ -2114,11 +2114,11 @@ function UI:CreateOverviewTab(page)
         remove:SetText("X")
         row.remove = remove
 
-        remove:SetPoint("RIGHT", actionsAnchor, "RIGHT", 0, 0)
-        undo:SetPoint("RIGHT", remove, "LEFT", -2, 0)
-        reset:SetPoint("RIGHT", undo, "LEFT", -2, 0)
-        sub:SetPoint("RIGHT", reset, "LEFT", -2, 0)
-        add:SetPoint("RIGHT", sub, "LEFT", -2, 0)
+        add:SetPoint("LEFT", actionsAnchor, "LEFT", 0, 0)
+        sub:SetPoint("LEFT", add, "RIGHT", 2, 0)
+        reset:SetPoint("LEFT", sub, "RIGHT", 2, 0)
+        undo:SetPoint("LEFT", reset, "RIGHT", 2, 0)
+        remove:SetPoint("LEFT", undo, "RIGHT", 2, 0)
 
         add:SetScript("OnClick", function()
             if row.playerName then
@@ -2267,6 +2267,26 @@ function UI:CreateOverviewTab(page)
     autoSyncLabel:SetJustifyH("LEFT")
     self.autoSyncLabel = autoSyncLabel
     y = y - 20
+
+    local syncRequestBtn = CreateFrame("Button", nil, optionsContent, "UIPanelButtonTemplate")
+    syncRequestBtn:SetSize(170, 20)
+    syncRequestBtn:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
+    syncRequestBtn:SetText("Ask for sync")
+    syncRequestBtn:SetScript("OnClick", function()
+        if Goals and Goals.Comm and Goals.Comm.RequestSync then
+            Goals.Comm:RequestSync("MANUAL")
+        end
+    end)
+    syncRequestBtn:SetScript("OnEnter", function(selfBtn)
+        GameTooltip:SetOwner(selfBtn, "ANCHOR_RIGHT")
+        GameTooltip:SetText("Ask the loot master to send a full roster/points sync.")
+        GameTooltip:Show()
+    end)
+    syncRequestBtn:SetScript("OnLeave", function()
+        GameTooltip:Hide()
+    end)
+    self.syncRequestButton = syncRequestBtn
+    y = y - 24
 
     local disLabel = addLabel(L.LABEL_DISENCHANTER)
     local disValue = createLabel(optionsContent, "", "GameFontHighlight")
@@ -2452,7 +2472,7 @@ function UI:CreateOverviewTab(page)
         end
     end)
     self.syncSeenButton = syncSeenBtn
-    trackAdmin(syncSeenBtn)
+    syncSeenBtn:Hide()
 
     y = y - 6
     local devLabel, devBar = addSectionHeader("Dev Tools")
@@ -2471,22 +2491,6 @@ function UI:CreateOverviewTab(page)
     end)
     self.sudoDevButton = sudoBtn
     trackAdmin(sudoBtn)
-
-    local syncRequestBtn = addActionButton("Ask for sync", function()
-        if Goals and Goals.Comm and Goals.Comm.RequestSync then
-            Goals.Comm:RequestSync("MANUAL")
-        end
-    end)
-    syncRequestBtn:SetScript("OnEnter", function(selfBtn)
-        GameTooltip:SetOwner(selfBtn, "ANCHOR_RIGHT")
-        GameTooltip:SetText("Ask the loot master to send a full roster/points sync.")
-        GameTooltip:Show()
-    end)
-    syncRequestBtn:SetScript("OnLeave", function()
-        GameTooltip:Hide()
-    end)
-    self.syncRequestButton = syncRequestBtn
-    trackAdmin(syncRequestBtn)
 
     y = y - 6
     local keybindsLabel, keybindsBar = addSectionHeader("Keybindings")
@@ -6439,7 +6443,6 @@ function UI:UpdateHistoryList()
     local offset = FauxScrollFrame_GetOffset(self.historyScroll) or 0
     FauxScrollFrame_Update(self.historyScroll, #data, HISTORY_ROWS, ROW_HEIGHT)
     setScrollBarAlwaysVisible(self.historyScroll, #data * ROW_HEIGHT)
-    local yOffset = -26
     local hasRainbow = false
     for i = 1, HISTORY_ROWS do
         local row = self.historyRows[i]
@@ -6518,16 +6521,10 @@ function UI:UpdateHistoryList()
                     row.text:SetText(self:FormatHistoryEntry(entry))
                 end
             end
-            local isReset = entry.kind == "LOOT_ASSIGN" and entry.data and entry.data.reset
-            if isReset then
-                row:SetHeight(HISTORY_ROW_HEIGHT_DOUBLE)
-            else
-                row:SetHeight(ROW_HEIGHT)
-            end
+            row:SetHeight(ROW_HEIGHT)
             row:ClearAllPoints()
-            row:SetPoint("TOPLEFT", self.historyInset, "TOPLEFT", 6, yOffset)
+            row:SetPoint("TOPLEFT", self.historyInset, "TOPLEFT", 6, -26 - (i - 1) * ROW_HEIGHT)
             row:SetPoint("RIGHT", self.historyInset, "RIGHT", -6, 0)
-            yOffset = yOffset - row:GetHeight()
         else
             row:Hide()
             row.rainbowData = nil
