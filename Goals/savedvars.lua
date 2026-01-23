@@ -60,6 +60,7 @@ Goals.defaults = {
         updateAvailableMajor = 0,
         updateHasBeenSeen = false,
         autoMinimizeCombat = true,
+        combatLogTracking = false,
         wishlistAnnounce = true,
         wishlistAnnounceChannel = "AUTO",
         wishlistAnnounceTemplate = "%s is on my wishlist",

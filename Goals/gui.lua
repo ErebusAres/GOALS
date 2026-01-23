@@ -16,6 +16,8 @@ local HISTORY_ROW_HEIGHT_DOUBLE = 26
 local LOOT_HISTORY_ROWS = 15
 local DEBUG_ROWS = 16
 local DEBUG_ROW_HEIGHT = 16
+local DAMAGE_ROWS = 16
+local DAMAGE_ROW_HEIGHT = 18
 local MINI_ROW_HEIGHT = 16
 local MINI_HEADER_HEIGHT = 22
 local MINI_FRAME_WIDTH = 200
@@ -515,6 +517,16 @@ local function formatTime(ts)
     return date("%H:%M:%S", ts or time())
 end
 
+local function formatCombatTimestamp(ts)
+    if not ts then
+        return ""
+    end
+    if ts > 1000000000 then
+        return date("%H:%M:%S", ts)
+    end
+    return string.format("%.1f", ts)
+end
+
 local function setShown(frame, show)
     if not frame then
         return
@@ -605,6 +617,16 @@ function UI:GetBuildShareCandidates()
     end
     table.sort(names)
     return names
+end
+
+function UI:GetDamageTrackerDropdownList()
+    local list = { L.DAMAGE_TRACKER_ALL }
+    local tracker = Goals and Goals.DamageTracker
+    local roster = tracker and tracker.GetRosterNames and tracker:GetRosterNames() or {}
+    for _, name in ipairs(roster) do
+        table.insert(list, name)
+    end
+    return list
 end
 
 function UI:GetDisenchanterCandidates()
@@ -1169,6 +1191,7 @@ function UI:CreateMainFrame()
         { key = "loot", text = L.TAB_LOOT, create = "CreateLootTab" },
         { key = "history", text = L.TAB_HISTORY, create = "CreateHistoryTab" },
         { key = "wishlist", text = L.TAB_WISHLIST, create = "CreateWishlistTab" },
+        { key = "damage", text = L.TAB_DAMAGE_TRACKER, create = "CreateDamageTrackerTab" },
         { key = "settings", text = L.TAB_SETTINGS, create = "CreateSettingsTab" },
     }
     if self:ShouldShowUpdateTab() then
@@ -1207,6 +1230,13 @@ function UI:CreateMainFrame()
         if def.key == "wishlist" then
             self.wishlistTabId = i
         end
+        if def.key == "settings" then
+            self.settingsTabId = i
+        end
+        if def.key == "damage" then
+            self.damageTab = tab
+            self.damageTabId = i
+        end
         if def.key == "help" then
             self.helpTab = tab
             self.helpTabId = i
@@ -1235,10 +1265,44 @@ function UI:CreateMainFrame()
     PanelTemplates_SetTab(frame, 1)
     self:SelectTab(1)
     self:UpdateUpdateTabGlow()
+    self:LayoutTabs()
+    self:UpdateDamageTabVisibility()
+end
 
+function UI:LayoutTabs()
+    if not self.frame or not self.tabs then
+        return
+    end
+    local previous = nil
+    for _, tab in ipairs(self.tabs) do
+        if tab ~= self.helpTab and tab:IsShown() then
+            tab:ClearAllPoints()
+            if not previous then
+                tab:SetPoint("BOTTOMLEFT", self.frame, "BOTTOMLEFT", 12, -4)
+            else
+                tab:SetPoint("LEFT", previous, "RIGHT", -12, 0)
+            end
+            previous = tab
+        end
+    end
     if self.helpTab then
         self.helpTab:ClearAllPoints()
-        self.helpTab:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -12, -4)
+        self.helpTab:SetPoint("BOTTOMRIGHT", self.frame, "BOTTOMRIGHT", -12, -4)
+    end
+end
+
+function UI:UpdateDamageTabVisibility()
+    if not self.damageTab or not self.damageTabId then
+        return
+    end
+    local enabled = Goals and Goals.db and Goals.db.settings and Goals.db.settings.combatLogTracking
+    setShown(self.damageTab, enabled)
+    if not enabled and self.pages and self.pages[self.damageTabId] then
+        self.pages[self.damageTabId]:Hide()
+    end
+    self:LayoutTabs()
+    if not enabled and self.currentTab == self.damageTabId then
+        self:SelectTab(self.settingsTabId or 1)
     end
 end
 
@@ -3796,8 +3860,21 @@ function UI:CreateSettingsTab(page)
     end)
     self.autoMinimizeCheck = autoMinCheck
 
+    local combatLogCheck = CreateFrame("CheckButton", nil, leftInset, "UICheckButtonTemplate")
+    combatLogCheck:SetPoint("TOPLEFT", autoMinCheck, "BOTTOMLEFT", 0, -8)
+    setCheckText(combatLogCheck, L.CHECK_COMBAT_LOG_TRACKING)
+    combatLogCheck:SetScript("OnClick", function(selfBtn)
+        local enabled = selfBtn:GetChecked() and true or false
+        if Goals.DamageTracker and Goals.DamageTracker.SetEnabled then
+            Goals.DamageTracker:SetEnabled(enabled)
+        else
+            Goals.db.settings.combatLogTracking = enabled
+        end
+    end)
+    self.combatLogTrackingCheck = combatLogCheck
+
     local localOnlyCheck = CreateFrame("CheckButton", nil, leftInset, "UICheckButtonTemplate")
-    localOnlyCheck:SetPoint("TOPLEFT", autoMinCheck, "BOTTOMLEFT", 0, -8)
+    localOnlyCheck:SetPoint("TOPLEFT", combatLogCheck, "BOTTOMLEFT", 0, -8)
     setCheckText(localOnlyCheck, "Disable sync (local only)")
     localOnlyCheck:SetScript("OnClick", function(selfBtn)
         Goals.db.settings.localOnly = selfBtn:GetChecked() and true or false
@@ -4041,6 +4118,64 @@ function UI:CreateSettingsTab(page)
         GameTooltip:Hide()
     end)
     self.syncRequestButton = syncRequestBtn
+end
+
+function UI:CreateDamageTrackerTab(page)
+    local inset = CreateFrame("Frame", "GoalsDamageTrackerInset", page, "GoalsInsetTemplate")
+    applyInsetTheme(inset)
+    inset:SetPoint("TOPLEFT", page, "TOPLEFT", 8, -12)
+    inset:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -8, 8)
+
+    local title = createLabel(inset, L.TAB_DAMAGE_TRACKER, "GameFontNormal")
+    local bar = applySectionHeader(title, inset, -6)
+    applySectionCaption(bar, "Combat log")
+
+    local filterLabel = createLabel(inset, "Filter", "GameFontHighlightSmall")
+    filterLabel:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -8)
+
+    local dropdown = CreateFrame("Frame", "GoalsDamageTrackerDropdown", inset, "UIDropDownMenuTemplate")
+    dropdown:SetPoint("LEFT", filterLabel, "RIGHT", -6, 0)
+    styleDropdown(dropdown, 180)
+    self:SetupDropdown(dropdown, function()
+        return self:GetDamageTrackerDropdownList()
+    end, function(value)
+        self.damageTrackerFilter = value
+        self:UpdateDamageTrackerList()
+    end, L.DAMAGE_TRACKER_ALL)
+    dropdown.selectedValue = L.DAMAGE_TRACKER_ALL
+    UIDropDownMenu_SetSelectedValue(dropdown, L.DAMAGE_TRACKER_ALL)
+    self:SetDropdownText(dropdown, L.DAMAGE_TRACKER_ALL)
+    self.damageTrackerDropdown = dropdown
+    self.damageTrackerFilter = L.DAMAGE_TRACKER_ALL
+
+    -- Layout/styling tweaks for the tracker panel can go here.
+    local scroll = CreateFrame("ScrollFrame", "GoalsDamageTrackerScroll", inset, "FauxScrollFrameTemplate")
+    scroll:SetPoint("TOPLEFT", inset, "TOPLEFT", 2, -54)
+    scroll:SetPoint("BOTTOMRIGHT", inset, "BOTTOMRIGHT", -26, 10)
+    scroll:SetScript("OnVerticalScroll", function(selfScroll, offset)
+        FauxScrollFrame_OnVerticalScroll(selfScroll, offset, DAMAGE_ROW_HEIGHT, function()
+            UI:UpdateDamageTrackerList()
+        end)
+    end)
+    self.damageTrackerScroll = scroll
+
+    self.damageTrackerRows = {}
+    for i = 1, DAMAGE_ROWS do
+        local row = CreateFrame("Frame", nil, inset)
+        row:SetHeight(DAMAGE_ROW_HEIGHT)
+        row:SetPoint("TOPLEFT", inset, "TOPLEFT", 8, -40 - (i - 1) * DAMAGE_ROW_HEIGHT)
+        row:SetPoint("RIGHT", inset, "RIGHT", -6, 0)
+        addRowStripe(row)
+
+        local text = row:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+        text:SetPoint("LEFT", row, "LEFT", 0, 0)
+        text:SetPoint("RIGHT", row, "RIGHT", -4, 0)
+        text:SetJustifyH("LEFT")
+        text:SetWordWrap(false)
+        row.text = text
+
+        self.damageTrackerRows[i] = row
+    end
 end
 
 function UI:BuildHelpNavList()
@@ -5398,6 +5533,64 @@ function UI:UpdateHistoryList()
     end
 end
 
+function UI:RefreshDamageTrackerDropdown()
+    if not self.damageTrackerDropdown then
+        return
+    end
+    local list = self:GetDamageTrackerDropdownList()
+    local selected = self.damageTrackerFilter or L.DAMAGE_TRACKER_ALL
+    local found = false
+    for _, name in ipairs(list) do
+        if name == selected then
+            found = true
+            break
+        end
+    end
+    if not found then
+        selected = L.DAMAGE_TRACKER_ALL
+        self.damageTrackerFilter = selected
+    end
+    UIDropDownMenu_SetSelectedValue(self.damageTrackerDropdown, selected)
+    self:SetDropdownText(self.damageTrackerDropdown, selected)
+end
+
+function UI:FormatDamageTrackerEntry(entry)
+    if not entry then
+        return ""
+    end
+    local ts = formatCombatTimestamp(entry.ts)
+    local player = entry.player or "Unknown"
+    local damage = math.floor(tonumber(entry.amount) or 0)
+    local spell = entry.spell or "Unknown"
+    local source = entry.source or "Unknown"
+    return string.format("%s : %s took %d from %s : %s", ts, player, damage, spell, source)
+end
+
+function UI:UpdateDamageTrackerList()
+    if not self.damageTrackerScroll or not self.damageTrackerRows then
+        return
+    end
+    local tracker = Goals and Goals.DamageTracker
+    local filter = self.damageTrackerFilter or L.DAMAGE_TRACKER_ALL
+    local data = tracker and tracker.GetFilteredEntries and tracker:GetFilteredEntries(filter) or {}
+    local offset = FauxScrollFrame_GetOffset(self.damageTrackerScroll) or 0
+    FauxScrollFrame_Update(self.damageTrackerScroll, #data, DAMAGE_ROWS, DAMAGE_ROW_HEIGHT)
+    for i = 1, DAMAGE_ROWS do
+        local row = self.damageTrackerRows[i]
+        local entry = data[offset + i]
+        if entry then
+            row:Show()
+            if row.stripe then
+                setShown(row.stripe, ((offset + i) % 2) == 0)
+            end
+            row.text:SetText(self:FormatDamageTrackerEntry(entry))
+        else
+            row:Hide()
+            row.text:SetText("")
+        end
+    end
+end
+
 function UI:UpdateDebugLogList()
     if not self.debugLogScroll or not self.debugLogRows then
         return
@@ -6518,6 +6711,9 @@ function UI:Refresh()
     if self.autoMinimizeCheck then
         self.autoMinimizeCheck:SetChecked(Goals.db.settings.autoMinimizeCombat and true or false)
     end
+    if self.combatLogTrackingCheck then
+        self.combatLogTrackingCheck:SetChecked(Goals.db.settings.combatLogTracking and true or false)
+    end
     if self.localOnlyCheck then
         self.localOnlyCheck:SetChecked(Goals.db.settings.localOnly and true or false)
     end
@@ -6680,6 +6876,7 @@ function UI:Refresh()
     self:UpdateHistoryList()
     self:UpdateLootHistoryList()
     self:UpdateFoundLootList()
+    self:UpdateDamageTrackerList()
     self:UpdateDebugLogList()
     self:UpdateWishlistUI()
     self:UpdateMiniTracker()

@@ -319,6 +319,9 @@ function Events:HandleGroupUpdate()
     if Goals.MergeSeenPlayersForGroup then
         Goals:MergeSeenPlayersForGroup()
     end
+    if Goals.DamageTracker and Goals.DamageTracker.HandleGroupUpdate then
+        Goals.DamageTracker:HandleGroupUpdate()
+    end
     if Goals:CanSync() and Goals.Comm and Goals.Comm.BroadcastVersion then
         Goals.Comm:BroadcastVersion()
     end
@@ -370,6 +373,9 @@ function Events:HandleCombatLog(...)
     if type(sourceName) ~= "string" and type(select(4, ...)) == "string" then
         sourceName = select(4, ...)
         destName = select(7, ...)
+    end
+    if Goals.DamageTracker and Goals.DamageTracker.HandleCombatLog then
+        Goals.DamageTracker:HandleCombatLog(...)
     end
     if Goals and Goals.Dev and Goals.Dev.enabled and Goals.db and Goals.db.settings and Goals.db.settings.devTestBoss then
         if not self.debugCombatLogged then

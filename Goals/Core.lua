@@ -4508,6 +4508,9 @@ function Goals:Init()
     if self.Events and self.Events.Init then
         self.Events:Init()
     end
+    if self.DamageTracker and self.DamageTracker.Init then
+        self.DamageTracker:Init()
+    end
     if self.UI and self.UI.Init then
         self.UI:Init()
     end

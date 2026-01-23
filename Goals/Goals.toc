@@ -15,6 +15,7 @@ wishlistBanner.lua
 Core.lua
 loc.lua
 savedvars.lua
+damageTracker.lua
 history.lua
 dev.lua
 comm.lua
