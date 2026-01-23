@@ -417,6 +417,50 @@ local function formatPlayersCount(count)
     return string.format("|cff%02x%02x%02x%s|r", c.r * 255, c.g * 255, c.b * 255, text)
 end
 
+local function fitLabelToWidth(label, text)
+    if not label then
+        return
+    end
+    local raw = text or ""
+    label:SetText(raw)
+    local maxWidth = label:GetWidth() or 0
+    if maxWidth <= 0 then
+        return
+    end
+    if label:GetStringWidth() <= maxWidth then
+        return
+    end
+    local left, right = 1, #raw
+    local best = "..."
+    while left <= right do
+        local mid = math.floor((left + right) / 2)
+        local candidate = raw:sub(1, mid) .. "..."
+        label:SetText(candidate)
+        if label:GetStringWidth() <= maxWidth then
+            best = candidate
+            left = mid + 1
+        else
+            right = mid - 1
+        end
+    end
+    label:SetText(best)
+end
+
+local function setLootItemLabelText(label, text)
+    if not label then
+        return
+    end
+    local raw = text or ""
+    local color, name = raw:match("|c(%x%x%x%x%x%x%x%x)|H.-|h%[(.-)%]|h|r")
+    if color and name then
+        fitLabelToWidth(label, name)
+        local trimmed = label:GetText() or ""
+        label:SetText("|c" .. color .. trimmed .. "|r")
+    else
+        fitLabelToWidth(label, raw)
+    end
+end
+
 function UI:UpdateRainbowRows()
     local function updateRow(row)
         if not row or not row.rainbowData then
@@ -1634,6 +1678,12 @@ function UI:CreateMainFrame()
     tabBg:SetAllPoints(tabBar)
     tabBg:SetTexture(0, 0, 0, 0.45)
     self.tabBar = tabBar
+    local tabLine = frame:CreateTexture(nil, "BORDER")
+    tabLine:SetHeight(1)
+    tabLine:SetPoint("TOPLEFT", tabBar, "BOTTOMLEFT", 0, -1)
+    tabLine:SetPoint("TOPRIGHT", tabBar, "BOTTOMRIGHT", 0, -1)
+    tabLine:SetTexture(1, 1, 1, 0.08)
+    self.tabBarLine = tabLine
 
     local tabDefs = {
         { key = "overview", text = L.TAB_OVERVIEW, create = "CreateOverviewTab" },
@@ -2028,7 +2078,7 @@ function UI:GetWishlistSocketAvailability()
 end
 
 function UI:CreateOverviewTab(page)
-    local optionsPanel, optionsContent = createOptionsPanel(page, "GoalsOverviewOptionsInset", 230)
+    local optionsPanel, optionsContent = createOptionsPanel(page, "GoalsOverviewOptionsInset", 220)
     self.overviewOptionsFrame = optionsPanel
     self.overviewOptionsScroll = optionsPanel.scroll
     self.overviewOptionsContent = optionsContent
@@ -2551,7 +2601,7 @@ function UI:CreateOverviewTab(page)
 end
 
 function UI:CreateLootTab(page)
-    local optionsPanel, optionsContent = createOptionsPanel(page, "GoalsLootOptionsInset", 230)
+    local optionsPanel, optionsContent = createOptionsPanel(page, "GoalsLootOptionsInset", 220)
     self.lootOptionsFrame = optionsPanel
     self.lootOptionsScroll = optionsPanel.scroll
     self.lootOptionsContent = optionsContent
@@ -2828,7 +2878,7 @@ function UI:CreateLootTab(page)
 end
 
 function UI:CreateHistoryTab(page)
-    local optionsPanel, optionsContent = createOptionsPanel(page, "GoalsHistoryOptionsInset", 230)
+    local optionsPanel, optionsContent = createOptionsPanel(page, "GoalsHistoryOptionsInset", 220)
     self.historyOptionsFrame = optionsPanel
     self.historyOptionsScroll = optionsPanel.scroll
     self.historyOptionsContent = optionsContent
@@ -2986,50 +3036,6 @@ local function fitWishlistLabel(label, text, maxLines)
         label:SetText(best)
     else
         label:SetText("...")
-    end
-end
-
-local function fitLabelToWidth(label, text)
-    if not label then
-        return
-    end
-    local raw = text or ""
-    label:SetText(raw)
-    local maxWidth = label:GetWidth() or 0
-    if maxWidth <= 0 then
-        return
-    end
-    if label:GetStringWidth() <= maxWidth then
-        return
-    end
-    local left, right = 1, #raw
-    local best = "..."
-    while left <= right do
-        local mid = math.floor((left + right) / 2)
-        local candidate = raw:sub(1, mid) .. "..."
-        label:SetText(candidate)
-        if label:GetStringWidth() <= maxWidth then
-            best = candidate
-            left = mid + 1
-        else
-            right = mid - 1
-        end
-    end
-    label:SetText(best)
-end
-
-local function setLootItemLabelText(label, text)
-    if not label then
-        return
-    end
-    local raw = text or ""
-    local color, name = raw:match("|c(%x%x%x%x%x%x%x%x)|H.-|h%[(.-)%]|h|r")
-    if color and name then
-        fitLabelToWidth(label, name)
-        local trimmed = label:GetText() or ""
-        label:SetText("|c" .. color .. trimmed .. "|r")
-    else
-        fitLabelToWidth(label, raw)
     end
 end
 
@@ -4833,7 +4839,7 @@ function UI:CreateSettingsTab(page)
 end
 
 function UI:CreateDamageTrackerTab(page)
-    local optionsPanel, optionsContent = createOptionsPanel(page, "GoalsDamageOptionsInset", 230)
+    local optionsPanel, optionsContent = createOptionsPanel(page, "GoalsDamageOptionsInset", 220)
     self.damageOptionsFrame = optionsPanel
     self.damageOptionsScroll = optionsPanel.scroll
     self.damageOptionsContent = optionsContent
