@@ -507,6 +507,9 @@ local function hasModifyAccess()
     if Goals and Goals.db and Goals.db.settings and Goals.db.settings.sudoDev then
         return true
     end
+    if Goals and Goals.IsMasterLooter and Goals:IsMasterLooter() then
+        return true
+    end
     if not Goals or not Goals.IsGroupLeader then
         return false
     end
@@ -942,6 +945,7 @@ function UI:GetLootTableEntries()
     local foundByLink = {}
     local seenFound = {}
     local foundIndexByKey = {}
+    local LOOT_GROUP_WINDOW = 15
 
     for _, entry in ipairs(history) do
         if entry.kind == "LOOT_FOUND" then
@@ -1003,6 +1007,9 @@ function UI:GetLootTableEntries()
                     resetBefore = dataEntry.resetBefore,
                     noteKey = noteKey,
                 })
+                if noteKey then
+                    foundIndexByKey[noteKey] = #list
+                end
             else
                 entry.noteKey = getLootNoteKey(itemLink, entry.ts)
                 table.insert(list, entry)
@@ -1010,22 +1017,68 @@ function UI:GetLootTableEntries()
         end
     end
 
+    local remainingByLink = {}
     for _, entry in ipairs(history) do
         if entry.kind == "LOOT_FOUND" then
             local itemLink = entry.data and entry.data.item or nil
             local key = getLootNoteKey(itemLink, entry.ts)
             if key and not seenFound[key] then
-                table.insert(list, {
-                    kind = "FOUND",
-                    ts = entry.ts,
-                    item = itemLink,
-                    slot = nil,
-                    raw = nil,
-                    noteKey = key,
-                })
-                foundIndexByKey[key] = #list
+                remainingByLink[itemLink] = remainingByLink[itemLink] or {}
+                table.insert(remainingByLink[itemLink], { entry = entry, key = key })
             end
         end
+    end
+
+    for itemLink, entries in pairs(remainingByLink) do
+        table.sort(entries, function(a, b)
+            return (a.entry.ts or 0) < (b.entry.ts or 0)
+        end)
+        local groupCount = 0
+        local groupLast = 0
+        local groupFirst = 0
+        local groupKey = nil
+        local function flushGroup()
+            if groupCount <= 0 then
+                return
+            end
+            local noteKey = groupKey or getLootNoteKey(itemLink, groupLast)
+            table.insert(list, {
+                kind = "FOUND",
+                ts = groupLast,
+                item = itemLink,
+                slot = nil,
+                raw = nil,
+                noteKey = noteKey,
+                stackCount = groupCount,
+            })
+            if noteKey then
+                foundIndexByKey[noteKey] = #list
+            end
+            groupCount = 0
+            groupLast = 0
+            groupFirst = 0
+            groupKey = nil
+        end
+        for _, wrapper in ipairs(entries) do
+            local ts = wrapper.entry.ts or 0
+            if groupCount == 0 then
+                groupCount = 1
+                groupFirst = ts
+                groupLast = ts
+                groupKey = wrapper.key
+            elseif ts - groupLast <= LOOT_GROUP_WINDOW then
+                groupCount = groupCount + 1
+                groupLast = ts
+                groupKey = wrapper.key
+            else
+                flushGroup()
+                groupCount = 1
+                groupFirst = ts
+                groupLast = ts
+                groupKey = wrapper.key
+            end
+        end
+        flushGroup()
     end
 
     if Goals and Goals.GetFoundLoot then
@@ -1053,25 +1106,23 @@ function UI:GetLootTableEntries()
                         markFoundUsed(matched)
                     end
                 end
-                if key and not seenFound[key] then
-                    local existingIndex = foundIndexByKey[key]
-                    if existingIndex then
-                        local existing = list[existingIndex]
-                        existing.raw = entry
-                        existing.slot = entry.slot
-                        existing.assignedTo = entry.assignedTo
-                    else
-                        table.insert(list, {
-                            kind = "FOUND",
-                            ts = entry.ts,
-                            item = entry.link,
-                            slot = entry.slot,
-                            raw = entry,
-                            assignedTo = entry.assignedTo,
-                            noteKey = key,
-                        })
-                        foundIndexByKey[key] = #list
-                    end
+                local existingIndex = key and foundIndexByKey[key] or nil
+                if existingIndex then
+                    local existing = list[existingIndex]
+                    existing.raw = entry
+                    existing.slot = entry.slot
+                    existing.assignedTo = entry.assignedTo
+                elseif key and not seenFound[key] then
+                    table.insert(list, {
+                        kind = "FOUND",
+                        ts = entry.ts,
+                        item = entry.link,
+                        slot = entry.slot,
+                        raw = entry,
+                        assignedTo = entry.assignedTo,
+                        noteKey = key,
+                    })
+                    foundIndexByKey[key] = #list
                 end
             end
         end
@@ -1950,64 +2001,40 @@ function UI:GetWishlistSocketAvailability()
 end
 
 function UI:CreateOverviewTab(page)
-    local sortLabel = createLabel(page, L.LABEL_SORT, "GameFontNormal")
-    sortLabel:SetPoint("TOPLEFT", page, "TOPLEFT", 8, -10)
-
-    local sortDrop = CreateFrame("Frame", "GoalsSortDropdown", page, "UIDropDownMenuTemplate")
-    sortDrop:SetPoint("LEFT", sortLabel, "RIGHT", -6, 0)
-    styleDropdown(sortDrop, 110)
-    self.sortDropdown = sortDrop
-    self:SetupSortDropdown(sortDrop)
-
-    local presentCheck = CreateFrame("CheckButton", nil, page, "UICheckButtonTemplate")
-    presentCheck:SetPoint("LEFT", sortDrop, "RIGHT", 12, 1)
-    setCheckText(presentCheck, L.CHECK_PRESENT_ONLY)
-    presentCheck:SetScript("OnClick", function(selfBtn)
-        Goals.db.settings.showPresentOnly = selfBtn:GetChecked() and true or false
-        Goals:NotifyDataChanged()
-    end)
-    self.presentCheck = presentCheck
-
-    local disableGainCheck = CreateFrame("CheckButton", nil, page, "UICheckButtonTemplate")
-    disableGainCheck:SetPoint("LEFT", presentCheck.Text or presentCheck, "RIGHT", 12, 0)
-    disableGainCheck:SetPoint("CENTER", presentCheck, "CENTER", 0, 0)
-    setCheckText(disableGainCheck, L.CHECK_DISABLE_POINT_GAIN)
-    disableGainCheck:SetScript("OnClick", function(selfBtn)
-        Goals:SetRaidSetting("disablePointGain", selfBtn:GetChecked() and true or false)
-    end)
-    self.disablePointGainCheck = disableGainCheck
-
-    local disableGainStatus = createLabel(page, "", "GameFontHighlightSmall")
-    disableGainStatus:SetPoint("LEFT", presentCheck.Text or presentCheck, "RIGHT", 12, 0)
-    disableGainStatus:SetPoint("CENTER", presentCheck, "CENTER", 0, 0)
-    disableGainStatus:SetJustifyH("LEFT")
-    disableGainStatus:Hide()
-    self.disablePointGainStatus = disableGainStatus
+    local optionsPanel, optionsContent = createOptionsPanel(page, "GoalsOverviewOptionsInset", 230)
+    self.overviewOptionsFrame = optionsPanel
+    self.overviewOptionsScroll = optionsPanel.scroll
+    self.overviewOptionsContent = optionsContent
+    self.overviewOptionsOpen = true
+    self.overviewOptionsInline = true
 
     local rosterInset = CreateFrame("Frame", "GoalsOverviewRosterInset", page, "GoalsInsetTemplate")
     applyInsetTheme(rosterInset)
-    rosterInset:SetPoint("TOPLEFT", page, "TOPLEFT", 8, -38)
+    rosterInset:SetPoint("TOPLEFT", page, "TOPLEFT", 8, -12)
     rosterInset:SetPoint("BOTTOMLEFT", page, "BOTTOMLEFT", 8, 8)
-    rosterInset:SetWidth(360)
+    rosterInset:SetPoint("RIGHT", optionsPanel, "LEFT", -12, 0)
     self.rosterInset = rosterInset
 
-    local pointsLabel = createLabel(rosterInset, L.LABEL_POINTS, "GameFontNormal")
-    local pointsBar = applySectionHeader(pointsLabel, rosterInset, -6)
-    applySectionCaption(pointsBar, "Roster and points")
-    local autoSyncLabel = createLabel(rosterInset, "", "GameFontHighlightSmall")
-    autoSyncLabel:SetPoint("LEFT", pointsLabel, "RIGHT", 12, 0)
-    autoSyncLabel:SetJustifyH("LEFT")
-    self.autoSyncLabel = autoSyncLabel
+    local tableWidget = createTableWidget(rosterInset, "GoalsRosterTable", {
+        columns = {
+            { key = "status", title = "", width = 18, justify = "LEFT", wrap = false },
+            { key = "player", title = "Player", width = 200, justify = "LEFT", wrap = false },
+            { key = "points", title = "Points", width = 60, justify = "RIGHT", wrap = false },
+            { key = "actions", title = "Actions", fill = true, justify = "LEFT", wrap = false },
+        },
+        rowHeight = ROW_HEIGHT,
+        visibleRows = ROSTER_ROWS,
+        headerHeight = 18,
+    })
+    self.rosterTable = tableWidget
+    self.rosterScroll = tableWidget.scroll
+    self.rosterRows = tableWidget.rows
 
-    local rosterScroll = CreateFrame("ScrollFrame", "GoalsRosterScroll", rosterInset, "FauxScrollFrameTemplate")
-    rosterScroll:SetPoint("TOPLEFT", rosterInset, "TOPLEFT", 2, -28)
-    rosterScroll:SetPoint("BOTTOMRIGHT", rosterInset, "BOTTOMRIGHT", -26, 4)
-    rosterScroll:SetScript("OnVerticalScroll", function(selfScroll, offset)
+    self.rosterScroll:SetScript("OnVerticalScroll", function(selfScroll, offset)
         FauxScrollFrame_OnVerticalScroll(selfScroll, offset, ROW_HEIGHT, function()
             UI:UpdateRosterList()
         end)
     end)
-    self.rosterScroll = rosterScroll
 
     local autoSyncTicker = CreateFrame("Frame", nil, rosterInset)
     autoSyncTicker.elapsed = 0
@@ -2023,27 +2050,33 @@ function UI:CreateOverviewTab(page)
     end)
     self.autoSyncTicker = autoSyncTicker
 
-    self.rosterRows = {}
-    for i = 1, ROSTER_ROWS do
-        local row = CreateFrame("Button", nil, rosterInset)
-        row:SetHeight(ROW_HEIGHT)
-        row:SetPoint("TOPLEFT", rosterInset, "TOPLEFT", 8, -22 - (i - 1) * ROW_HEIGHT)
-        row:SetPoint("RIGHT", rosterInset, "RIGHT", -26, 0)
-        addRowStripe(row)
+    for i = 1, #self.rosterRows do
+        local row = self.rosterRows[i]
+        if row.cols and row.cols.status then
+            row.cols.status:SetText("")
+        end
+        if row.cols and row.cols.actions then
+            row.cols.actions:SetText("")
+        end
 
         local icon = row:CreateTexture(nil, "ARTWORK")
         icon:SetSize(12, 12)
         icon:SetTexture("Interface\\FriendsFrame\\StatusIcon-Online")
-        icon:SetPoint("LEFT", row, "LEFT", 2, 0)
+        if row.cols and row.cols.status then
+            icon:SetPoint("LEFT", row.cols.status, "LEFT", 0, 0)
+        else
+            icon:SetPoint("LEFT", row, "LEFT", 2, 0)
+        end
         row.icon = icon
 
-        local nameText = row:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-        nameText:SetPoint("LEFT", icon, "RIGHT", 6, 0)
+        local nameText = row.cols and row.cols.player or row:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
         nameText:SetText("")
+        nameText:SetWordWrap(false)
         row.nameText = nameText
 
-        local pointsText = row:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+        local pointsText = row.cols and row.cols.points or row:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
         pointsText:SetText("0")
+        pointsText:SetWordWrap(false)
         row.pointsText = pointsText
 
         local add = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
@@ -2103,34 +2136,88 @@ function UI:CreateOverviewTab(page)
                 Goals:RemovePlayer(row.playerName)
             end
         end)
-
-        self.rosterRows[i] = row
     end
 
-    local rightInset = CreateFrame("Frame", "GoalsOverviewRightInset", page, "GoalsInsetTemplate")
-    applyInsetTheme(rightInset)
-    rightInset:SetPoint("TOPLEFT", rosterInset, "TOPRIGHT", 12, 0)
-    rightInset:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -8, 8)
-    self.overviewRightInset = rightInset
+    local y = -6
+    local function addSectionHeader(text)
+        local bar = optionsContent:CreateTexture(nil, "BORDER")
+        bar:SetHeight(18)
+        bar:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 4, y)
+        bar:SetPoint("TOPRIGHT", optionsContent, "TOPRIGHT", -4, y)
+        bar:SetTexture(0, 0, 0, 0.35)
+        local label = createLabel(optionsContent, text, "GameFontNormal")
+        label:SetPoint("LEFT", bar, "LEFT", 6, 0)
+        y = y - 24
+        return label, bar
+    end
 
-    local syncLabel = createLabel(rightInset, L.LABEL_SYNC, "GameFontNormal")
-    local syncBar = applySectionHeader(syncLabel, rightInset, -6)
-    applySectionCaption(syncBar, "Status and leader")
-    local syncValue = createLabel(rightInset, "", "GameFontHighlight")
-    syncValue:SetPoint("TOPLEFT", syncLabel, "BOTTOMLEFT", 0, -6)
+    local function addLabel(text)
+        local label = createLabel(optionsContent, text, "GameFontNormal")
+        label:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
+        y = y - 20
+        return label
+    end
+
+    local function addCheck(text, onClick)
+        local check = CreateFrame("CheckButton", nil, optionsContent, "UICheckButtonTemplate")
+        check:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 6, y)
+        setCheckText(check, text)
+        check:SetScript("OnClick", onClick)
+        y = y - 24
+        return check
+    end
+
+    addSectionHeader("Roster")
+    local sortLabel = addLabel(L.LABEL_SORT)
+    local sortDrop = CreateFrame("Frame", "GoalsSortDropdown", optionsContent, "UIDropDownMenuTemplate")
+    sortDrop:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", -6, y)
+    styleDropdown(sortDrop, 140)
+    self.sortDropdown = sortDrop
+    self:SetupSortDropdown(sortDrop)
+    y = y - 30
+
+    local presentCheck = addCheck(L.CHECK_PRESENT_ONLY, function(selfBtn)
+        Goals.db.settings.showPresentOnly = selfBtn:GetChecked() and true or false
+        Goals:NotifyDataChanged()
+    end)
+    self.presentCheck = presentCheck
+
+    local disableGainCheck = addCheck(L.CHECK_DISABLE_POINT_GAIN, function(selfBtn)
+        Goals:SetRaidSetting("disablePointGain", selfBtn:GetChecked() and true or false)
+    end)
+    self.disablePointGainCheck = disableGainCheck
+
+    local disableGainStatus = createLabel(optionsContent, "", "GameFontHighlightSmall")
+    disableGainStatus:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
+    disableGainStatus:SetJustifyH("LEFT")
+    disableGainStatus:Hide()
+    self.disablePointGainStatus = disableGainStatus
+    y = y - 20
+
+    y = y - 6
+    addSectionHeader(L.LABEL_SYNC)
+    local syncValue = createLabel(optionsContent, "", "GameFontHighlight")
+    syncValue:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
+    syncValue:SetJustifyH("LEFT")
     self.syncValue = syncValue
+    y = y - 18
 
-    local disLabel = createLabel(rightInset, L.LABEL_DISENCHANTER, "GameFontNormal")
-    disLabel:SetPoint("TOPLEFT", syncValue, "BOTTOMLEFT", 0, -10)
-    local disValue = createLabel(rightInset, "", "GameFontHighlight")
-    disValue:SetPoint("TOPLEFT", disLabel, "BOTTOMLEFT", 0, -4)
+    local autoSyncLabel = createLabel(optionsContent, "", "GameFontHighlightSmall")
+    autoSyncLabel:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
+    autoSyncLabel:SetJustifyH("LEFT")
+    self.autoSyncLabel = autoSyncLabel
+    y = y - 20
+
+    local disLabel = addLabel(L.LABEL_DISENCHANTER)
+    local disValue = createLabel(optionsContent, "", "GameFontHighlight")
+    disValue:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
+    disValue:SetJustifyH("LEFT")
     self.disenchantValue = disValue
+    y = y - 18
 
-    local disSelectLabel = createLabel(rightInset, L.SETTINGS_DISENCHANTER, "GameFontNormal")
-    disSelectLabel:SetPoint("TOPLEFT", disValue, "BOTTOMLEFT", 0, -10)
-
-    local disDrop = CreateFrame("Frame", "GoalsDisenchanterDropdown", rightInset, "UIDropDownMenuTemplate")
-    disDrop:SetPoint("TOPLEFT", disSelectLabel, "BOTTOMLEFT", -10, -2)
+    local disSelectLabel = addLabel(L.SETTINGS_DISENCHANTER)
+    local disDrop = CreateFrame("Frame", "GoalsDisenchanterDropdown", optionsContent, "UIDropDownMenuTemplate")
+    disDrop:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", -10, y)
     styleDropdown(disDrop, 160)
     disDrop.colorize = true
     self.disenchanterDropdown = disDrop
@@ -2139,22 +2226,17 @@ function UI:CreateOverviewTab(page)
     end, function(name)
         if name == L.NONE_OPTION then
             Goals:SetDisenchanter("")
-            UI:SetDropdownText(disDrop, L.NONE_OPTION)
-            disDrop.selectedValue = ""
             return
         end
         Goals:SetDisenchanter(name)
-    end, L.NONE_OPTION)
+    end, L.SELECT_OPTION)
+    y = y - 34
 
-    local manualTitle = createLabel(rightInset, L.LABEL_MANUAL, "GameFontNormal")
-    local manualDivider = createDivider(rightInset, disDrop, -6)
-    local manualBar = applySectionHeaderAfter(manualTitle, rightInset, manualDivider or disDrop, -6)
-    applySectionCaption(manualBar, "Adjust points")
-
-    local playerLabel = createLabel(rightInset, L.LABEL_PLAYER, "GameFontNormal")
-    playerLabel:SetPoint("TOPLEFT", manualTitle, "BOTTOMLEFT", 0, -10)
-    local playerDrop = CreateFrame("Frame", "GoalsManualPlayerDropdown", rightInset, "UIDropDownMenuTemplate")
-    playerDrop:SetPoint("TOPLEFT", playerLabel, "BOTTOMLEFT", -10, -2)
+    y = y - 6
+    addSectionHeader(L.LABEL_MANUAL)
+    local playerLabel = addLabel(L.LABEL_PLAYER)
+    local playerDrop = CreateFrame("Frame", "GoalsManualPlayerDropdown", optionsContent, "UIDropDownMenuTemplate")
+    playerDrop:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", -10, y)
     styleDropdown(playerDrop, 140)
     playerDrop.colorize = true
     self.manualPlayerDropdown = playerDrop
@@ -2164,10 +2246,11 @@ function UI:CreateOverviewTab(page)
     end, function(name)
         UI.manualSelected = name
     end, L.SELECT_OPTION)
+    y = y - 30
 
-    local amountBox = CreateFrame("EditBox", nil, rightInset, "InputBoxTemplate")
+    local amountBox = CreateFrame("EditBox", nil, optionsContent, "InputBoxTemplate")
     amountBox:SetSize(60, 20)
-    amountBox:SetPoint("TOPLEFT", playerDrop, "TOPRIGHT", 16, -2)
+    amountBox:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
     amountBox:SetAutoFocus(false)
     amountBox:SetNumeric(true)
     amountBox:SetNumber(1)
@@ -2177,23 +2260,23 @@ function UI:CreateOverviewTab(page)
     end)
     self.amountBox = amountBox
 
-    local amountLabel = createLabel(rightInset, L.LABEL_AMOUNT, "GameFontNormal")
-    amountLabel:SetPoint("BOTTOMLEFT", amountBox, "TOPLEFT", 0, 2)
+    local amountLabel = createLabel(optionsContent, L.LABEL_AMOUNT, "GameFontNormal")
+    amountLabel:SetPoint("LEFT", amountBox, "RIGHT", 8, 0)
 
-    local addButton = CreateFrame("Button", nil, rightInset, "UIPanelButtonTemplate")
+    local addButton = CreateFrame("Button", nil, optionsContent, "UIPanelButtonTemplate")
     addButton:SetSize(70, 20)
     addButton:SetText(L.BUTTON_ADD)
-    addButton:SetPoint("TOPLEFT", playerDrop, "BOTTOMLEFT", 14, -12)
+    addButton:SetPoint("TOPLEFT", amountBox, "BOTTOMLEFT", 0, -8)
 
-    local setButton = CreateFrame("Button", nil, rightInset, "UIPanelButtonTemplate")
+    local setButton = CreateFrame("Button", nil, optionsContent, "UIPanelButtonTemplate")
     setButton:SetSize(70, 20)
     setButton:SetText(L.BUTTON_SET)
     setButton:SetPoint("LEFT", addButton, "RIGHT", 8, 0)
 
-    local addAllButton = CreateFrame("Button", nil, rightInset, "UIPanelButtonTemplate")
+    local addAllButton = CreateFrame("Button", nil, optionsContent, "UIPanelButtonTemplate")
     addAllButton:SetSize(80, 20)
     addAllButton:SetText(L.BUTTON_ADD_ALL)
-    addAllButton:SetPoint("LEFT", setButton, "RIGHT", 8, 0)
+    addAllButton:SetPoint("TOPLEFT", addButton, "BOTTOMLEFT", 0, -6)
 
     addButton:SetScript("OnClick", function()
         local name = UI.manualSelected
@@ -2216,6 +2299,15 @@ function UI:CreateOverviewTab(page)
     self.manualAddButton = addButton
     self.manualSetButton = setButton
     self.manualAddAllButton = addAllButton
+
+    y = y - 62
+
+    local contentHeight = math.abs(y) + 40
+    optionsContent:SetHeight(contentHeight)
+    setScrollBarAlwaysVisible(optionsPanel.scroll, contentHeight)
+    optionsPanel.scroll:SetScript("OnShow", function(selfScroll)
+        setScrollBarAlwaysVisible(selfScroll, contentHeight)
+    end)
 end
 
 function UI:CreateLootTab(page)
@@ -5694,6 +5786,7 @@ function UI:UpdateRosterList()
     self.rosterData = data
     local offset = FauxScrollFrame_GetOffset(self.rosterScroll) or 0
     FauxScrollFrame_Update(self.rosterScroll, #data, ROSTER_ROWS, ROW_HEIGHT)
+    setScrollBarAlwaysVisible(self.rosterScroll, #data * ROW_HEIGHT)
     local hasAccess = hasModifyAccess()
     for i = 1, ROSTER_ROWS do
         local row = self.rosterRows[i]
@@ -7286,6 +7379,15 @@ function UI:UpdateLootHistoryList()
     setScrollBarAlwaysVisible(self.lootHistoryScroll, #data * LOOT_HISTORY_ROW_HEIGHT_COMPACT)
     local dis = Goals.db and Goals.db.settings and Goals.db.settings.disenchanter or ""
     local disenchanterActive = dis ~= "" and dis ~= "0" and dis ~= L.NONE_OPTION
+    local groupSize = 0
+    if Goals and Goals.IsInRaid and Goals:IsInRaid() then
+        groupSize = GetNumRaidMembers and GetNumRaidMembers() or 0
+    elseif Goals and Goals.IsInParty and Goals:IsInParty() then
+        local partyCount = GetNumPartyMembers and GetNumPartyMembers() or 0
+        groupSize = partyCount + 1
+    else
+        groupSize = 1
+    end
     local hasRainbow = false
     local selectedFound = false
     for i = 1, visibleRows do
@@ -7331,14 +7433,34 @@ function UI:UpdateLootHistoryList()
                         notesText = "Assigned"
                     end
                 else
-                    playerText = "Unassigned"
-                    notesText = "Found"
+                    local stackCount = entry.stackCount or 0
+                    if stackCount > 1 then
+                        if groupSize > 0 and (stackCount % groupSize) == 0 then
+                            local perPlayer = math.floor(stackCount / groupSize)
+                            if perPlayer > 1 then
+                                itemText = string.format("%s x%d", itemText, perPlayer)
+                            else
+                                itemText = string.format("%s x%d", itemText, stackCount)
+                            end
+                            playerText = "All Players"
+                        else
+                            itemText = string.format("%s x%d", itemText, stackCount)
+                            playerText = "Group"
+                        end
+                    else
+                        playerText = "Unassigned"
+                    end
+                    if entry.raw then
+                        notesText = "Found"
+                    else
+                        notesText = "Looted"
+                    end
                 end
                 row.itemLink = entry.item
             elseif entry.kind == "LOOT_FOUND" then
                 local itemLink = entry.data and entry.data.item or ""
                 itemText = itemLink
-                notesText = "Found"
+                notesText = "Looted"
                 row.itemLink = itemLink
             elseif entry.kind == "LOOT_ASSIGN" then
                 local dataEntry = entry.data or {}
@@ -8343,5 +8465,6 @@ function UI:CreateOptionsPanel()
     InterfaceOptions_AddCategory(panel)
     self.optionsPanel = panel
 end
+
 
 
