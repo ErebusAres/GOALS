@@ -84,3 +84,95 @@ function Dev:ToggleDebug()
     Goals.db.settings.debug = not Goals.db.settings.debug
     Goals:NotifyDataChanged()
 end
+
+local function ensureCombatTrackerEnabled(requireHealing)
+    if not (Goals and Goals.DamageTracker and Goals.DamageTracker.IsEnabled and Goals.DamageTracker:IsEnabled()) then
+        if Goals and Goals.Print then
+            Goals:Print("Enable Combat Log Tracking first.")
+        end
+        return false
+    end
+    if requireHealing and not (Goals.DamageTracker.IsHealingEnabled and Goals.DamageTracker:IsHealingEnabled()) then
+        if Goals and Goals.Print then
+            Goals:Print("Enable Healing Tracking first.")
+        end
+        return false
+    end
+    return true
+end
+
+function Dev:SimulateSelfDamage(amount, spellName, sourceName)
+    if not self.enabled then
+        return
+    end
+    if not ensureCombatTrackerEnabled(false) then
+        return
+    end
+    local value = tonumber(amount) or 1000
+    if value < 1 then
+        value = 1
+    end
+    local player = Goals:GetPlayerName() or "Player"
+    Goals.DamageTracker:AddEntry({
+        ts = time(),
+        player = player,
+        amount = value,
+        spell = spellName or "Dev Attack",
+        source = sourceName or "Dev Dummy",
+        kind = "DAMAGE",
+    })
+end
+
+function Dev:SimulateSelfHeal(amount, spellName, sourceName)
+    if not self.enabled then
+        return
+    end
+    if not ensureCombatTrackerEnabled(true) then
+        return
+    end
+    local value = tonumber(amount) or 1000
+    if value < 1 then
+        value = 1
+    end
+    local player = Goals:GetPlayerName() or "Player"
+    Goals.DamageTracker:AddEntry({
+        ts = time(),
+        player = player,
+        amount = value,
+        spell = spellName or "Dev Heal",
+        source = sourceName or "Dev Healer",
+        kind = "HEAL",
+    })
+end
+
+function Dev:SimulateSelfDeath()
+    if not self.enabled then
+        return
+    end
+    if not ensureCombatTrackerEnabled(false) then
+        return
+    end
+    local player = Goals:GetPlayerName() or "Player"
+    Goals.DamageTracker:AddEntry({
+        ts = time(),
+        player = player,
+        kind = "DEATH",
+    })
+end
+
+function Dev:SimulateSelfResurrect(spellName, sourceName)
+    if not self.enabled then
+        return
+    end
+    if not ensureCombatTrackerEnabled(false) then
+        return
+    end
+    local player = Goals:GetPlayerName() or "Player"
+    Goals.DamageTracker:AddEntry({
+        ts = time(),
+        player = player,
+        spell = spellName or "Dev Resurrection",
+        source = sourceName or "Dev Healer",
+        kind = "RES",
+    })
+end

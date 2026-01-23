@@ -1,7 +1,7 @@
 ## Interface: 30300
 ## Author: Adam and Corey
 ## Title: |cff00ccffGOALS|r - Gen2
-## Version: v2.15
+## Version: v2.16
 ## Notes: DKP-style boss and loot tracker for Wrath 3.3.5a
 ## DefaultState: enabled
 ## SavedVariables: GoalsDB

@@ -18,6 +18,10 @@ local DEBUG_ROWS = 16
 local DEBUG_ROW_HEIGHT = 16
 local DAMAGE_ROWS = 16
 local DAMAGE_ROW_HEIGHT = 18
+local DAMAGE_COL_TIME = 70
+local DAMAGE_COL_PLAYER = 120
+local DAMAGE_COL_AMOUNT = 70
+local DAMAGE_COL_SPELL = 160
 local MINI_ROW_HEIGHT = 16
 local MINI_HEADER_HEIGHT = 22
 local MINI_FRAME_WIDTH = 200
@@ -37,6 +41,13 @@ local THEME = {
     insetBorder = { 0.17, 0.19, 0.24, 0.85 },
     titleText = { 0.9, 0.92, 0.98, 1.0 },
 }
+
+local DAMAGE_COLOR = { 1, 0.25, 0.25 }
+local HEAL_COLOR = { 0.2, 1, 0.2 }
+local DEATH_COLOR = { 0.7, 0.35, 0.9 }
+local REVIVE_COLOR = { 1, 0.9, 0.2 }
+local ELITE_COLOR = { 1, 0.25, 0.25 }
+local TRASH_COLOR = { 0.6, 0.6, 0.6 }
 
 local function applyTextureColor(texture, color)
     if not texture or not color then
@@ -3873,8 +3884,16 @@ function UI:CreateSettingsTab(page)
     end)
     self.combatLogTrackingCheck = combatLogCheck
 
+    local combatLogHealingCheck = CreateFrame("CheckButton", nil, leftInset, "UICheckButtonTemplate")
+    combatLogHealingCheck:SetPoint("TOPLEFT", combatLogCheck, "BOTTOMLEFT", 0, -8)
+    setCheckText(combatLogHealingCheck, L.CHECK_COMBAT_LOG_HEALING)
+    combatLogHealingCheck:SetScript("OnClick", function(selfBtn)
+        Goals.db.settings.combatLogHealing = selfBtn:GetChecked() and true or false
+    end)
+    self.combatLogHealingCheck = combatLogHealingCheck
+
     local localOnlyCheck = CreateFrame("CheckButton", nil, leftInset, "UICheckButtonTemplate")
-    localOnlyCheck:SetPoint("TOPLEFT", combatLogCheck, "BOTTOMLEFT", 0, -8)
+    localOnlyCheck:SetPoint("TOPLEFT", combatLogHealingCheck, "BOTTOMLEFT", 0, -8)
     setCheckText(localOnlyCheck, "Disable sync (local only)")
     localOnlyCheck:SetScript("OnClick", function(selfBtn)
         Goals.db.settings.localOnly = selfBtn:GetChecked() and true or false
@@ -4148,9 +4167,30 @@ function UI:CreateDamageTrackerTab(page)
     self.damageTrackerDropdown = dropdown
     self.damageTrackerFilter = L.DAMAGE_TRACKER_ALL
 
+    local headerY = -40
+    local timeHeader = createLabel(inset, "Time", "GameFontHighlightSmall")
+    timeHeader:SetPoint("TOPLEFT", inset, "TOPLEFT", 10, headerY)
+    timeHeader:SetWidth(DAMAGE_COL_TIME)
+
+    local playerHeader = createLabel(inset, "Player", "GameFontHighlightSmall")
+    playerHeader:SetPoint("LEFT", timeHeader, "RIGHT", 8, 0)
+    playerHeader:SetWidth(DAMAGE_COL_PLAYER)
+
+    local amountHeader = createLabel(inset, "Amount", "GameFontHighlightSmall")
+    amountHeader:SetPoint("LEFT", playerHeader, "RIGHT", 8, 0)
+    amountHeader:SetWidth(DAMAGE_COL_AMOUNT)
+
+    local spellHeader = createLabel(inset, "Spell", "GameFontHighlightSmall")
+    spellHeader:SetPoint("LEFT", amountHeader, "RIGHT", 8, 0)
+    spellHeader:SetWidth(DAMAGE_COL_SPELL)
+
+    local sourceHeader = createLabel(inset, "Source", "GameFontHighlightSmall")
+    sourceHeader:SetPoint("LEFT", spellHeader, "RIGHT", 8, 0)
+    sourceHeader:SetPoint("RIGHT", inset, "RIGHT", -12, 0)
+
     -- Layout/styling tweaks for the tracker panel can go here.
     local scroll = CreateFrame("ScrollFrame", "GoalsDamageTrackerScroll", inset, "FauxScrollFrameTemplate")
-    scroll:SetPoint("TOPLEFT", inset, "TOPLEFT", 2, -54)
+    scroll:SetPoint("TOPLEFT", inset, "TOPLEFT", 2, headerY - 18)
     scroll:SetPoint("BOTTOMRIGHT", inset, "BOTTOMRIGHT", -26, 10)
     scroll:SetScript("OnVerticalScroll", function(selfScroll, offset)
         FauxScrollFrame_OnVerticalScroll(selfScroll, offset, DAMAGE_ROW_HEIGHT, function()
@@ -4163,16 +4203,61 @@ function UI:CreateDamageTrackerTab(page)
     for i = 1, DAMAGE_ROWS do
         local row = CreateFrame("Frame", nil, inset)
         row:SetHeight(DAMAGE_ROW_HEIGHT)
-        row:SetPoint("TOPLEFT", inset, "TOPLEFT", 8, -40 - (i - 1) * DAMAGE_ROW_HEIGHT)
+        row:SetPoint("TOPLEFT", inset, "TOPLEFT", 8, headerY - 14 - (i - 1) * DAMAGE_ROW_HEIGHT)
         row:SetPoint("RIGHT", inset, "RIGHT", -6, 0)
         addRowStripe(row)
+        row:EnableMouse(true)
 
-        local text = row:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
-        text:SetPoint("LEFT", row, "LEFT", 0, 0)
-        text:SetPoint("RIGHT", row, "RIGHT", -4, 0)
-        text:SetJustifyH("LEFT")
-        text:SetWordWrap(false)
-        row.text = text
+        local timeText = row:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+        timeText:SetPoint("LEFT", row, "LEFT", 0, 0)
+        timeText:SetWidth(DAMAGE_COL_TIME)
+        timeText:SetJustifyH("LEFT")
+        timeText:SetWordWrap(false)
+        row.timeText = timeText
+
+        local playerText = row:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+        playerText:SetPoint("LEFT", timeText, "RIGHT", 8, 0)
+        playerText:SetWidth(DAMAGE_COL_PLAYER)
+        playerText:SetJustifyH("LEFT")
+        playerText:SetWordWrap(false)
+        row.playerText = playerText
+
+        local amountText = row:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+        amountText:SetPoint("LEFT", playerText, "RIGHT", 8, 0)
+        amountText:SetWidth(DAMAGE_COL_AMOUNT)
+        amountText:SetJustifyH("RIGHT")
+        amountText:SetWordWrap(false)
+        row.amountText = amountText
+
+        local spellText = row:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+        spellText:SetPoint("LEFT", amountText, "RIGHT", 8, 0)
+        spellText:SetWidth(DAMAGE_COL_SPELL)
+        spellText:SetJustifyH("LEFT")
+        spellText:SetWordWrap(false)
+        row.spellText = spellText
+
+        local sourceText = row:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+        sourceText:SetPoint("LEFT", spellText, "RIGHT", 8, 0)
+        sourceText:SetPoint("RIGHT", row, "RIGHT", -4, 0)
+        sourceText:SetJustifyH("LEFT")
+        sourceText:SetWordWrap(false)
+        row.sourceText = sourceText
+
+        row:SetScript("OnEnter", function(selfRow)
+            local entry = selfRow.entry
+            if entry and entry.spell and entry.spell ~= "" then
+                GameTooltip:SetOwner(selfRow, "ANCHOR_RIGHT")
+                if entry.spellId and GameTooltip.SetSpellByID then
+                    GameTooltip:SetSpellByID(entry.spellId)
+                else
+                    GameTooltip:SetText(entry.spell)
+                end
+                GameTooltip:Show()
+            end
+        end)
+        row:SetScript("OnLeave", function()
+            GameTooltip:Hide()
+        end)
 
         self.damageTrackerRows[i] = row
     end
@@ -4992,10 +5077,68 @@ function UI:CreateDevTab(page)
         end
     end)
 
+    local combatTitle = createLabel(inset, "Combat Testing", "GameFontNormal")
+    combatTitle:SetPoint("TOPLEFT", testDbmBtn, "TOPRIGHT", 190, 0)
+
+    local combatAmountLabel = createLabel(inset, "Amount", "GameFontHighlightSmall")
+    combatAmountLabel:SetPoint("TOPLEFT", combatTitle, "BOTTOMLEFT", 0, -6)
+
+    local combatAmountBox = CreateFrame("EditBox", nil, inset, "InputBoxTemplate")
+    combatAmountBox:SetSize(60, 18)
+    combatAmountBox:SetPoint("LEFT", combatAmountLabel, "RIGHT", 6, 0)
+    combatAmountBox:SetNumeric(true)
+    combatAmountBox:SetMaxLetters(6)
+    combatAmountBox:SetAutoFocus(false)
+    combatAmountBox:SetText("1234")
+    bindEscapeClear(combatAmountBox)
+    self.devCombatAmountBox = combatAmountBox
+
+    local combatDamageBtn = CreateFrame("Button", nil, inset, "UIPanelButtonTemplate")
+    combatDamageBtn:SetSize(170, 20)
+    combatDamageBtn:SetText("Self Damage")
+    combatDamageBtn:SetPoint("TOPLEFT", combatAmountLabel, "BOTTOMLEFT", 0, -6)
+    combatDamageBtn:SetScript("OnClick", function()
+        local amount = tonumber(combatAmountBox:GetText()) or 1000
+        if Goals and Goals.Dev and Goals.Dev.SimulateSelfDamage then
+            Goals.Dev:SimulateSelfDamage(amount)
+        end
+    end)
+
+    local combatHealBtn = CreateFrame("Button", nil, inset, "UIPanelButtonTemplate")
+    combatHealBtn:SetSize(170, 20)
+    combatHealBtn:SetText("Self Heal")
+    combatHealBtn:SetPoint("TOPLEFT", combatDamageBtn, "BOTTOMLEFT", 0, -6)
+    combatHealBtn:SetScript("OnClick", function()
+        local amount = tonumber(combatAmountBox:GetText()) or 1000
+        if Goals and Goals.Dev and Goals.Dev.SimulateSelfHeal then
+            Goals.Dev:SimulateSelfHeal(amount)
+        end
+    end)
+
+    local combatDeathBtn = CreateFrame("Button", nil, inset, "UIPanelButtonTemplate")
+    combatDeathBtn:SetSize(170, 20)
+    combatDeathBtn:SetText("Self Death")
+    combatDeathBtn:SetPoint("TOPLEFT", combatHealBtn, "BOTTOMLEFT", 0, -6)
+    combatDeathBtn:SetScript("OnClick", function()
+        if Goals and Goals.Dev and Goals.Dev.SimulateSelfDeath then
+            Goals.Dev:SimulateSelfDeath()
+        end
+    end)
+
+    local combatResBtn = CreateFrame("Button", nil, inset, "UIPanelButtonTemplate")
+    combatResBtn:SetSize(170, 20)
+    combatResBtn:SetText("Self Res")
+    combatResBtn:SetPoint("TOPLEFT", combatDeathBtn, "BOTTOMLEFT", 0, -6)
+    combatResBtn:SetScript("OnClick", function()
+        if Goals and Goals.Dev and Goals.Dev.SimulateSelfResurrect then
+            Goals.Dev:SimulateSelfResurrect()
+        end
+    end)
+
     local socketLinkBtn = CreateFrame("Button", nil, inset, "UIPanelButtonTemplate")
     socketLinkBtn:SetSize(170, 20)
     socketLinkBtn:SetText("Socket Link (29991)")
-    socketLinkBtn:SetPoint("TOPLEFT", testDbmBtn, "TOPRIGHT", 190, 0)
+    socketLinkBtn:SetPoint("TOPLEFT", combatResBtn, "BOTTOMLEFT", 0, -10)
     socketLinkBtn:SetScript("OnClick", function()
         if Goals and Goals.BuildFullItemLinkWithSockets then
             local link = Goals:BuildFullItemLinkWithSockets(29991, nil, 0, { 24029, 24029, 24029 })
@@ -5554,16 +5697,56 @@ function UI:RefreshDamageTrackerDropdown()
     self:SetDropdownText(self.damageTrackerDropdown, selected)
 end
 
+local function getBossColor()
+    if ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[5] then
+        local color = ITEM_QUALITY_COLORS[5]
+        return color.r, color.g, color.b
+    end
+    return 1, 0.5, 0
+end
+
+local function getSourceColor(entry)
+    if not entry then
+        return 1, 1, 1
+    end
+    local kind = entry.sourceKind
+    if kind == "boss" then
+        return getBossColor()
+    end
+    if kind == "elite" then
+        return ELITE_COLOR[1], ELITE_COLOR[2], ELITE_COLOR[3]
+    end
+    if kind == "trash" then
+        return TRASH_COLOR[1], TRASH_COLOR[2], TRASH_COLOR[3]
+    end
+    if kind == "player" and entry.source then
+        return Goals:GetPlayerColor(entry.source)
+    end
+    return 1, 1, 1
+end
+
 function UI:FormatDamageTrackerEntry(entry)
     if not entry then
         return ""
     end
     local ts = formatCombatTimestamp(entry.ts)
     local player = entry.player or "Unknown"
-    local damage = math.floor(tonumber(entry.amount) or 0)
+    local kind = entry.kind or "DAMAGE"
+    if kind == "DEATH" then
+        return string.format("%s | %s | Died | |", ts, player)
+    end
+    if kind == "RES" then
+        local spell = entry.spell or "Unknown"
+        local source = entry.source or "Unknown"
+        return string.format("%s | %s | Revived | %s | %s", ts, player, spell, source)
+    end
+    local amount = math.floor(tonumber(entry.amount) or 0)
     local spell = entry.spell or "Unknown"
     local source = entry.source or "Unknown"
-    return string.format("%s : %s took %d from %s : %s", ts, player, damage, spell, source)
+    if kind == "HEAL" then
+        return string.format("%s | %s | +%d | %s | %s", ts, player, amount, spell, source)
+    end
+    return string.format("%s | %s | -%d | %s | %s", ts, player, amount, spell, source)
 end
 
 function UI:UpdateDamageTrackerList()
@@ -5583,10 +5766,53 @@ function UI:UpdateDamageTrackerList()
             if row.stripe then
                 setShown(row.stripe, ((offset + i) % 2) == 0)
             end
-            row.text:SetText(self:FormatDamageTrackerEntry(entry))
+            row.entry = entry
+            row.timeText:SetText(formatCombatTimestamp(entry.ts))
+
+            local playerName = entry.player or "Unknown"
+            row.playerText:SetText(playerName)
+            local pr, pg, pb = Goals:GetPlayerColor(playerName)
+            row.playerText:SetTextColor(pr, pg, pb)
+
+            local kind = entry.kind or "DAMAGE"
+            if kind == "DEATH" then
+                row.amountText:SetText("Died")
+                row.amountText:SetTextColor(DEATH_COLOR[1], DEATH_COLOR[2], DEATH_COLOR[3])
+                row.spellText:SetText("")
+                row.sourceText:SetText("")
+                row.sourceText:SetTextColor(1, 1, 1)
+            elseif kind == "RES" then
+                row.amountText:SetText("Revived")
+                row.amountText:SetTextColor(REVIVE_COLOR[1], REVIVE_COLOR[2], REVIVE_COLOR[3])
+                row.spellText:SetText(entry.spell or "")
+                row.sourceText:SetText(entry.source or "")
+                local sr, sg, sb = getSourceColor(entry)
+                row.sourceText:SetTextColor(sr, sg, sb)
+            elseif kind == "HEAL" then
+                local amount = math.floor(tonumber(entry.amount) or 0)
+                row.amountText:SetText(string.format("+%d", amount))
+                row.amountText:SetTextColor(HEAL_COLOR[1], HEAL_COLOR[2], HEAL_COLOR[3])
+                row.spellText:SetText(entry.spell or "")
+                row.sourceText:SetText(entry.source or "")
+                local sr, sg, sb = getSourceColor(entry)
+                row.sourceText:SetTextColor(sr, sg, sb)
+            else
+                local amount = math.floor(tonumber(entry.amount) or 0)
+                row.amountText:SetText(string.format("-%d", amount))
+                row.amountText:SetTextColor(DAMAGE_COLOR[1], DAMAGE_COLOR[2], DAMAGE_COLOR[3])
+                row.spellText:SetText(entry.spell or "")
+                row.sourceText:SetText(entry.source or "")
+                local sr, sg, sb = getSourceColor(entry)
+                row.sourceText:SetTextColor(sr, sg, sb)
+            end
         else
             row:Hide()
-            row.text:SetText("")
+            row.entry = nil
+            row.timeText:SetText("")
+            row.playerText:SetText("")
+            row.amountText:SetText("")
+            row.spellText:SetText("")
+            row.sourceText:SetText("")
         end
     end
 end
@@ -6713,6 +6939,22 @@ function UI:Refresh()
     end
     if self.combatLogTrackingCheck then
         self.combatLogTrackingCheck:SetChecked(Goals.db.settings.combatLogTracking and true or false)
+    end
+    if self.combatLogHealingCheck then
+        local enabled = Goals.db.settings.combatLogTracking and true or false
+        self.combatLogHealingCheck:SetChecked(Goals.db.settings.combatLogHealing and true or false)
+        if self.combatLogHealingCheck.SetAlpha then
+            self.combatLogHealingCheck:SetAlpha(enabled and 1 or 0.6)
+        end
+        if enabled then
+            if self.combatLogHealingCheck.Enable then
+                self.combatLogHealingCheck:Enable()
+            end
+        else
+            if self.combatLogHealingCheck.Disable then
+                self.combatLogHealingCheck:Disable()
+            end
+        end
     end
     if self.localOnlyCheck then
         self.localOnlyCheck:SetChecked(Goals.db.settings.localOnly and true or false)
