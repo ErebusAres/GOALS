@@ -1606,7 +1606,6 @@ function UI:CreateMainFrame()
         { key = "history", text = L.TAB_HISTORY, create = "CreateHistoryTab" },
         { key = "wishlist", text = L.TAB_WISHLIST, create = "CreateWishlistTab" },
         { key = "damage", text = L.TAB_DAMAGE_TRACKER, create = "CreateDamageTrackerTab" },
-        { key = "settings", text = L.TAB_SETTINGS, create = "CreateSettingsTab" },
     }
     if self:ShouldShowUpdateTab() then
         table.insert(tabDefs, { key = "update", text = L.TAB_UPDATE, create = "CreateUpdateTab" })
@@ -1643,9 +1642,6 @@ function UI:CreateMainFrame()
         end
         if def.key == "wishlist" then
             self.wishlistTabId = i
-        end
-        if def.key == "settings" then
-            self.settingsTabId = i
         end
         if def.key == "damage" then
             self.damageTab = tab
@@ -1716,7 +1712,7 @@ function UI:UpdateDamageTabVisibility()
     end
     self:LayoutTabs()
     if not enabled and self.currentTab == self.damageTabId then
-        self:SelectTab(self.settingsTabId or 1)
+        self:SelectTab(1)
     end
 end
 
@@ -2078,8 +2074,8 @@ function UI:CreateOverviewTab(page)
         pointsText:SetText("0")
         pointsText:SetWordWrap(false)
         pointsText:SetJustifyH("RIGHT")
-        if row.cols and row.cols.points then
-            pointsText:SetPoint("RIGHT", row.cols.points, "RIGHT", -2, 0)
+        if not (row.cols and row.cols.points) then
+            pointsText:SetPoint("RIGHT", row, "RIGHT", -4, 0)
         end
         row.pointsText = pointsText
 
@@ -2152,6 +2148,13 @@ function UI:CreateOverviewTab(page)
     end
 
     local y = -6
+    local adminControls = {}
+    local function trackAdmin(control)
+        if control then
+            table.insert(adminControls, control)
+        end
+    end
+    self.overviewAdminControls = adminControls
     local function addSectionHeader(text)
         local bar = optionsContent:CreateTexture(nil, "BORDER")
         bar:SetHeight(18)
@@ -2208,6 +2211,50 @@ function UI:CreateOverviewTab(page)
     y = y - 20
 
     y = y - 6
+    addSectionHeader("General")
+
+    local minimapCheck = addCheck(L.CHECK_MINIMAP, function(selfBtn)
+        Goals.db.settings.minimap.hide = not selfBtn:GetChecked()
+        UI:UpdateMinimapButton()
+    end)
+    self.minimapCheck = minimapCheck
+
+    local autoMinCheck = addCheck(L.CHECK_AUTO_MINIMIZE_COMBAT, function(selfBtn)
+        Goals.db.settings.autoMinimizeCombat = selfBtn:GetChecked() and true or false
+    end)
+    self.autoMinimizeCheck = autoMinCheck
+
+    local localOnlyCheck = addCheck("Disable sync (local only)", function(selfBtn)
+        Goals.db.settings.localOnly = selfBtn:GetChecked() and true or false
+    end)
+    self.localOnlyCheck = localOnlyCheck
+
+    local function hasDBM()
+        if DBM and DBM.RegisterCallback then
+            return true
+        end
+        if IsAddOnLoaded then
+            return IsAddOnLoaded("DBM-Core") or IsAddOnLoaded("DBM-GUI")
+        end
+        return false
+    end
+
+    if hasDBM() then
+        local dbmCheck = addCheck(L.CHECK_DBM_INTEGRATION, function(selfBtn)
+            Goals.db.settings.dbmIntegration = selfBtn:GetChecked() and true or false
+            if Goals.db.settings.dbmIntegration and Goals.Events and Goals.Events.InitDBMCallbacks then
+                Goals.Events:InitDBMCallbacks()
+            end
+        end)
+        self.dbmIntegrationCheck = dbmCheck
+
+        local dbmWishlistCheck = addCheck(L.CHECK_DBM_WISHLIST, function(selfBtn)
+            Goals.db.settings.wishlistDbmIntegration = selfBtn:GetChecked() and true or false
+        end)
+        self.wishlistDbmIntegrationCheck = dbmWishlistCheck
+    end
+
+    y = y - 6
     addSectionHeader(L.LABEL_SYNC)
     local syncValue = createLabel(optionsContent, "", "GameFontHighlight")
     syncValue:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
@@ -2246,13 +2293,17 @@ function UI:CreateOverviewTab(page)
     y = y - 34
 
     y = y - 6
-    addSectionHeader(L.LABEL_MANUAL)
+    local manualLabel, manualBar = addSectionHeader(L.LABEL_MANUAL)
+    trackAdmin(manualLabel)
+    trackAdmin(manualBar)
     local playerLabel = addLabel(L.LABEL_PLAYER)
+    trackAdmin(playerLabel)
     local playerDrop = CreateFrame("Frame", "GoalsManualPlayerDropdown", optionsContent, "UIDropDownMenuTemplate")
     playerDrop:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", -10, y)
     styleDropdown(playerDrop, 140)
     playerDrop.colorize = true
     self.manualPlayerDropdown = playerDrop
+    trackAdmin(playerDrop)
     self.manualSelected = nil
     self:SetupDropdown(playerDrop, function()
         return UI:GetAllPlayerNames()
@@ -2272,24 +2323,29 @@ function UI:CreateOverviewTab(page)
         selfBox:ClearFocus()
     end)
     self.amountBox = amountBox
+    trackAdmin(amountBox)
 
     local amountLabel = createLabel(optionsContent, L.LABEL_AMOUNT, "GameFontNormal")
     amountLabel:SetPoint("LEFT", amountBox, "RIGHT", 8, 0)
+    trackAdmin(amountLabel)
 
     local addButton = CreateFrame("Button", nil, optionsContent, "UIPanelButtonTemplate")
     addButton:SetSize(70, 20)
     addButton:SetText(L.BUTTON_ADD)
     addButton:SetPoint("TOPLEFT", amountBox, "BOTTOMLEFT", 0, -8)
+    trackAdmin(addButton)
 
     local setButton = CreateFrame("Button", nil, optionsContent, "UIPanelButtonTemplate")
     setButton:SetSize(70, 20)
     setButton:SetText(L.BUTTON_SET)
     setButton:SetPoint("LEFT", addButton, "RIGHT", 8, 0)
+    trackAdmin(setButton)
 
     local addAllButton = CreateFrame("Button", nil, optionsContent, "UIPanelButtonTemplate")
     addAllButton:SetSize(80, 20)
     addAllButton:SetText(L.BUTTON_ADD_ALL)
     addAllButton:SetPoint("TOPLEFT", addButton, "BOTTOMLEFT", 0, -6)
+    trackAdmin(addAllButton)
 
     addButton:SetScript("OnClick", function()
         local name = UI.manualSelected
@@ -2314,6 +2370,141 @@ function UI:CreateOverviewTab(page)
     self.manualAddAllButton = addAllButton
 
     y = y - 62
+
+    setupSudoDevPopup()
+    setupSaveTableHelpPopup()
+    setupBuildSharePopup()
+
+    local function addActionButton(text, onClick)
+        local btn = CreateFrame("Button", nil, optionsContent, "UIPanelButtonTemplate")
+        btn:SetSize(170, 20)
+        btn:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
+        btn:SetText(text)
+        btn:SetScript("OnClick", onClick)
+        y = y - 24
+        return btn
+    end
+
+    y = y - 6
+    local maintenanceLabel, maintenanceBar = addSectionHeader("Maintenance")
+    trackAdmin(maintenanceLabel)
+    trackAdmin(maintenanceBar)
+
+    local clearPointsBtn = addActionButton("Clear All Points", function()
+        if Goals and Goals.ClearAllPointsLocal then
+            Goals:ClearAllPointsLocal()
+        end
+    end)
+    trackAdmin(clearPointsBtn)
+
+    local clearPlayersBtn = addActionButton("Clear Players List", function()
+        if Goals and Goals.ClearPlayersLocal then
+            Goals:ClearPlayersLocal()
+        end
+    end)
+    trackAdmin(clearPlayersBtn)
+
+    local clearHistoryBtn = addActionButton("Clear History", function()
+        if Goals and Goals.ClearHistoryLocal then
+            Goals:ClearHistoryLocal()
+        end
+    end)
+    trackAdmin(clearHistoryBtn)
+
+    local clearAllBtn = addActionButton("Clear All", function()
+        if Goals and Goals.ClearAllLocal then
+            Goals:ClearAllLocal()
+        end
+    end)
+    trackAdmin(clearAllBtn)
+
+    y = y - 6
+    local miniLabel, miniBar = addSectionHeader(L.LABEL_MINI_TRACKER)
+    local resetMiniBtn = addActionButton("Reset Mini Position", function()
+        if UI and UI.ResetMiniTrackerPosition then
+            UI:ResetMiniTrackerPosition()
+        end
+    end)
+
+    local miniBtn = addActionButton(L.BUTTON_TOGGLE_MINI_TRACKER, function()
+        if UI and UI.ToggleMiniTracker then
+            UI:ToggleMiniTracker()
+        end
+    end)
+    self.miniTrackerButton = miniBtn
+
+    y = y - 6
+    local tableLabel, tableBar = addSectionHeader(L.LABEL_SAVE_TABLES)
+    local autoSeenCheck = addCheck(L.CHECK_AUTOLOAD_SEEN, function(selfBtn)
+        Goals.db.settings.tableAutoLoadSeen = selfBtn:GetChecked() and true or false
+    end)
+    self.autoLoadSeenCheck = autoSeenCheck
+
+    local combinedCheck = addCheck(L.CHECK_COMBINED_TABLES, function(selfBtn)
+        Goals.db.settings.tableCombined = selfBtn:GetChecked() and true or false
+        Goals:NotifyDataChanged()
+    end)
+    self.combinedTablesCheck = combinedCheck
+
+    local syncSeenBtn = addActionButton(L.BUTTON_SYNC_SEEN, function()
+        if Goals and Goals.MergeSeenPlayersIntoCurrent then
+            Goals:MergeSeenPlayersIntoCurrent()
+        end
+    end)
+    self.syncSeenButton = syncSeenBtn
+    trackAdmin(syncSeenBtn)
+
+    y = y - 6
+    local devLabel, devBar = addSectionHeader("Dev Tools")
+    trackAdmin(devLabel)
+    trackAdmin(devBar)
+
+    local sudoBtn = addActionButton("", function()
+        if Goals.db.settings.sudoDev then
+            Goals.db.settings.sudoDev = false
+            UI:Refresh()
+            return
+        end
+        if StaticPopup_Show then
+            StaticPopup_Show("GOALS_SUDO_DEV")
+        end
+    end)
+    self.sudoDevButton = sudoBtn
+    trackAdmin(sudoBtn)
+
+    local syncRequestBtn = addActionButton("Ask for sync", function()
+        if Goals and Goals.Comm and Goals.Comm.RequestSync then
+            Goals.Comm:RequestSync("MANUAL")
+        end
+    end)
+    syncRequestBtn:SetScript("OnEnter", function(selfBtn)
+        GameTooltip:SetOwner(selfBtn, "ANCHOR_RIGHT")
+        GameTooltip:SetText("Ask the loot master to send a full roster/points sync.")
+        GameTooltip:Show()
+    end)
+    syncRequestBtn:SetScript("OnLeave", function()
+        GameTooltip:Hide()
+    end)
+    self.syncRequestButton = syncRequestBtn
+    trackAdmin(syncRequestBtn)
+
+    y = y - 6
+    local keybindsLabel, keybindsBar = addSectionHeader("Keybindings")
+    self.keybindsTitle = keybindsLabel
+
+    local uiBindLabel = addLabel("Toggle GOALS UI:")
+    self.keybindUiLabel = uiBindLabel
+    local uiBindValue = createLabel(optionsContent, "", "GameFontHighlightSmall")
+    uiBindValue:SetPoint("LEFT", uiBindLabel, "RIGHT", 6, 0)
+    uiBindValue:SetJustifyH("LEFT")
+    self.keybindUiValue = uiBindValue
+
+    local miniBindLabel = addLabel("Toggle Mini Viewer:")
+    self.keybindMiniLabel = miniBindLabel
+    local miniBindValue = createLabel(optionsContent, "", "GameFontHighlightSmall")
+    miniBindValue:SetPoint("LEFT", miniBindLabel, "RIGHT", 6, 0)
+    miniBindValue:SetJustifyH("LEFT")
+    self.keybindMiniValue = miniBindValue
 
     local contentHeight = math.abs(y) + 40
     optionsContent:SetHeight(contentHeight)
@@ -2652,6 +2843,13 @@ function UI:CreateHistoryTab(page)
 
     addSectionHeader(L.LABEL_HISTORY_OPTIONS)
     addLabel(L.LABEL_HISTORY_FILTERS)
+
+    local combineCheck = addCheck(L.CHECK_COMBINE_HISTORY, "combineBossHistory")
+    combineCheck:SetScript("OnClick", function(selfBtn)
+        Goals:SetRaidSetting("combineBossHistory", selfBtn:GetChecked() and true or false)
+        UI:UpdateHistoryList()
+    end)
+    self.combineCheck = combineCheck
 
     local encounterCheck = addCheck(L.CHECK_HISTORY_ENCOUNTER, "historyFilterEncounter")
     local pointsCheck = addCheck(L.CHECK_HISTORY_POINTS, "historyFilterPoints")
@@ -5836,7 +6034,12 @@ function UI:UpdateRosterList()
             row.playerName = entry.name
             row.nameText:SetText(entry.name)
             row.nameText:SetTextColor(Goals:GetClassColor(entry.class))
-            row.pointsText:SetText(entry.points)
+            if not row.pointsText and row.cols and row.cols.points then
+                row.pointsText = row.cols.points
+            end
+            if row.pointsText then
+                row.pointsText:SetText(entry.points)
+            end
             if entry.present then
                 row.icon:SetTexture("Interface\\FriendsFrame\\StatusIcon-Online")
             else
@@ -8004,6 +8207,11 @@ function UI:Refresh()
                     self.amountBox:Disable()
                 end
             end
+        end
+    end
+    if self.overviewAdminControls then
+        for _, control in ipairs(self.overviewAdminControls) do
+            setShown(control, hasAccess)
         end
     end
     self:UpdateRosterList()
