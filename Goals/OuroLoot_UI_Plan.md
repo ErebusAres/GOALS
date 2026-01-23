@@ -1,194 +1,112 @@
 # Ouro Loot UI Alignment Plan (GOALS)
 
-Goal: reshape GOALS UI to match Ouro Loot’s layout and readability while **keeping the current titlebar (minimize + close)** and **keeping class‑colored names**. No code changes yet—this is a design/implementation plan.
+Goal: reshape GOALS UI to match Ouro Loot’s layout and readability while **keeping the current titlebar (minimize + close)** and **keeping class‑colored names**.
 
 ---
 
-## References to Review (OL)
-- `workspace/Ouro_Loot/lootgui.lua` — main display layout, table styling, right‑side options panel.
-- `workspace/Ouro_Loot/text_tabs.lua` — tab placement and styling.
-- `workspace/Ouro_Loot/AceGUIWidget-lib-st.lua` — scrolling table widget behaviors.
+## Current Status (Implemented)
+
+### Layout + Tabs
+- Main tabs moved to a **top tab bar** using `OptionsFrameTabButtonTemplate` (OL-style) with a dark strip and thin divider line.
+- Wishlist sub-tabs also have a dark strip + divider for OL-style continuity.
+- Main content area starts below the tab bar and is taller (tabs no longer consume bottom space).
+
+### Table Layout + Styling
+- Shared table widget in place with OL-like header bars, stripes, and column layout.
+- Header bar height reduced to 16px for tighter density.
+- Column spacing tightened (default spacing 6px).
+- Row stripes slightly stronger for readability.
+- History rows set to 18px height.
+- Loot rows set to 18px (compact) with merged Found/Assign behavior.
+- Tables aligned to the scrollbar edge for a cleaner OL-like look.
+
+### Right Options Panels
+- Right panels reduced to **220px** to give the main table more width (closer to OL proportions).
+- Section header bars reduced to 16px with gold header text.
+- Labels in option panels are now `GameFontHighlightSmall` for tighter look.
+- Checkbox labels standardized: smaller font, lighter color, consistent left spacing.
+- Dropdowns now show the WoW dropdown box again (soft alpha), gold-tinted text; options panel dropdowns set to ~156px to align with buttons.
+- Spacing tightened across the right panels.
+- Options panel buttons standardized to ~156px wide and 18px high; small action buttons sized proportionally.
+
+### Combat Log Tracking
+- Combat log is **always enabled** right now.
+- Toggle removed; combat tab always visible.
+- Filter moved into options panel (top section).
+
+### Loot Table Behavior
+- Loot rows: **Found + Assign merged** (single row updates on assignment).
+- Notes system: auto notes (Found/Looted/Assigned/Disenchanted), manual notes override.
+- Notes UI in Loot right panel with Apply/Clear.
+- Right-click on Found row assigns loot (same as old Found Loot list).
+- Long item names truncate with `...` while preserving item color.
+- Item tooltip now only opens when clicking the **item name column**, not the full row.
+
+### Overview + Access Controls
+- Overview table now aligned: Player | Points | Actions (buttons under Actions header).
+- Admin/dev controls hidden for non‑admin users (not just disabled).
+- “Ask for sync” moved into Sync section (visible to all).
+- “Sync Seen” button hidden for now.
+
+### Wishlist
+- Wishlist layout **kept Wowhead-style** (not a table).
+- Options sub-tab is now a scroll frame with always-visible scrollbar.
 
 ---
 
-## Target Layout (High‑Level)
-**Frame**
-- Keep GOALS titlebar (existing `GoalsFrameTemplate` + minimize/close).
-- Main content area becomes a **centered primary table** with **right options column** (like OL).
-- Use OL sizing as a reference; slightly larger than current GOALS is OK, but avoid a massive window.
+## Remaining Work / To-Do
 
-**Tabs**
-- Tabs aligned along the top inside the content area (just below title bar).
-- Tab placement to mirror OL (left-to-right).
-- Keep GOALS tab structure but remove the Settings tab by relocating settings to relevant pages.
+### Options Panel UI Matching (Primary Tabs)
+- Continue tightening spacing where needed (labels, dropdowns, checkbox groups).
+- Validate options panel widths/spacing on Overview/Loot/History/Combat.
+- Ensure dropdowns/buttons align vertically in neat columns with consistent 156px width.
 
-**Table**
-- Clean, grid-like table with header bar and column labels.
-- Alternating row stripes, subtle separators.
-- Clear vertical scroll with left/right padding.
-- Keep class colors for player names.
-- Scrollbar always visible (disabled/greyed when not needed) where appropriate.
-- Keep the main table panel layout consistent across tabs (header placement, column title row, scroll area).
+### Table Look + Feel
+- Verify all tables use consistent header height/spacing across tabs.
+- Check column widths for Loot/History/Combat to better match OL proportions.
+- Consider subtle separators between major table groups (if needed).
 
-**Options Sidebar**
-- Right-hand panel with grouped sections (header + controls).
-- Leave space for scroll wheel (avoid overlapping scroll bar area).
-- Clean, centered control alignment for readability.
-- Prefer short labels; use hover tooltips for longer descriptions.
-- If settings overflow vertically, the right panel should become scrollable and keep a visible scrollbar.
-- Use a consistent right-panel layout template across tabs (spacing, section headers, button/dropdown sizing).
+### Scrollbars + Alignment
+- Ensure scrollbars are **always visible** (greyed when not scrollable) on relevant panels.
+- Confirm no overlap between scrollbars and right-panel controls.
+
+### Access / Roles
+- Confirm loot master/raid helper access rules for buttons and actions.
+- Decide if any admin sections should remain visible for non-admins (or hidden).
+
+### Settings Cleanup
+- Settings tab is removed from main tabs.
+- Decide whether to reintroduce a Settings tab later in OL tone.
+- If reintroduced, define what belongs there vs per-tab options.
 
 ---
 
-## Proposed Tab Order (Draft)
-- Overview
-- Loot
-- History
-- Wishlist
-- Combat
-- Update (if shown)
-- Help
-- Dev/Debug (if Dev mode)
-
-Notes:
-- Settings tab removed. Relevant settings migrate to their tab’s right-side panel.
-- If needed, add an “Advanced” sub‑section on the **right panel** rather than a standalone Settings tab.
-- Dev/Debug should be combined behind Dev mode so normal players never see it.
+## Testing Checklist (Run Each Session)
+- Tabs render correctly in top bar; Help pinned right.
+- Main content area doesn’t overlap tab bar or titlebar.
+- Table headers align with rows; columns line up with scrollbar edge.
+- Right panel sections have consistent header height + label spacing.
+- Dropdowns show WoW frame with gold text.
+- Checkbox labels are readable and aligned.
+- Loot item truncation works with `...` and tooltip still opens.
+- Found loot assignment via right-click works as before.
+- Combat log always active and combat tab always visible.
+- Wishlist Options tab scrolls with scrollbar always visible.
+- Dev/Admin buttons hidden for non-admin players.
 
 ---
 
-## Settings Migration Map (Draft)
-**Overview tab (right panel)**
-- Minimap toggle
-- Auto-minimize in combat
-- Local only (sync off) — optional here or under History/Sync
-- Sync status label (existing)
+## Prompt (for next session)
 
-**Loot tab (right panel)**
-- Loot method dropdown (existing)
-- Loot history filters
-- Reset rules + minimum quality (existing controls moved)
+Use this prompt to continue in a new chat:
 
-**History tab (right panel)**
-- History filters (existing)
-- History loot min quality
+"I’m working on GOALS (WoW 3.3.5a) UI to match Ouro Loot. We already moved main tabs to a top OL-style bar (OptionsFrameTabButtonTemplate + dark strip + divider). Wishlist sub-tabs also have a dark strip + divider. Tables use the shared widget with 16px headers, tighter spacing, stripes, and alignment to scrollbar edge. Right panels are 220px, section headers are 16px with gold text, labels are GameFontHighlightSmall, checkbox labels smaller/lighter, dropdowns now show WoW box again with gold text. Loot table merges Found+Assign rows, supports notes (auto + manual), right-click assign works, long loot names truncate with ..., tooltips only on item name column. Combat log is always on (toggle removed); filter moved into combat options. Overview actions align under Actions column; admin controls hidden for non-admins; Ask for sync moved into Sync section; Sync Seen hidden. Wishlist layout stays Wowhead-style with options scroll. 
 
-**Wishlist tab (right panel or subpanel)**
-- Wishlist announce settings
-- Popup sound/disable
-- Template text
-Notes:
-- Wishlist layout should remain mostly the same as today.
-- It has the most options; plan for a scrollable right panel and/or collapsible sections to manage density.
-
-**Combat tab (right panel)**
-- Enable Combat Log Tracking
-- Enable Healing Tracking
-- Filter controls (dropdown aligned with title bar)
-
-**Data Management / Admin**
-- Clear points/players/history/all
-- Mini tracker controls
-- Save tables/auto-load/combined
-- Sudo dev & sync request
-
-Placement note: if these feel “global,” consider a dedicated **right panel “Maintenance” section** on the Overview tab or a small “Advanced” tab.
+Please continue matching the options sections and overall OL look: standardize dropdown/button sizing, spacing/alignment in right panels for Overview/Loot/History/Combat, and further tune table column widths if needed. Provide updates to `Goals/gui.lua` and **always update `Goals/OuroLoot_UI_Plan.md` with changes, remaining work, and the next prompt for continuity**."
 
 ---
 
-## Table Styling Targets (from OL look & feel)
-- **Header bar**: darker background strip with column titles.
-- **Row height**: consistent 18–20 px, minimal padding.
-- **Alternating stripes**: low‑alpha stripe like OL.
-- **Font**: keep GameFontHighlightSmall for row text, GameFontNormal for headers.
-- **Column widths**: fixed widths for predictable scan patterns.
-- **Scroll behavior**: table rows clipped; keep scroll bar right side with inset margin.
-- **Scrollbar visibility**: always present (greyed out when no scrolling).
-- **Headers/labels/buttons/dropdowns**: standardize to match OL visual density and spacing.
-
----
-
-## UI Component Plan
-1) **Shared Table Widget**
-   - A helper to build: header bar, column labels, row pool, stripe effect, and FauxScrollFrame.
-   - Each tab can define columns and row renderers.
-
-2) **Right Panel Template**
-    - A consistent inset on the right with section headers and controls.
-    - Optionally include a thin vertical divider.
-    - Dedicated vertical spacing and a margin for scrollbar.
-    - Short labels + tooltip helper (for “explain more” text).
-
-3) **Tabs Bar**
-   - Relocate existing tab creation to match OL style.
-   - Keep `help` pinned right if desired; otherwise inline with other tabs.
-
-4) **Section Titles**
-   - Replace generic inset headers with OL‑like header strips (flat bar with text).
-   - Reuse existing `applySectionHeader` but adjust spacing and color for OL‑like feel.
-
----
-
-## Access & Visibility Rules (Draft)
-- Dev/Debug combined into a single hidden tab shown only when Dev mode is enabled.
-- Keep current loot‑master vs raid‑member logic, but review for:
-  - “Raid helper” access (assistant/raid officers) to distribute loot.
-  - Clear visual gating of controls (disabled state, tooltip explaining why).
-
----
-
-## Loot Notes Feature (Draft)
-Add a Notes column/field similar to OL:
-- Allow adding a short note per loot assignment (e.g., “Disenchanting”).
-- Store author + timestamp with the note.
-- Tooltip for truncated notes:
-  - Line 1: full note (wrapped)
-  - Line 2: `Author: <player>`
-  - Line 3: `<HH:MM:SS, DD:MM:YYYY>`
-
----
-
-## Implementation Steps (Phase Plan)
-**Phase 1 — Layout scaffolding**
-- Add reusable helpers: `CreateTableWidget`, `CreateOptionsPanel`, `CreateSectionHeader`.
-- Add a tooltip helper for compact labels.
-- Add mock layout to one tab (e.g., History) to validate alignment.
-
-**Phase 2 — Tab-by-tab refactor**
-- Overview: table + right panel.
-- Loot: table + right panel (move loot options here).
-- History: table + right panel (move filters here).
-- Wishlist: adopt OL-like table + right options (retain sub-tabs if needed).
-- Combat: table + right panel (tracking + filters).
-
-**Phase 3 — Settings migration**
-- Remove Settings tab.
-- Move all Settings controls into the appropriate tab panels.
-- Update `UI:Refresh()` to point to new control locations.
-
-**Phase 4 — Polish**
-- Spacing, alignment, and visual adjustments to match OL.
-- Confirm scroll bars don’t overlap the right panel.
-- Confirm class colors and item link colors remain visible.
-- Add Loot Notes column and tooltip behavior.
-
----
-
-## Testing Checklist
-- All tabs render without overlap at default 760x520.
-- Table headers align with rows.
-- Scroll bars are visible and not overlapping the right panel.
-- Scrollbars remain visible (greyed out) when content fits.
-- Tooltips show for any compact labels and are not clipped.
-- Loot notes can be added/edited and tooltip shows author + timestamp.
-- Dev/Debug tab hidden for non‑dev users.
-- Options panels are readable and centered.
-- Class‑colored player names preserved.
-- Settings previously in Settings tab still work and persist.
-
----
-
-## Open Questions / Decisions Needed
-- Which tab should host “Data Management/Admin” actions?
-- Do we keep the Help tab pinned right or inline?
-- Should Wishlist keep its internal sub‑tabs or be simplified?
+## Open Questions
+- Final desired widths for key columns (Loot/History/Combat)?
+- Should any admin-only controls remain visible but disabled for regular users?
+- Do we want to reintroduce a Settings tab later, or keep all options on their respective tabs?

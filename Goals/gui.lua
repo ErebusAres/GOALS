@@ -164,6 +164,17 @@ local function addRowStripe(row)
     row.stripe = stripe
 end
 
+local function styleOptionsButton(button, width)
+    if not button then
+        return
+    end
+    button:SetSize(width or 156, 18)
+    local font = button.GetFontString and button:GetFontString() or nil
+    if font and font.SetFontObject then
+        font:SetFontObject("GameFontHighlightSmall")
+    end
+end
+
 local function getScrollBar(frame)
     if not frame then
         return nil
@@ -2281,7 +2292,7 @@ function UI:CreateOverviewTab(page)
     local sortLabel = addLabel(L.LABEL_SORT)
     local sortDrop = CreateFrame("Frame", "GoalsSortDropdown", optionsContent, "UIDropDownMenuTemplate")
     sortDrop:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", -6, y)
-    styleDropdown(sortDrop, 160)
+    styleDropdown(sortDrop, 156)
     self.sortDropdown = sortDrop
     self:SetupSortDropdown(sortDrop)
     y = y - 30
@@ -2363,7 +2374,7 @@ function UI:CreateOverviewTab(page)
     y = y - 20
 
     local syncRequestBtn = CreateFrame("Button", nil, optionsContent, "UIPanelButtonTemplate")
-    syncRequestBtn:SetSize(160, 20)
+    styleOptionsButton(syncRequestBtn, 156)
     syncRequestBtn:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
     syncRequestBtn:SetText("Ask for sync")
     syncRequestBtn:SetScript("OnClick", function()
@@ -2380,7 +2391,7 @@ function UI:CreateOverviewTab(page)
         GameTooltip:Hide()
     end)
     self.syncRequestButton = syncRequestBtn
-    y = y - 24
+    y = y - 20
 
     local disLabel = addLabel(L.LABEL_DISENCHANTER)
     local disValue = createLabel(optionsContent, "", "GameFontHighlight")
@@ -2392,7 +2403,7 @@ function UI:CreateOverviewTab(page)
     local disSelectLabel = addLabel(L.SETTINGS_DISENCHANTER)
     local disDrop = CreateFrame("Frame", "GoalsDisenchanterDropdown", optionsContent, "UIDropDownMenuTemplate")
     disDrop:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", -10, y)
-    styleDropdown(disDrop, 160)
+    styleDropdown(disDrop, 156)
     disDrop.colorize = true
     self.disenchanterDropdown = disDrop
     self:SetupDropdown(disDrop, function()
@@ -2414,7 +2425,7 @@ function UI:CreateOverviewTab(page)
     trackAdmin(playerLabel)
     local playerDrop = CreateFrame("Frame", "GoalsManualPlayerDropdown", optionsContent, "UIDropDownMenuTemplate")
     playerDrop:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", -10, y)
-    styleDropdown(playerDrop, 160)
+    styleDropdown(playerDrop, 156)
     playerDrop.colorize = true
     self.manualPlayerDropdown = playerDrop
     trackAdmin(playerDrop)
@@ -2439,24 +2450,24 @@ function UI:CreateOverviewTab(page)
     self.amountBox = amountBox
     trackAdmin(amountBox)
 
-    local amountLabel = createLabel(optionsContent, L.LABEL_AMOUNT, "GameFontNormal")
+    local amountLabel = createLabel(optionsContent, L.LABEL_AMOUNT, "GameFontHighlightSmall")
     amountLabel:SetPoint("LEFT", amountBox, "RIGHT", 8, 0)
     trackAdmin(amountLabel)
 
     local addButton = CreateFrame("Button", nil, optionsContent, "UIPanelButtonTemplate")
-    addButton:SetSize(70, 20)
+    styleOptionsButton(addButton, 66)
     addButton:SetText(L.BUTTON_ADD)
     addButton:SetPoint("TOPLEFT", amountBox, "BOTTOMLEFT", 0, -8)
     trackAdmin(addButton)
 
     local setButton = CreateFrame("Button", nil, optionsContent, "UIPanelButtonTemplate")
-    setButton:SetSize(70, 20)
+    styleOptionsButton(setButton, 66)
     setButton:SetText(L.BUTTON_SET)
     setButton:SetPoint("LEFT", addButton, "RIGHT", 8, 0)
     trackAdmin(setButton)
 
     local addAllButton = CreateFrame("Button", nil, optionsContent, "UIPanelButtonTemplate")
-    addAllButton:SetSize(80, 20)
+    styleOptionsButton(addAllButton, 74)
     addAllButton:SetText(L.BUTTON_ADD_ALL)
     addAllButton:SetPoint("TOPLEFT", addButton, "BOTTOMLEFT", 0, -6)
     trackAdmin(addAllButton)
@@ -2491,11 +2502,11 @@ function UI:CreateOverviewTab(page)
 
     local function addActionButton(text, onClick)
         local btn = CreateFrame("Button", nil, optionsContent, "UIPanelButtonTemplate")
-        btn:SetSize(160, 20)
+        styleOptionsButton(btn, 156)
         btn:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
         btn:SetText(text)
         btn:SetScript("OnClick", onClick)
-        y = y - 22
+        y = y - 20
         return btn
     end
 
@@ -2754,11 +2765,11 @@ function UI:CreateLootTab(page)
 
     local function addButton(text, onClick)
         local btn = CreateFrame("Button", nil, optionsContent, "UIPanelButtonTemplate")
-        btn:SetSize(160, 20)
+        styleOptionsButton(btn, 156)
         btn:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
         btn:SetText(text)
         btn:SetScript("OnClick", onClick)
-        y = y - 22
+        y = y - 20
         return btn
     end
 
@@ -2779,7 +2790,7 @@ function UI:CreateLootTab(page)
 
     local minFilterDrop = CreateFrame("Frame", "GoalsLootHistoryMinQuality", optionsContent, "UIDropDownMenuTemplate")
     minFilterDrop:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", -6, y)
-    styleDropdown(minFilterDrop, 160)
+    styleDropdown(minFilterDrop, 156)
     minFilterDrop.options = getQualityOptions()
     UIDropDownMenu_Initialize(minFilterDrop, function(_, level)
         for _, option in ipairs(minFilterDrop.options) do
@@ -2823,7 +2834,7 @@ function UI:CreateLootTab(page)
     local minLabel = addLabel(L.LABEL_MIN_RESET_QUALITY)
     local minDrop = CreateFrame("Frame", "GoalsResetQualityDropdown", optionsContent, "UIDropDownMenuTemplate")
     minDrop:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", -6, y)
-    styleDropdown(minDrop, 160)
+    styleDropdown(minDrop, 156)
     self.resetQualityDropdown = minDrop
     self:SetupResetQualityDropdown(minDrop)
     y = y - 34
@@ -2843,7 +2854,7 @@ function UI:CreateLootTab(page)
 
     local notesBox = CreateFrame("EditBox", nil, optionsContent, "InputBoxTemplate")
     notesBox:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
-    notesBox:SetSize(170, 20)
+    notesBox:SetSize(156, 18)
     notesBox:SetAutoFocus(false)
     bindEscapeClear(notesBox)
     notesBox:SetScript("OnEnterPressed", function(selfBox)
@@ -2853,7 +2864,7 @@ function UI:CreateLootTab(page)
     y = y - 26
 
     local applyBtn = CreateFrame("Button", nil, optionsContent, "UIPanelButtonTemplate")
-    applyBtn:SetSize(80, 20)
+    styleOptionsButton(applyBtn, 74)
     applyBtn:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
     applyBtn:SetText("Apply")
     applyBtn:SetScript("OnClick", function()
@@ -2867,7 +2878,7 @@ function UI:CreateLootTab(page)
     self.lootNotesApplyButton = applyBtn
 
     local clearBtn = CreateFrame("Button", nil, optionsContent, "UIPanelButtonTemplate")
-    clearBtn:SetSize(80, 20)
+    styleOptionsButton(clearBtn, 74)
     clearBtn:SetPoint("LEFT", applyBtn, "RIGHT", 8, 0)
     clearBtn:SetText("Clear")
     clearBtn:SetScript("OnClick", function()
@@ -2991,7 +3002,7 @@ function UI:CreateHistoryTab(page)
 
     local minQualityDrop = CreateFrame("Frame", "GoalsHistoryMinQuality", optionsContent, "UIDropDownMenuTemplate")
     minQualityDrop:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", -4, y)
-    styleDropdown(minQualityDrop, 160)
+    styleDropdown(minQualityDrop, 156)
     minQualityDrop.options = getQualityOptions()
     UIDropDownMenu_Initialize(minQualityDrop, function(_, level)
         for _, option in ipairs(minQualityDrop.options) do
@@ -4967,7 +4978,7 @@ function UI:CreateDamageTrackerTab(page)
 
     local dropdown = CreateFrame("Frame", "GoalsDamageTrackerDropdown", optionsContent, "UIDropDownMenuTemplate")
     dropdown:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", -10, y)
-    styleDropdown(dropdown, 160)
+    styleDropdown(dropdown, 156)
     self:SetupDropdown(dropdown, function()
         return self:GetDamageTrackerDropdownList()
     end, function(value)
