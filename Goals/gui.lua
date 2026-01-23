@@ -4815,6 +4815,127 @@ function UI:CreateHelpTab(page)
     self:SelectHelpPage(self.helpSelectedId)
 end
 
+function UI:BuildHelpNavList()
+    local list = {}
+    local function addNode(node, depth)
+        if not node then
+            return
+        end
+        table.insert(list, {
+            id = node.id,
+            title = node.title,
+            type = node.type,
+            depth = depth or 0,
+            node = node,
+        })
+        if node.type == "folder" then
+            local expanded = self.helpNavState and self.helpNavState[node.id]
+            if expanded then
+                for _, child in ipairs(node.children or {}) do
+                    addNode(child, (depth or 0) + 1)
+                end
+            end
+        end
+    end
+    for _, node in ipairs(self.helpNodes or {}) do
+        addNode(node, 0)
+    end
+    return list
+end
+
+function UI:RefreshHelpNav()
+    if not self.helpNavScroll or not self.helpNavRows then
+        return
+    end
+    local rows = self.helpNavRows
+    local rowHeight = 18
+    local navList = self:BuildHelpNavList()
+    local offset = FauxScrollFrame_GetOffset(self.helpNavScroll) or 0
+    FauxScrollFrame_Update(self.helpNavScroll, #navList, #rows, rowHeight)
+    setScrollBarAlwaysVisible(self.helpNavScroll, #navList * rowHeight)
+
+    for i = 1, #rows do
+        local row = rows[i]
+        local entry = navList[offset + i]
+        if entry then
+            row:Show()
+            row.nodeId = entry.id
+            row.nodeType = entry.type
+            row.nodeDepth = entry.depth or 0
+            local indent = 6 + (entry.depth or 0) * 12
+
+            if row.expandBtn then
+                if entry.type == "folder" then
+                    row.expandBtn:Show()
+                    row.expandBtn:ClearAllPoints()
+                    row.expandBtn:SetPoint("LEFT", row, "LEFT", indent, 0)
+                    local expanded = self.helpNavState and self.helpNavState[entry.id]
+                    row.expandBtn:SetNormalTexture(expanded and "Interface\\Buttons\\UI-MinusButton-Up" or "Interface\\Buttons\\UI-PlusButton-Up")
+                    row.expandBtn:SetPushedTexture(expanded and "Interface\\Buttons\\UI-MinusButton-Down" or "Interface\\Buttons\\UI-PlusButton-Down")
+                    row.expandBtn:SetHighlightTexture("Interface\\Buttons\\UI-PlusButton-Hilight")
+                else
+                    row.expandBtn:Hide()
+                end
+            end
+
+            if row.text then
+                row.text:ClearAllPoints()
+                local textIndent = indent + (entry.type == "folder" and 16 or 4)
+                row.text:SetPoint("LEFT", row, "LEFT", textIndent, 0)
+                row.text:SetPoint("RIGHT", row, "RIGHT", -4, 0)
+                row.text:SetText(entry.title or "")
+            end
+
+            if row.selected then
+                if entry.id == self.helpSelectedId and entry.type ~= "folder" then
+                    row.selected:Show()
+                else
+                    row.selected:Hide()
+                end
+            end
+        else
+            row:Hide()
+            row.nodeId = nil
+            row.nodeType = nil
+            row.nodeDepth = nil
+            if row.selected then
+                row.selected:Hide()
+            end
+        end
+    end
+end
+
+function UI:SelectHelpPage(pageId)
+    if not pageId then
+        return
+    end
+    local node = self.helpNodeById and self.helpNodeById[pageId] or nil
+    if not node then
+        return
+    end
+    if node.type == "folder" then
+        self.helpNavState = self.helpNavState or {}
+        self.helpNavState[node.id] = not self.helpNavState[node.id]
+        self:RefreshHelpNav()
+        return
+    end
+    self.helpSelectedId = node.id
+    if self.helpContentTitle then
+        self.helpContentTitle:SetText(node.title or "Help")
+    end
+    if self.helpContentText then
+        self.helpContentText:SetText(node.content or "")
+    end
+    if self.helpContentText and self.helpContentChild then
+        local height = (self.helpContentText:GetStringHeight() or 0) + 12
+        self.helpContentChild:SetHeight(height)
+    end
+    if self.helpContentScroll then
+        self.helpContentScroll:SetVerticalScroll(0)
+    end
+    self:RefreshHelpNav()
+end
+
 function UI:CreateUpdateTab(page)
     local inset = CreateFrame("Frame", "GoalsUpdateInset", page, "GoalsInsetTemplate")
     applyInsetTheme(inset)
