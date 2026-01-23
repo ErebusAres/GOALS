@@ -2077,7 +2077,21 @@ function UI:CreateOverviewTab(page)
         local pointsText = row.cols and row.cols.points or row:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
         pointsText:SetText("0")
         pointsText:SetWordWrap(false)
+        pointsText:SetJustifyH("RIGHT")
+        if row.cols and row.cols.points then
+            pointsText:SetPoint("RIGHT", row.cols.points, "RIGHT", -2, 0)
+        end
         row.pointsText = pointsText
+
+        local actionsAnchor = CreateFrame("Frame", nil, row)
+        if row.cols and row.cols.actions then
+            actionsAnchor:SetPoint("LEFT", row.cols.actions, "LEFT", 0, 0)
+        else
+            actionsAnchor:SetPoint("LEFT", row, "LEFT", 0, 0)
+        end
+        actionsAnchor:SetPoint("RIGHT", row, "RIGHT", -2, 0)
+        actionsAnchor:SetHeight(ROW_HEIGHT)
+        row.actionsAnchor = actionsAnchor
 
         local add = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
         add:SetSize(18, 16)
@@ -2104,12 +2118,11 @@ function UI:CreateOverviewTab(page)
         remove:SetText("X")
         row.remove = remove
 
-        remove:SetPoint("RIGHT", row, "RIGHT", -2, 0)
+        remove:SetPoint("RIGHT", actionsAnchor, "RIGHT", 0, 0)
         undo:SetPoint("RIGHT", remove, "LEFT", -2, 0)
         reset:SetPoint("RIGHT", undo, "LEFT", -2, 0)
         sub:SetPoint("RIGHT", reset, "LEFT", -2, 0)
         add:SetPoint("RIGHT", sub, "LEFT", -2, 0)
-        pointsText:SetPoint("RIGHT", add, "LEFT", -8, 0)
 
         add:SetScript("OnClick", function()
             if row.playerName then
@@ -2758,10 +2771,18 @@ function UI:CreateWishlistTab(page)
     actionsPage:SetPoint("BOTTOMRIGHT", rightInset, "BOTTOMRIGHT", -6, 6)
     actionsPage:Hide()
 
-    local optionsPage = CreateFrame("Frame", nil, rightInset)
-    optionsPage:SetPoint("TOPLEFT", rightInset, "TOPLEFT", 6, -32)
-    optionsPage:SetPoint("BOTTOMRIGHT", rightInset, "BOTTOMRIGHT", -6, 6)
-    optionsPage:Hide()
+    local optionsScroll = CreateFrame("ScrollFrame", "GoalsWishlistOptionsScroll", rightInset, "UIPanelScrollFrameTemplate")
+    optionsScroll:SetPoint("TOPLEFT", rightInset, "TOPLEFT", 6, -32)
+    optionsScroll:SetPoint("BOTTOMRIGHT", rightInset, "BOTTOMRIGHT", -26, 6)
+    optionsScroll:Hide()
+    self.wishlistOptionsScroll = optionsScroll
+
+    local optionsContent = CreateFrame("Frame", "GoalsWishlistOptionsContent", optionsScroll)
+    optionsContent:SetPoint("TOPLEFT", optionsScroll, "TOPLEFT", 0, 0)
+    optionsContent:SetPoint("TOPRIGHT", optionsScroll, "TOPRIGHT", -20, 0)
+    optionsContent:SetHeight(200)
+    optionsScroll:SetScrollChild(optionsContent)
+    self.wishlistOptionsContent = optionsContent
 
     local function setWishlistTabSelected(button, selected)
         if not button then
@@ -2784,7 +2805,7 @@ function UI:CreateWishlistTab(page)
         setShown(managerPage, key == "manage")
         setShown(searchPage, key == "search")
         setShown(actionsPage, key == "actions")
-        setShown(optionsPage, key == "options")
+        setShown(optionsScroll, key == "options")
         self.wishlistActiveTab = key
         if self.wishlistSubTabs then
             for name, button in pairs(self.wishlistSubTabs) do
@@ -3723,7 +3744,7 @@ function UI:CreateWishlistTab(page)
     self.wishlistTokenLabel = tokenLabel
 
     local popout = actionsPage
-    local optionsPopout = optionsPage
+    local optionsPopout = optionsContent
 
     local popoutTitle = createLabel(popout, L.LABEL_WISHLIST_ACTIONS, "GameFontNormal")
     popoutTitle:SetPoint("TOPLEFT", popout, "TOPLEFT", 4, -4)
@@ -4198,6 +4219,22 @@ function UI:CreateWishlistTab(page)
         Goals:NotifyDataChanged()
     end)
     self.wishlistPopupDisableCheck = disablePopupCheck
+
+    local function updateOptionsContentHeight()
+        local top = optionsContent:GetTop() or 0
+        local bottom = disablePopupCheck:GetBottom() or 0
+        if top == 0 or bottom == 0 then
+            return
+        end
+        local height = (top - bottom) + 30
+        if height < (optionsScroll:GetHeight() or 0) then
+            height = optionsScroll:GetHeight()
+        end
+        optionsContent:SetHeight(height)
+        setScrollBarAlwaysVisible(optionsScroll, height)
+    end
+    optionsScroll:SetScript("OnShow", updateOptionsContentHeight)
+    optionsScroll:SetScript("OnSizeChanged", updateOptionsContentHeight)
 
     self.wishlistChannelDrop = nil
     -- Auto-only announcement channel; no user selection.
@@ -5822,8 +5859,6 @@ function UI:UpdateRosterList()
                 if row.remove then
                     row.remove:Enable()
                 end
-                row.pointsText:ClearAllPoints()
-                row.pointsText:SetPoint("RIGHT", row.add, "LEFT", -8, 0)
             else
                 row.add:Hide()
                 row.sub:Hide()
@@ -5832,8 +5867,6 @@ function UI:UpdateRosterList()
                 if row.remove then
                     row.remove:Hide()
                 end
-                row.pointsText:ClearAllPoints()
-                row.pointsText:SetPoint("RIGHT", row, "RIGHT", -28, 0)
             end
             if Goals:GetUndoPoints(entry.name) == nil then
                 row.undo:Disable()
