@@ -257,7 +257,7 @@ local function createTableWidget(parent, name, config)
     for _, col in ipairs(widget.columns) do
         local label = header:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
         if prevHeader then
-            label:SetPoint("LEFT", prevHeader, "RIGHT", col.spacing or 8, 0)
+            label:SetPoint("LEFT", prevHeader, "RIGHT", col.spacing or 6, 0)
         else
             label:SetPoint("LEFT", header, "LEFT", 0, 0)
         end
@@ -290,7 +290,7 @@ local function createTableWidget(parent, name, config)
         for _, col in ipairs(widget.columns) do
             local text = row:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
             if prev then
-                text:SetPoint("LEFT", prev, "RIGHT", col.spacing or 8, 0)
+                text:SetPoint("LEFT", prev, "RIGHT", col.spacing or 6, 0)
             else
                 text:SetPoint("LEFT", row, "LEFT", 0, 0)
             end
