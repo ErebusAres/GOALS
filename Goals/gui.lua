@@ -111,6 +111,56 @@ local function applySectionHeader(label, parent, yOffset)
     return bar
 end
 
+local function applySectionHeaderAfter(label, parent, anchor, yOffset)
+    if not label or not parent or not anchor then
+        return nil
+    end
+    local bar = parent:CreateTexture(nil, "BORDER")
+    bar:SetHeight(18)
+    bar:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 4, yOffset or -8)
+    bar:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -4, yOffset or -8)
+    bar:SetTexture(0, 0, 0, 0.35)
+    label:ClearAllPoints()
+    label:SetPoint("LEFT", bar, "LEFT", 6, 0)
+    return bar
+end
+local function applySectionCaption(bar, text)
+    if not bar or not text or text == "" then
+        return nil
+    end
+    local parent = bar.GetParent and bar:GetParent() or nil
+    if not parent then
+        return nil
+    end
+    local caption = parent:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    caption:SetPoint("RIGHT", bar, "RIGHT", -6, 0)
+    caption:SetText(text)
+    caption:SetTextColor(0.7, 0.75, 0.85, 1)
+    return caption
+end
+
+local function createDivider(parent, anchor, yOffset)
+    if not parent or not anchor then
+        return nil
+    end
+    local line = parent:CreateTexture(nil, "BORDER")
+    line:SetHeight(1)
+    line:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 4, yOffset or -8)
+    line:SetPoint("TOPRIGHT", anchor, "BOTTOMRIGHT", -4, yOffset or -8)
+    line:SetTexture(1, 1, 1, 0.08)
+    return line
+end
+
+local function addRowStripe(row)
+    if not row or row.stripe then
+        return
+    end
+    local stripe = row:CreateTexture(nil, "BACKGROUND")
+    stripe:SetAllPoints(row)
+    stripe:SetTexture(1, 1, 1, 0.04)
+    row.stripe = stripe
+end
+
 local function getScrollBar(frame)
     if not frame then
         return nil
@@ -251,56 +301,6 @@ local function createTableWidget(parent, name, config)
     end
 
     return widget
-end
-
-local function applySectionHeaderAfter(label, parent, anchor, yOffset)
-    if not label or not parent or not anchor then
-        return nil
-    end
-    local bar = parent:CreateTexture(nil, "BORDER")
-    bar:SetHeight(18)
-    bar:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 4, yOffset or -8)
-    bar:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -4, yOffset or -8)
-    bar:SetTexture(0, 0, 0, 0.35)
-    label:ClearAllPoints()
-    label:SetPoint("LEFT", bar, "LEFT", 6, 0)
-    return bar
-end
-local function applySectionCaption(bar, text)
-    if not bar or not text or text == "" then
-        return nil
-    end
-    local parent = bar.GetParent and bar:GetParent() or nil
-    if not parent then
-        return nil
-    end
-    local caption = parent:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
-    caption:SetPoint("RIGHT", bar, "RIGHT", -6, 0)
-    caption:SetText(text)
-    caption:SetTextColor(0.7, 0.75, 0.85, 1)
-    return caption
-end
-
-local function createDivider(parent, anchor, yOffset)
-    if not parent or not anchor then
-        return nil
-    end
-    local line = parent:CreateTexture(nil, "BORDER")
-    line:SetHeight(1)
-    line:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 4, yOffset or -8)
-    line:SetPoint("TOPRIGHT", anchor, "BOTTOMRIGHT", -4, yOffset or -8)
-    line:SetTexture(1, 1, 1, 0.08)
-    return line
-end
-
-local function addRowStripe(row)
-    if not row or row.stripe then
-        return
-    end
-    local stripe = row:CreateTexture(nil, "BACKGROUND")
-    stripe:SetAllPoints(row)
-    stripe:SetTexture(1, 1, 1, 0.04)
-    row.stripe = stripe
 end
 local function createLabel(parent, text, template)
     local label = parent:CreateFontString(nil, "ARTWORK", template or "GameFontNormal")
