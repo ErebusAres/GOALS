@@ -1331,7 +1331,7 @@ function UI:CreateMainFrame()
     end
 
     local frame = CreateFrame("Frame", "GoalsMainFrame", UIParent, "GoalsFrameTemplate")
-    frame:SetSize(760, 520)
+    frame:SetSize(900, 520)
     frame:SetPoint("CENTER")
     frame:SetMovable(true)
     frame:EnableMouse(true)
