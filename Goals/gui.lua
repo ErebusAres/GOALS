@@ -9,14 +9,14 @@ Goals.UI = Goals.UI or {}
 local UI = Goals.UI
 local L = Goals.L
 
-local ROW_HEIGHT = 20
+local ROW_HEIGHT = 18
 local ROSTER_ROWS = 20
 local HISTORY_ROWS = 20
 local HISTORY_ROW_HEIGHT = 18
 local HISTORY_ROW_HEIGHT_DOUBLE = 26
 local LOOT_HISTORY_ROWS = 20
 local DEBUG_ROWS = 16
-local DEBUG_ROW_HEIGHT = 16
+local DEBUG_ROW_HEIGHT = 14
 local DAMAGE_ROWS = 16
 local DAMAGE_ROW_HEIGHT = 18
 local DAMAGE_COL_TIME = 70
@@ -103,7 +103,7 @@ local function applySectionHeader(label, parent, yOffset)
         return nil
     end
     local bar = parent:CreateTexture(nil, "BORDER")
-    bar:SetHeight(18)
+    bar:SetHeight(16)
     bar:SetPoint("TOPLEFT", parent, "TOPLEFT", 4, yOffset or -6)
     bar:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -4, yOffset or -6)
     bar:SetTexture(0, 0, 0, 0.45)
@@ -118,7 +118,7 @@ local function applySectionHeaderAfter(label, parent, anchor, yOffset)
         return nil
     end
     local bar = parent:CreateTexture(nil, "BORDER")
-    bar:SetHeight(18)
+    bar:SetHeight(16)
     bar:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 4, yOffset or -8)
     bar:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -4, yOffset or -8)
     bar:SetTexture(0, 0, 0, 0.45)
@@ -229,13 +229,13 @@ local function createTableWidget(parent, name, config)
     widget.rowHeight = config.rowHeight or ROW_HEIGHT
     widget.rows = {}
 
-    local headerLeft = 8
-    local headerRight = -28
-    local headerTop = -8
+    local headerLeft = 6
+    local headerRight = -26
+    local headerTop = -6
     local headerHeight = config.headerHeight or 18
     widget.headerLeft = headerLeft
     widget.headerRight = headerRight
-    widget.rowTopOffset = -(headerHeight + 8)
+    widget.rowTopOffset = -(headerHeight + 6)
 
     local header = CreateFrame("Frame", name .. "Header", parent)
     header:SetHeight(headerHeight)
@@ -349,14 +349,18 @@ local function setCheckText(check, text)
     end
     if not label then
         label = check:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-        label:SetPoint("LEFT", check, "RIGHT", 2, 0)
         check.Text = label
     end
-    if label.SetFontObject then
-        label:SetFontObject("GameFontHighlightSmall")
-    end
     if label then
+        if label.ClearAllPoints then
+            label:ClearAllPoints()
+        end
+        label:SetPoint("LEFT", check, "RIGHT", 4, 0)
+        if label.SetFontObject then
+            label:SetFontObject("GameFontHighlightSmall")
+        end
         label:SetText(text or "")
+        label:SetTextColor(0.85, 0.88, 0.95, 1)
     end
 end
 
@@ -754,18 +758,26 @@ local function styleDropdown(dropdown, width)
     local middle = getDropDownPart(dropdown, "Middle")
     local right = getDropDownPart(dropdown, "Right")
     if left then
-        left:Hide()
+        left:Show()
+        left:SetAlpha(0.85)
     end
     if middle then
-        middle:Hide()
+        middle:Show()
+        middle:SetAlpha(0.85)
     end
     if right then
-        right:Hide()
+        right:Show()
+        right:SetAlpha(0.85)
     end
     local button = getDropDownPart(dropdown, "Button")
     if button then
         button:ClearAllPoints()
         button:SetPoint("RIGHT", dropdown, "RIGHT", -2, 0)
+        button:SetAlpha(0.9)
+    end
+    local text = getDropDownPart(dropdown, "Text")
+    if text and text.SetTextColor then
+        text:SetTextColor(0.92, 0.8, 0.5, 1)
     end
 end
 
@@ -1673,7 +1685,7 @@ function UI:CreateMainFrame()
     local tabBar = CreateFrame("Frame", "GoalsMainTabBar", frame)
     tabBar:SetPoint("TOPLEFT", frame, "TOPLEFT", 12, -30)
     tabBar:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -12, -30)
-    tabBar:SetHeight(26)
+    tabBar:SetHeight(24)
     local tabBg = tabBar:CreateTexture(nil, "BORDER")
     tabBg:SetAllPoints(tabBar)
     tabBg:SetTexture(0, 0, 0, 0.45)
@@ -2101,7 +2113,7 @@ function UI:CreateOverviewTab(page)
         },
         rowHeight = ROW_HEIGHT,
         visibleRows = ROSTER_ROWS,
-        headerHeight = 18,
+        headerHeight = 16,
     })
     self.rosterTable = tableWidget
     self.rosterScroll = tableWidget.scroll
@@ -2238,14 +2250,14 @@ function UI:CreateOverviewTab(page)
     self.overviewAdminControls = adminControls
     local function addSectionHeader(text)
         local bar = optionsContent:CreateTexture(nil, "BORDER")
-        bar:SetHeight(18)
+        bar:SetHeight(16)
         bar:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 4, y)
         bar:SetPoint("TOPRIGHT", optionsContent, "TOPRIGHT", -4, y)
         bar:SetTexture(0, 0, 0, 0.45)
         local label = createLabel(optionsContent, text, "GameFontNormal")
         label:SetPoint("LEFT", bar, "LEFT", 6, 0)
         label:SetTextColor(0.92, 0.8, 0.5, 1)
-        y = y - 22
+        y = y - 20
         return label, bar
     end
 
@@ -2624,7 +2636,7 @@ function UI:CreateLootTab(page)
         },
         rowHeight = LOOT_HISTORY_ROW_HEIGHT_COMPACT,
         visibleRows = LOOT_HISTORY_ROWS,
-        headerHeight = 18,
+        headerHeight = 16,
     })
     self.lootTable = tableWidget
     self.lootHistoryScroll = tableWidget.scroll
@@ -2713,14 +2725,14 @@ function UI:CreateLootTab(page)
     local y = -6
     local function addSectionHeader(text)
         local bar = optionsContent:CreateTexture(nil, "BORDER")
-        bar:SetHeight(18)
+        bar:SetHeight(16)
         bar:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 4, y)
         bar:SetPoint("TOPRIGHT", optionsContent, "TOPRIGHT", -4, y)
         bar:SetTexture(0, 0, 0, 0.45)
         local label = createLabel(optionsContent, text, "GameFontNormal")
         label:SetPoint("LEFT", bar, "LEFT", 6, 0)
         label:SetTextColor(0.92, 0.8, 0.5, 1)
-        y = y - 22
+        y = y - 20
         return label, bar
     end
 
@@ -2819,7 +2831,7 @@ function UI:CreateLootTab(page)
     y = y - 6
     addSectionHeader("Notes")
 
-    local selectedLabel = createLabel(optionsContent, "Selected:", "GameFontNormal")
+    local selectedLabel = createLabel(optionsContent, "Selected:", "GameFontHighlightSmall")
     selectedLabel:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
     y = y - 18
     local selectedValue = createLabel(optionsContent, "None", "GameFontHighlightSmall")
@@ -2901,7 +2913,7 @@ function UI:CreateHistoryTab(page)
         },
         rowHeight = HISTORY_ROW_HEIGHT,
         visibleRows = HISTORY_ROWS,
-        headerHeight = 18,
+        headerHeight = 16,
     })
     self.historyTable = tableWidget
     self.historyScroll = tableWidget.scroll
@@ -2916,14 +2928,14 @@ function UI:CreateHistoryTab(page)
     local y = -6
     local function addSectionHeader(text)
         local bar = optionsContent:CreateTexture(nil, "BORDER")
-        bar:SetHeight(18)
+        bar:SetHeight(16)
         bar:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 4, y)
         bar:SetPoint("TOPRIGHT", optionsContent, "TOPRIGHT", -4, y)
         bar:SetTexture(0, 0, 0, 0.45)
         local label = createLabel(optionsContent, text, "GameFontNormal")
         label:SetPoint("LEFT", bar, "LEFT", 6, 0)
         label:SetTextColor(0.92, 0.8, 0.5, 1)
-        y = y - 22
+        y = y - 20
         return label, bar
     end
 
@@ -2973,7 +2985,7 @@ function UI:CreateHistoryTab(page)
     self.historySyncCheck = syncCheck
 
     y = y - 6
-    local minQualityLabel = createLabel(optionsContent, L.LABEL_HISTORY_LOOT_MIN_QUALITY, "GameFontNormal")
+    local minQualityLabel = createLabel(optionsContent, L.LABEL_HISTORY_LOOT_MIN_QUALITY, "GameFontHighlightSmall")
     minQualityLabel:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
     y = y - 22
 
@@ -4693,7 +4705,7 @@ function UI:CreateSettingsTab(page)
             return nil
         end
         local bar = rightInset:CreateTexture(nil, "BORDER")
-        bar:SetHeight(18)
+        bar:SetHeight(16)
         bar:SetPoint("TOP", anchor, "BOTTOM", 0, yOffset or -8)
         bar:SetPoint("LEFT", rightInset, "LEFT", 4, 0)
         bar:SetPoint("RIGHT", rightInset, "RIGHT", -4, 0)
@@ -4870,7 +4882,7 @@ function UI:CreateDamageTrackerTab(page)
         },
         rowHeight = DAMAGE_ROW_HEIGHT,
         visibleRows = DAMAGE_ROWS,
-        headerHeight = 18,
+        headerHeight = 16,
     })
     self.damageTrackerScroll = tableWidget.scroll
     self.damageTrackerRows = tableWidget.rows
@@ -4928,14 +4940,14 @@ function UI:CreateDamageTrackerTab(page)
     local y = -6
     local function addSectionHeader(text)
         local bar = optionsContent:CreateTexture(nil, "BORDER")
-        bar:SetHeight(18)
+        bar:SetHeight(16)
         bar:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 4, y)
         bar:SetPoint("TOPRIGHT", optionsContent, "TOPRIGHT", -4, y)
         bar:SetTexture(0, 0, 0, 0.45)
         local label = createLabel(optionsContent, text, "GameFontNormal")
         label:SetPoint("LEFT", bar, "LEFT", 6, 0)
         label:SetTextColor(0.92, 0.8, 0.5, 1)
-        y = y - 22
+        y = y - 20
         return label, bar
     end
 
