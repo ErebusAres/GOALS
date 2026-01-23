@@ -15,8 +15,14 @@ local DAMAGE_EVENTS = {
     SWING_DAMAGE = true,
     SPELL_PERIODIC_DAMAGE = true,
 }
+local PERIODIC_DAMAGE_EVENTS = {
+    SPELL_PERIODIC_DAMAGE = true,
+}
 local HEAL_EVENTS = {
     SPELL_HEAL = true,
+    SPELL_PERIODIC_HEAL = true,
+}
+local PERIODIC_HEAL_EVENTS = {
     SPELL_PERIODIC_HEAL = true,
 }
 local DEATH_EVENTS = {
@@ -115,10 +121,18 @@ end
 function DamageTracker:ClearLog()
     Goals.state.damageLog = {}
     self.startTs = time()
+    self.activeCombines = {}
+    self.castStarts = {}
 end
 
 function DamageTracker:AddEntry(entry)
     if type(entry) ~= "table" then
+        return
+    end
+    if self:TryCombinePeriodic(entry) then
+        if Goals.UI and Goals.UI.currentTab == (Goals.UI.damageTabId or 0) and Goals.UI.UpdateDamageTrackerList then
+            Goals.UI:UpdateDamageTrackerList()
+        end
         return
     end
     local log = Goals.state.damageLog or {}
@@ -132,6 +146,93 @@ function DamageTracker:AddEntry(entry)
     end
 end
 
+function DamageTracker:GetCombineGap()
+    local gap = Goals and Goals.db and Goals.db.settings and tonumber(Goals.db.settings.combatLogCombineGap) or 6
+    if gap < 1 then
+        gap = 1
+    end
+    if gap > 60 then
+        gap = 60
+    end
+    return gap
+end
+
+function DamageTracker:ShouldCombinePeriodic(entry)
+    if not entry or entry.kind ~= "DAMAGE" then
+        return false
+    end
+    if not entry.periodic then
+        return false
+    end
+    return Goals and Goals.db and Goals.db.settings and Goals.db.settings.combatLogCombinePeriodic == true
+end
+
+function DamageTracker:TouchCombinedEntry(log, entry)
+    if not log or not entry then
+        return
+    end
+    for i = 1, #log do
+        if log[i] == entry then
+            table.remove(log, i)
+            table.insert(log, 1, entry)
+            return
+        end
+    end
+end
+
+function DamageTracker:TryCombinePeriodic(entry)
+    if not self:ShouldCombinePeriodic(entry) then
+        return false
+    end
+    self.activeCombines = self.activeCombines or {}
+    local key = string.format("%s|%s|%s|%s",
+        entry.kind or "DAMAGE",
+        entry.player or "",
+        tostring(entry.spellId or entry.spell or ""),
+        entry.source or "")
+    local combine = self.activeCombines[key]
+    local now = entry.ts or time()
+    local castStart = entry.castStart
+    local gap = self:GetCombineGap()
+    if combine and combine.entry then
+        if castStart and combine.castStart and castStart ~= combine.castStart then
+            combine = nil
+        else
+            local lastTs = combine.lastTs or combine.entry.ts or now
+            if (not castStart) and (now - lastTs) > gap then
+                combine = nil
+            end
+        end
+    end
+    if combine and combine.entry then
+        local target = combine.entry
+        target.amount = (tonumber(target.amount) or 0) + (tonumber(entry.amount) or 0)
+        combine.lastTs = now
+        target.combineStartTs = combine.startTs or target.combineStartTs or target.ts or now
+        target.combineLastTs = combine.lastTs
+        target.ts = now
+        local duration = math.floor((combine.lastTs - (target.combineStartTs or combine.lastTs)) + 0.5)
+        if duration < 1 then
+            duration = 1
+        end
+        target.spellDuration = duration
+        self:TouchCombinedEntry(Goals.state.damageLog, target)
+        return true
+    end
+    local startTs = castStart or now
+    entry.castStart = castStart
+    entry.combineStartTs = startTs
+    entry.combineLastTs = now
+    entry.spellDuration = 1
+    self.activeCombines[key] = {
+        entry = entry,
+        startTs = startTs,
+        lastTs = now,
+        castStart = castStart,
+    }
+    return false
+end
+
 function DamageTracker:GetRosterNames()
     if not self.rosterNames or #self.rosterNames == 0 then
         self:RefreshRoster()
@@ -142,16 +243,137 @@ end
 function DamageTracker:GetFilteredEntries(filter)
     local log = Goals.state.damageLog or {}
     local allLabel = getAllLabel()
+    local showBig = Goals and Goals.db and Goals.db.settings and Goals.db.settings.combatLogShowBig
+    local includeHeal = Goals and Goals.db and Goals.db.settings and Goals.db.settings.combatLogBigIncludeHealing
+    local stats = nil
+    if showBig then
+        stats = self:BuildEncounterStats(log)
+    end
     if not filter or filter == "" or filter == allLabel then
-        return log
+        if not showBig then
+            return log
+        end
+        local list = {}
+        for _, entry in ipairs(log) do
+            if entry.kind == "BREAK" or entry.kind == "DEATH" or entry.kind == "RES" then
+                table.insert(list, entry)
+            elseif entry.kind == "HEAL" then
+                if includeHeal and self:IsBigEntry(entry, stats, "HEAL") then
+                    table.insert(list, entry)
+                end
+            else
+                if self:IsBigEntry(entry, stats, "DAMAGE") then
+                    table.insert(list, entry)
+                end
+            end
+        end
+        return list
     end
     local list = {}
     for _, entry in ipairs(log) do
-        if entry.player == filter then
+        if entry.kind == "BREAK" then
             table.insert(list, entry)
+        elseif entry.player == filter then
+            if not showBig then
+                table.insert(list, entry)
+            elseif entry.kind == "HEAL" then
+                if includeHeal and self:IsBigEntry(entry, stats, "HEAL") then
+                    table.insert(list, entry)
+                end
+            elseif entry.kind == "DEATH" or entry.kind == "RES" then
+                table.insert(list, entry)
+            else
+                if self:IsBigEntry(entry, stats, "DAMAGE") then
+                    table.insert(list, entry)
+                end
+            end
         end
     end
     return list
+end
+
+function DamageTracker:BuildEncounterStats(log)
+    local stats = {}
+    local encounterId = 0
+    local activeId = nil
+    for i = #log, 1, -1 do
+        local entry = log[i]
+        if entry.kind == "BREAK" then
+            if entry.status == "START" then
+                encounterId = encounterId + 1
+                activeId = encounterId
+                stats[activeId] = { dmgTotal = 0, dmgCount = 0, healTotal = 0, healCount = 0 }
+                entry.encounterId = activeId
+            elseif entry.status == "SUCCESS" or entry.status == "FAIL" then
+                entry.encounterId = activeId
+                activeId = nil
+            else
+                entry.encounterId = activeId
+            end
+        else
+            entry.encounterId = activeId
+            if activeId and entry.amount then
+                local amount = tonumber(entry.amount) or 0
+                if entry.kind == "DAMAGE" and amount > 0 then
+                    stats[activeId].dmgTotal = stats[activeId].dmgTotal + amount
+                    stats[activeId].dmgCount = stats[activeId].dmgCount + 1
+                elseif entry.kind == "HEAL" and amount > 0 then
+                    stats[activeId].healTotal = stats[activeId].healTotal + amount
+                    stats[activeId].healCount = stats[activeId].healCount + 1
+                end
+            end
+        end
+    end
+    for _, stat in pairs(stats) do
+        stat.avgDamage = (stat.dmgCount > 0) and (stat.dmgTotal / stat.dmgCount) or 0
+        stat.avgHeal = (stat.healCount > 0) and (stat.healTotal / stat.healCount) or 0
+    end
+    return stats
+end
+
+function DamageTracker:IsBigEntry(entry, stats, kind)
+    if not entry or not stats then
+        return false
+    end
+    local encounterId = entry.encounterId
+    if not encounterId then
+        return true
+    end
+    local stat = stats[encounterId]
+    if not stat then
+        return true
+    end
+    local amount = tonumber(entry.amount) or 0
+    if kind == "HEAL" then
+        return amount > (stat.avgHeal or 0)
+    end
+    return amount > (stat.avgDamage or 0)
+end
+
+function DamageTracker:AddBreakpoint(encounterName, status)
+    if not self:IsEnabled() then
+        return
+    end
+    local name = encounterName or "Encounter"
+    local state = status or "START"
+    local label
+    if state == "START" then
+        label = string.format("%s started", name)
+    elseif state == "SUCCESS" then
+        label = string.format("%s completed successfully", name)
+    elseif state == "FAIL" then
+        local groupLabel = (Goals and Goals.IsInRaid and Goals:IsInRaid()) and "Raid" or "Party"
+        label = string.format("%s failed: %s wiped", name, groupLabel)
+    else
+        label = string.format("%s updated", name)
+    end
+    self:AddEntry({
+        ts = time(),
+        kind = "BREAK",
+        encounter = name,
+        status = state,
+        label = label,
+    })
 end
 
 function DamageTracker:RefreshRoster()
@@ -206,6 +428,16 @@ function DamageTracker:HandleCombatLog(...)
     end
     local timestamp, subevent, _, sourceGUID, sourceName, sourceFlags, _, destGUID, destName, _, _, arg12, arg13, _, arg15 =
         getCombatLogArgs(...)
+    if subevent == "SPELL_CAST_SUCCESS" then
+        local spellId = tonumber(arg12) or nil
+        local spellName = arg13
+        if spellId or spellName then
+            self.castStarts = self.castStarts or {}
+            local key = string.format("%s|%s", tostring(sourceGUID or sourceName or "unknown"), tostring(spellId or spellName))
+            self.castStarts[key] = timestamp or time()
+        end
+        return
+    end
     if not destGUID then
         return
     end
@@ -235,6 +467,12 @@ function DamageTracker:HandleCombatLog(...)
             return
         end
         local source = sourceName or "Unknown"
+        local castStart = nil
+        if PERIODIC_DAMAGE_EVENTS[subevent] then
+            self.castStarts = self.castStarts or {}
+            local key = string.format("%s|%s", tostring(sourceGUID or sourceName or "unknown"), tostring(spellId or spellName or ""))
+            castStart = self.castStarts[key]
+        end
         self:AddEntry({
             ts = timestamp,
             player = playerName ~= "" and playerName or "Unknown",
@@ -243,6 +481,8 @@ function DamageTracker:HandleCombatLog(...)
             spellId = spellId,
             source = source,
             kind = "DAMAGE",
+            periodic = PERIODIC_DAMAGE_EVENTS[subevent] and true or false,
+            castStart = castStart,
             sourceFlags = sourceFlags,
             sourceKind = sourceKind,
         })
@@ -269,6 +509,7 @@ function DamageTracker:HandleCombatLog(...)
             spellId = spellId,
             source = source,
             kind = "HEAL",
+            periodic = PERIODIC_HEAL_EVENTS[subevent] and true or false,
             sourceFlags = sourceFlags,
             sourceKind = sourceKind,
         })

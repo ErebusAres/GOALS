@@ -96,8 +96,8 @@ local function ensureCombatTrackerEnabled(requireHealing)
     if not enabled and Goals and Goals.DamageTracker and Goals.DamageTracker.IsEnabled then
         enabled = Goals.DamageTracker:IsEnabled()
     end
-    if enabled and Goals and Goals.DamageTracker and Goals.DamageTracker.Init then
-        Goals.DamageTracker:Init()
+    if enabled and Goals and Goals.DamageTracker and Goals.DamageTracker.RefreshRoster then
+        Goals.DamageTracker:RefreshRoster()
     end
     if not enabled then
         if Goals and Goals.Print then
@@ -188,4 +188,31 @@ function Dev:SimulateSelfResurrect(spellName, sourceName)
         source = sourceName or "Dev Healer",
         kind = "RES",
     })
+end
+
+function Dev:SimulateEncounterStart(encounterName)
+    if not self.enabled then
+        return
+    end
+    if not ensureCombatTrackerEnabled(false) then
+        return
+    end
+    local name = encounterName or "Dev Encounter"
+    if Goals and Goals.DamageTracker and Goals.DamageTracker.AddBreakpoint then
+        Goals.DamageTracker:AddBreakpoint(name, "START")
+    end
+end
+
+function Dev:SimulateEncounterEnd(success, encounterName)
+    if not self.enabled then
+        return
+    end
+    if not ensureCombatTrackerEnabled(false) then
+        return
+    end
+    local name = encounterName or "Dev Encounter"
+    local status = success and "SUCCESS" or "FAIL"
+    if Goals and Goals.DamageTracker and Goals.DamageTracker.AddBreakpoint then
+        Goals.DamageTracker:AddBreakpoint(name, status)
+    end
 end

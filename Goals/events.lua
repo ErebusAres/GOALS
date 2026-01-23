@@ -500,6 +500,9 @@ function Events:StartEncounter(encounterName, bossName)
     if Goals.AnnounceEncounterStart then
         Goals:AnnounceEncounterStart(encounterName)
     end
+    if Goals.DamageTracker and Goals.DamageTracker.AddBreakpoint then
+        Goals.DamageTracker:AddBreakpoint(encounterName, "START")
+    end
 end
 
 function Events:MarkBossDead(bossName, allowOutOfCombat)
@@ -682,6 +685,9 @@ function Events:FinishEncounter(success)
         if (time() - lastTs) < 30 then
             return
         end
+    end
+    if Goals.DamageTracker and Goals.DamageTracker.AddBreakpoint then
+        Goals.DamageTracker:AddBreakpoint(encounterName, success and "SUCCESS" or "FAIL")
     end
     Goals.encounter.active = false
     Goals.encounter.name = nil

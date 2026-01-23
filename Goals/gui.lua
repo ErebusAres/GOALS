@@ -1485,6 +1485,9 @@ function UI:SelectTab(id)
     if self.UpdateLootOptionsVisibility then
         self:UpdateLootOptionsVisibility()
     end
+    if self.UpdateDamageOptionsVisibility then
+        self:UpdateDamageOptionsVisibility()
+    end
     if self.UpdateHistoryOptionsVisibility then
         self:UpdateHistoryOptionsVisibility()
     end
@@ -1506,6 +1509,17 @@ function UI:UpdateLootOptionsVisibility()
         setShown(self.lootOptionsOuter, show)
     end
     setShown(self.lootOptionsFrame, show)
+end
+
+function UI:UpdateDamageOptionsVisibility()
+    if not self.damageOptionsFrame then
+        return
+    end
+    local show = self.currentTab == self.damageTabId and self.damageOptionsOpen
+    if self.damageOptionsOuter then
+        setShown(self.damageOptionsOuter, show)
+    end
+    setShown(self.damageOptionsFrame, show)
 end
 
 function UI:UpdateHistoryOptionsVisibility()
@@ -4158,13 +4172,95 @@ function UI:CreateDamageTrackerTab(page)
     self.damageTrackerDropdown = dropdown
     self.damageTrackerFilter = L.DAMAGE_TRACKER_ALL
 
-    local combatLogHealingCheck = CreateFrame("CheckButton", nil, inset, "UICheckButtonTemplate")
-    combatLogHealingCheck:SetPoint("LEFT", dropdown, "RIGHT", 10, 0)
-    setCheckText(combatLogHealingCheck, L.CHECK_COMBAT_LOG_HEALING)
-    combatLogHealingCheck:SetScript("OnClick", function(selfBtn)
-        Goals.db.settings.combatLogHealing = selfBtn:GetChecked() and true or false
+    local optionsBtn = CreateFrame("Button", nil, inset, "UIPanelButtonTemplate")
+    optionsBtn:SetSize(110, 20)
+    optionsBtn:SetText(L.LABEL_DAMAGE_OPTIONS)
+    optionsBtn:SetPoint("TOPRIGHT", inset, "TOPRIGHT", -12, -10)
+
+    local optionsIcon = optionsBtn:CreateTexture(nil, "ARTWORK")
+    optionsIcon:SetTexture("Interface\\Buttons\\UI-OptionsButton")
+    optionsIcon:SetSize(16, 16)
+    optionsIcon:SetPoint("LEFT", optionsBtn, "LEFT", 6, 0)
+    local optionsText = optionsBtn:GetFontString()
+    if optionsText then
+        optionsText:ClearAllPoints()
+        optionsText:SetPoint("LEFT", optionsIcon, "RIGHT", 4, 0)
+    end
+
+    optionsBtn:SetScript("OnClick", function()
+        UI.damageOptionsOpen = not UI.damageOptionsOpen
+        UI:UpdateDamageOptionsVisibility()
     end)
-    self.combatLogHealingCheck = combatLogHealingCheck
+    self.damageOptionsButton = optionsBtn
+    if self.damageOptionsOpen == nil then
+        self.damageOptionsOpen = false
+    end
+
+    if not self.damageOptionsFrame then
+        local outer = CreateFrame("Frame", "GoalsDamageOptionsOuter", self.frame)
+        outer:SetPoint("TOPLEFT", self.frame, "TOPRIGHT", -2, -34)
+        outer:SetPoint("BOTTOMLEFT", self.frame, "BOTTOMRIGHT", -2, 26)
+        outer:SetWidth(238)
+        outer:SetBackdrop({
+            edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+            edgeSize = 16,
+            insets = { left = 3, right = 3, top = 3, bottom = 3 },
+        })
+        outer:SetBackdropBorderColor(0.85, 0.85, 0.85, 1)
+        outer:Hide()
+        self.damageOptionsOuter = outer
+
+        local optionsFrame = CreateFrame("Frame", "GoalsDamageOptionsFrame", outer, "GoalsInsetTemplate")
+        applyInsetTheme(optionsFrame)
+        optionsFrame:SetPoint("TOPLEFT", outer, "TOPLEFT", 4, -4)
+        optionsFrame:SetPoint("BOTTOMRIGHT", outer, "BOTTOMRIGHT", -4, 4)
+        optionsFrame:Hide()
+        self.damageOptionsFrame = optionsFrame
+
+        local optionsTitle = createLabel(optionsFrame, "Damage Tracker Options", "GameFontNormal")
+        optionsTitle:SetPoint("TOPLEFT", optionsFrame, "TOPLEFT", 10, -10)
+
+        local combatLogHealingCheck = CreateFrame("CheckButton", nil, optionsFrame, "UICheckButtonTemplate")
+        combatLogHealingCheck:SetPoint("TOPLEFT", optionsTitle, "BOTTOMLEFT", 0, -8)
+        setCheckText(combatLogHealingCheck, L.CHECK_COMBAT_LOG_HEALING)
+        combatLogHealingCheck:SetScript("OnClick", function(selfBtn)
+            Goals.db.settings.combatLogHealing = selfBtn:GetChecked() and true or false
+        end)
+        self.combatLogHealingCheck = combatLogHealingCheck
+
+        local bigDamageCheck = CreateFrame("CheckButton", nil, optionsFrame, "UICheckButtonTemplate")
+        bigDamageCheck:SetPoint("TOPLEFT", combatLogHealingCheck, "BOTTOMLEFT", 0, -6)
+        setCheckText(bigDamageCheck, L.CHECK_COMBAT_LOG_BIG_DAMAGE)
+        bigDamageCheck:SetScript("OnClick", function(selfBtn)
+            Goals.db.settings.combatLogShowBig = selfBtn:GetChecked() and true or false
+            if Goals.UI and Goals.UI.UpdateDamageTrackerList then
+                Goals.UI:UpdateDamageTrackerList()
+            end
+        end)
+        self.combatLogBigDamageCheck = bigDamageCheck
+
+        local bigHealingCheck = CreateFrame("CheckButton", nil, optionsFrame, "UICheckButtonTemplate")
+        bigHealingCheck:SetPoint("TOPLEFT", bigDamageCheck, "BOTTOMLEFT", 0, -6)
+        setCheckText(bigHealingCheck, L.CHECK_COMBAT_LOG_BIG_HEALING)
+        bigHealingCheck:SetScript("OnClick", function(selfBtn)
+            Goals.db.settings.combatLogBigIncludeHealing = selfBtn:GetChecked() and true or false
+            if Goals.UI and Goals.UI.UpdateDamageTrackerList then
+                Goals.UI:UpdateDamageTrackerList()
+            end
+        end)
+        self.combatLogBigHealingCheck = bigHealingCheck
+
+        local combinePeriodicCheck = CreateFrame("CheckButton", nil, optionsFrame, "UICheckButtonTemplate")
+        combinePeriodicCheck:SetPoint("TOPLEFT", bigHealingCheck, "BOTTOMLEFT", 0, -6)
+        setCheckText(combinePeriodicCheck, L.CHECK_COMBAT_LOG_COMBINE_PERIODIC)
+        combinePeriodicCheck:SetScript("OnClick", function(selfBtn)
+            Goals.db.settings.combatLogCombinePeriodic = selfBtn:GetChecked() and true or false
+            if Goals.UI and Goals.UI.UpdateDamageTrackerList then
+                Goals.UI:UpdateDamageTrackerList()
+            end
+        end)
+        self.combatLogCombinePeriodicCheck = combinePeriodicCheck
+    end
 
     local headerY = -34
     local timeHeader = createLabel(inset, "Time", "GameFontHighlightSmall")
@@ -4206,6 +4302,20 @@ function UI:CreateDamageTrackerTab(page)
         row:SetPoint("RIGHT", inset, "RIGHT", -6, 0)
         addRowStripe(row)
         row:EnableMouse(true)
+
+        local breakBg = row:CreateTexture(nil, "BACKGROUND")
+        breakBg:SetAllPoints(row)
+        breakBg:SetTexture(0.5, 0.5, 0.5, 0.2)
+        breakBg:Hide()
+        row.breakBg = breakBg
+
+        local breakText = row:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+        breakText:SetPoint("LEFT", row, "LEFT", 4, 0)
+        breakText:SetPoint("RIGHT", row, "RIGHT", -4, 0)
+        breakText:SetJustifyH("LEFT")
+        breakText:SetWordWrap(false)
+        breakText:Hide()
+        row.breakText = breakText
 
         local timeText = row:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
         timeText:SetPoint("LEFT", row, "LEFT", 0, 0)
@@ -5077,7 +5187,7 @@ function UI:CreateDevTab(page)
     end)
 
     local combatTitle = createLabel(inset, "Combat Testing", "GameFontNormal")
-    combatTitle:SetPoint("TOPLEFT", testDbmBtn, "TOPRIGHT", 190, 0)
+    combatTitle:SetPoint("TOPLEFT", testDbmBtn, "TOPRIGHT", 30, 0)
 
     local combatAmountLabel = createLabel(inset, "Amount", "GameFontHighlightSmall")
     combatAmountLabel:SetPoint("TOPLEFT", combatTitle, "BOTTOMLEFT", 0, -6)
@@ -5134,10 +5244,40 @@ function UI:CreateDevTab(page)
         end
     end)
 
+    local combatStartBtn = CreateFrame("Button", nil, inset, "UIPanelButtonTemplate")
+    combatStartBtn:SetSize(170, 20)
+    combatStartBtn:SetText("Encounter Start")
+    combatStartBtn:SetPoint("TOPLEFT", combatResBtn, "BOTTOMLEFT", 0, -10)
+    combatStartBtn:SetScript("OnClick", function()
+        if Goals and Goals.Dev and Goals.Dev.SimulateEncounterStart then
+            Goals.Dev:SimulateEncounterStart()
+        end
+    end)
+
+    local combatEndSuccessBtn = CreateFrame("Button", nil, inset, "UIPanelButtonTemplate")
+    combatEndSuccessBtn:SetSize(170, 20)
+    combatEndSuccessBtn:SetText("Encounter End (Success)")
+    combatEndSuccessBtn:SetPoint("TOPLEFT", combatStartBtn, "BOTTOMLEFT", 0, -6)
+    combatEndSuccessBtn:SetScript("OnClick", function()
+        if Goals and Goals.Dev and Goals.Dev.SimulateEncounterEnd then
+            Goals.Dev:SimulateEncounterEnd(true)
+        end
+    end)
+
+    local combatEndFailBtn = CreateFrame("Button", nil, inset, "UIPanelButtonTemplate")
+    combatEndFailBtn:SetSize(170, 20)
+    combatEndFailBtn:SetText("Encounter End (Wipe)")
+    combatEndFailBtn:SetPoint("TOPLEFT", combatEndSuccessBtn, "BOTTOMLEFT", 0, -6)
+    combatEndFailBtn:SetScript("OnClick", function()
+        if Goals and Goals.Dev and Goals.Dev.SimulateEncounterEnd then
+            Goals.Dev:SimulateEncounterEnd(false)
+        end
+    end)
+
     local socketLinkBtn = CreateFrame("Button", nil, inset, "UIPanelButtonTemplate")
     socketLinkBtn:SetSize(170, 20)
     socketLinkBtn:SetText("Socket Link (29991)")
-    socketLinkBtn:SetPoint("TOPLEFT", combatResBtn, "BOTTOMLEFT", 0, -10)
+    socketLinkBtn:SetPoint("TOPLEFT", testDbmBtn, "TOPRIGHT", 190, 0)
     socketLinkBtn:SetScript("OnClick", function()
         if Goals and Goals.BuildFullItemLinkWithSockets then
             local link = Goals:BuildFullItemLinkWithSockets(29991, nil, 0, { 24029, 24029, 24029 })
@@ -5762,24 +5902,46 @@ function UI:UpdateDamageTrackerList()
         local entry = data[offset + i]
         if entry then
             row:Show()
-            if row.stripe then
-                setShown(row.stripe, ((offset + i) % 2) == 0)
-            end
             row.entry = entry
-            row.timeText:SetText(formatCombatTimestamp(entry.ts))
-
-            local playerName = entry.player or "Unknown"
-            row.playerText:SetText(playerName)
-            local pr, pg, pb = Goals:GetPlayerColor(playerName)
-            row.playerText:SetTextColor(pr, pg, pb)
-
-            local kind = entry.kind or "DAMAGE"
-            if kind == "DEATH" then
-                row.amountText:SetText("Died")
-                row.amountText:SetTextColor(DEATH_COLOR[1], DEATH_COLOR[2], DEATH_COLOR[3])
+            local isBreak = entry.kind == "BREAK"
+            if isBreak then
+                if row.stripe then
+                    setShown(row.stripe, false)
+                end
+                setShown(row.breakBg, true)
+                setShown(row.breakText, true)
+                local label = entry.label or ""
+                local ts = formatCombatTimestamp(entry.ts)
+                if ts ~= "" then
+                    label = ts .. " - " .. label
+                end
+                row.breakText:SetText(label)
+                row.breakText:SetTextColor(0.9, 0.9, 0.9)
+                row.timeText:SetText("")
+                row.playerText:SetText("")
+                row.amountText:SetText("")
                 row.spellText:SetText("")
                 row.sourceText:SetText("")
-                row.sourceText:SetTextColor(1, 1, 1)
+            else
+                setShown(row.breakBg, false)
+                setShown(row.breakText, false)
+                if row.stripe then
+                    setShown(row.stripe, ((offset + i) % 2) == 0)
+                end
+                row.timeText:SetText(formatCombatTimestamp(entry.ts))
+
+                local playerName = entry.player or "Unknown"
+                row.playerText:SetText(playerName)
+                local pr, pg, pb = Goals:GetPlayerColor(playerName)
+                row.playerText:SetTextColor(pr, pg, pb)
+
+                local kind = entry.kind or "DAMAGE"
+                if kind == "DEATH" then
+                    row.amountText:SetText("Died")
+                    row.amountText:SetTextColor(DEATH_COLOR[1], DEATH_COLOR[2], DEATH_COLOR[3])
+                    row.spellText:SetText("")
+                    row.sourceText:SetText("")
+                    row.sourceText:SetTextColor(1, 1, 1)
             elseif kind == "RES" then
                 row.amountText:SetText("Revived")
                 row.amountText:SetTextColor(REVIVE_COLOR[1], REVIVE_COLOR[2], REVIVE_COLOR[3])
@@ -5791,7 +5953,11 @@ function UI:UpdateDamageTrackerList()
                 local amount = math.floor(tonumber(entry.amount) or 0)
                 row.amountText:SetText(string.format("+%d", amount))
                 row.amountText:SetTextColor(HEAL_COLOR[1], HEAL_COLOR[2], HEAL_COLOR[3])
-                row.spellText:SetText(entry.spell or "")
+                local spellText = entry.spell or ""
+                if entry.spellDuration and entry.spellDuration > 1 then
+                    spellText = string.format("%s (%ds)", spellText ~= "" and spellText or "Unknown", entry.spellDuration)
+                end
+                row.spellText:SetText(spellText)
                 row.sourceText:SetText(entry.source or "")
                 local sr, sg, sb = getSourceColor(entry)
                 row.sourceText:SetTextColor(sr, sg, sb)
@@ -5799,14 +5965,21 @@ function UI:UpdateDamageTrackerList()
                 local amount = math.floor(tonumber(entry.amount) or 0)
                 row.amountText:SetText(string.format("-%d", amount))
                 row.amountText:SetTextColor(DAMAGE_COLOR[1], DAMAGE_COLOR[2], DAMAGE_COLOR[3])
-                row.spellText:SetText(entry.spell or "")
+                local spellText = entry.spell or ""
+                if entry.spellDuration and entry.spellDuration > 1 then
+                    spellText = string.format("%s (%ds)", spellText ~= "" and spellText or "Unknown", entry.spellDuration)
+                end
+                row.spellText:SetText(spellText)
                 row.sourceText:SetText(entry.source or "")
                 local sr, sg, sb = getSourceColor(entry)
                 row.sourceText:SetTextColor(sr, sg, sb)
             end
+            end
         else
             row:Hide()
             row.entry = nil
+            setShown(row.breakBg, false)
+            setShown(row.breakText, false)
             row.timeText:SetText("")
             row.playerText:SetText("")
             row.amountText:SetText("")
@@ -6952,6 +7125,55 @@ function UI:Refresh()
         else
             if self.combatLogHealingCheck.Disable then
                 self.combatLogHealingCheck:Disable()
+            end
+        end
+    end
+    if self.combatLogBigDamageCheck then
+        local enabled = Goals.db.settings.combatLogTracking and true or false
+        self.combatLogBigDamageCheck:SetChecked(Goals.db.settings.combatLogShowBig and true or false)
+        if self.combatLogBigDamageCheck.SetAlpha then
+            self.combatLogBigDamageCheck:SetAlpha(enabled and 1 or 0.6)
+        end
+        if enabled then
+            if self.combatLogBigDamageCheck.Enable then
+                self.combatLogBigDamageCheck:Enable()
+            end
+        else
+            if self.combatLogBigDamageCheck.Disable then
+                self.combatLogBigDamageCheck:Disable()
+            end
+        end
+    end
+    if self.combatLogBigHealingCheck then
+        local enabled = Goals.db.settings.combatLogTracking and true or false
+        self.combatLogBigHealingCheck:SetChecked(Goals.db.settings.combatLogBigIncludeHealing and true or false)
+        if self.combatLogBigHealingCheck.SetAlpha then
+            local alpha = enabled and (Goals.db.settings.combatLogShowBig and 1 or 0.6) or 0.6
+            self.combatLogBigHealingCheck:SetAlpha(alpha)
+        end
+        if enabled then
+            if self.combatLogBigHealingCheck.Enable then
+                self.combatLogBigHealingCheck:Enable()
+            end
+        else
+            if self.combatLogBigHealingCheck.Disable then
+                self.combatLogBigHealingCheck:Disable()
+            end
+        end
+    end
+    if self.combatLogCombinePeriodicCheck then
+        local enabled = Goals.db.settings.combatLogTracking and true or false
+        self.combatLogCombinePeriodicCheck:SetChecked(Goals.db.settings.combatLogCombinePeriodic and true or false)
+        if self.combatLogCombinePeriodicCheck.SetAlpha then
+            self.combatLogCombinePeriodicCheck:SetAlpha(enabled and 1 or 0.6)
+        end
+        if enabled then
+            if self.combatLogCombinePeriodicCheck.Enable then
+                self.combatLogCombinePeriodicCheck:Enable()
+            end
+        else
+            if self.combatLogCombinePeriodicCheck.Disable then
+                self.combatLogCombinePeriodicCheck:Disable()
             end
         end
     end
