@@ -111,6 +111,148 @@ local function applySectionHeader(label, parent, yOffset)
     return bar
 end
 
+local function getScrollBar(frame)
+    if not frame then
+        return nil
+    end
+    if frame.ScrollBar then
+        return frame.ScrollBar
+    end
+    local name = frame.GetName and frame:GetName() or nil
+    if name then
+        return _G[name .. "ScrollBar"]
+    end
+    return nil
+end
+
+local function setScrollBarAlwaysVisible(scrollFrame, contentHeight)
+    local bar = getScrollBar(scrollFrame)
+    if not bar then
+        return
+    end
+    bar:Show()
+    local viewHeight = scrollFrame:GetHeight() or 0
+    local enabled = (contentHeight or 0) > (viewHeight + 2)
+    if enabled then
+        if bar.Enable then
+            bar:Enable()
+        end
+        if bar.SetAlpha then
+            bar:SetAlpha(1)
+        end
+    else
+        if bar.Disable then
+            bar:Disable()
+        end
+        if bar.SetAlpha then
+            bar:SetAlpha(0.35)
+        end
+    end
+end
+
+local function createOptionsPanel(parent, name, width)
+    local panel = CreateFrame("Frame", name, parent, "GoalsInsetTemplate")
+    applyInsetTheme(panel)
+    panel:SetWidth(width or 230)
+    panel:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -8, -12)
+    panel:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -8, 8)
+
+    local scroll = CreateFrame("ScrollFrame", name .. "Scroll", panel, "UIPanelScrollFrameTemplate")
+    scroll:SetPoint("TOPLEFT", panel, "TOPLEFT", 4, -4)
+    scroll:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -26, 4)
+    panel.scroll = scroll
+
+    local content = CreateFrame("Frame", name .. "Content", scroll)
+    content:SetWidth((width or 230) - 30)
+    scroll:SetScrollChild(content)
+    panel.content = content
+
+    return panel, content
+end
+
+local function createTableWidget(parent, name, config)
+    local widget = {}
+    widget.columns = config.columns or {}
+    widget.rowHeight = config.rowHeight or ROW_HEIGHT
+    widget.rows = {}
+
+    local header = CreateFrame("Frame", name .. "Header", parent)
+    header:SetHeight(config.headerHeight or 18)
+    header:SetPoint("TOPLEFT", parent, "TOPLEFT", 6, -8)
+    header:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -28, -8)
+    local headerBg = header:CreateTexture(nil, "BORDER")
+    headerBg:SetAllPoints(header)
+    headerBg:SetTexture(0, 0, 0, 0.35)
+    widget.header = header
+
+    local prevHeader = nil
+    for _, col in ipairs(widget.columns) do
+        local label = header:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+        if prevHeader then
+            label:SetPoint("LEFT", prevHeader, "RIGHT", col.spacing or 8, 0)
+        else
+            label:SetPoint("LEFT", header, "LEFT", 6, 0)
+        end
+        if col.fill then
+            label:SetPoint("RIGHT", header, "RIGHT", -6, 0)
+        else
+            label:SetWidth(col.width or 80)
+        end
+        label:SetJustifyH(col.justify or "LEFT")
+        label:SetText(col.title or "")
+        col.header = label
+        prevHeader = label
+    end
+
+    local scroll = CreateFrame("ScrollFrame", name .. "Scroll", parent, "FauxScrollFrameTemplate")
+    scroll:SetPoint("TOPLEFT", header, "BOTTOMLEFT", -4, -2)
+    scroll:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -26, 6)
+    widget.scroll = scroll
+
+    for i = 1, (config.visibleRows or HISTORY_ROWS) do
+        local row = CreateFrame("Frame", nil, parent)
+        row:SetHeight(widget.rowHeight)
+        row:SetPoint("TOPLEFT", parent, "TOPLEFT", 8, -26 - (i - 1) * widget.rowHeight)
+        row:SetPoint("RIGHT", parent, "RIGHT", -6, 0)
+        addRowStripe(row)
+
+        row.cols = {}
+        local prev = nil
+        for _, col in ipairs(widget.columns) do
+            local text = row:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+            if prev then
+                text:SetPoint("LEFT", prev, "RIGHT", col.spacing or 8, 0)
+            else
+                text:SetPoint("LEFT", row, "LEFT", 0, 0)
+            end
+            if col.fill then
+                text:SetPoint("RIGHT", row, "RIGHT", -4, 0)
+            else
+                text:SetWidth(col.width or 80)
+            end
+            text:SetJustifyH(col.justify or "LEFT")
+            if col.wrap == false then
+                text:SetWordWrap(false)
+            else
+                text:SetWordWrap(true)
+            end
+            row.cols[col.key] = text
+            prev = text
+        end
+
+        if row.cols.time then
+            row.timeText = row.cols.time
+        end
+        if row.cols.text then
+            row.text = row.cols.text
+        end
+
+        widget.rows[i] = row
+    end
+
+    return widget
+end
+
 local function applySectionHeaderAfter(label, parent, anchor, yOffset)
     if not label or not parent or not anchor then
         return nil
@@ -2174,155 +2316,122 @@ function UI:CreateLootTab(page)
 end
 
 function UI:CreateHistoryTab(page)
+    local optionsPanel, optionsContent = createOptionsPanel(page, "GoalsHistoryOptionsInset", 230)
+    self.historyOptionsFrame = optionsPanel
+    self.historyOptionsScroll = optionsPanel.scroll
+    self.historyOptionsContent = optionsContent
+    self.historyOptionsOpen = true
+    self.historyOptionsInline = true
+
     local inset = CreateFrame("Frame", "GoalsHistoryInset", page, "GoalsInsetTemplate")
     applyInsetTheme(inset)
     inset:SetPoint("TOPLEFT", page, "TOPLEFT", 8, -12)
-    inset:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -8, 8)
+    inset:SetPoint("BOTTOMLEFT", page, "BOTTOMLEFT", 8, 8)
+    inset:SetPoint("RIGHT", optionsPanel, "LEFT", -12, 0)
     self.historyInset = inset
 
-    local label = createLabel(inset, L.LABEL_HISTORY, "GameFontNormal")
-    local histBar = applySectionHeader(label, inset, -6)
-    applySectionCaption(histBar, "Timeline")
+    local tableWidget = createTableWidget(inset, "GoalsHistoryTable", {
+        columns = {
+            { key = "time", title = "Time", width = 60, justify = "LEFT", wrap = false },
+            { key = "text", title = "Event", fill = true, justify = "LEFT", wrap = true },
+        },
+        rowHeight = ROW_HEIGHT,
+        visibleRows = HISTORY_ROWS,
+        headerHeight = 18,
+    })
+    self.historyTable = tableWidget
+    self.historyScroll = tableWidget.scroll
+    self.historyRows = tableWidget.rows
 
-    local scroll = CreateFrame("ScrollFrame", "GoalsHistoryScroll", inset, "FauxScrollFrameTemplate")
-    scroll:SetPoint("TOPLEFT", inset, "TOPLEFT", 2, -28)
-    scroll:SetPoint("BOTTOMRIGHT", inset, "BOTTOMRIGHT", -26, 4)
-    scroll:SetScript("OnVerticalScroll", function(selfScroll, offset)
+    self.historyScroll:SetScript("OnVerticalScroll", function(selfScroll, offset)
         FauxScrollFrame_OnVerticalScroll(selfScroll, offset, ROW_HEIGHT, function()
             UI:UpdateHistoryList()
         end)
     end)
-    self.historyScroll = scroll
 
-    self.historyRows = {}
-    for i = 1, HISTORY_ROWS do
-        local row = CreateFrame("Frame", nil, inset)
-        row:SetHeight(ROW_HEIGHT)
-        row:SetPoint("TOPLEFT", inset, "TOPLEFT", 8, -22 - (i - 1) * ROW_HEIGHT)
-        row:SetPoint("RIGHT", inset, "RIGHT", -6, 0)
-        addRowStripe(row)
-
-        local timeText = row:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
-        timeText:SetPoint("TOPLEFT", row, "TOPLEFT", 4, -2)
-        timeText:SetWidth(50)
-        timeText:SetJustifyH("LEFT")
-        row.timeText = timeText
-
-        local text = row:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-        text:SetPoint("TOPLEFT", timeText, "TOPRIGHT", 8, 0)
-        text:SetPoint("RIGHT", row, "RIGHT", -4, 0)
-        text:SetJustifyH("LEFT")
-        row.text = text
-
-        self.historyRows[i] = row
+    local y = -6
+    local function addSectionHeader(text)
+        local bar = optionsContent:CreateTexture(nil, "BORDER")
+        bar:SetHeight(18)
+        bar:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 4, y)
+        bar:SetPoint("TOPRIGHT", optionsContent, "TOPRIGHT", -4, y)
+        bar:SetTexture(0, 0, 0, 0.35)
+        local label = createLabel(optionsContent, text, "GameFontNormal")
+        label:SetPoint("LEFT", bar, "LEFT", 6, 0)
+        y = y - 24
+        return label, bar
     end
 
-    local optionsBtn = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
-    optionsBtn:SetSize(140, 20)
-    optionsBtn:SetText(L.LABEL_HISTORY_OPTIONS)
-    optionsBtn:SetPoint("BOTTOMRIGHT", inset, "TOPRIGHT", -6, 6)
-
-    local optionsIcon = optionsBtn:CreateTexture(nil, "ARTWORK")
-    optionsIcon:SetTexture("Interface\\Buttons\\UI-OptionsButton")
-    optionsIcon:SetSize(16, 16)
-    optionsIcon:SetPoint("LEFT", optionsBtn, "LEFT", 6, 0)
-    local optionsText = optionsBtn:GetFontString()
-    if optionsText then
-        optionsText:ClearAllPoints()
-        optionsText:SetPoint("LEFT", optionsIcon, "RIGHT", 4, 0)
+    local function addLabel(text)
+        local label = createLabel(optionsContent, text, "GameFontNormal")
+        label:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
+        y = y - 20
+        return label
     end
 
-    optionsBtn:SetScript("OnClick", function()
-        UI.historyOptionsOpen = not UI.historyOptionsOpen
-        UI:UpdateHistoryOptionsVisibility()
-    end)
-    self.historyOptionsButton = optionsBtn
-    if self.historyOptionsOpen == nil then
-        self.historyOptionsOpen = false
-    end
-
-    if not self.historyOptionsFrame then
-        local outer = CreateFrame("Frame", "GoalsHistoryOptionsOuter", self.frame)
-        outer:SetPoint("TOPLEFT", self.frame, "TOPRIGHT", -2, -34)
-        outer:SetPoint("BOTTOMLEFT", self.frame, "BOTTOMRIGHT", -2, 26)
-        outer:SetWidth(260)
-        outer:SetBackdrop({
-            edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
-            edgeSize = 16,
-            insets = { left = 3, right = 3, top = 3, bottom = 3 },
-        })
-        outer:SetBackdropBorderColor(0.85, 0.85, 0.85, 1)
-        outer:Hide()
-        self.historyOptionsOuter = outer
-
-        local optionsFrame = CreateFrame("Frame", "GoalsHistoryOptionsFrame", outer, "GoalsInsetTemplate")
-        applyInsetTheme(optionsFrame)
-        optionsFrame:SetPoint("TOPLEFT", outer, "TOPLEFT", 4, -4)
-        optionsFrame:SetPoint("BOTTOMRIGHT", outer, "BOTTOMRIGHT", -4, 4)
-        optionsFrame:Hide()
-        self.historyOptionsFrame = optionsFrame
-
-        local optionsTitle = createLabel(optionsFrame, L.LABEL_HISTORY_OPTIONS, "GameFontNormal")
-        optionsTitle:SetPoint("TOPLEFT", optionsFrame, "TOPLEFT", 10, -10)
-
-        local filtersTitle = createLabel(optionsFrame, L.LABEL_HISTORY_FILTERS, "GameFontNormal")
-        filtersTitle:SetPoint("TOPLEFT", optionsTitle, "BOTTOMLEFT", 0, -12)
-
-        local function createHistoryCheck(label, key, anchor)
-            local check = CreateFrame("CheckButton", nil, optionsFrame, "UICheckButtonTemplate")
-            if anchor then
-                check:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, -4)
-            else
-                check:SetPoint("TOPLEFT", filtersTitle, "BOTTOMLEFT", 0, -6)
-            end
-            setCheckText(check, label)
-            check:SetScript("OnClick", function(selfBtn)
-                Goals.db.settings[key] = selfBtn:GetChecked() and true or false
-                UI:UpdateHistoryList()
-            end)
-            return check
-        end
-
-        local encounterCheck = createHistoryCheck(L.CHECK_HISTORY_ENCOUNTER, "historyFilterEncounter", nil)
-        local pointsCheck = createHistoryCheck(L.CHECK_HISTORY_POINTS, "historyFilterPoints", encounterCheck)
-        local buildCheck = createHistoryCheck(L.CHECK_HISTORY_BUILD, "historyFilterBuild", pointsCheck)
-        local wishlistStatusCheck = createHistoryCheck(L.CHECK_HISTORY_WISHLIST_STATUS, "historyFilterWishlistStatus", buildCheck)
-        local wishlistItemsCheck = createHistoryCheck(L.CHECK_HISTORY_WISHLIST_ITEMS, "historyFilterWishlistItems", wishlistStatusCheck)
-        local lootCheck = createHistoryCheck(L.CHECK_HISTORY_LOOT, "historyFilterLoot", wishlistItemsCheck)
-        local syncCheck = createHistoryCheck(L.CHECK_HISTORY_SYNC, "historyFilterSync", lootCheck)
-
-        self.historyEncounterCheck = encounterCheck
-        self.historyPointsCheck = pointsCheck
-        self.historyBuildCheck = buildCheck
-        self.historyWishlistStatusCheck = wishlistStatusCheck
-        self.historyWishlistItemsCheck = wishlistItemsCheck
-        self.historyLootCheck = lootCheck
-        self.historySyncCheck = syncCheck
-
-        local minQualityLabel = createLabel(optionsFrame, L.LABEL_HISTORY_LOOT_MIN_QUALITY, "GameFontNormal")
-        minQualityLabel:SetPoint("TOPLEFT", syncCheck, "BOTTOMLEFT", 0, -10)
-
-        local minQualityDrop = CreateFrame("Frame", "GoalsHistoryMinQuality", optionsFrame, "UIDropDownMenuTemplate")
-        minQualityDrop:SetPoint("TOPLEFT", minQualityLabel, "BOTTOMLEFT", -16, -2)
-        styleDropdown(minQualityDrop, 140)
-        minQualityDrop.options = getQualityOptions()
-        UIDropDownMenu_Initialize(minQualityDrop, function(_, level)
-            for _, option in ipairs(minQualityDrop.options) do
-                local info = UIDropDownMenu_CreateInfo()
-                info.text = option.text
-                info.value = option.value
-                info.func = function()
-                    Goals.db.settings.historyLootMinQuality = option.value
-                    UIDropDownMenu_SetSelectedValue(minQualityDrop, option.value)
-                    UIDropDownMenu_SetText(minQualityDrop, option.text)
-                    UI:UpdateHistoryList()
-                end
-                info.checked = (Goals.db.settings.historyLootMinQuality or 0) == option.value
-                UIDropDownMenu_AddButton(info, level)
-            end
+    local function addCheck(text, key)
+        local check = CreateFrame("CheckButton", nil, optionsContent, "UICheckButtonTemplate")
+        check:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 6, y)
+        setCheckText(check, text)
+        check:SetScript("OnClick", function(selfBtn)
+            Goals.db.settings[key] = selfBtn:GetChecked() and true or false
+            UI:UpdateHistoryList()
         end)
-        self.historyLootMinQuality = minQualityDrop
+        y = y - 24
+        return check
     end
+
+    addSectionHeader(L.LABEL_HISTORY_OPTIONS)
+    addLabel(L.LABEL_HISTORY_FILTERS)
+
+    local encounterCheck = addCheck(L.CHECK_HISTORY_ENCOUNTER, "historyFilterEncounter")
+    local pointsCheck = addCheck(L.CHECK_HISTORY_POINTS, "historyFilterPoints")
+    local buildCheck = addCheck(L.CHECK_HISTORY_BUILD, "historyFilterBuild")
+    local wishlistStatusCheck = addCheck(L.CHECK_HISTORY_WISHLIST_STATUS, "historyFilterWishlistStatus")
+    local wishlistItemsCheck = addCheck(L.CHECK_HISTORY_WISHLIST_ITEMS, "historyFilterWishlistItems")
+    local lootCheck = addCheck(L.CHECK_HISTORY_LOOT, "historyFilterLoot")
+    local syncCheck = addCheck(L.CHECK_HISTORY_SYNC, "historyFilterSync")
+
+    self.historyEncounterCheck = encounterCheck
+    self.historyPointsCheck = pointsCheck
+    self.historyBuildCheck = buildCheck
+    self.historyWishlistStatusCheck = wishlistStatusCheck
+    self.historyWishlistItemsCheck = wishlistItemsCheck
+    self.historyLootCheck = lootCheck
+    self.historySyncCheck = syncCheck
+
+    y = y - 6
+    local minQualityLabel = createLabel(optionsContent, L.LABEL_HISTORY_LOOT_MIN_QUALITY, "GameFontNormal")
+    minQualityLabel:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
+    y = y - 22
+
+    local minQualityDrop = CreateFrame("Frame", "GoalsHistoryMinQuality", optionsContent, "UIDropDownMenuTemplate")
+    minQualityDrop:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", -4, y)
+    styleDropdown(minQualityDrop, 140)
+    minQualityDrop.options = getQualityOptions()
+    UIDropDownMenu_Initialize(minQualityDrop, function(_, level)
+        for _, option in ipairs(minQualityDrop.options) do
+            local info = UIDropDownMenu_CreateInfo()
+            info.text = option.text
+            info.value = option.value
+            info.func = function()
+                Goals.db.settings.historyLootMinQuality = option.value
+                UIDropDownMenu_SetSelectedValue(minQualityDrop, option.value)
+                UIDropDownMenu_SetText(minQualityDrop, option.text)
+                UI:UpdateHistoryList()
+            end
+            info.checked = (Goals.db.settings.historyLootMinQuality or 0) == option.value
+            UIDropDownMenu_AddButton(info, level)
+        end
+    end)
+    self.historyLootMinQuality = minQualityDrop
+
+    local contentHeight = math.abs(y) + 40
+    optionsContent:SetHeight(contentHeight)
+    setScrollBarAlwaysVisible(optionsPanel.scroll, contentHeight)
+    optionsPanel.scroll:SetScript("OnShow", function(selfScroll)
+        setScrollBarAlwaysVisible(selfScroll, contentHeight)
+    end)
 end
 
 local function fitWishlistLabel(label, text, maxLines)
@@ -5761,7 +5870,8 @@ function UI:UpdateHistoryList()
     self.historyData = data
     local offset = FauxScrollFrame_GetOffset(self.historyScroll) or 0
     FauxScrollFrame_Update(self.historyScroll, #data, HISTORY_ROWS, ROW_HEIGHT)
-    local yOffset = -22
+    setScrollBarAlwaysVisible(self.historyScroll, #data * ROW_HEIGHT)
+    local yOffset = -26
     local hasRainbow = false
     for i = 1, HISTORY_ROWS do
         local row = self.historyRows[i]
