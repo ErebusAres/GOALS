@@ -904,29 +904,183 @@ function UI:GetLootHistoryEntries()
     return list
 end
 
+local function getLootNoteKey(itemLink, ts)
+    if not itemLink or itemLink == "" then
+        return nil
+    end
+    return tostring(itemLink) .. "|" .. tostring(ts or 0)
+end
+
+function UI:GetLootNote(key)
+    if not key or not Goals.db or not Goals.db.lootNotes then
+        return nil
+    end
+    return Goals.db.lootNotes[key]
+end
+
+function UI:SetLootNote(key, text)
+    if not key or not Goals.db then
+        return
+    end
+    Goals.db.lootNotes = Goals.db.lootNotes or {}
+    local noteText = text or ""
+    if noteText == "" then
+        Goals.db.lootNotes[key] = nil
+        return
+    end
+    local author = Goals.GetPlayerName and Goals:GetPlayerName() or ""
+    Goals.db.lootNotes[key] = {
+        note = noteText,
+        author = author,
+        ts = time(),
+    }
+end
+
 function UI:GetLootTableEntries()
     local list = {}
-    local hasAccess = hasModifyAccess()
-    if hasAccess and Goals and Goals.GetFoundLoot then
-        local found = Goals:GetFoundLoot() or {}
-        for _, entry in ipairs(found) do
-            if entry and not entry.assignedTo then
-                table.insert(list, {
-                    kind = "FOUND",
-                    ts = entry.ts,
-                    item = entry.link,
-                    slot = entry.slot,
-                    raw = entry,
+    local history = self:GetLootHistoryEntries()
+    local foundByLink = {}
+    local seenFound = {}
+    local foundIndexByKey = {}
+
+    for _, entry in ipairs(history) do
+        if entry.kind == "LOOT_FOUND" then
+            local itemLink = entry.data and entry.data.item or nil
+            if itemLink and itemLink ~= "" then
+                foundByLink[itemLink] = foundByLink[itemLink] or {}
+                table.insert(foundByLink[itemLink], {
+                    entry = entry,
+                    key = getLootNoteKey(itemLink, entry.ts),
                 })
             end
         end
     end
-    local history = self:GetLootHistoryEntries()
+
+    for _, entries in pairs(foundByLink) do
+        table.sort(entries, function(a, b)
+            return (a.entry.ts or 0) < (b.entry.ts or 0)
+        end)
+    end
+
+    local function markFoundUsed(foundEntry)
+        if not foundEntry then
+            return
+        end
+        seenFound[foundEntry.key or ""] = true
+    end
+
     for _, entry in ipairs(history) do
-        if entry.kind == "LOOT_ASSIGN" or (not hasAccess and entry.kind == "LOOT_FOUND") then
-            table.insert(list, entry)
+        if entry.kind == "LOOT_ASSIGN" then
+            local dataEntry = entry.data or {}
+            local itemLink = dataEntry.item or ""
+            local matched = nil
+            local listForLink = foundByLink[itemLink]
+            if listForLink then
+                for i = #listForLink, 1, -1 do
+                    local candidate = listForLink[i]
+                    if (candidate.entry.ts or 0) <= (entry.ts or 0) then
+                        matched = candidate
+                        table.remove(listForLink, i)
+                        break
+                    end
+                end
+            end
+            if matched and ((entry.ts or 0) - (matched.entry.ts or 0) <= 300) then
+                markFoundUsed(matched)
+                local playerName = dataEntry.player or ""
+                local players = dataEntry.players
+                local noteKey = matched.key or getLootNoteKey(itemLink, matched.entry.ts or entry.ts)
+                table.insert(list, {
+                    kind = "FOUND",
+                    ts = matched.entry.ts or entry.ts,
+                    item = itemLink,
+                    slot = nil,
+                    raw = nil,
+                    assignedTo = playerName,
+                    assignedCount = (players and #players) or nil,
+                    assignedPlayers = players,
+                    reset = dataEntry.reset,
+                    resetBefore = dataEntry.resetBefore,
+                    noteKey = noteKey,
+                })
+            else
+                entry.noteKey = getLootNoteKey(itemLink, entry.ts)
+                table.insert(list, entry)
+            end
         end
     end
+
+    for _, entry in ipairs(history) do
+        if entry.kind == "LOOT_FOUND" then
+            local itemLink = entry.data and entry.data.item or nil
+            local key = getLootNoteKey(itemLink, entry.ts)
+            if key and not seenFound[key] then
+                table.insert(list, {
+                    kind = "FOUND",
+                    ts = entry.ts,
+                    item = itemLink,
+                    slot = nil,
+                    raw = nil,
+                    noteKey = key,
+                })
+                foundIndexByKey[key] = #list
+            end
+        end
+    end
+
+    if Goals and Goals.GetFoundLoot then
+        local found = Goals:GetFoundLoot() or {}
+        for _, entry in ipairs(found) do
+            if entry and entry.link then
+                local key = getLootNoteKey(entry.link, entry.ts)
+                local matched = nil
+                local listForLink = foundByLink[entry.link]
+                if listForLink and #listForLink > 0 then
+                    local bestIndex = nil
+                    local bestDiff = nil
+                    for i = #listForLink, 1, -1 do
+                        local candidate = listForLink[i]
+                        local diff = math.abs((candidate.entry.ts or 0) - (entry.ts or 0))
+                        if diff <= 120 and (not bestDiff or diff < bestDiff) then
+                            bestDiff = diff
+                            bestIndex = i
+                        end
+                    end
+                    if bestIndex then
+                        matched = listForLink[bestIndex]
+                        table.remove(listForLink, bestIndex)
+                        key = matched.key or key
+                        markFoundUsed(matched)
+                    end
+                end
+                if key and not seenFound[key] then
+                    local existingIndex = foundIndexByKey[key]
+                    if existingIndex then
+                        local existing = list[existingIndex]
+                        existing.raw = entry
+                        existing.slot = entry.slot
+                        existing.assignedTo = entry.assignedTo
+                    else
+                        table.insert(list, {
+                            kind = "FOUND",
+                            ts = entry.ts,
+                            item = entry.link,
+                            slot = entry.slot,
+                            raw = entry,
+                            assignedTo = entry.assignedTo,
+                            noteKey = key,
+                        })
+                        foundIndexByKey[key] = #list
+                    end
+                end
+            end
+        end
+    end
+
+    table.sort(list, function(a, b)
+        return (a.ts or 0) > (b.ts or 0)
+    end)
+
     return list
 end
 
@@ -2102,8 +2256,20 @@ function UI:CreateLootTab(page)
 
     for _, row in ipairs(self.lootHistoryRows) do
         row:EnableMouse(true)
+        local selected = row:CreateTexture(nil, "ARTWORK")
+        selected:SetTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight")
+        selected:SetBlendMode("ADD")
+        selected:SetAlpha(0.5)
+        selected:SetPoint("TOPLEFT", row, "TOPLEFT", 2, 0)
+        selected:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", -2, 0)
+        selected:Hide()
+        row.selected = selected
         row:SetScript("OnMouseUp", function(selfRow, button)
-            if button == "RightButton" and selfRow.entry and selfRow.entry.kind == "FOUND" and selfRow.entry.raw then
+            if selfRow.entry then
+                UI:SetLootSelection(selfRow, selfRow.entry)
+            end
+            if button == "RightButton" and selfRow.entry and selfRow.entry.kind == "FOUND"
+                and selfRow.entry.raw and not selfRow.entry.raw.assignedTo then
                 UI:ShowFoundLootMenu(selfRow, selfRow.entry.raw)
                 return
             end
@@ -2249,6 +2415,59 @@ function UI:CreateLootTab(page)
     self.resetQualityDropdown = minDrop
     self:SetupResetQualityDropdown(minDrop)
     y = y - 34
+
+    y = y - 6
+    addSectionHeader("Notes")
+
+    local selectedLabel = createLabel(optionsContent, "Selected:", "GameFontNormal")
+    selectedLabel:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
+    y = y - 18
+    local selectedValue = createLabel(optionsContent, "None", "GameFontHighlightSmall")
+    selectedValue:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
+    selectedValue:SetWidth(180)
+    selectedValue:SetJustifyH("LEFT")
+    self.lootNotesSelectedLabel = selectedValue
+    y = y - 22
+
+    local notesBox = CreateFrame("EditBox", nil, optionsContent, "InputBoxTemplate")
+    notesBox:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
+    notesBox:SetSize(170, 20)
+    notesBox:SetAutoFocus(false)
+    bindEscapeClear(notesBox)
+    notesBox:SetScript("OnEnterPressed", function(selfBox)
+        selfBox:ClearFocus()
+    end)
+    self.lootNotesBox = notesBox
+    y = y - 26
+
+    local applyBtn = CreateFrame("Button", nil, optionsContent, "UIPanelButtonTemplate")
+    applyBtn:SetSize(80, 20)
+    applyBtn:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
+    applyBtn:SetText("Apply")
+    applyBtn:SetScript("OnClick", function()
+        if not UI.lootSelectedNoteKey then
+            return
+        end
+        UI:SetLootNote(UI.lootSelectedNoteKey, notesBox:GetText() or "")
+        UI:UpdateLootHistoryList()
+        UI:UpdateLootNoteSelection()
+    end)
+    self.lootNotesApplyButton = applyBtn
+
+    local clearBtn = CreateFrame("Button", nil, optionsContent, "UIPanelButtonTemplate")
+    clearBtn:SetSize(80, 20)
+    clearBtn:SetPoint("LEFT", applyBtn, "RIGHT", 8, 0)
+    clearBtn:SetText("Clear")
+    clearBtn:SetScript("OnClick", function()
+        if not UI.lootSelectedNoteKey then
+            return
+        end
+        UI:SetLootNote(UI.lootSelectedNoteKey, "")
+        UI:UpdateLootHistoryList()
+        UI:UpdateLootNoteSelection()
+    end)
+    self.lootNotesClearButton = clearBtn
+    y = y - 26
 
     local contentHeight = math.abs(y) + 40
     optionsContent:SetHeight(contentHeight)
@@ -7007,6 +7226,54 @@ function UI:PopulateDebugCopy()
     self.debugCopyBox:SetFocus()
 end
 
+function UI:SetLootSelection(row, entry)
+    if self.lootSelectedRow and self.lootSelectedRow.selected then
+        self.lootSelectedRow.selected:Hide()
+    end
+    self.lootSelectedRow = row
+    self.lootSelectedEntry = entry
+    self.lootSelectedNoteKey = entry and entry.noteKey or nil
+    if row and row.selected then
+        row.selected:Show()
+    end
+    if self.UpdateLootNoteSelection then
+        self:UpdateLootNoteSelection()
+    end
+end
+
+function UI:UpdateLootNoteSelection()
+    if not self.lootNotesBox or not self.lootNotesApplyButton or not self.lootNotesClearButton then
+        return
+    end
+    local key = self.lootSelectedNoteKey
+    local entry = self.lootSelectedEntry
+    if not key or not entry then
+        if self.lootNotesSelectedLabel then
+            self.lootNotesSelectedLabel:SetText("None")
+        end
+        self.lootNotesBox:SetText("")
+        if self.lootNotesApplyButton.Disable then
+            self.lootNotesApplyButton:Disable()
+        end
+        if self.lootNotesClearButton.Disable then
+            self.lootNotesClearButton:Disable()
+        end
+        return
+    end
+    local label = entry.item or (entry.data and entry.data.item) or entry.text or "Selected"
+    if self.lootNotesSelectedLabel then
+        self.lootNotesSelectedLabel:SetText(label)
+    end
+    local note = self:GetLootNote(key)
+    self.lootNotesBox:SetText(note and note.note or "")
+    if self.lootNotesApplyButton.Enable then
+        self.lootNotesApplyButton:Enable()
+    end
+    if self.lootNotesClearButton.Enable then
+        self.lootNotesClearButton:Enable()
+    end
+end
+
 function UI:UpdateLootHistoryList()
     if not self.lootHistoryScroll or not self.lootHistoryRows then
         return
@@ -7017,7 +7284,10 @@ function UI:UpdateLootHistoryList()
     local visibleRows = #self.lootHistoryRows
     FauxScrollFrame_Update(self.lootHistoryScroll, #data, visibleRows, LOOT_HISTORY_ROW_HEIGHT_COMPACT)
     setScrollBarAlwaysVisible(self.lootHistoryScroll, #data * LOOT_HISTORY_ROW_HEIGHT_COMPACT)
+    local dis = Goals.db and Goals.db.settings and Goals.db.settings.disenchanter or ""
+    local disenchanterActive = dis ~= "" and dis ~= "0" and dis ~= L.NONE_OPTION
     local hasRainbow = false
+    local selectedFound = false
     for i = 1, visibleRows do
         local row = self.lootHistoryRows[i]
         local entry = data[offset + i]
@@ -7039,8 +7309,31 @@ function UI:UpdateLootHistoryList()
 
             if entry.kind == "FOUND" then
                 itemText = entry.item or ""
-                playerText = "Unassigned"
-                notesText = "Found"
+                if entry.assignedCount and entry.assignedCount >= 3 then
+                    playerText = formatPlayersCount(entry.assignedCount)
+                    notesText = "Assigned"
+                    row.rainbowData = {
+                        kind = "loot",
+                        count = entry.assignedCount,
+                        itemLink = entry.item or "",
+                    }
+                    hasRainbow = true
+                elseif entry.assignedTo and entry.assignedTo ~= "" then
+                    playerText = entry.assignedTo
+                    isPlayer = true
+                    local isDisenchant = disenchanterActive and playerText == dis
+                    if isDisenchant then
+                        notesText = "Disenchanted"
+                    elseif entry.reset then
+                        local before = tonumber(entry.resetBefore) or 0
+                        notesText = string.format("Assigned (Reset -%d)", before)
+                    else
+                        notesText = "Assigned"
+                    end
+                else
+                    playerText = "Unassigned"
+                    notesText = "Found"
+                end
                 row.itemLink = entry.item
             elseif entry.kind == "LOOT_FOUND" then
                 local itemLink = entry.data and entry.data.item or ""
@@ -7066,15 +7359,25 @@ function UI:UpdateLootHistoryList()
                 else
                     playerText = dataEntry.player or ""
                     isPlayer = playerText ~= ""
-                    if dataEntry.reset then
+                    local isDisenchant = disenchanterActive and playerText ~= "" and playerText == dis
+                    if isDisenchant then
+                        notesText = "Disenchanted"
+                    elseif dataEntry.reset then
                         local before = tonumber(dataEntry.resetBefore) or 0
-                        notesText = string.format("Reset -%d", before)
+                        notesText = string.format("Assigned (Reset -%d)", before)
                     else
                         notesText = "Assigned"
                     end
                 end
             else
                 itemText = entry.text or ""
+            end
+
+            if entry.noteKey then
+                local manualNote = self:GetLootNote(entry.noteKey)
+                if manualNote and manualNote.note and manualNote.note ~= "" then
+                    notesText = manualNote.note
+                end
             end
 
             if row.cols then
@@ -7098,15 +7401,36 @@ function UI:UpdateLootHistoryList()
             elseif row.text then
                 row.text:SetText(entry.text or "")
             end
+            if row.selected then
+                if entry.noteKey and self.lootSelectedNoteKey and entry.noteKey == self.lootSelectedNoteKey then
+                    row.selected:Show()
+                    self.lootSelectedRow = row
+                    self.lootSelectedEntry = entry
+                    selectedFound = true
+                else
+                    row.selected:Hide()
+                end
+            end
         else
             row:Hide()
             row.itemLink = nil
             row.rainbowData = nil
             row.entry = nil
+            if row.selected then
+                row.selected:Hide()
+            end
         end
     end
     if hasRainbow then
         self:StartRainbowTicker()
+    end
+    if self.lootSelectedNoteKey and not selectedFound then
+        self.lootSelectedRow = nil
+        self.lootSelectedEntry = nil
+        self.lootSelectedNoteKey = nil
+    end
+    if self.UpdateLootNoteSelection then
+        self:UpdateLootNoteSelection()
     end
 end
 

@@ -12,6 +12,7 @@ Goals.defaults = {
     history = {},
     debugLog = {},
     tables = {},
+    lootNotes = {},
     activeTableName = "",
     wishlists = {
         version = 1,
