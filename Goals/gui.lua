@@ -1600,6 +1600,15 @@ function UI:CreateMainFrame()
     self.tabs = {}
     self.pages = {}
 
+    local tabBar = CreateFrame("Frame", "GoalsMainTabBar", frame)
+    tabBar:SetPoint("TOPLEFT", frame, "TOPLEFT", 12, -30)
+    tabBar:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -12, -30)
+    tabBar:SetHeight(26)
+    local tabBg = tabBar:CreateTexture(nil, "BORDER")
+    tabBg:SetAllPoints(tabBar)
+    tabBg:SetTexture(0, 0, 0, 0.35)
+    self.tabBar = tabBar
+
     local tabDefs = {
         { key = "overview", text = L.TAB_OVERVIEW, create = "CreateOverviewTab" },
         { key = "loot", text = L.TAB_LOOT, create = "CreateLootTab" },
@@ -1618,17 +1627,18 @@ function UI:CreateMainFrame()
 
     for i, def in ipairs(tabDefs) do
         local tabName = frame:GetName() .. "Tab" .. i
-        local tab = CreateFrame("Button", tabName, frame, "CharacterFrameTabButtonTemplate")
+        local tab = CreateFrame("Button", tabName, tabBar, "OptionsFrameTabButtonTemplate")
         tab:SetID(i)
+        tab:SetHeight(24)
         tab:SetText(def.text)
-        PanelTemplates_TabResize(tab, 0)
+        PanelTemplates_TabResize(tab, 8)
         tab:SetScript("OnClick", function()
             UI:SelectTab(i)
         end)
         if i == 1 then
-            tab:SetPoint("TOPLEFT", frame, "TOPLEFT", 12, -32)
+            tab:SetPoint("TOPLEFT", tabBar, "TOPLEFT", 0, 0)
         else
-            tab:SetPoint("LEFT", self.tabs[i - 1], "RIGHT", -12, 0)
+            tab:SetPoint("TOPLEFT", self.tabs[i - 1], "TOPRIGHT", 0, 0)
         end
         if def.key == "update" then
             self.updateTab = tab
@@ -1660,7 +1670,7 @@ function UI:CreateMainFrame()
         self.tabs[i] = tab
 
         local page = CreateFrame("Frame", nil, frame)
-        page:SetPoint("TOPLEFT", frame, "TOPLEFT", 14, -62)
+        page:SetPoint("TOPLEFT", tabBar, "BOTTOMLEFT", 2, -6)
         page:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -14, 12)
         page:Hide()
         self.pages[i] = page
@@ -1683,21 +1693,22 @@ function UI:LayoutTabs()
     if not self.frame or not self.tabs then
         return
     end
+    local tabBar = self.tabBar or self.frame
     local previous = nil
     for _, tab in ipairs(self.tabs) do
         if tab ~= self.helpTab and tab:IsShown() then
             tab:ClearAllPoints()
             if not previous then
-                tab:SetPoint("TOPLEFT", self.frame, "TOPLEFT", 12, -32)
+                tab:SetPoint("TOPLEFT", tabBar, "TOPLEFT", 0, 0)
             else
-                tab:SetPoint("LEFT", previous, "RIGHT", -12, 0)
+                tab:SetPoint("TOPLEFT", previous, "TOPRIGHT", 0, 0)
             end
             previous = tab
         end
     end
     if self.helpTab then
         self.helpTab:ClearAllPoints()
-        self.helpTab:SetPoint("TOPRIGHT", self.frame, "TOPRIGHT", -12, -32)
+        self.helpTab:SetPoint("TOPRIGHT", tabBar, "TOPRIGHT", 0, 0)
     end
 end
 
@@ -2571,9 +2582,24 @@ function UI:CreateLootTab(page)
             if button == "RightButton" and selfRow.entry and selfRow.entry.kind == "FOUND"
                 and selfRow.entry.raw and not selfRow.entry.raw.assignedTo then
                 UI:ShowFoundLootMenu(selfRow, selfRow.entry.raw)
+            end
+        end)
+
+        local itemButton = CreateFrame("Button", nil, row)
+        itemButton:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+        itemButton:SetPoint("TOPLEFT", row.cols.item, "TOPLEFT", 0, 0)
+        itemButton:SetPoint("BOTTOMRIGHT", row.cols.item, "BOTTOMRIGHT", 0, 0)
+        itemButton:SetScript("OnMouseUp", function(selfBtn, button)
+            local selfRow = selfBtn:GetParent()
+            if selfRow and selfRow.entry then
+                UI:SetLootSelection(selfRow, selfRow.entry)
+            end
+            if button == "RightButton" and selfRow and selfRow.entry and selfRow.entry.kind == "FOUND"
+                and selfRow.entry.raw and not selfRow.entry.raw.assignedTo then
+                UI:ShowFoundLootMenu(selfRow, selfRow.entry.raw)
                 return
             end
-            if button == "LeftButton" and selfRow.itemLink then
+            if button == "LeftButton" and selfRow and selfRow.itemLink and selfRow.itemLink ~= "" then
                 if IsModifiedClick and IsModifiedClick() and HandleModifiedItemClick then
                     HandleModifiedItemClick(selfRow.itemLink)
                     return
@@ -2587,21 +2613,23 @@ function UI:CreateLootTab(page)
                 end
             end
         end)
-        row:SetScript("OnEnter", function(selfRow)
-            if not selfRow.itemLink or selfRow.itemLink == "" then
+        itemButton:SetScript("OnEnter", function(selfBtn)
+            local selfRow = selfBtn:GetParent()
+            if not selfRow or not selfRow.itemLink or selfRow.itemLink == "" then
                 return
             end
             if GameTooltip then
-                GameTooltip:SetOwner(selfRow, "ANCHOR_RIGHT")
+                GameTooltip:SetOwner(selfBtn, "ANCHOR_RIGHT")
                 GameTooltip:SetHyperlink(selfRow.itemLink)
                 GameTooltip:Show()
             end
         end)
-        row:SetScript("OnLeave", function()
+        itemButton:SetScript("OnLeave", function()
             if GameTooltip then
                 GameTooltip:Hide()
             end
         end)
+        row.itemButton = itemButton
     end
 
     local function setLootMethod(method)
