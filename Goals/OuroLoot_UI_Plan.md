@@ -1,6 +1,6 @@
 # Ouro Loot UI Alignment Plan (GOALS)
 
-Goal: reshape GOALS UI to match Ouro Loot’s layout and readability while **keeping the current titlebar (minimize + close)** and **keeping class‑colored names**.
+Goal: reshape GOALS UI to match Ouro Loot's layout and readability while **keeping the current titlebar (minimize + close)** and **keeping class-colored names**.
 
 ---
 
@@ -21,18 +21,24 @@ Goal: reshape GOALS UI to match Ouro Loot’s layout and readability while **kee
 - Tables aligned to the scrollbar edge for a cleaner OL-like look.
 
 ### Right Options Panels
-- Right panels reduced to **220px** to give the main table more width (closer to OL proportions).
-- Section header bars reduced to 16px with gold header text.
-- Labels in option panels are now `GameFontHighlightSmall` for tighter look.
-- Checkbox labels standardized: smaller font, lighter color, consistent left spacing.
-- Dropdowns now show the WoW dropdown box again (soft alpha), gold-tinted text; options panel dropdowns set to ~156px to align with buttons.
-- Options headers/labels now use shared styling helpers (consistent gold header bar + light label color).
-- Dropdowns aligned to a consistent left edge (all options panel dropdowns use the same offset).
-- Spacing tightened across the right panels.
-- Options panel buttons standardized to ~156px wide and 18px high; small action buttons sized proportionally.
-- Options panel checkboxes now use smaller 18px boxes; labels aligned consistently.
-- Options section headers now include a subtle bottom divider line (OL-like separation).
+- Right panels widened to **240px** to fit AceGUI-style 200px controls without clipping.
+- Options section headers now use **AceGUI Heading** styling: centered gold text + left/right tooltip-border lines.
+- Option controls standardized to **200x24** (buttons, dropdowns, edit boxes) for AceGUI parity.
+- Checkbox styling updated to AceGUI defaults: **24px** boxes with `UI-CheckBox` textures and **white** labels.
+- Dropdown/edit box labels moved **above** controls (AceGUI `SetLabel` layout); dropdown text now white.
+- Options panel buttons switched to `UIPanelButtonTemplate2` and stacked vertically where needed (manual tools + notes).
+- Options panel buttons now use **named** frames to avoid `UIPanelButtonTemplate2` OnShow/OnDisable nil-name errors.
+- Dropdowns now use AceGUI-style holder frames to match OL sizing/offsets (dropdown anchored -15/ +17 inside a 200px holder).
+- Dropdown text insets/texture alignment updated to match AceGUI; edit boxes use AceGUI-style height/insets.
+- Notes Apply/Clear buttons now use a paired half-width layout to mirror OL's Load/Delete button row.
+- Option tooltips now pop out to the right of the main GUI via a shared side tooltip helper.
+- Side tooltips wrap to the options-panel width for readability, and options labels are shortened with beginner-friendly tooltip explanations.
+- Options section labels now wrap to the 200px control width for readability.
+- Added tooltips for common dropdowns/edit boxes (sort, quality filters, manual amount, etc).
+- Help tab removed; guidance now lives in inline tooltips.
+- Spacing adjusted to ~6-8px between controls/sections.
 - Added per-tab **footer info bar** at the bottom of each tab (status/permissions + tracking/disenchanter summary).
+- Footer now includes centered sync status: `Syncing From: <name> | <timer> Last Sync.`
 
 ### Combat Log Tracking
 - Combat log is **always enabled** right now.
@@ -49,50 +55,31 @@ Goal: reshape GOALS UI to match Ouro Loot’s layout and readability while **kee
 
 ### Overview + Access Controls
 - Overview table now aligned: Player | Points | Actions (buttons under Actions header).
-- Admin/dev controls hidden for non‑admin users (not just disabled).
-- “Ask for sync” moved into Sync section (visible to all).
-- “Sync Seen” button hidden for now.
+- Admin/dev controls hidden for non-admin users (not just disabled).
+- Ask for sync moved into Sync section (visible to all).
+- Sync Seen button hidden for now.
+- Added `+1 All` button in the Overview table header (top right, aligned with Actions).
+- Removed the Manual Adjust section from Overview options (replaced by +1 All header button).
+- Footer access text now shows role-aware labels (Dev/Admin/Loot Master/Loot Helper/Raid-Party/Solo).
 
 ### Wishlist
 - Wishlist layout **kept Wowhead-style** (not a table).
 - Options sub-tab is now a scroll frame with always-visible scrollbar.
+- Wishlist left panel widened and right panel shrunk; column-3 (mainhand/offhand/relic) row moved down.
+- Wishlist slots label removed; refresh button moved to bottom right; columns 1/2 moved up to fill space.
 
 ---
 
 ## Remaining Work / To-Do
 
 ### Options Panel UI Matching (Primary Tabs)
-**High priority:** rework right-side options to match OL’s **AceGUI** styling (Heading lines + full-width controls).
+**Mostly done:** right-side options now mimic OL's AceGUI visuals (Heading lines + 200x24 controls + label-above layout).
 
-Key findings from OL code:
-- OL options panel is built via AceGUI in `workspace/Ouro_Loot/lootgui.lua` under `BuildMainDisplay` (look for `--- Main ---`).
-- OL section headers are AceGUI **Heading** widgets (`AceGUIWidget-Heading.lua`), which draw **centered text with left/right lines** using `Interface\\Tooltips\\UI-Tooltip-Border` and texcoord `0.81–0.94, 0.5–1`.
-- OL controls use AceGUI widgets:
-  - Button: `UIPanelButtonTemplate2` (defaults to 200x24) in `AceGUIWidget-Button.lua`.
-  - CheckBox: size 24, `GameFontHighlight` label (white) in `AceGUIWidget-CheckBox.lua`.
-  - DropDown: label **above** dropdown; dropdown offset `(-15,-18)`; label gold `SetLabel` in `AceGUIWidget-DropDown.lua`.
-
-**Options to match OL exactly:**
-1) **Integrate AceGUI-3.0** from OL and use AceGUI widgets for the right panel only.
-   - Pros: matches OL look precisely.
-   - Cons: adds libs + changes how options are laid out (SimpleGroup/Flow layout).
-2) **Mimic AceGUI styles in our custom UI** (recommended if avoiding new deps).
-   - Implement Heading style in our options panels using the tooltip-border line textures and centered text.
-   - Use `UIPanelButtonTemplate2`, 200x24 size for action buttons.
-   - Increase checkbox size to 24, label font `GameFontHighlight` (white).
-   - Switch dropdowns to **label-above-control** layout and update spacing to match AceGUI’s `SetLabel` positioning.
-
-**Specific tasks (if mimicking AceGUI):**
-- Replace current black section bars with AceGUI-style **Heading** (centered gold text + left/right lines).
-- Standardize option controls to 200px width, 24px height (match AceGUI defaults).
-- Move labels above dropdowns and edit boxes (left aligned, gold).
-- Increase checkbox size to 24 with `UI-CheckBox-Up/Check/Highlight` textures (white label).
-- Match vertical spacing to AceGUI Flow defaults (roughly 6–8px between controls).
-
-**Validate**
-- Options panel widths/spacing on Overview/Loot/History/Combat.
-- Dropdown/checkbox/button visuals align with OL.
+**Validate / tune**
+- Options panel widths/spacing on Overview/Loot/History/Combat after widening to 240px.
+- Dropdown/checkbox/button visuals match OL (fonts/colors/spacing).
 - Footer info bars do not overlap content and show correct status text.
+- Check long labels/values don't clip within the new label-above layout.
 
 ### Table Look + Feel
 - Verify all tables use consistent header height/spacing across tabs.
@@ -116,7 +103,7 @@ Key findings from OL code:
 
 ## Testing Checklist (Run Each Session)
 - Tabs render correctly in top bar; Help pinned right.
-- Main content area doesn’t overlap tab bar or titlebar.
+- Main content area doesn't overlap tab bar or titlebar.
 - Table headers align with rows; columns line up with scrollbar edge.
 - Right panel sections use OL-style Heading (centered text with left/right lines).
 - Dropdown labels appear above controls and use gold text.
@@ -134,9 +121,9 @@ Key findings from OL code:
 
 Use this prompt to continue in a new chat:
 
-"I’m working on GOALS (WoW 3.3.5a) UI to match Ouro Loot. We already moved main tabs to a top OL-style bar (OptionsFrameTabButtonTemplate + dark strip + divider). Wishlist sub-tabs also have a dark strip + divider. Tables use the shared widget with 16px headers, tighter spacing, stripes, and alignment to scrollbar edge. Right panels are 220px, section headers are 16px with gold text, labels are GameFontHighlightSmall, checkbox labels smaller/lighter, dropdowns now show WoW box again with gold text. Loot table merges Found+Assign rows, supports notes (auto + manual), right-click assign works, long loot names truncate with ..., tooltips only on item name column. Combat log is always on (toggle removed); filter moved into combat options. Overview actions align under Actions column; admin controls hidden for non-admins; Ask for sync moved into Sync section; Sync Seen hidden. Wishlist layout stays Wowhead-style with options scroll. 
+"I'm working on GOALS (WoW 3.3.5a) UI to match Ouro Loot. Main tabs are a top OL-style bar (OptionsFrameTabButtonTemplate + dark strip + divider), wishlist sub-tabs match. Tables use the shared widget with 16px headers, tighter spacing, stripes, and alignment to scrollbar edge. Right option panels now mimic AceGUI: 240px wide, Heading-style section headers with tooltip-border lines and centered gold text; controls are 200x24; dropdown/edit box labels are above controls (gold); dropdown text is white; checkboxes are 24px with white GameFontHighlight labels; buttons use UIPanelButtonTemplate2 and are stacked vertically. Loot table merges Found+Assign rows, notes system + UI, right-click assign works, long loot names truncate with ..., tooltip only on item name column. Combat log always on; filter in combat options. Overview actions align under Actions column; admin controls hidden for non-admins; Ask for sync in Sync section; Sync Seen hidden. Wishlist layout stays Wowhead-style with options scroll.
 
-Please continue matching the **options panel** to OL exactly. In OL, the right panel uses AceGUI: `BuildMainDisplay` in `workspace/Ouro_Loot/lootgui.lua` with Heading widgets (`AceGUIWidget-Heading.lua`) and default AceGUI Button/CheckBox/DropDown styling. You can either integrate AceGUI-3.0 widgets (preferred for 1:1 match) or mimic their visuals: heading with left/right tooltip-border lines and centered gold text, buttons using `UIPanelButtonTemplate2` at 200x24, checkboxes at 24px with white labels, and dropdown labels above controls (AceGUI-style `SetLabel`). Use the OL libs for reference and port textures/spacing as needed. Provide updates to `Goals/gui.lua` and **always update `Goals/OuroLoot_UI_Plan.md` with changes, remaining work, and the next prompt for continuity**."
+Please validate the new options panel spacing/alignment (Overview/Loot/History/Combat), check for clipping with the 240px width and label-above layout, confirm scrollbars don't overlap, and then continue any remaining OL-alignment tweaks (table column widths, separators, etc). Update `Goals/gui.lua` and **always update `Goals/OuroLoot_UI_Plan.md` with changes, remaining work, and the next prompt for continuity**."
 
 ---
 
