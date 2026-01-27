@@ -27,6 +27,10 @@ local function normalizeBossName(name)
     return text:lower():gsub("[^%w]", "")
 end
 
+local bossIgnoreList = {
+    infinitetimereaver = true,
+}
+
 local function getUnitNameIfExists(unit)
     if not unit or not UnitExists or not UnitExists(unit) then
         return nil
@@ -367,15 +371,25 @@ function Events:HandleLootMessage(message)
 end
 
 function Events:HandleCombatLog(...)
-    local eventType = select(2, ...)
-    local sourceName = select(5, ...)
-    local destName = select(9, ...)
-    if type(sourceName) ~= "string" and type(select(4, ...)) == "string" then
-        sourceName = select(4, ...)
-        destName = select(7, ...)
+    local args = nil
+    if CombatLogGetCurrentEventInfo then
+        args = { CombatLogGetCurrentEventInfo() }
+    end
+    if not args or #args == 0 then
+        args = { ... }
+    end
+    if not args or #args == 0 then
+        return
+    end
+    local eventType = args[2]
+    local sourceName = args[5]
+    local destName = args[9]
+    if type(sourceName) ~= "string" and type(args[4]) == "string" then
+        sourceName = args[4]
+        destName = args[7]
     end
     if Goals.DamageTracker and Goals.DamageTracker.HandleCombatLog then
-        Goals.DamageTracker:HandleCombatLog(...)
+        Goals.DamageTracker:HandleCombatLog(unpack(args))
     end
     if Goals and Goals.Dev and Goals.Dev.enabled and Goals.db and Goals.db.settings and Goals.db.settings.devTestBoss then
         if not self.debugCombatLogged then
@@ -451,11 +465,14 @@ function Events:GetEncounterForBossName(bossName)
     if not bossName then
         return nil
     end
+    local normalized = normalizeBossName(bossName)
+    if bossIgnoreList[normalized] then
+        return nil
+    end
     local encounterName = self.bossToEncounter and self.bossToEncounter[bossName] or nil
     if encounterName then
         return encounterName, bossName
     end
-    local normalized = normalizeBossName(bossName)
     local info = self.bossToEncounterNormalized and self.bossToEncounterNormalized[normalized] or nil
     if info then
         return info.encounter, info.boss

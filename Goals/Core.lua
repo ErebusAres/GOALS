@@ -279,7 +279,13 @@ function Goals:ClearDebugLog()
 end
 
 function Goals:NormalizeName(name)
-    if not name or name == "" then
+    if name == nil then
+        return ""
+    end
+    if type(name) ~= "string" then
+        name = tostring(name)
+    end
+    if name == "" then
         return ""
     end
     name = name:gsub("%-.*$", "")
@@ -1069,6 +1075,27 @@ function Goals:HandleLootAssignment(playerName, itemLink, skipSync, forceRecord)
     if forceRecord or shouldTrack then
         self:NotifyDataChanged()
     end
+end
+
+function Goals:HandleManualLootReset(playerName, itemLink, skipSync)
+    if not playerName or not itemLink then
+        return false
+    end
+    playerName = self:NormalizeName(playerName)
+    self:EnsurePlayer(playerName)
+    if self:ShouldSkipLootAssignment(playerName, itemLink) then
+        return false
+    end
+    local entry = self.db and self.db.players and self.db.players[playerName] or nil
+    local before = entry and entry.points or 0
+    self:RecordLootAssignment(playerName, itemLink, true, before)
+    self:RemoveFoundLootByLink(itemLink)
+    self:SetPoints(playerName, 0, "Loot reset: " .. itemLink, true, true)
+    self:HandleWishlistLoot(itemLink)
+    if self:CanSync() and not skipSync and self.Comm then
+        self.Comm:SendLootReset(playerName, itemLink)
+    end
+    return true
 end
 
 function Goals:RequestItemInfo(itemLink)
@@ -2534,7 +2561,7 @@ function Goals:DeclinePendingBuildShare()
     self.state.pendingBuildShare = nil
 end
 
-function Goals:EnqueueWishlistAnnounce(itemLink)
+function Goals:EnqueueWishlistAnnounce(itemLink, listNames)
     if not itemLink or itemLink == "" then
         return
     end
@@ -2551,7 +2578,10 @@ function Goals:EnqueueWishlistAnnounce(itemLink)
     if self.wishlistState.announcedItems[itemId] then
         return
     end
-    table.insert(self.wishlistState.announceQueue, itemLink)
+    table.insert(self.wishlistState.announceQueue, {
+        link = itemLink,
+        lists = listNames,
+    })
     self.wishlistState.announcedItems[itemId] = true
     local now = GetTime and GetTime() or 0
     if self.wishlistState.announceNextFlush == 0 or now >= self.wishlistState.announceNextFlush then
@@ -2604,7 +2634,8 @@ function Goals:ShowWishlistFoundAlert(itemLinks, forceDbm)
         local links = {}
         if type(itemLinks) == "table" then
             for i = 1, math.min(8, #itemLinks) do
-                links[i] = itemLinks[i]
+                local entry = itemLinks[i]
+                links[i] = type(entry) == "table" and entry.link or entry
             end
         else
             links[1] = itemLinks
@@ -2638,11 +2669,17 @@ function Goals:ShowWishlistFoundAlert(itemLinks, forceDbm)
         local sourceName = "Wishlist items found"
         for i, link in ipairs(links) do
             local texture = select(10, GetItemInfo(link)) or "Interface\\Icons\\inv_misc_questionmark"
+            local entry = type(itemLinks) == "table" and itemLinks[i] or nil
+            local listNames = entry and entry.lists or nil
+            local lootSource = sourceName
+            if listNames and #listNames > 0 then
+                lootSource = "Wishlist: " .. table.concat(listNames, ", ")
+            end
             table.insert(bossBanner.pendingLoot, {
                 itemID = self:GetItemIdFromLink(link),
                 quantity = 1,
                 slot = i,
-                lootSourceName = sourceName,
+                lootSourceName = lootSource,
                 itemLink = link,
                 texture = texture,
             })
@@ -3033,8 +3070,14 @@ function Goals:FlushWishlistAnnouncements()
             table.insert(slice, queue[idx + 2])
         end
         local formatted = {}
-        for _, link in ipairs(slice) do
-            table.insert(formatted, self:FormatWishlistItemWithToken(link))
+        for _, entry in ipairs(slice) do
+            local link = type(entry) == "table" and entry.link or entry
+            local lists = type(entry) == "table" and entry.lists or nil
+            local label = self:FormatWishlistItemWithToken(link)
+            if lists and #lists > 0 then
+                label = string.format("%s [%s]", label, table.concat(lists, ", "))
+            end
+            table.insert(formatted, label)
         end
         local itemText = table.concat(formatted, ", ")
         local msg = string.format(template, itemText)
@@ -3045,16 +3088,42 @@ function Goals:FlushWishlistAnnouncements()
 end
 
 function Goals:WishlistContainsItem(itemId)
-    local list = self:GetActiveWishlist()
-    if not list or not itemId then
+    if not itemId then
         return false
     end
-    for _, entry in pairs(list.items or {}) do
-        if entry and (entry.itemId == itemId or entry.tokenId == itemId) then
-            return true
+    local data = self:EnsureWishlistData()
+    local lists = data and data.lists or {}
+    for _, list in pairs(lists) do
+        if list and list.items then
+            for _, entry in pairs(list.items) do
+                if entry and (entry.itemId == itemId or entry.tokenId == itemId) then
+                    return true
+                end
+            end
         end
     end
     return false
+end
+
+function Goals:GetWishlistsContainingItem(itemId)
+    if not itemId then
+        return {}
+    end
+    local data = self:EnsureWishlistData()
+    local lists = data and data.lists or {}
+    local names = {}
+    for _, list in pairs(lists) do
+        if list and list.items then
+            for _, entry in pairs(list.items) do
+                if entry and (entry.itemId == itemId or entry.tokenId == itemId) then
+                    table.insert(names, list.name or "Wishlist")
+                    break
+                end
+            end
+        end
+    end
+    table.sort(names)
+    return names
 end
 
 function Goals:IsWishlistItemOwned(itemId)
@@ -3087,19 +3156,28 @@ function Goals:GetWishlistFoundMap(listId)
 end
 
 function Goals:MarkWishlistFound(itemId)
-    local list = self:GetActiveWishlist()
-    if not list or not list.id or not itemId then
+    if not itemId then
         return
     end
-    local foundMap = self:GetWishlistFoundMap(list.id)
-    if not foundMap then
-        return
-    end
+    local data = self:EnsureWishlistData()
+    local lists = data and data.lists or {}
     local updated = false
-    for _, entry in pairs(list.items or {}) do
-        if entry and (entry.itemId == itemId or entry.tokenId == itemId) then
-            foundMap[entry.itemId] = true
-            updated = true
+    for _, list in pairs(lists) do
+        if list and list.id and list.items then
+            local foundMap = self:GetWishlistFoundMap(list.id)
+            if foundMap then
+                local listUpdated = false
+                for _, entry in pairs(list.items) do
+                    if entry and (entry.itemId == itemId or entry.tokenId == itemId) then
+                        foundMap[entry.itemId] = true
+                        listUpdated = true
+                    end
+                end
+                if listUpdated then
+                    list.updated = time()
+                    updated = true
+                end
+            end
         end
     end
     if updated then
@@ -3108,6 +3186,7 @@ function Goals:MarkWishlistFound(itemId)
         end
         self:NotifyDataChanged()
     end
+    return updated
 end
 
 function Goals:ToggleWishlistFoundForSlot(slotKey)
@@ -3154,20 +3233,24 @@ function Goals:HandleWishlistLoot(itemLink)
         return
     end
     if self:WishlistContainsItem(itemId) then
-        self:MarkWishlistFound(itemId)
+        local updated = self:MarkWishlistFound(itemId)
+        local listNames = self:GetWishlistsContainingItem(itemId)
         if self.db and self.db.settings and not self.db.settings.wishlistAnnounce then
             local msg = self:FormatWishlistItemWithToken(itemLink)
+            if listNames and #listNames > 0 then
+                msg = string.format("%s [%s]", msg, table.concat(listNames, ", "))
+            end
             self:Print("Wishlist found: " .. msg)
         end
-        self:EnqueueWishlistAnnounce(itemLink)
+        self:EnqueueWishlistAnnounce(itemLink, listNames)
         local delay = self:GetWishlistAlertDelay(nil, 1)
         if delay > 0 then
             local link = itemLink
             self:Delay(delay, function()
-                self:ShowWishlistFoundAlert(link)
+                self:ShowWishlistFoundAlert({ { link = link, lists = listNames } })
             end)
         else
-            self:ShowWishlistFoundAlert(itemLink)
+            self:ShowWishlistFoundAlert({ { link = itemLink, lists = listNames } })
         end
     end
 end

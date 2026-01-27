@@ -133,6 +133,7 @@ _G.bossEncounters = {
     ["Halazzi"] = { "Halazzi" },
     ["Hex Lord Malacrass"] = { "Hex Lord Malacrass" },
     --["Thurg"] = { "Thurg" }, -- Thurg is classified as a Boss, but is one of 8 possible adds in the Hex Lord Malacrass encounter. 
+    ["Zul'jin"] = { "Zul'jin" },
     ["Daakara"] = { "Daakara" },
     --T6 Sunwell Plateau Bosses
     ["Kalecgos"] = { "Kalecgos", "Sathrovarr the Corruptor" },

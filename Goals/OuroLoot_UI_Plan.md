@@ -7,11 +7,13 @@ Goal: reshape GOALS UI to match Ouro Loot's layout and readability while **keepi
 ## Current Status (Implemented)
 
 ### Layout + Tabs
+
 - Main tabs moved to a **top tab bar** using `OptionsFrameTabButtonTemplate` (OL-style) with a dark strip and thin divider line.
 - Wishlist sub-tabs also have a dark strip + divider for OL-style continuity.
 - Main content area starts below the tab bar and is taller (tabs no longer consume bottom space).
 
 ### Table Layout + Styling
+
 - Shared table widget in place with OL-like header bars, stripes, and column layout.
 - Header bar height reduced to 16px for tighter density.
 - Column spacing tightened (default spacing 6px).
@@ -21,6 +23,7 @@ Goal: reshape GOALS UI to match Ouro Loot's layout and readability while **keepi
 - Tables aligned to the scrollbar edge for a cleaner OL-like look.
 
 ### Right Options Panels
+
 - Right panels widened to **240px** to fit AceGUI-style 200px controls without clipping.
 - Options section headers now use **AceGUI Heading** styling: centered gold text + left/right tooltip-border lines.
 - Option controls standardized to **200x24** (buttons, dropdowns, edit boxes) for AceGUI parity.
@@ -41,11 +44,17 @@ Goal: reshape GOALS UI to match Ouro Loot's layout and readability while **keepi
 - Footer now includes centered sync status: `Syncing From: <name> | <timer> Last Sync.`
 
 ### Combat Log Tracking
-- Combat log is **always enabled** right now.
-- Toggle removed; combat tab always visible.
+
+- Combat log is **toggleable** (default OFF) via Combat options.
+- Combat tab always visible; tracking can be enabled/disabled.
 - Filter moved into options panel (top section).
+- Incoming damage/heals tracked; optional outgoing damage tracking.
+- Combat log arg handling hardened to work whether CLEU passes args directly or via CombatLogGetCurrentEventInfo.
+- Debug tab includes Combat Tracker diagnostics + Test Damage/Heal buttons.
+- Combat log persists across reloads unless cleared.
 
 ### Loot Table Behavior
+
 - Loot rows: **Found + Assign merged** (single row updates on assignment).
 - Notes system: auto notes (Found/Looted/Assigned/Disenchanted), manual notes override.
 - Notes UI in Loot right panel with Apply/Clear.
@@ -54,6 +63,7 @@ Goal: reshape GOALS UI to match Ouro Loot's layout and readability while **keepi
 - Item tooltip now only opens when clicking the **item name column**, not the full row.
 
 ### Overview + Access Controls
+
 - Overview table now aligned: Player | Points | Actions (buttons under Actions header).
 - Admin/dev controls hidden for non-admin users (not just disabled).
 - Ask for sync moved into Sync section (visible to all).
@@ -63,6 +73,7 @@ Goal: reshape GOALS UI to match Ouro Loot's layout and readability while **keepi
 - Footer access text now shows role-aware labels (Dev/Admin/Loot Master/Loot Helper/Raid-Party/Solo).
 
 ### Wishlist
+
 - Wishlist layout **kept Wowhead-style** (not a table).
 - Options sub-tab is now a scroll frame with always-visible scrollbar.
 - Wishlist left panel widened and right panel shrunk; column-3 (mainhand/offhand/relic) row moved down.
@@ -73,28 +84,34 @@ Goal: reshape GOALS UI to match Ouro Loot's layout and readability while **keepi
 ## Remaining Work / To-Do
 
 ### Options Panel UI Matching (Primary Tabs)
+
 **Mostly done:** right-side options now mimic OL's AceGUI visuals (Heading lines + 200x24 controls + label-above layout).
 
 **Validate / tune**
+
 - Options panel widths/spacing on Overview/Loot/History/Combat after widening to 240px.
 - Dropdown/checkbox/button visuals match OL (fonts/colors/spacing).
 - Footer info bars do not overlap content and show correct status text.
 - Check long labels/values don't clip within the new label-above layout.
 
 ### Table Look + Feel
+
 - Verify all tables use consistent header height/spacing across tabs.
 - Check column widths for Loot/History/Combat to better match OL proportions.
 - Consider subtle separators between major table groups (if needed).
 
 ### Scrollbars + Alignment
+
 - Ensure scrollbars are **always visible** (greyed when not scrollable) on relevant panels.
 - Confirm no overlap between scrollbars and right-panel controls.
 
 ### Access / Roles
+
 - Confirm loot master/raid helper access rules for buttons and actions.
 - Decide if any admin sections should remain visible for non-admins (or hidden).
 
 ### Settings Cleanup
+
 - Settings tab is removed from main tabs.
 - Decide whether to reintroduce a Settings tab later in OL tone.
 - If reintroduced, define what belongs there vs per-tab options.
@@ -102,6 +119,7 @@ Goal: reshape GOALS UI to match Ouro Loot's layout and readability while **keepi
 ---
 
 ## Testing Checklist (Run Each Session)
+
 - Tabs render correctly in top bar; Help pinned right.
 - Main content area doesn't overlap tab bar or titlebar.
 - Table headers align with rows; columns line up with scrollbar edge.
@@ -128,6 +146,66 @@ Please validate the new options panel spacing/alignment (Overview/Loot/History/C
 ---
 
 ## Open Questions
+
 - Final desired widths for key columns (Loot/History/Combat)?
 - Should any admin-only controls remain visible but disabled for regular users?
 - Do we want to reintroduce a Settings tab later, or keep all options on their respective tabs?
+
+## Issues found 1/23/2026 AND 1/26/2026
+
+- Combat Tracker still doesnt work at all, damage or healing. **(Attempted fix: added CLEU arg shift fallback + roster name matching + skip reason in debug status.)**
+- Combat Tracker boss encounter for Zul'Aman (spelling?) didnt track Zul'jin fight start or end? **(Fixed: added Zul'jin to boss list.)**
+- Combat Debug tab should be set to a list mode/multi-line list that i can copy/paste from for testing/debugging. **(Fixed: Debug tab now uses a multi-line scrollable edit box and auto-populates.)**
+- The Unassigned changing to assigned in the Loot tab doesnt modify the note nor set the player name, it adds a new line. **(Attempted fix: widen LOOT_FOUND/ASSIGN merge window to 3600s.)**
+- The Disenchanter being set to 0 doesnt auto assign the loot to them and doesn't show `Assigned (Reset -#)` note. **(Adjusted: roster “0” on the disenchanter now converts a recent assignment into a loot reset entry when possible; history note updates instead of adding a duplicate line.)**
+- Goals thinks you start the Milleniax fight when you attack `Infinite Timereaver`s. **(Fixed: added ignore list for Infinite Timereaver in encounter detection.)**
+
+## Changes / Changelog (1/27/2026)
+
+- Combat tracker parsing: added payload shift handling (older CLEU without raid flags) + roster-name fallback, and debug status now shows “added/skip reason” for the last event.
+- Debug tab: restored debug log as a multi-line scrollable edit box for copy/paste; log auto-updates when entries are appended.
+- Loot history: increased LOOT_FOUND/ASSIGN merge window to 3600s to reduce duplicate “Assigned” lines.
+- Boss detection: added Zul'jin to Zul'Aman list; added ignore rule for Infinite Timereaver to avoid false Milleniax starts.
+- Disenchanter reset: clicking roster “0” on the disenchanter now attempts to reset the last assigned loot (within 10 minutes) and updates the existing loot entry to show `Assigned (Reset -#)` when possible.
+- Combat log errors: NormalizeName now handles non-string values, and combat log parsing now skips the extra COMBAT_LOG_EVENT header args when present.
+- Combat tracker parsing: added payload heuristic to read damage/heal amounts when CLEU is missing raid flag fields (fixes zero-amount drops).
+- Combat tracker parsing: added CLEU layout detection (finds GUID positions) to avoid “Not roster dest” skips when offsets shift.
+- Combat tracker heals: subtract overheal from heal amount when available; stores `overheal` on entries for debugging.
+- Combat tracker UI: renamed “Spell” column to “Ability” and reduced width by ~1/3; added a tracking enable checkbox (default off, remembers choice).
+- Version bump: updated display/version strings to v2.17 and updateSeenVersion to 17.
+- Version bump: updated `updates.lua` to version 17.
+- Combat tracker options: added “Track damage dealt” (outgoing) and “Combine all damage/heal” toggles.
+- Combat tracker table: added inbound/outbound arrow column between Player and Amount.
+- Combat tracker combine-all: now aggregates existing log entries retroactively (per player + kind), not just new events.
+- Combat tracker log: persisted to saved variables and added a Clear button in the Combat options panel.
+- Options panels: added a subtle vertical divider on the left edge for OL separation.
+- Combat tracker table: flow column header labeled "Dir".
+- Wishlist alerts: announcements/popups now scan all wishlists (not just active) and mark found items across every list.
+- Wishlist alerts: chat and popup now include the matching wishlist names for each found item.
+- Wishlist layout: nudged column 2 slots left slightly to fit within the inset box.
+
+## OL Parity Recheck (1/27/2026)
+
+### Looks On-Track (Parity Achieved)
+
+- Top tab strip styling and spacing match OL (dark strip + divider, tab buttons sized).
+- Shared table headers/stripes/spacing look consistent across tabs.
+- Options panel visuals align with OL AceGUI look (200x24 controls, heading lines, label-above).
+- Tooltips use right-side popout style and wrap to panel width.
+- Paired buttons (notes, etc.) match OL layout.
+- Wishlist keeps Wowhead-style layout while overall frame matches OL tone.
+
+### Recheck/Adjust (Parity Validation Needed)
+
+- Combat tab: flow-arrow column alignment and overall width vs OL.
+- Options panels: verify no label clipping on Overview/Loot/History/Combat.
+- Footer bars: confirm centered sync text and left/right status alignment on all tabs.
+- Scrollbars: confirm always-visible scrollbars on all scroll frames (Wishlist options, History, Loot, Debug log box).
+- Buttons: confirm remaining buttons use `UIPanelButtonTemplate2` (especially History/Wishlist).
+- Combat log section text in plan should reflect tracking toggle (now OFF by default).
+
+### Optional OL Polish
+
+- Tighten column widths in Loot/History/Combat for closer OL proportions.
+- Add subtle divider between left table and right options on non-Wishlist tabs (if desired).
+- Align top padding so headers sit on a consistent baseline across tabs.

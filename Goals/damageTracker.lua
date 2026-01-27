@@ -32,6 +32,80 @@ local DEATH_EVENTS = {
 }
 local bit_band = bit and bit.band or nil
 
+local function looksLikeGuid(value)
+    return type(value) == "string" and value:match("^0x") ~= nil
+end
+
+local function detectCombatLogLayout(args)
+    if not args then
+        return nil
+    end
+    local count = #args
+    for i = 1, count - 6 do
+        if looksLikeGuid(args[i]) then
+            local name = args[i + 1]
+            local flags = args[i + 2]
+            if (type(name) == "string" or name == nil) and type(flags) == "number" then
+                if looksLikeGuid(args[i + 4]) then
+                    return {
+                        sourceGUID = i,
+                        sourceName = i + 1,
+                        sourceFlags = i + 2,
+                        destGUID = i + 4,
+                        destName = i + 5,
+                        destFlags = i + 6,
+                        spellBase = i + 8,
+                        timestamp = i - 2,
+                        subevent = i - 1,
+                        hasRaidFlags = true,
+                    }
+                elseif looksLikeGuid(args[i + 3]) then
+                    return {
+                        sourceGUID = i,
+                        sourceName = i + 1,
+                        sourceFlags = i + 2,
+                        destGUID = i + 3,
+                        destName = i + 4,
+                        destFlags = i + 5,
+                        spellBase = i + 6,
+                        timestamp = i - 2,
+                        subevent = i - 1,
+                        hasRaidFlags = false,
+                    }
+                end
+            end
+        end
+    end
+    return nil
+end
+
+local function parseSpellPayload(args, base, shift)
+    local idx11 = 11 + base + shift
+    local idx12 = 12 + base + shift
+    local idx13 = 13 + base + shift
+    local idx14 = 14 + base + shift
+    local idx15 = 15 + base + shift
+    local idx16 = 16 + base + shift
+
+    if type(args[idx13]) == "string" then
+        return tonumber(args[idx12]) or nil, args[idx13], args[idx15]
+    end
+    if type(args[idx12]) == "string" then
+        return tonumber(args[idx11]) or nil, args[idx12], args[idx14]
+    end
+    if type(args[idx14]) == "string" then
+        return tonumber(args[idx13]) or nil, args[idx14], args[idx16]
+    end
+    return tonumber(args[idx12]) or nil, args[idx13], args[idx15]
+end
+
+local function parseHealOverheal(args, spellBase)
+    if not spellBase then
+        return nil
+    end
+    return tonumber(args[spellBase + 4])
+end
+
 local function hasFlag(flags, mask)
     if not (flags and mask and bit_band) then
         return false
@@ -69,6 +143,9 @@ local function getAllLabel()
 end
 
 local function getCombatLogArgs(...)
+    if select("#", ...) > 0 then
+        return ...
+    end
     if CombatLogGetCurrentEventInfo then
         return CombatLogGetCurrentEventInfo()
     end
@@ -83,22 +160,39 @@ local function normalizeName(name)
 end
 
 function DamageTracker:IsEnabled()
-    return true
+    return Goals.db and Goals.db.settings and Goals.db.settings.combatLogTracking and true or false
 end
 
 function DamageTracker:IsHealingEnabled()
     return Goals.db and Goals.db.settings and Goals.db.settings.combatLogHealing and true or false
 end
 
+function DamageTracker:IsOutgoingEnabled()
+    return Goals.db and Goals.db.settings and Goals.db.settings.combatLogTrackOutgoing and true or false
+end
+
+function DamageTracker:IsCombineAllEnabled()
+    return Goals.db and Goals.db.settings and Goals.db.settings.combatLogCombineAll and true or false
+end
+
 function DamageTracker:Init()
     Goals.state = Goals.state or {}
-    Goals.state.damageLog = Goals.state.damageLog or {}
+    if Goals.db then
+        Goals.db.combatLog = Goals.db.combatLog or {}
+        Goals.state.damageLog = Goals.db.combatLog
+    else
+        Goals.state.damageLog = Goals.state.damageLog or {}
+    end
     self.rosterGuids = self.rosterGuids or {}
     self.rosterNames = self.rosterNames or {}
     if Goals.db and Goals.db.settings then
-        Goals.db.settings.combatLogTracking = true
+        if Goals.db.settings.combatLogTracking == nil then
+            Goals.db.settings.combatLogTracking = false
+        end
     end
-    self:ClearLog()
+    self.activeCombines = self.activeCombines or {}
+    self.castStarts = self.castStarts or {}
+    self.startTs = self.startTs or time()
     self:RefreshRoster()
 end
 
@@ -106,9 +200,10 @@ function DamageTracker:SetEnabled(enabled)
     if not (Goals.db and Goals.db.settings) then
         return
     end
-    Goals.db.settings.combatLogTracking = true
-    self:ClearLog()
-    self:RefreshRoster()
+    Goals.db.settings.combatLogTracking = enabled and true or false
+    if enabled then
+        self:RefreshRoster()
+    end
     if Goals.UI and Goals.UI.UpdateDamageTabVisibility then
         Goals.UI:UpdateDamageTabVisibility()
     end
@@ -119,13 +214,45 @@ end
 
 function DamageTracker:ClearLog()
     Goals.state.damageLog = {}
+    if Goals.db then
+        Goals.db.combatLog = Goals.state.damageLog
+    end
     self.startTs = time()
     self.activeCombines = {}
     self.castStarts = {}
 end
 
+function DamageTracker:TryCombineAll(entry)
+    if not self:IsCombineAllEnabled() then
+        return false
+    end
+    if not entry or not entry.kind or not entry.player then
+        return false
+    end
+    if entry.kind ~= "DAMAGE" and entry.kind ~= "HEAL" and entry.kind ~= "DAMAGE_OUT" then
+        return false
+    end
+    local log = Goals.state.damageLog or {}
+    local top = log[1]
+    if top and top.kind == entry.kind and top.player == entry.player then
+        top.amount = (tonumber(top.amount) or 0) + (tonumber(entry.amount) or 0)
+        top.ts = entry.ts or time()
+        top.combineCount = (top.combineCount or 1) + 1
+        top.spell = "Combined"
+        top.source = "Multiple"
+        return true
+    end
+    return false
+end
+
 function DamageTracker:AddEntry(entry)
     if type(entry) ~= "table" then
+        return
+    end
+    if self:TryCombineAll(entry) then
+        if Goals.UI and Goals.UI.currentTab == (Goals.UI.damageTabId or 0) and Goals.UI.UpdateDamageTrackerList then
+            Goals.UI:UpdateDamageTrackerList()
+        end
         return
     end
     if self:TryCombinePeriodic(entry) then
@@ -140,6 +267,9 @@ function DamageTracker:AddEntry(entry)
         table.remove(log)
     end
     Goals.state.damageLog = log
+    if Goals.db then
+        Goals.db.combatLog = log
+    end
     if Goals.UI and Goals.UI.currentTab == (Goals.UI.damageTabId or 0) and Goals.UI.UpdateDamageTrackerList then
         Goals.UI:UpdateDamageTrackerList()
     end
@@ -250,7 +380,10 @@ function DamageTracker:GetFilteredEntries(filter)
     end
     if not filter or filter == "" or filter == allLabel then
         if not showBig then
-            return log
+            if not self:IsCombineAllEnabled() then
+                return log
+            end
+            return self:BuildCombinedList(log)
         end
         local list = {}
         for _, entry in ipairs(log) do
@@ -266,7 +399,10 @@ function DamageTracker:GetFilteredEntries(filter)
                 end
             end
         end
-        return list
+        if not self:IsCombineAllEnabled() then
+            return list
+        end
+        return self:BuildCombinedList(list)
     end
     local list = {}
     for _, entry in ipairs(log) do
@@ -288,7 +424,50 @@ function DamageTracker:GetFilteredEntries(filter)
             end
         end
     end
-    return list
+    if not self:IsCombineAllEnabled() then
+        return list
+    end
+    return self:BuildCombinedList(list)
+end
+
+function DamageTracker:BuildCombinedList(entries)
+    if not entries or #entries == 0 then
+        return entries or {}
+    end
+    local combined = {}
+    local map = {}
+    for i = #entries, 1, -1 do
+        local entry = entries[i]
+        if not entry or entry.kind == "BREAK" or entry.kind == "DEATH" or entry.kind == "RES" then
+            table.insert(combined, entry)
+        else
+            local key = string.format("%s|%s", entry.kind or "DAMAGE", entry.player or "Unknown")
+            local agg = map[key]
+            if not agg then
+                agg = {
+                    kind = entry.kind,
+                    player = entry.player,
+                    amount = 0,
+                    ts = entry.ts,
+                    spell = "Combined",
+                    source = "Multiple",
+                    sourceKind = entry.sourceKind,
+                    combineCount = 0,
+                }
+                map[key] = agg
+                table.insert(combined, agg)
+            end
+            agg.amount = (tonumber(agg.amount) or 0) + (tonumber(entry.amount) or 0)
+            agg.combineCount = (agg.combineCount or 0) + 1
+            if entry.ts and (not agg.ts or entry.ts > agg.ts) then
+                agg.ts = entry.ts
+            end
+        end
+    end
+    table.sort(combined, function(a, b)
+        return (a.ts or 0) > (b.ts or 0)
+    end)
+    return combined
 end
 
 function DamageTracker:BuildEncounterStats(log)
@@ -378,6 +557,7 @@ end
 function DamageTracker:RefreshRoster()
     local guidMap = {}
     local names = {}
+    local nameMap = {}
 
     local function addUnit(unit)
         if not UnitExists or not UnitExists(unit) then
@@ -389,6 +569,7 @@ function DamageTracker:RefreshRoster()
             local normalized = normalizeName(name)
             guidMap[guid] = normalized
             table.insert(names, normalized)
+            nameMap[normalized] = true
         end
     end
 
@@ -408,6 +589,7 @@ function DamageTracker:RefreshRoster()
     table.sort(names)
     self.rosterGuids = guidMap
     self.rosterNames = names
+    self.rosterNameMap = nameMap
 
     if Goals.UI and Goals.UI.RefreshDamageTrackerDropdown then
         Goals.UI:RefreshDamageTrackerDropdown()
@@ -425,8 +607,60 @@ function DamageTracker:HandleCombatLog(...)
     if not self:IsEnabled() then
         return
     end
-    local timestamp, subevent, _, sourceGUID, sourceName, sourceFlags, _, destGUID, destName, _, _, arg12, arg13, _, arg15 =
-        getCombatLogArgs(...)
+    local args = { ... }
+    if not args[2] and CombatLogGetCurrentEventInfo then
+        args = { CombatLogGetCurrentEventInfo() }
+    end
+    local layout = detectCombatLogLayout(args)
+    local timestamp = args[1]
+    local subevent = args[2]
+    local sourceGUID = nil
+    local sourceName = nil
+    local sourceFlags = nil
+    local destGUID = nil
+    local destName = nil
+    local destFlags = nil
+    local spellBase = nil
+
+    if layout then
+        if layout.timestamp and layout.timestamp >= 1 then
+            timestamp = args[layout.timestamp]
+        end
+        if layout.subevent and layout.subevent >= 1 then
+            subevent = args[layout.subevent]
+        end
+        sourceGUID = args[layout.sourceGUID]
+        sourceName = args[layout.sourceName]
+        sourceFlags = args[layout.sourceFlags]
+        destGUID = args[layout.destGUID]
+        destName = args[layout.destName]
+        destFlags = args[layout.destFlags]
+        spellBase = layout.spellBase
+    else
+        local base = 0
+        if type(args[1]) == "string" and (args[1] == "COMBAT_LOG_EVENT" or args[1] == "COMBAT_LOG_EVENT_UNFILTERED") then
+            base = 2
+        end
+        timestamp = args[1 + base]
+        subevent = args[2 + base]
+        sourceGUID = args[4 + base]
+        sourceName = args[5 + base]
+        sourceFlags = args[6 + base]
+        destGUID = args[8 + base]
+        destName = args[9 + base]
+        spellBase = 12 + base
+    end
+
+    Goals.state = Goals.state or {}
+    Goals.state.combatLogDebug = Goals.state.combatLogDebug or {}
+    local debug = Goals.state.combatLogDebug
+    debug.count = (debug.count or 0) + 1
+    debug.lastEvent = subevent or ""
+    debug.lastSource = sourceName or ""
+    debug.lastDest = destName or ""
+    debug.lastTs = timestamp or time()
+    debug.lastAdded = false
+    debug.lastSkip = nil
     if subevent == "SPELL_CAST_SUCCESS" then
         local spellId = tonumber(arg12) or nil
         local spellName = arg13
@@ -437,32 +671,56 @@ function DamageTracker:HandleCombatLog(...)
         end
         return
     end
-    if not destGUID then
-        return
+    local playerGuid = UnitGUID and UnitGUID("player") or nil
+    local normalizedDest = normalizeName(destName)
+    local normalizedSource = normalizeName(sourceName)
+    if not (self.rosterGuids and next(self.rosterGuids)) then
+        self:RefreshRoster()
     end
-    if not (self.rosterGuids and self.rosterGuids[destGUID]) then
+    local rosterMap = self.rosterNameMap or {}
+    local isRosterDest = (destGUID and (destGUID == playerGuid or (self.rosterGuids and self.rosterGuids[destGUID])))
+        or (normalizedDest ~= "" and rosterMap[normalizedDest])
+    local isRosterSource = (sourceGUID and (sourceGUID == playerGuid or (self.rosterGuids and self.rosterGuids[sourceGUID])))
+        or (normalizedSource ~= "" and rosterMap[normalizedSource])
+    local outgoingEnabled = self:IsOutgoingEnabled()
+    if not isRosterDest and not (outgoingEnabled and isRosterSource) then
+        debug.lastSkip = "Not roster dest"
         return
     end
     if not subevent then
+        debug.lastSkip = "No subevent"
         return
     end
 
-    local playerName = self.rosterGuids[destGUID] or normalizeName(destName)
+    local playerName = (destGUID and self.rosterGuids[destGUID]) or (isRosterDest and normalizedDest) or normalizeName(destName)
     local sourceKind = classifySource(sourceName, sourceFlags)
     local amount
     local spellName
     if DAMAGE_EVENTS[subevent] then
         local spellId = nil
         if subevent == "SWING_DAMAGE" then
-            amount = arg12
+            amount = spellBase and tonumber(args[spellBase]) or nil
+            if not amount then
+                amount = tonumber(args[spellBase and (spellBase + 1) or 0]) or tonumber(args[spellBase and (spellBase + 2) or 0])
+            end
             spellName = "Melee"
         else
-            spellId = tonumber(arg12) or nil
-            spellName = arg13
-            amount = arg15
+            if spellBase then
+                if type(args[spellBase + 1]) == "string" then
+                    spellId = tonumber(args[spellBase]) or nil
+                    spellName = args[spellBase + 1]
+                    amount = args[spellBase + 3]
+                else
+                    local id, name, amt = parseSpellPayload(args, 0, 0)
+                    spellId, spellName, amount = id, name, amt
+                end
+            else
+                spellId, spellName, amount = parseSpellPayload(args, 0, 0)
+            end
         end
         amount = tonumber(amount or 0) or 0
         if amount <= 0 then
+            debug.lastSkip = "Zero damage"
             return
         end
         local source = sourceName or "Unknown"
@@ -472,34 +730,99 @@ function DamageTracker:HandleCombatLog(...)
             local key = string.format("%s|%s", tostring(sourceGUID or sourceName or "unknown"), tostring(spellId or spellName or ""))
             castStart = self.castStarts[key]
         end
-        self:AddEntry({
-            ts = timestamp,
-            player = playerName ~= "" and playerName or "Unknown",
-            amount = amount,
-            spell = spellName or "Unknown",
-            spellId = spellId,
-            source = source,
-            kind = "DAMAGE",
-            periodic = PERIODIC_DAMAGE_EVENTS[subevent] and true or false,
-            castStart = castStart,
-            sourceFlags = sourceFlags,
-            sourceKind = sourceKind,
-        })
+        if isRosterDest then
+            if (not playerName or playerName == "") and Goals and Goals.GetPlayerName and destGUID == playerGuid then
+                playerName = Goals:GetPlayerName()
+            end
+            if not playerName or playerName == "" then
+                debug.lastSkip = "No player name"
+                return
+            end
+            self:AddEntry({
+                ts = timestamp,
+                player = playerName ~= "" and playerName or "Unknown",
+                amount = amount,
+                spell = spellName or "Unknown",
+                spellId = spellId,
+                source = source,
+                kind = "DAMAGE",
+                periodic = PERIODIC_DAMAGE_EVENTS[subevent] and true or false,
+                castStart = castStart,
+                sourceFlags = sourceFlags,
+                sourceKind = sourceKind,
+            })
+        elseif outgoingEnabled and isRosterSource then
+            local srcName = (sourceGUID and self.rosterGuids[sourceGUID]) or (isRosterSource and normalizedSource) or normalizeName(sourceName)
+            if (not srcName or srcName == "") and Goals and Goals.GetPlayerName and sourceGUID == playerGuid then
+                srcName = Goals:GetPlayerName()
+            end
+            if not srcName or srcName == "" then
+                debug.lastSkip = "No player name"
+                return
+            end
+            local targetName = destName or "Unknown"
+            local targetKind = classifySource(targetName, destFlags)
+            self:AddEntry({
+                ts = timestamp,
+                player = srcName,
+                amount = amount,
+                spell = spellName or "Unknown",
+                spellId = spellId,
+                source = targetName,
+                kind = "DAMAGE_OUT",
+                periodic = PERIODIC_DAMAGE_EVENTS[subevent] and true or false,
+                castStart = castStart,
+                sourceFlags = destFlags,
+                sourceKind = targetKind,
+            })
+        end
+        debug.lastAdded = true
         return
     end
 
     if HEAL_EVENTS[subevent] then
         if not self:IsHealingEnabled() then
+            debug.lastSkip = "Heal disabled"
             return
         end
-        local spellId = tonumber(arg12) or nil
-        spellName = arg13
-        amount = arg15
+        local spellId
+        if spellBase then
+            if type(args[spellBase + 1]) == "string" then
+                spellId = tonumber(args[spellBase]) or nil
+                spellName = args[spellBase + 1]
+                amount = args[spellBase + 3]
+            else
+                local id, name, amt = parseSpellPayload(args, 0, 0)
+                spellId, spellName, amount = id, name, amt
+            end
+        else
+            spellId, spellName, amount = parseSpellPayload(args, 0, 0)
+        end
         amount = tonumber(amount or 0) or 0
+        local overheal = parseHealOverheal(args, spellBase)
+        if overheal and overheal > 0 then
+            local effective = amount - overheal
+            if effective < 0 then
+                effective = 0
+            end
+            amount = effective
+        end
         if amount <= 0 then
+            debug.lastSkip = "Zero heal"
             return
         end
         local source = sourceName or "Unknown"
+        if not isRosterDest then
+            debug.lastSkip = "Not roster dest"
+            return
+        end
+        if (not playerName or playerName == "") and Goals and Goals.GetPlayerName and destGUID == playerGuid then
+            playerName = Goals:GetPlayerName()
+        end
+        if not playerName or playerName == "" then
+            debug.lastSkip = "No player name"
+            return
+        end
         self:AddEntry({
             ts = timestamp,
             player = playerName ~= "" and playerName or "Unknown",
@@ -511,22 +834,54 @@ function DamageTracker:HandleCombatLog(...)
             periodic = PERIODIC_HEAL_EVENTS[subevent] and true or false,
             sourceFlags = sourceFlags,
             sourceKind = sourceKind,
+            overheal = overheal,
         })
+        debug.lastAdded = true
         return
     end
 
     if DEATH_EVENTS[subevent] then
+        if not isRosterDest then
+            debug.lastSkip = "Not roster dest"
+            return
+        end
+        if (not playerName or playerName == "") and Goals and Goals.GetPlayerName and destGUID == playerGuid then
+            playerName = Goals:GetPlayerName()
+        end
+        if not playerName or playerName == "" then
+            debug.lastSkip = "No player name"
+            return
+        end
         self:AddEntry({
             ts = timestamp,
             player = playerName ~= "" and playerName or "Unknown",
             kind = "DEATH",
         })
+        debug.lastAdded = true
         return
     end
 
     if subevent == "SPELL_RESURRECT" then
-        local spellId = tonumber(arg12) or nil
-        spellName = arg13
+        if not isRosterDest then
+            debug.lastSkip = "Not roster dest"
+            return
+        end
+        if (not playerName or playerName == "") and Goals and Goals.GetPlayerName and destGUID == playerGuid then
+            playerName = Goals:GetPlayerName()
+        end
+        if not playerName or playerName == "" then
+            debug.lastSkip = "No player name"
+            return
+        end
+        local spellId = nil
+        if spellBase and type(args[spellBase + 1]) == "string" then
+            spellId = tonumber(args[spellBase]) or nil
+            spellName = args[spellBase + 1]
+        else
+            local id, name = parseSpellPayload(args, 0, 0)
+            spellId = id
+            spellName = name
+        end
         self:AddEntry({
             ts = timestamp,
             player = playerName ~= "" and playerName or "Unknown",
@@ -537,6 +892,7 @@ function DamageTracker:HandleCombatLog(...)
             sourceFlags = sourceFlags,
             sourceKind = sourceKind,
         })
+        debug.lastAdded = true
         return
     end
 end

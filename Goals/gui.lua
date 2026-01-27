@@ -17,12 +17,13 @@ local HISTORY_ROW_HEIGHT_DOUBLE = 26
 local LOOT_HISTORY_ROWS = 20
 local DEBUG_ROWS = 16
 local DEBUG_ROW_HEIGHT = 14
-local DAMAGE_ROWS = 16
+local DAMAGE_ROWS = 20
 local DAMAGE_ROW_HEIGHT = 18
 local DAMAGE_COL_TIME = 70
-local DAMAGE_COL_PLAYER = 130
+local DAMAGE_COL_PLAYER = 110
+local DAMAGE_COL_FLOW = 20
 local DAMAGE_COL_AMOUNT = 70
-local DAMAGE_COL_SPELL = 180
+local DAMAGE_COL_SPELL = 120
 local MINI_ROW_HEIGHT = 16
 local MINI_HEADER_HEIGHT = 22
 local MINI_FRAME_WIDTH = 200
@@ -417,6 +418,13 @@ local function createOptionsPanel(parent, name, width)
     panel:SetWidth(width or OPTIONS_PANEL_WIDTH)
     panel:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -8, -12)
     panel:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -8, 8)
+
+    local divider = panel:CreateTexture(nil, "BORDER")
+    divider:SetWidth(1)
+    divider:SetPoint("TOPLEFT", panel, "TOPLEFT", 0, -2)
+    divider:SetPoint("BOTTOMLEFT", panel, "BOTTOMLEFT", 0, 2)
+    divider:SetTexture(1, 1, 1, 0.08)
+    panel.divider = divider
 
     local scroll = CreateFrame("ScrollFrame", name .. "Scroll", panel, "UIPanelScrollFrameTemplate")
     scroll:SetPoint("TOPLEFT", panel, "TOPLEFT", 4, -4)
@@ -1320,6 +1328,7 @@ function UI:GetLootTableEntries()
     local seenFound = {}
     local foundIndexByKey = {}
     local LOOT_GROUP_WINDOW = 15
+    local LOOT_ASSIGN_MERGE_WINDOW = 3600
 
     for _, entry in ipairs(history) do
         if entry.kind == "LOOT_FOUND" then
@@ -1363,7 +1372,7 @@ function UI:GetLootTableEntries()
                     end
                 end
             end
-            if matched and ((entry.ts or 0) - (matched.entry.ts or 0) <= 300) then
+            if matched and ((entry.ts or 0) - (matched.entry.ts or 0) <= LOOT_ASSIGN_MERGE_WINDOW) then
                 markFoundUsed(matched)
                 local playerName = dataEntry.player or ""
                 local players = dataEntry.players
@@ -2298,6 +2307,9 @@ function UI:SelectTab(id)
     if not self.frame or not self.tabs[id] then
         return
     end
+    if not self.frame.numTabs and self.tabs then
+        self.frame.numTabs = #self.tabs
+    end
     PanelTemplates_SetTab(self.frame, id)
     for index, page in ipairs(self.pages) do
         setShown(page, index == id)
@@ -2576,7 +2588,20 @@ function UI:CreateOverviewTab(page)
         end)
         reset:SetScript("OnClick", function()
             if row.playerName then
-                Goals:SetPoints(row.playerName, 0, "Roster reset")
+                local dis = Goals.db and Goals.db.settings and Goals.db.settings.disenchanter or ""
+                local playerName = row.playerName
+                if dis ~= "" and Goals.NormalizeName and Goals:NormalizeName(dis) == Goals:NormalizeName(playerName) then
+                    local last = Goals.state and Goals.state.lastLoot or nil
+                    if last and last.name and last.link then
+                        local window = 600
+                        if Goals:NormalizeName(last.name) == Goals:NormalizeName(playerName) and (time() - (last.ts or 0)) <= window then
+                            if Goals.HandleManualLootReset and Goals:HandleManualLootReset(playerName, last.link, false) then
+                                return
+                            end
+                        end
+                    end
+                end
+                Goals:SetPoints(playerName, 0, "Roster reset")
             end
         end)
         undo:SetScript("OnClick", function()
@@ -2636,6 +2661,72 @@ function UI:CreateOverviewTab(page)
         local dropdown = createOptionsDropdown(optionsContent, name, y)
         y = y - 32
         return dropdown
+    end
+
+    local function addButton(text, onClick, tooltipText)
+        local btn = createOptionsButton(optionsContent)
+        styleOptionsButton(btn, OPTIONS_CONTROL_WIDTH)
+        btn:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
+        btn:SetText(text)
+        btn:SetScript("OnClick", onClick)
+        attachSideTooltip(btn, tooltipText)
+        y = y - 30
+        return btn
+    end
+
+    local function addButton(text, onClick, tooltipText)
+        local btn = createOptionsButton(optionsContent)
+        styleOptionsButton(btn, OPTIONS_CONTROL_WIDTH)
+        btn:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
+        btn:SetText(text)
+        btn:SetScript("OnClick", onClick)
+        attachSideTooltip(btn, tooltipText)
+        y = y - 30
+        return btn
+    end
+
+    local function addButton(text, onClick, tooltipText)
+        local btn = createOptionsButton(optionsContent)
+        styleOptionsButton(btn, OPTIONS_CONTROL_WIDTH)
+        btn:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
+        btn:SetText(text)
+        btn:SetScript("OnClick", onClick)
+        attachSideTooltip(btn, tooltipText)
+        y = y - 30
+        return btn
+    end
+
+    local function addButton(text, onClick, tooltipText)
+        local btn = createOptionsButton(optionsContent)
+        styleOptionsButton(btn, OPTIONS_CONTROL_WIDTH)
+        btn:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
+        btn:SetText(text)
+        btn:SetScript("OnClick", onClick)
+        attachSideTooltip(btn, tooltipText)
+        y = y - 30
+        return btn
+    end
+
+    local function addButton(text, onClick, tooltipText)
+        local btn = createOptionsButton(optionsContent)
+        styleOptionsButton(btn, OPTIONS_CONTROL_WIDTH)
+        btn:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
+        btn:SetText(text)
+        btn:SetScript("OnClick", onClick)
+        attachSideTooltip(btn, tooltipText)
+        y = y - 30
+        return btn
+    end
+
+    local function addButton(text, onClick, tooltipText)
+        local btn = createOptionsButton(optionsContent)
+        styleOptionsButton(btn, OPTIONS_CONTROL_WIDTH)
+        btn:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
+        btn:SetText(text)
+        btn:SetScript("OnClick", onClick)
+        attachSideTooltip(btn, tooltipText)
+        y = y - 30
+        return btn
     end
 
     local function addButton(text, onClick)
@@ -3824,7 +3915,7 @@ function UI:CreateWishlistTab(page)
     self.wishlistSlotButtons = {}
     local slots = Goals:GetWishlistSlotDefs() or {}
     local leftColumnX = 28
-    local rightColumnX = leftInset:GetWidth() - WISHLIST_SLOT_SIZE - 22
+    local rightColumnX = leftInset:GetWidth() - WISHLIST_SLOT_SIZE - 28
     local columnCenter = leftInset:GetWidth() * 0.52
     local centerGap = 3
     local nameOffset = 2
@@ -5213,8 +5304,9 @@ function UI:CreateDamageTrackerTab(page)
         columns = {
             { key = "time", title = "Time", width = DAMAGE_COL_TIME, justify = "LEFT", wrap = false },
             { key = "player", title = "Player", width = DAMAGE_COL_PLAYER, justify = "LEFT", wrap = false },
+            { key = "flow", title = "Dir", width = DAMAGE_COL_FLOW, justify = "CENTER", wrap = false },
             { key = "amount", title = "Amount", width = DAMAGE_COL_AMOUNT, justify = "RIGHT", wrap = false },
-            { key = "spell", title = "Spell", width = DAMAGE_COL_SPELL, justify = "LEFT", wrap = false },
+            { key = "spell", title = "Ability", width = DAMAGE_COL_SPELL, justify = "LEFT", wrap = false },
             { key = "source", title = "Source", fill = true, justify = "LEFT", wrap = false },
         },
         rowHeight = DAMAGE_ROW_HEIGHT,
@@ -5235,6 +5327,7 @@ function UI:CreateDamageTrackerTab(page)
         if row.cols then
             row.timeText = row.cols.time
             row.playerText = row.cols.player
+            row.flowText = row.cols.flow
             row.amountText = row.cols.amount
             row.spellText = row.cols.spell
             row.sourceText = row.cols.source
@@ -5306,6 +5399,23 @@ function UI:CreateDamageTrackerTab(page)
         return dropdown
     end
 
+    local trackingCheck = addCheck("Enable combat tracking", function(selfBtn)
+        local enabled = selfBtn:GetChecked() and true or false
+        if Goals.DamageTracker and Goals.DamageTracker.SetEnabled then
+            Goals.DamageTracker:SetEnabled(enabled)
+        else
+            Goals.db.settings.combatLogTracking = enabled
+        end
+        if UI and UI.UpdateDamageTrackerList then
+            UI:UpdateDamageTrackerList()
+        end
+        if UI and UI.UpdateCombatDebugStatus then
+            UI:UpdateCombatDebugStatus()
+        end
+    end, "Track combat log damage/healing events. Disable to save memory when you don't need it.")
+    self.combatLogTrackingCheck = trackingCheck
+    y = y - 8
+
     addSectionHeader("Filter")
     addLabel("Show")
 
@@ -5328,6 +5438,14 @@ function UI:CreateDamageTrackerTab(page)
         Goals.db.settings.combatLogHealing = selfBtn:GetChecked() and true or false
     end, "Include healing events in the combat log tracker.")
     self.combatLogHealingCheck = combatLogHealingCheck
+
+    local combatLogOutgoingCheck = addCheck("Track damage dealt", function(selfBtn)
+        Goals.db.settings.combatLogTrackOutgoing = selfBtn:GetChecked() and true or false
+        if Goals.UI and Goals.UI.UpdateDamageTrackerList then
+            Goals.UI:UpdateDamageTrackerList()
+        end
+    end, "Include damage you deal to enemies (outgoing damage).")
+    self.combatLogOutgoingCheck = combatLogOutgoingCheck
 
     y = y - 8
     addSectionHeader(L.LABEL_DAMAGE_OPTIONS)
@@ -5355,6 +5473,33 @@ function UI:CreateDamageTrackerTab(page)
         end
     end, "Group repeated periodic ticks into a single entry to reduce spam.")
     self.combatLogCombinePeriodicCheck = combinePeriodicCheck
+
+    local combineAllCheck = addCheck("Combine all damage/heal", function(selfBtn)
+        Goals.db.settings.combatLogCombineAll = selfBtn:GetChecked() and true or false
+        if Goals.UI and Goals.UI.UpdateDamageTrackerList then
+            Goals.UI:UpdateDamageTrackerList()
+        end
+    end, "Merge all damage/heal entries per player into a single rolling line.")
+    self.combatLogCombineAllCheck = combineAllCheck
+
+    local clearBtn = createOptionsButton(optionsContent)
+    styleOptionsButton(clearBtn, OPTIONS_CONTROL_WIDTH)
+    clearBtn:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
+    clearBtn:SetText("Clear combat log")
+    clearBtn:SetScript("OnClick", function()
+        if Goals.DamageTracker and Goals.DamageTracker.ClearLog then
+            Goals.DamageTracker:ClearLog()
+        end
+        if UI and UI.UpdateDamageTrackerList then
+            UI:UpdateDamageTrackerList()
+        end
+        if UI and UI.UpdateCombatDebugStatus then
+            UI:UpdateCombatDebugStatus()
+        end
+    end)
+    attachSideTooltip(clearBtn, "Clear the current combat log list.")
+    y = y - 30
+    self.combatLogClearButton = clearBtn
 
     local contentHeight = math.abs(y) + 40
     optionsContent:SetHeight(contentHeight)
@@ -6411,7 +6556,67 @@ function UI:CreateDebugTab(page)
         anchorToFooter(inset, page.footer, 2, -2, 6)
     end
 
+    local combatLabel = createLabel(inset, "Combat Tracker", "GameFontNormal")
+    combatLabel:SetPoint("TOPLEFT", inset, "TOPLEFT", 10, -10)
+    local combatBar = applySectionHeader(combatLabel, inset, -44)
+    applySectionCaption(combatBar, "Debug")
+
+    local combatLast = createLabel(inset, "Last CLEU: --", "GameFontHighlightSmall")
+    combatLast:SetPoint("TOPLEFT", combatLabel, "BOTTOMLEFT", 0, -4)
+    combatLast:SetJustifyH("LEFT")
+    self.combatDebugLast = combatLast
+
+    local combatCount = createLabel(inset, "CLEU events: 0 | Log entries: 0", "GameFontHighlightSmall")
+    combatCount:SetPoint("TOPLEFT", combatLast, "BOTTOMLEFT", 0, -2)
+    combatCount:SetJustifyH("LEFT")
+    self.combatDebugCount = combatCount
+
+    local testDamageBtn = CreateFrame("Button", "GoalsDebugTestDamageButton", inset, "UIPanelButtonTemplate")
+    testDamageBtn:SetSize(120, 20)
+    testDamageBtn:SetText("Test Damage")
+    testDamageBtn:SetPoint("TOPLEFT", combatCount, "BOTTOMLEFT", 0, -6)
+    testDamageBtn:SetScript("OnClick", function()
+        local playerName = Goals and Goals.GetPlayerName and Goals:GetPlayerName() or "Player"
+        if Goals and Goals.DamageTracker and Goals.DamageTracker.AddEntry then
+            Goals.DamageTracker:AddEntry({
+                ts = time(),
+                player = playerName,
+                amount = 5,
+                spell = "Debug Hit",
+                source = "Debug",
+                kind = "DAMAGE",
+            })
+        end
+        if UI and UI.UpdateDamageTrackerList then
+            UI:UpdateDamageTrackerList()
+        end
+    end)
+    self.debugTestDamageButton = testDamageBtn
+
+    local testHealBtn = CreateFrame("Button", "GoalsDebugTestHealButton", inset, "UIPanelButtonTemplate")
+    testHealBtn:SetSize(120, 20)
+    testHealBtn:SetText("Test Heal")
+    testHealBtn:SetPoint("LEFT", testDamageBtn, "RIGHT", 6, 0)
+    testHealBtn:SetScript("OnClick", function()
+        local playerName = Goals and Goals.GetPlayerName and Goals:GetPlayerName() or "Player"
+        if Goals and Goals.DamageTracker and Goals.DamageTracker.AddEntry then
+            Goals.DamageTracker:AddEntry({
+                ts = time(),
+                player = playerName,
+                amount = 5,
+                spell = "Debug Heal",
+                source = "Debug",
+                kind = "HEAL",
+            })
+        end
+        if UI and UI.UpdateDamageTrackerList then
+            UI:UpdateDamageTrackerList()
+        end
+    end)
+    self.debugTestHealButton = testHealBtn
+
     local title = createLabel(inset, "Debug Log", "GameFontNormal")
+    title:SetPoint("TOPLEFT", testDamageBtn, "BOTTOMLEFT", 0, -16)
     local debugBar = applySectionHeader(title, inset, -6)
     applySectionCaption(debugBar, "Logs")
 
@@ -6441,48 +6646,47 @@ function UI:CreateDebugTab(page)
     hint:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -4)
     self.debugCopyHint = hint
 
-    local scroll = CreateFrame("ScrollFrame", "GoalsDebugLogScroll", inset, "FauxScrollFrameTemplate")
-    scroll:SetPoint("TOPLEFT", inset, "TOPLEFT", 2, -48)
-    scroll:SetPoint("BOTTOMRIGHT", inset, "BOTTOMRIGHT", -26, 110)
-    scroll:SetScript("OnVerticalScroll", function(selfScroll, offset)
-        FauxScrollFrame_OnVerticalScroll(selfScroll, offset, DEBUG_ROW_HEIGHT, function()
-            UI:UpdateDebugLogList()
-        end)
-    end)
-    self.debugLogScroll = scroll
+    local logScroll = CreateFrame("ScrollFrame", "GoalsDebugCopyScroll", inset, "UIPanelScrollFrameTemplate")
+    logScroll:SetPoint("TOPLEFT", hint, "BOTTOMLEFT", -2, -6)
+    logScroll:SetPoint("BOTTOMRIGHT", inset, "BOTTOMRIGHT", -30, 12)
+    self.debugCopyScroll = logScroll
+    self.debugLogScroll = logScroll
+    self.debugLogRows = nil
 
-    self.debugLogRows = {}
-    for i = 1, DEBUG_ROWS do
-        local row = CreateFrame("Frame", nil, inset)
-        row:SetHeight(DEBUG_ROW_HEIGHT)
-        row:SetPoint("TOPLEFT", inset, "TOPLEFT", 8, -34 - (i - 1) * DEBUG_ROW_HEIGHT)
-        row:SetPoint("RIGHT", inset, "RIGHT", -6, 0)
-        addRowStripe(row)
-
-        local text = row:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
-        text:SetPoint("LEFT", row, "LEFT", 0, 0)
-        text:SetPoint("RIGHT", row, "RIGHT", -4, 0)
-        text:SetJustifyH("LEFT")
-        text:SetWordWrap(false)
-        row.text = text
-
-        self.debugLogRows[i] = row
-    end
-
-    local copyScroll = CreateFrame("ScrollFrame", "GoalsDebugCopyScroll", inset, "UIPanelScrollFrameTemplate")
-    copyScroll:SetPoint("BOTTOMLEFT", inset, "BOTTOMLEFT", 6, 10)
-    copyScroll:SetPoint("BOTTOMRIGHT", inset, "BOTTOMRIGHT", -30, 10)
-    copyScroll:SetHeight(90)
-    self.debugCopyScroll = copyScroll
-
-    local edit = CreateFrame("EditBox", nil, copyScroll)
+    local edit = CreateFrame("EditBox", nil, logScroll)
     edit:SetMultiLine(true)
     edit:SetAutoFocus(false)
     edit:SetFontObject("ChatFontNormal")
-    edit:SetWidth(copyScroll:GetWidth())
+    edit:SetWidth(logScroll:GetWidth())
     bindEscapeClear(edit)
-    copyScroll:SetScrollChild(edit)
+    logScroll:SetScrollChild(edit)
+    logScroll:SetScript("OnSizeChanged", function(selfScroll)
+        if edit and edit.SetWidth then
+            edit:SetWidth(selfScroll:GetWidth())
+        end
+    end)
     self.debugCopyBox = edit
+end
+
+function UI:UpdateCombatDebugStatus()
+    if not self.combatDebugLast or not self.combatDebugCount then
+        return
+    end
+    local debug = Goals and Goals.state and Goals.state.combatLogDebug or nil
+    if debug and debug.lastEvent and debug.lastEvent ~= "" then
+        local status = ""
+        if debug.lastAdded then
+            status = " | added"
+        elseif debug.lastSkip and debug.lastSkip ~= "" then
+            status = " | skip: " .. debug.lastSkip
+        end
+        self.combatDebugLast:SetText(string.format("Last CLEU: %s (src: %s | dest: %s)%s", debug.lastEvent, debug.lastSource or "?", debug.lastDest or "?", status))
+    else
+        self.combatDebugLast:SetText("Last CLEU: --")
+    end
+    local count = debug and debug.count or 0
+    local logCount = Goals and Goals.state and Goals.state.damageLog and #Goals.state.damageLog or 0
+    self.combatDebugCount:SetText(string.format("CLEU events: %d | Log entries: %d", count, logCount))
 end
 
 function UI:UpdateRosterList()
@@ -7076,6 +7280,9 @@ function UI:FormatDamageTrackerEntry(entry)
     if kind == "HEAL" then
         return string.format("%s | %s | +%d | %s | %s", ts, player, amount, spell, source)
     end
+    if kind == "DAMAGE_OUT" then
+        return string.format("%s | %s | -%d | %s | %s", ts, player, amount, spell, source)
+    end
     return string.format("%s | %s | -%d | %s | %s", ts, player, amount, spell, source)
 end
 
@@ -7111,6 +7318,9 @@ function UI:UpdateDamageTrackerList()
                 row.breakText:SetTextColor(0.9, 0.9, 0.9)
                 row.timeText:SetText("")
                 row.playerText:SetText("")
+                if row.flowText then
+                    row.flowText:SetText("")
+                end
                 row.amountText:SetText("")
                 row.spellText:SetText("")
                 row.sourceText:SetText("")
@@ -7129,12 +7339,18 @@ function UI:UpdateDamageTrackerList()
 
                 local kind = entry.kind or "DAMAGE"
                 if kind == "DEATH" then
+                    if row.flowText then
+                        row.flowText:SetText("")
+                    end
                     row.amountText:SetText("Died")
                     row.amountText:SetTextColor(DEATH_COLOR[1], DEATH_COLOR[2], DEATH_COLOR[3])
                     row.spellText:SetText("")
                     row.sourceText:SetText("")
                     row.sourceText:SetTextColor(1, 1, 1)
             elseif kind == "RES" then
+                if row.flowText then
+                    row.flowText:SetText("")
+                end
                 row.amountText:SetText("Revived")
                 row.amountText:SetTextColor(REVIVE_COLOR[1], REVIVE_COLOR[2], REVIVE_COLOR[3])
                 row.spellText:SetText(entry.spell or "")
@@ -7143,6 +7359,9 @@ function UI:UpdateDamageTrackerList()
                 row.sourceText:SetTextColor(sr, sg, sb)
             elseif kind == "HEAL" then
                 local amount = math.floor(tonumber(entry.amount) or 0)
+                if row.flowText then
+                    row.flowText:SetText("<-")
+                end
                 row.amountText:SetText(string.format("+%d", amount))
                 row.amountText:SetTextColor(HEAL_COLOR[1], HEAL_COLOR[2], HEAL_COLOR[3])
                 local spellText = entry.spell or ""
@@ -7153,8 +7372,26 @@ function UI:UpdateDamageTrackerList()
                 row.sourceText:SetText(entry.source or "")
                 local sr, sg, sb = getSourceColor(entry)
                 row.sourceText:SetTextColor(sr, sg, sb)
+            elseif kind == "DAMAGE_OUT" then
+                local amount = math.floor(tonumber(entry.amount) or 0)
+                if row.flowText then
+                    row.flowText:SetText("->")
+                end
+                row.amountText:SetText(string.format("-%d", amount))
+                row.amountText:SetTextColor(DAMAGE_COLOR[1], DAMAGE_COLOR[2], DAMAGE_COLOR[3])
+                local spellText = entry.spell or ""
+                if entry.spellDuration and entry.spellDuration > 1 then
+                    spellText = string.format("%s (%ds)", spellText ~= "" and spellText or "Unknown", entry.spellDuration)
+                end
+                row.spellText:SetText(spellText)
+                row.sourceText:SetText(entry.source or "")
+                local sr, sg, sb = getSourceColor(entry)
+                row.sourceText:SetTextColor(sr, sg, sb)
             else
                 local amount = math.floor(tonumber(entry.amount) or 0)
+                if row.flowText then
+                    row.flowText:SetText("<-")
+                end
                 row.amountText:SetText(string.format("-%d", amount))
                 row.amountText:SetTextColor(DAMAGE_COLOR[1], DAMAGE_COLOR[2], DAMAGE_COLOR[3])
                 local spellText = entry.spell or ""
@@ -7174,6 +7411,9 @@ function UI:UpdateDamageTrackerList()
             setShown(row.breakText, false)
             row.timeText:SetText("")
             row.playerText:SetText("")
+            if row.flowText then
+                row.flowText:SetText("")
+            end
             row.amountText:SetText("")
             row.spellText:SetText("")
             row.sourceText:SetText("")
@@ -7182,10 +7422,13 @@ function UI:UpdateDamageTrackerList()
 end
 
 function UI:UpdateDebugLogList()
+    local data = (Goals and Goals.GetDebugLog and Goals:GetDebugLog()) or {}
+    if self.debugCopyBox and Goals and Goals.GetDebugLogText then
+        self.debugCopyBox:SetText(Goals:GetDebugLogText() or "")
+    end
     if not self.debugLogScroll or not self.debugLogRows then
         return
     end
-    local data = (Goals and Goals.GetDebugLog and Goals:GetDebugLog()) or {}
     local offset = FauxScrollFrame_GetOffset(self.debugLogScroll) or 0
     FauxScrollFrame_Update(self.debugLogScroll, #data, DEBUG_ROWS, DEBUG_ROW_HEIGHT)
     for i = 1, DEBUG_ROWS do
@@ -8443,8 +8686,12 @@ function UI:Refresh()
     if self.autoMinimizeCheck then
         self.autoMinimizeCheck:SetChecked(Goals.db.settings.autoMinimizeCombat and true or false)
     end
+    local trackingEnabled = Goals.db.settings.combatLogTracking and true or false
+    if self.combatLogTrackingCheck then
+        self.combatLogTrackingCheck:SetChecked(trackingEnabled)
+    end
     if self.combatLogHealingCheck then
-        local enabled = true
+        local enabled = trackingEnabled
         self.combatLogHealingCheck:SetChecked(Goals.db.settings.combatLogHealing and true or false)
         if self.combatLogHealingCheck.SetAlpha then
             self.combatLogHealingCheck:SetAlpha(enabled and 1 or 0.6)
@@ -8459,8 +8706,24 @@ function UI:Refresh()
             end
         end
     end
+    if self.combatLogOutgoingCheck then
+        local enabled = trackingEnabled
+        self.combatLogOutgoingCheck:SetChecked(Goals.db.settings.combatLogTrackOutgoing and true or false)
+        if self.combatLogOutgoingCheck.SetAlpha then
+            self.combatLogOutgoingCheck:SetAlpha(enabled and 1 or 0.6)
+        end
+        if enabled then
+            if self.combatLogOutgoingCheck.Enable then
+                self.combatLogOutgoingCheck:Enable()
+            end
+        else
+            if self.combatLogOutgoingCheck.Disable then
+                self.combatLogOutgoingCheck:Disable()
+            end
+        end
+    end
     if self.combatLogBigDamageCheck then
-        local enabled = true
+        local enabled = trackingEnabled
         self.combatLogBigDamageCheck:SetChecked(Goals.db.settings.combatLogShowBig and true or false)
         if self.combatLogBigDamageCheck.SetAlpha then
             self.combatLogBigDamageCheck:SetAlpha(enabled and 1 or 0.6)
@@ -8476,7 +8739,7 @@ function UI:Refresh()
         end
     end
     if self.combatLogBigHealingCheck then
-        local enabled = true
+        local enabled = trackingEnabled
         self.combatLogBigHealingCheck:SetChecked(Goals.db.settings.combatLogBigIncludeHealing and true or false)
         if self.combatLogBigHealingCheck.SetAlpha then
             local alpha = enabled and (Goals.db.settings.combatLogShowBig and 1 or 0.6) or 0.6
@@ -8493,7 +8756,7 @@ function UI:Refresh()
         end
     end
     if self.combatLogCombinePeriodicCheck then
-        local enabled = true
+        local enabled = trackingEnabled
         self.combatLogCombinePeriodicCheck:SetChecked(Goals.db.settings.combatLogCombinePeriodic and true or false)
         if self.combatLogCombinePeriodicCheck.SetAlpha then
             self.combatLogCombinePeriodicCheck:SetAlpha(enabled and 1 or 0.6)
@@ -8505,6 +8768,22 @@ function UI:Refresh()
         else
             if self.combatLogCombinePeriodicCheck.Disable then
                 self.combatLogCombinePeriodicCheck:Disable()
+            end
+        end
+    end
+    if self.combatLogCombineAllCheck then
+        local enabled = trackingEnabled
+        self.combatLogCombineAllCheck:SetChecked(Goals.db.settings.combatLogCombineAll and true or false)
+        if self.combatLogCombineAllCheck.SetAlpha then
+            self.combatLogCombineAllCheck:SetAlpha(enabled and 1 or 0.6)
+        end
+        if enabled then
+            if self.combatLogCombineAllCheck.Enable then
+                self.combatLogCombineAllCheck:Enable()
+            end
+        else
+            if self.combatLogCombineAllCheck.Disable then
+                self.combatLogCombineAllCheck:Disable()
             end
         end
     end
@@ -8603,6 +8882,9 @@ function UI:Refresh()
         if self.wishlistPopupSoundToggle.waveIcon then
             setShown(self.wishlistPopupSoundToggle.waveIcon, Goals.db.settings.wishlistPopupSound ~= false)
         end
+    end
+    if self.UpdateCombatDebugStatus then
+        self:UpdateCombatDebugStatus()
     end
     if self.UpdateTabFooters then
         self:UpdateTabFooters()

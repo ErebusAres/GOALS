@@ -195,6 +195,23 @@ function History:AddLootAssigned(playerName, itemLink, resetPoints, resetBefore)
     if resetPoints then
         local before = tonumber(resetBefore) or 0
         suffix = string.format(" (%s's points set to 0 (-%d))", playerName or "", before)
+        if itemLink and self.db and self.db.history then
+            local now = time()
+            for i = 1, math.min(20, #self.db.history) do
+                local last = self.db.history[i]
+                if last and last.kind == "LOOT_ASSIGN" and last.data and not last.data.reset then
+                    if last.data.item == itemLink and last.data.player and last.data.player == playerName then
+                        local lastTs = last.ts or 0
+                        if (now - lastTs) <= 600 then
+                            last.data.reset = true
+                            last.data.resetBefore = resetBefore
+                            last.text = string.format("Assigned to %s: %s%s", playerName, itemLink, suffix)
+                            return
+                        end
+                    end
+                end
+            end
+        end
     end
     if not resetPoints and itemLink and self.db and self.db.history and self.db.history[1] then
         local last = self.db.history[1]

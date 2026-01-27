@@ -1619,7 +1619,8 @@ function Goals:ShowWishlistFoundAlertLocal(itemLinks, allowSound)
 	local links = {}
 	if type(itemLinks) == "table" then
 		for i = 1, math.min(8, #itemLinks) do
-			links[i] = itemLinks[i]
+			local entry = itemLinks[i]
+			links[i] = type(entry) == "table" and entry.link or entry
 		end
 	else
 		links[1] = itemLinks
@@ -1640,11 +1641,17 @@ function Goals:ShowWishlistFoundAlertLocal(itemLinks, allowSound)
 	local sourceName = "Wishlist items found"
 	for i, link in ipairs(links) do
 		local texture = select(10, GetItemInfo(link)) or "Interface\\Icons\\inv_misc_questionmark"
+		local entry = type(itemLinks) == "table" and itemLinks[i] or nil
+		local listNames = entry and entry.lists or nil
+		local lootSource = sourceName
+		if listNames and #listNames > 0 then
+			lootSource = "Wishlist: " .. table.concat(listNames, ", ")
+		end
 		banner.pendingLoot[i] = {
 			itemID = Goals:GetItemIdFromLink(link),
 			quantity = 1,
 			slot = i,
-			lootSourceName = sourceName,
+			lootSourceName = lootSource,
 			itemLink = link,
 			texture = texture,
 		}

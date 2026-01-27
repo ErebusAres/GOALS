@@ -7,7 +7,7 @@ local Goals = _G.Goals or {}
 _G.Goals = Goals
 
 Goals.L = {
-    TITLE = "GOALS v2.16 - By: ErebusAres",
+    TITLE = "GOALS v2.17 - By: ErebusAres",
     TAB_OVERVIEW = "Overview",
     TAB_LOOT = "Loot",
     TAB_HISTORY = "History",
