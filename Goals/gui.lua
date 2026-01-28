@@ -37,7 +37,7 @@ local LOOT_ROWS = 18
 local WISHLIST_SLOT_SIZE = 36
 local WISHLIST_ROW_SPACING = 46
 local OPTIONS_PANEL_WIDTH = 240
-local OPTIONS_CONTROL_WIDTH = 200
+local OPTIONS_CONTROL_WIDTH = 196
 local OPTIONS_BUTTON_HEIGHT = 24
 local OPTIONS_CHECKBOX_SIZE = 24
 local OPTIONS_DROPDOWN_HEIGHT = 26
@@ -67,6 +67,10 @@ local DEATH_COLOR = { 0.7, 0.35, 0.9 }
 local REVIVE_COLOR = { 1, 0.9, 0.2 }
 local ELITE_COLOR = { 1, 0.25, 0.25 }
 local TRASH_COLOR = { 0.6, 0.6, 0.6 }
+local COMBAT_SHOW_ALL = "Show all"
+local COMBAT_SHOW_DAMAGE_RECEIVED = "Damage received"
+local COMBAT_SHOW_DAMAGE_DEALT = "Damage dealt"
+local COMBAT_SHOW_HEALING = "Healing events"
 
 local function applyTextureColor(texture, color)
     if not texture or not color then
@@ -418,13 +422,14 @@ local function createTabFooter2(ui, page, key, footer1)
     end
     ui.tabFooters2 = ui.tabFooters2 or {}
     local footer = createFooterBar(ui, page, key, "2")
-    if ui.frame then
-        local yOffset = PAGE_BOTTOM_OFFSET + FOOTER_BOTTOM_INSET
-        footer:SetPoint("BOTTOMLEFT", ui.frame, "BOTTOMLEFT", FOOTER_BOTTOM_INSET, yOffset)
-        footer:SetPoint("BOTTOMRIGHT", ui.frame, "BOTTOMRIGHT", -FOOTER_BOTTOM_INSET, yOffset)
+    local yOffset = PAGE_BOTTOM_OFFSET + FOOTER_BOTTOM_INSET
+    if footer1 and ui.frame then
+        footer:SetPoint("LEFT", footer1, "LEFT", 0, 0)
+        footer:SetPoint("RIGHT", footer1, "RIGHT", 0, 0)
+        footer:SetPoint("BOTTOM", ui.frame, "BOTTOM", 0, yOffset)
     else
-        footer:SetPoint("BOTTOMLEFT", page, "BOTTOMLEFT", FOOTER_BOTTOM_INSET, FOOTER_BOTTOM_INSET)
-        footer:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -FOOTER_BOTTOM_INSET, FOOTER_BOTTOM_INSET)
+        footer:SetPoint("BOTTOMLEFT", page, "BOTTOMLEFT", FOOTER_BOTTOM_INSET, yOffset)
+        footer:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -FOOTER_BOTTOM_INSET, yOffset)
     end
     ui.tabFooters2[key] = footer
     return footer
@@ -457,7 +462,30 @@ local function getScrollBar(frame)
     return nil
 end
 
+local function ensureScrollBarBackground(scrollFrame)
+    if not scrollFrame then
+        return
+    end
+    local bar = getScrollBar(scrollFrame)
+    if not bar then
+        return
+    end
+    if bar._goalsBg and bar._goalsBg.SetAllPoints then
+        bar._goalsBg:Show()
+        bar._goalsBg:ClearAllPoints()
+        bar._goalsBg:SetPoint("TOPLEFT", bar, "TOPLEFT", -2, 16)
+        bar._goalsBg:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", 2, -16)
+        return
+    end
+    local bg = bar:CreateTexture(nil, "BACKGROUND")
+    bg:SetPoint("TOPLEFT", bar, "TOPLEFT", -2, 16)
+    bg:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", 2, -16)
+    bg:SetTexture(0.1, 0.1, 0.1, 0.6)
+    bar._goalsBg = bg
+end
+
 local function setScrollBarAlwaysVisible(scrollFrame, contentHeight)
+    ensureScrollBarBackground(scrollFrame)
     local bar = getScrollBar(scrollFrame)
     if not bar then
         return
@@ -497,9 +525,10 @@ local function createOptionsPanel(parent, name, width)
     panel.divider = divider
 
     local scroll = CreateFrame("ScrollFrame", name .. "Scroll", panel, "UIPanelScrollFrameTemplate")
-    scroll:SetPoint("TOPLEFT", panel, "TOPLEFT", 4, -4)
-    scroll:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -26, 4)
+    scroll:SetPoint("TOPLEFT", panel, "TOPLEFT", 4, -8)
+    scroll:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -32, 6)
     panel.scroll = scroll
+    ensureScrollBarBackground(scroll)
 
     local content = CreateFrame("Frame", name .. "Content", scroll)
     content:SetWidth((width or OPTIONS_PANEL_WIDTH) - 30)
@@ -516,7 +545,7 @@ local function createTableWidget(parent, name, config)
     widget.rows = {}
 
     local headerLeft = 6
-    local headerRight = -26
+    local headerRight = -32
     local headerTop = -6
     local headerHeight = config.headerHeight or 18
     widget.headerLeft = headerLeft
@@ -561,8 +590,9 @@ local function createTableWidget(parent, name, config)
 
     local scroll = CreateFrame("ScrollFrame", name .. "Scroll", parent, "FauxScrollFrameTemplate")
     scroll:SetPoint("TOPLEFT", header, "BOTTOMLEFT", -4, -2)
-    scroll:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -26, 6)
+    scroll:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -32, 6)
     widget.scroll = scroll
+    ensureScrollBarBackground(scroll)
 
     for i = 1, (config.visibleRows or HISTORY_ROWS) do
         local row = CreateFrame("Frame", nil, parent)
@@ -1174,6 +1204,280 @@ local function attachSideTooltip(frame, text)
     frame:SetScript("OnLeave", function()
         hideSideTooltip()
     end)
+end
+
+local function getPlayerColor(name)
+    if Goals and Goals.GetPlayerColor and name and name ~= "" then
+        local pr, pg, pb = Goals:GetPlayerColor(name)
+        if pr and pg and pb then
+            return pr, pg, pb
+        end
+    end
+    return 1, 1, 1
+end
+
+local function getSourceColor(entry)
+    if not entry then
+        return 1, 1, 1
+    end
+    local kind = entry.sourceKind
+    if kind == "boss" then
+        if ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[5] then
+            local color = ITEM_QUALITY_COLORS[5]
+            return color.r, color.g, color.b
+        end
+        return 1, 0.5, 0
+    end
+    if kind == "elite" then
+        return ELITE_COLOR[1], ELITE_COLOR[2], ELITE_COLOR[3]
+    end
+    if kind == "trash" then
+        return TRASH_COLOR[1], TRASH_COLOR[2], TRASH_COLOR[3]
+    end
+    if kind == "player" and entry.source then
+        return getPlayerColor(entry.source)
+    end
+    return 1, 1, 1
+end
+
+local function hideCombatRowTooltip()
+    if UI and UI.combatRowTooltip then
+        UI.combatRowTooltip:Hide()
+    end
+    if GameTooltip then
+        GameTooltip:Hide()
+    end
+end
+
+local function clearCombatRowTooltipLock()
+    if UI then
+        UI.combatTooltipLocked = false
+        UI.combatTooltipEntry = nil
+    end
+end
+
+local function ensureCombatRowTooltip()
+    if not UI or not UI.frame then
+        return nil
+    end
+    if UI.combatRowTooltip then
+        return UI.combatRowTooltip
+    end
+    local tip = CreateFrame("Frame", "GoalsCombatRowTooltip", UIParent, "GoalsFrameTemplate")
+    applyFrameTheme(tip)
+    tip:SetFrameStrata("TOOLTIP")
+    tip:SetClampedToScreen(true)
+    tip:SetWidth(OPTIONS_PANEL_WIDTH + 12)
+    tip:Hide()
+
+    if tip.TitleText then
+        tip.TitleText:SetText("Combat Details")
+        tip.TitleText:Show()
+    end
+    local tipName = tip.GetName and tip:GetName() or nil
+    local close = tip.CloseButton or (tipName and _G[tipName .. "CloseButton"]) or nil
+    if close then
+        close:Hide()
+        close:SetAlpha(0)
+        close:EnableMouse(false)
+    end
+    if tipName then
+        local titleBg = _G[tipName .. "TitleBg"]
+        if titleBg then
+            titleBg:ClearAllPoints()
+            titleBg:SetPoint("TOPLEFT", tip, "TOPLEFT", 2, -3)
+            titleBg:SetPoint("TOPRIGHT", tip, "TOPRIGHT", -2, -3)
+        end
+    end
+
+    local content = CreateFrame("Frame", nil, tip, "GoalsInsetTemplate")
+    applyInsetTheme(content)
+    content:SetPoint("TOPLEFT", tip, "TOPLEFT", 6, -24)
+    content:SetPoint("BOTTOMRIGHT", tip, "BOTTOMRIGHT", -6, 6)
+    tip.content = content
+
+    local function makeRow(labelText)
+        local row = CreateFrame("Frame", nil, content)
+        row:SetWidth(OPTIONS_PANEL_WIDTH - 16)
+        local label = createLabel(row, labelText, "GameFontNormalSmall")
+        styleOptionsControlLabel(label)
+        label:SetPoint("TOPLEFT", row, "TOPLEFT", 0, 0)
+        label:SetJustifyH("LEFT")
+        label:SetJustifyV("TOP")
+        label:SetWidth(70)
+        local value = createLabel(row, "", "GameFontHighlightSmall")
+        value:SetPoint("TOPLEFT", label, "TOPRIGHT", 6, 0)
+        value:SetPoint("RIGHT", row, "RIGHT", 0, 0)
+        value:SetJustifyH("LEFT")
+        value:SetJustifyV("TOP")
+        value:SetWordWrap(true)
+        row.label = label
+        row.value = value
+        return row
+    end
+
+    tip.rowTime = makeRow("Time:")
+    tip.rowSource = makeRow("Source:")
+    tip.rowTarget = makeRow("Target:")
+    tip.rowAmount = makeRow("Amount:")
+    tip.rowOverheal = makeRow("Overheal:")
+    tip.rowDot = makeRow("DOT:")
+    tip.rowAbility = makeRow("Ability:")
+
+    tip.divider = content:CreateTexture(nil, "BORDER")
+    tip.divider:SetHeight(8)
+    tip.divider:SetTexture("Interface\\Tooltips\\UI-Tooltip-Border")
+    tip.divider:SetTexCoord(0.81, 0.94, 0.5, 1)
+    tip.divider:Hide()
+
+    UI.combatRowTooltip = tip
+    return tip
+end
+
+local function showCombatRowTooltip(entry)
+    if not entry or entry.kind == "BREAK" then
+        hideCombatRowTooltip()
+        return
+    end
+    local tip = ensureCombatRowTooltip()
+    if not tip then
+        return
+    end
+    local anchor = UI and UI.frame or UIParent
+    tip:ClearAllPoints()
+    tip:SetPoint("TOPRIGHT", anchor, "TOPLEFT", -10, -30)
+
+    local kind = entry.kind or "DAMAGE"
+    local sourceName = ""
+    local targetName = ""
+    if kind == "DAMAGE" then
+        sourceName = entry.source or "Unknown"
+        targetName = entry.player or "Unknown"
+    elseif kind == "DAMAGE_OUT" then
+        sourceName = entry.player or "Unknown"
+        targetName = entry.source or "Unknown"
+    elseif kind == "HEAL" then
+        sourceName = entry.source or "Unknown"
+        targetName = entry.player or "Unknown"
+    elseif kind == "HEAL_OUT" then
+        sourceName = entry.player or "Unknown"
+        targetName = entry.source or "Unknown"
+    elseif kind == "RES" then
+        sourceName = entry.source or "Unknown"
+        targetName = entry.player or "Unknown"
+    elseif kind == "DEATH" then
+        sourceName = ""
+        targetName = entry.player or "Unknown"
+    end
+
+    local amount = math.floor(tonumber(entry.amount) or 0)
+    local overheal = math.floor(tonumber(entry.overheal) or 0)
+    local isHeal = (kind == "HEAL" or kind == "HEAL_OUT" or kind == "RES")
+    local amountText = isHeal and string.format("+%d", amount) or string.format("-%d", amount)
+    if kind == "DEATH" then
+        amountText = "Died"
+    elseif kind == "RES" then
+        if amount > 0 then
+            amountText = string.format("Revived +%d", amount)
+        else
+            amountText = "Revived"
+        end
+    end
+
+    local abilityText = entry.spell or "Unknown"
+    if entry.spellDuration and entry.spellDuration > 1 then
+        abilityText = string.format("%s (%ds)", abilityText, entry.spellDuration)
+    end
+
+    local rows = {}
+    local function setRow(row, text, r, g, b)
+        row.value:SetText(text)
+        if row.value.SetTextColor and r then
+            row.value:SetTextColor(r, g or r, b or r, 1)
+        end
+        row:Show()
+        table.insert(rows, row)
+    end
+
+    setRow(tip.rowTime, formatCombatTimestamp(entry.ts), 1, 1, 1)
+
+    local sourceColorR, sourceColorG, sourceColorB = 1, 1, 1
+    local targetColorR, targetColorG, targetColorB = 1, 1, 1
+    if kind == "DAMAGE" then
+        sourceColorR, sourceColorG, sourceColorB = getSourceColor(entry)
+        targetColorR, targetColorG, targetColorB = getPlayerColor(targetName)
+    elseif kind == "DAMAGE_OUT" then
+        sourceColorR, sourceColorG, sourceColorB = getPlayerColor(sourceName)
+        targetColorR, targetColorG, targetColorB = getSourceColor(entry)
+    elseif kind == "HEAL" or kind == "HEAL_OUT" then
+        sourceColorR, sourceColorG, sourceColorB = getPlayerColor(sourceName)
+        targetColorR, targetColorG, targetColorB = getPlayerColor(targetName)
+    elseif kind == "RES" then
+        sourceColorR, sourceColorG, sourceColorB = getSourceColor(entry)
+        targetColorR, targetColorG, targetColorB = getPlayerColor(targetName)
+    elseif kind == "DEATH" then
+        targetColorR, targetColorG, targetColorB = getPlayerColor(targetName)
+    end
+
+    setRow(tip.rowSource, sourceName ~= "" and sourceName or "None", sourceColorR, sourceColorG, sourceColorB)
+    setRow(tip.rowTarget, targetName ~= "" and targetName or "None", targetColorR, targetColorG, targetColorB)
+
+    local amountColor = DAMAGE_COLOR
+    if kind == "HEAL" or kind == "HEAL_OUT" then
+        amountColor = HEAL_COLOR
+    elseif kind == "RES" then
+        amountColor = REVIVE_COLOR
+    elseif kind == "DEATH" then
+        amountColor = DEATH_COLOR
+    end
+    setRow(tip.rowAmount, amountText, amountColor[1], amountColor[2], amountColor[3])
+
+    if kind == "HEAL" or kind == "HEAL_OUT" then
+        setRow(tip.rowOverheal, tostring(overheal), 0.55, 0.9, 0.55)
+    else
+        tip.rowOverheal:Hide()
+    end
+
+    setRow(tip.rowAbility, abilityText, 1, 1, 1)
+
+    local content = tip.content or tip
+    local y = -8
+    for _, row in ipairs(rows) do
+        row:ClearAllPoints()
+        row:SetPoint("TOPLEFT", content, "TOPLEFT", 8, y)
+        row:SetPoint("RIGHT", content, "RIGHT", -8, 0)
+        local height = math.max(row.label:GetStringHeight() or 12, row.value:GetStringHeight() or 12)
+        y = y - (height + 6)
+    end
+    tip.divider:ClearAllPoints()
+    tip.divider:SetPoint("TOPLEFT", content, "TOPLEFT", 8, y + 2)
+    tip.divider:SetPoint("RIGHT", content, "RIGHT", -8, 0)
+    tip.divider:Show()
+    local contentHeight = math.max(36, -y + 10)
+    content:SetHeight(contentHeight)
+    tip:SetHeight(contentHeight + 30)
+    tip:Show()
+
+    local spellId = entry.spellId or nil
+    if spellId and GameTooltip then
+        GameTooltip:Hide()
+        GameTooltip:SetOwner(tip, "ANCHOR_NONE")
+        GameTooltip:SetPoint("TOPLEFT", tip, "BOTTOMLEFT", 0, -4)
+        if GameTooltip.SetSpellByID then
+            GameTooltip:SetSpellByID(spellId)
+        elseif GameTooltip.SetHyperlink then
+            GameTooltip:SetHyperlink("spell:" .. tostring(spellId))
+        end
+        GameTooltip:Show()
+    end
+end
+
+local function setCombatRowTooltipLock(entry, locked)
+    if not UI then
+        return
+    end
+    UI.combatTooltipLocked = locked and true or false
+    UI.combatTooltipEntry = locked and entry or nil
 end
 
 local function createSmallIconButton(parent, size, texture)
@@ -1936,6 +2240,9 @@ function UI:Toggle()
     end
     if self.frame:IsShown() then
         self.frame:Hide()
+        if self.combatBroadcastPopout and self.combatBroadcastPopout:IsShown() then
+            self.combatBroadcastPopout:Hide()
+        end
         if Goals.db and Goals.db.settings and Goals.db.settings.floatingButton and Goals.db.settings.floatingButton.show then
             self:ShowFloatingButton(true)
         end
@@ -1951,6 +2258,9 @@ function UI:Minimize()
         return
     end
     self.frame:Hide()
+    if self.combatBroadcastPopout and self.combatBroadcastPopout:IsShown() then
+        self.combatBroadcastPopout:Hide()
+    end
     if Goals.db and Goals.db.settings and Goals.db.settings.floatingButton then
         Goals.db.settings.floatingButton.show = true
     end
@@ -2024,6 +2334,12 @@ function UI:CreateMainFrame()
             frame:Hide()
         end)
     end
+
+    frame:SetScript("OnHide", function()
+        if UI and UI.combatBroadcastPopout and UI.combatBroadcastPopout:IsShown() then
+            UI.combatBroadcastPopout:Hide()
+        end
+    end)
 
     registerSpecialFrame(frame:GetName())
 
@@ -2277,21 +2593,84 @@ function UI:GetWishlistAlertsSummary(settings)
     return "Alerts: " .. table.concat(alerts, " + ")
 end
 
+function UI:NormalizeCombatShowFlags(settings)
+    if not settings then
+        return false, false, false
+    end
+    local showHealing = settings.combatLogShowHealing
+    if showHealing == nil then
+        showHealing = (settings.combatLogHealing and true or false)
+        settings.combatLogShowHealing = showHealing
+    end
+    local showDealt = settings.combatLogShowDamageDealt
+    if showDealt == nil then
+        showDealt = (settings.combatLogTrackOutgoing and true or false)
+        settings.combatLogShowDamageDealt = showDealt
+    end
+    local showReceived = settings.combatLogShowDamageReceived
+    if showReceived == nil then
+        showReceived = true
+        settings.combatLogShowDamageReceived = showReceived
+    end
+    return showHealing, showDealt, showReceived
+end
+
+function UI:GetCombatShowMode(settings)
+    local showHealing, showDealt, showReceived = self:NormalizeCombatShowFlags(settings)
+    if showHealing and showDealt and showReceived then
+        return COMBAT_SHOW_ALL
+    end
+    if showReceived and (not showHealing) and (not showDealt) then
+        return COMBAT_SHOW_DAMAGE_RECEIVED
+    end
+    if showDealt and (not showHealing) and (not showReceived) then
+        return COMBAT_SHOW_DAMAGE_DEALT
+    end
+    if showHealing and (not showDealt) and (not showReceived) then
+        return COMBAT_SHOW_HEALING
+    end
+    if settings then
+        settings.combatLogShowHealing = true
+        settings.combatLogShowDamageDealt = true
+        settings.combatLogShowDamageReceived = true
+    end
+    return COMBAT_SHOW_ALL
+end
+
+function UI:SetCombatShowMode(mode, settings)
+    settings = settings or (Goals and Goals.db and Goals.db.settings) or nil
+    if not settings then
+        return
+    end
+    if mode == COMBAT_SHOW_DAMAGE_RECEIVED then
+        settings.combatLogShowHealing = false
+        settings.combatLogShowDamageDealt = false
+        settings.combatLogShowDamageReceived = true
+        return
+    end
+    if mode == COMBAT_SHOW_DAMAGE_DEALT then
+        settings.combatLogShowHealing = false
+        settings.combatLogShowDamageDealt = true
+        settings.combatLogShowDamageReceived = false
+        return
+    end
+    if mode == COMBAT_SHOW_HEALING then
+        settings.combatLogShowHealing = true
+        settings.combatLogShowDamageDealt = false
+        settings.combatLogShowDamageReceived = false
+        return
+    end
+    settings.combatLogShowHealing = true
+    settings.combatLogShowDamageDealt = true
+    settings.combatLogShowDamageReceived = true
+end
+
 function UI:GetCombatShowSummary(settings)
-    local parts = {}
-    if settings.combatLogShowHealing then
-        table.insert(parts, "H")
+    local mode = self:GetCombatShowMode(settings)
+    if mode == COMBAT_SHOW_ALL then
+        return "Show: All"
     end
-    if settings.combatLogShowDamageDealt then
-        table.insert(parts, "D")
-    end
-    if settings.combatLogShowDamageReceived then
-        table.insert(parts, "R")
-    end
-    if #parts == 0 then
-        return "Show: None"
-    end
-    return "Show: " .. table.concat(parts, "/")
+    return "Show: " .. mode
 end
 
 function UI:GetTabFooter2Segments(key)
@@ -2568,6 +2947,8 @@ function UI:SelectTab(id)
         setShown(page, index == id)
     end
     self.currentTab = id
+    clearCombatRowTooltipLock()
+    hideCombatRowTooltip()
     if self.UpdateLootOptionsVisibility then
         self:UpdateLootOptionsVisibility()
     end
@@ -2739,6 +3120,9 @@ function UI:CreateOverviewTab(page)
         FauxScrollFrame_OnVerticalScroll(selfScroll, offset, ROW_HEIGHT, function()
             UI:UpdateRosterList()
         end)
+    end)
+    self.rosterScroll:SetScript("OnShow", function(selfScroll)
+        setScrollBarAlwaysVisible(selfScroll, selfScroll._contentHeight or 0)
     end)
 
     local autoSyncTicker = CreateFrame("Frame", nil, rosterInset)
@@ -3527,8 +3911,8 @@ function UI:CreateLootTab(page)
 
     addLabel("Note text")
     local notesBox = CreateFrame("EditBox", nil, optionsContent, "InputBoxTemplate")
-    notesBox:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
-    styleOptionsEditBox(notesBox, OPTIONS_CONTROL_WIDTH)
+    notesBox:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 18, y)
+    styleOptionsEditBox(notesBox, OPTIONS_CONTROL_WIDTH - 10)
     attachSideTooltip(notesBox, "Add a note for the selected loot entry.")
     notesBox:SetAutoFocus(false)
     bindEscapeClear(notesBox)
@@ -5607,6 +5991,9 @@ function UI:CreateDamageTrackerTab(page)
             UI:UpdateDamageTrackerList()
         end)
     end)
+    self.damageTrackerScroll:SetScript("OnShow", function(selfScroll)
+        setScrollBarAlwaysVisible(selfScroll, selfScroll._contentHeight or 0)
+    end)
 
     for _, row in ipairs(self.damageTrackerRows) do
         row:EnableMouse(true)
@@ -5633,27 +6020,40 @@ function UI:CreateDamageTrackerTab(page)
         row.breakText = breakText
 
         row:SetScript("OnEnter", function(selfRow)
-            local entry = selfRow.entry
-            local spellId = entry and entry.spellId or nil
-            if spellId and GameTooltip then
-                GameTooltip:SetOwner(selfRow, "ANCHOR_RIGHT")
-                if GameTooltip.SetSpellByID then
-                    GameTooltip:SetSpellByID(spellId)
-                elseif GameTooltip.SetHyperlink then
-                    GameTooltip:SetHyperlink("spell:" .. tostring(spellId))
+            if UI and UI.combatTooltipLocked then
+                if UI.combatTooltipEntry == selfRow.entry then
+                    showCombatRowTooltip(selfRow.entry)
                 end
-                GameTooltip:Show()
+                return
             end
+            showCombatRowTooltip(selfRow.entry)
         end)
         row:SetScript("OnLeave", function()
-            if GameTooltip then
-                GameTooltip:Hide()
+            if UI and UI.combatTooltipLocked then
+                return
             end
+            hideCombatRowTooltip()
         end)
         if row.RegisterForClicks then
             row:RegisterForClicks("LeftButtonUp", "RightButtonUp")
         end
         row:SetScript("OnMouseUp", function(selfRow, button)
+            if button == "LeftButton" then
+                if selfRow.entry and selfRow.entry.kind ~= "BREAK" then
+                    if UI and UI.combatTooltipLocked and UI.combatTooltipEntry == selfRow.entry then
+                        setCombatRowTooltipLock(nil, false)
+                        if selfRow.IsMouseOver and selfRow:IsMouseOver() then
+                            showCombatRowTooltip(selfRow.entry)
+                        else
+                            hideCombatRowTooltip()
+                        end
+                    else
+                        setCombatRowTooltipLock(selfRow.entry, true)
+                        showCombatRowTooltip(selfRow.entry)
+                    end
+                end
+                return
+            end
             if button == "RightButton" and selfRow.entry and selfRow.entry.kind ~= "BREAK" then
                 if UI and UI.ShowCombatRowMenu then
                     UI:ShowCombatRowMenu(selfRow.entry, selfRow)
@@ -5753,29 +6153,31 @@ function UI:CreateDamageTrackerTab(page)
     self.damageTrackerFilter = L.DAMAGE_TRACKER_ALL
     y = y - 8
     addSectionHeader("Tracking")
-    local combatLogHealingCheck = addCheck("Show healing", function(selfBtn)
-        Goals.db.settings.combatLogShowHealing = selfBtn:GetChecked() and true or false
-        if Goals.UI and Goals.UI.UpdateDamageTrackerList then
-            Goals.UI:UpdateDamageTrackerList()
+    addLabel("Show")
+    local showDropdown = addDropdown("GoalsCombatShowDropdown")
+    attachSideTooltip(showDropdown, "Choose which combat tracker entries to show.")
+    local showList = {
+        COMBAT_SHOW_ALL,
+        COMBAT_SHOW_DAMAGE_RECEIVED,
+        COMBAT_SHOW_DAMAGE_DEALT,
+        COMBAT_SHOW_HEALING,
+    }
+    self:SetupDropdown(showDropdown, function()
+        return showList
+    end, function(value)
+        self:SetCombatShowMode(value)
+        if UI and UI.UpdateDamageTrackerList then
+            UI:UpdateDamageTrackerList()
         end
-    end, "Show healing events (incoming, outgoing, and revives).")
-    self.combatLogHealingCheck = combatLogHealingCheck
-
-    local combatLogOutgoingCheck = addCheck("Show damage dealt", function(selfBtn)
-        Goals.db.settings.combatLogShowDamageDealt = selfBtn:GetChecked() and true or false
-        if Goals.UI and Goals.UI.UpdateDamageTrackerList then
-            Goals.UI:UpdateDamageTrackerList()
+        if UI and UI.UpdateTabFooters then
+            UI:UpdateTabFooters()
         end
-    end, "Show outgoing damage (you -> enemies).")
-    self.combatLogOutgoingCheck = combatLogOutgoingCheck
-
-    local combatLogIncomingCheck = addCheck("Show damage received", function(selfBtn)
-        Goals.db.settings.combatLogShowDamageReceived = selfBtn:GetChecked() and true or false
-        if Goals.UI and Goals.UI.UpdateDamageTrackerList then
-            Goals.UI:UpdateDamageTrackerList()
-        end
-    end, "Show incoming damage (enemies -> you).")
-    self.combatLogIncomingCheck = combatLogIncomingCheck
+    end, COMBAT_SHOW_ALL)
+    local initialMode = self:GetCombatShowMode(Goals.db and Goals.db.settings or {})
+    showDropdown.selectedValue = initialMode
+    UIDropDownMenu_SetSelectedValue(showDropdown, initialMode)
+    self:SetDropdownText(showDropdown, initialMode)
+    self.combatLogShowDropdown = showDropdown
 
     y = y - 8
     addSectionHeader(L.LABEL_DAMAGE_OPTIONS)
@@ -5819,6 +6221,9 @@ function UI:CreateDamageTrackerTab(page)
 
     local combinePeriodicCheck = addCheck("Combine periodic ticks", function(selfBtn)
         Goals.db.settings.combatLogCombinePeriodic = selfBtn:GetChecked() and true or false
+        if Goals.DamageTracker and Goals.DamageTracker.RebuildPeriodicCombines then
+            Goals.DamageTracker:RebuildPeriodicCombines()
+        end
         if Goals.UI and Goals.UI.UpdateDamageTrackerList then
             Goals.UI:UpdateDamageTrackerList()
         end
@@ -7231,11 +7636,11 @@ function UI:CreateCombatBroadcastPopout()
     if self.combatBroadcastPopout then
         return
     end
-    local frame = CreateFrame("Frame", "GoalsCombatBroadcastPopout", UIParent, "GoalsInsetTemplate")
-    applyInsetTheme(frame)
-    frame:SetSize(OPTIONS_PANEL_WIDTH, 200)
-    frame.baseHeight = 170
-    frame.whisperExtra = 44
+    local frame = CreateFrame("Frame", "GoalsCombatBroadcastPopout", UIParent, "GoalsFrameTemplate")
+    applyFrameTheme(frame)
+    frame:SetSize(OPTIONS_PANEL_WIDTH + 12, 230)
+    frame.baseHeight = 190
+    frame.whisperExtra = 54
     if self.frame then
         frame:SetPoint("TOPLEFT", self.frame, "TOPRIGHT", -2, -34)
     else
@@ -7246,34 +7651,42 @@ function UI:CreateCombatBroadcastPopout()
     frame:Hide()
     self.combatBroadcastPopout = frame
 
-    local title = createLabel(frame, "Combat Broadcast", "GameFontNormal")
-    title:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, -8)
+    if frame.TitleText then
+        frame.TitleText:SetText("Combat Broadcast")
+        frame.TitleText:Show()
+    end
 
-    local close = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
-    close:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -4, -4)
-    close:SetScript("OnClick", function()
-        frame:Hide()
-    end)
+    local content = CreateFrame("Frame", nil, frame, "GoalsInsetTemplate")
+    applyInsetTheme(content)
+    content:SetPoint("TOPLEFT", frame, "TOPLEFT", 6, -24)
+    content:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -6, 6)
+    frame.content = content
 
-    local y = -32
-    local sendLabel = createLabel(frame, "Send to", "GameFontNormalSmall")
-    sendLabel:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, y)
+    if frame.CloseButton then
+        frame.CloseButton:SetScript("OnClick", function()
+            frame:Hide()
+        end)
+    end
+
+    local y = -24
+    local sendLabel = createLabel(content, "Send to", "GameFontNormalSmall")
+    sendLabel:SetPoint("TOPLEFT", content, "TOPLEFT", 8, y)
     styleOptionsControlLabel(sendLabel)
     y = y - 18
 
-    local dropdown = CreateFrame("Frame", "GoalsCombatBroadcastChannelDropdown", frame, "UIDropDownMenuTemplate")
-    dropdown:SetPoint("TOPLEFT", frame, "TOPLEFT", -4, y)
+    local dropdown = CreateFrame("Frame", "GoalsCombatBroadcastChannelDropdown", content, "UIDropDownMenuTemplate")
+    dropdown:SetPoint("TOPLEFT", content, "TOPLEFT", -6, y)
     styleDropdown(dropdown, OPTIONS_CONTROL_WIDTH)
     self:SetupCombatBroadcastDropdown(dropdown)
     self.combatBroadcastChannelDropdown = dropdown
     y = y - 36
     frame.broadcastYAfterDropdown = y
 
-    local whisperLabel = createLabel(frame, "Whisper target", "GameFontNormalSmall")
-    whisperLabel:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, y)
+    local whisperLabel = createLabel(content, "Whisper target", "GameFontNormalSmall")
+    whisperLabel:SetPoint("TOPLEFT", content, "TOPLEFT", 8, y)
     styleOptionsControlLabel(whisperLabel)
-    local whisperBox = CreateFrame("EditBox", "GoalsCombatBroadcastWhisperBox", frame, "InputBoxTemplate")
-    whisperBox:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, y - 18)
+    local whisperBox = CreateFrame("EditBox", "GoalsCombatBroadcastWhisperBox", content, "InputBoxTemplate")
+    whisperBox:SetPoint("TOPLEFT", content, "TOPLEFT", 16, y - 18)
     whisperBox:SetAutoFocus(false)
     whisperBox:SetText(Goals.db.settings.combatLogBroadcastWhisperTarget or "")
     styleOptionsEditBox(whisperBox, OPTIONS_CONTROL_WIDTH)
@@ -7282,18 +7695,18 @@ function UI:CreateCombatBroadcastPopout()
     y = y - 54
     frame.broadcastYAfterWhisper = y
 
-    local countLabel = createLabel(frame, "Lines to send", "GameFontNormalSmall")
-    countLabel:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, y)
+    local countLabel = createLabel(content, "Lines to send", "GameFontNormalSmall")
+    countLabel:SetPoint("TOPLEFT", content, "TOPLEFT", 8, y)
     styleOptionsControlLabel(countLabel)
-    local countValue = createLabel(frame, "9", "GameFontHighlightSmall")
-    countValue:SetPoint("TOPRIGHT", frame, "TOPLEFT", 10 + OPTIONS_CONTROL_WIDTH, y)
+    local countValue = createLabel(content, "9", "GameFontHighlightSmall")
+    countValue:SetPoint("TOPRIGHT", content, "TOPLEFT", 8 + OPTIONS_CONTROL_WIDTH, y)
     countValue:SetJustifyH("RIGHT")
     y = y - 18
 
-    local countSlider = CreateFrame("Slider", "GoalsCombatBroadcastCountSlider", frame, "OptionsSliderTemplate")
-    countSlider:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, y)
+    local countSlider = CreateFrame("Slider", "GoalsCombatBroadcastCountSlider", content, "OptionsSliderTemplate")
+    countSlider:SetPoint("TOPLEFT", content, "TOPLEFT", 8, y)
     styleOptionsSlider(countSlider)
-    countSlider:SetMinMaxValues(0, 9)
+    countSlider:SetMinMaxValues(1, 9)
     countSlider:SetValueStep(1)
     if countSlider.SetObeyStepOnDrag then
         countSlider:SetObeyStepOnDrag(true)
@@ -7302,9 +7715,9 @@ function UI:CreateCombatBroadcastPopout()
     self.combatBroadcastCountValue = countValue
     y = y - 28
 
-    local sendBtn = createOptionsButton(frame)
+    local sendBtn = createOptionsButton(content)
     styleOptionsButton(sendBtn, OPTIONS_CONTROL_WIDTH)
-    sendBtn:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, y)
+    sendBtn:SetPoint("TOPLEFT", content, "TOPLEFT", 8, y)
     sendBtn:SetText("Send")
     sendBtn:SetScript("OnClick", function()
         local channel = Goals.db.settings.combatLogBroadcastChannel or "SAY"
@@ -7338,8 +7751,8 @@ function UI:CreateCombatBroadcastPopout()
 
     countSlider:SetScript("OnValueChanged", function(selfSlider, value)
         local val = math.floor((tonumber(value) or 0) + 0.5)
-        if val < 0 then
-            val = 0
+        if val < 1 then
+            val = 1
         elseif val > 9 then
             val = 9
         end
@@ -7350,8 +7763,8 @@ function UI:CreateCombatBroadcastPopout()
     end)
 
     local count = tonumber(Goals.db.settings.combatLogBroadcastCount) or 9
-    if count < 0 then
-        count = 0
+    if count < 1 then
+        count = 1
     elseif count > 9 then
         count = 9
     end
@@ -7504,12 +7917,16 @@ function UI:UpdateCombatBroadcastLayout()
         return
     end
     local frame = self.combatBroadcastPopout
+    local content = frame.content or frame
     local showWhisper = self.combatBroadcastWhisperBox and self.combatBroadcastWhisperBox:IsShown()
     local height = frame.baseHeight or 170
     if showWhisper then
         height = height + (frame.whisperExtra or 44)
     end
     frame:SetHeight(height)
+    if frame.content then
+        frame.content:SetHeight(height - 30)
+    end
 
     local countY = frame.broadcastYAfterDropdown or -86
     if showWhisper then
@@ -7517,19 +7934,19 @@ function UI:UpdateCombatBroadcastLayout()
     end
     if self.combatBroadcastCountLabel then
         self.combatBroadcastCountLabel:ClearAllPoints()
-        self.combatBroadcastCountLabel:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, countY)
+        self.combatBroadcastCountLabel:SetPoint("TOPLEFT", content, "TOPLEFT", 8, countY)
     end
     if self.combatBroadcastCountValue then
         self.combatBroadcastCountValue:ClearAllPoints()
-        self.combatBroadcastCountValue:SetPoint("TOPRIGHT", frame, "TOPLEFT", 10 + OPTIONS_CONTROL_WIDTH, countY)
+        self.combatBroadcastCountValue:SetPoint("TOPRIGHT", content, "TOPLEFT", 8 + OPTIONS_CONTROL_WIDTH, countY)
     end
     if self.combatBroadcastCountSlider then
         self.combatBroadcastCountSlider:ClearAllPoints()
-        self.combatBroadcastCountSlider:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, countY - 18)
+        self.combatBroadcastCountSlider:SetPoint("TOPLEFT", content, "TOPLEFT", 8, countY - 18)
     end
     if self.combatBroadcastSendButton then
         self.combatBroadcastSendButton:ClearAllPoints()
-        self.combatBroadcastSendButton:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, countY - 46)
+        self.combatBroadcastSendButton:SetPoint("TOPLEFT", content, "TOPLEFT", 8, countY - 46)
     end
 end
 
@@ -7562,7 +7979,9 @@ function UI:UpdateRosterList()
     self.rosterData = data
     local offset = FauxScrollFrame_GetOffset(self.rosterScroll) or 0
     FauxScrollFrame_Update(self.rosterScroll, #data, ROSTER_ROWS, ROW_HEIGHT)
-    setScrollBarAlwaysVisible(self.rosterScroll, #data * ROW_HEIGHT)
+    local contentHeight = #data * ROW_HEIGHT
+    self.rosterScroll._contentHeight = contentHeight
+    setScrollBarAlwaysVisible(self.rosterScroll, contentHeight)
     local hasAccess = hasModifyAccess()
     for i = 1, ROSTER_ROWS do
         local row = self.rosterRows[i]
@@ -8290,6 +8709,9 @@ function UI:FormatCombatBroadcastLine(entry)
     else
         amountText = string.format("-%d", amount)
     end
+    if abilityText ~= "" and entry.spellDuration and entry.spellDuration > 1 then
+        abilityText = string.format("%s (%ds)", abilityText, entry.spellDuration)
+    end
     if abilityText ~= "" then
         return string.format("%s %s %s", prefix, amountText, abilityText)
     end
@@ -8346,10 +8768,95 @@ function UI:UpdateDamageTrackerList()
     end
     local tracker = Goals and Goals.DamageTracker
     local filter = self.damageTrackerFilter or L.DAMAGE_TRACKER_ALL
-    local data = tracker and tracker.GetFilteredEntries and tracker:GetFilteredEntries(filter) or {}
+    local data = tracker and tracker.GetFilteredEntries and tracker:GetFilteredEntries(filter, { ignoreBigFilter = true }) or {}
     local offset = FauxScrollFrame_GetOffset(self.damageTrackerScroll) or 0
     FauxScrollFrame_Update(self.damageTrackerScroll, #data, DAMAGE_ROWS, DAMAGE_ROW_HEIGHT)
-    setScrollBarAlwaysVisible(self.damageTrackerScroll, #data * DAMAGE_ROW_HEIGHT)
+    local contentHeight = #data * DAMAGE_ROW_HEIGHT
+    self.damageTrackerScroll._contentHeight = contentHeight
+    setScrollBarAlwaysVisible(self.damageTrackerScroll, contentHeight)
+    local settings = Goals and Goals.db and Goals.db.settings or nil
+    local threshold = settings and tonumber(settings.combatLogBigThreshold) or nil
+    if threshold == nil and settings then
+        local oldDamage = tonumber(settings.combatLogBigDamageThreshold)
+        local oldHeal = tonumber(settings.combatLogBigHealingThreshold)
+        if oldDamage or oldHeal then
+            threshold = math.max(oldDamage or 0, oldHeal or 0)
+        end
+    end
+    if threshold == nil then
+        threshold = (settings and settings.combatLogShowBig) and 50 or 0
+        if settings then
+            settings.combatLogBigThreshold = threshold
+        end
+    end
+    if threshold < 0 then
+        threshold = 0
+    elseif threshold > 100 then
+        threshold = 100
+    end
+    local useBigFilter = threshold > 0
+    local sliceStart = offset + 1
+    local sliceEnd = math.min(offset + DAMAGE_ROWS, #data)
+    local sliceMaxDamage = 0
+    local sliceMaxHeal = 0
+    if useBigFilter then
+        for i = sliceStart, sliceEnd do
+            local entry = data[i]
+            if entry and entry.kind ~= "BREAK" and entry.kind ~= "DEATH" and entry.kind ~= "RES" then
+                local amount = tonumber(entry.amount) or 0
+                if entry.kind == "HEAL" or entry.kind == "HEAL_OUT" then
+                    if amount > sliceMaxHeal then
+                        sliceMaxHeal = amount
+                    end
+                elseif entry.kind == "DAMAGE" or entry.kind == "DAMAGE_OUT" then
+                    if amount > sliceMaxDamage then
+                        sliceMaxDamage = amount
+                    end
+                end
+            end
+        end
+    end
+    local function passesSliceThreshold(entry)
+        if not useBigFilter or not entry then
+            return true
+        end
+        if entry.kind == "BREAK" or entry.kind == "DEATH" or entry.kind == "RES" then
+            return true
+        end
+        local amount = tonumber(entry.amount) or 0
+        if entry.kind == "HEAL" or entry.kind == "HEAL_OUT" then
+            if sliceMaxHeal <= 0 then
+                return true
+            end
+            return amount >= (sliceMaxHeal * (threshold / 100))
+        end
+        if entry.kind == "DAMAGE" or entry.kind == "DAMAGE_OUT" then
+            if sliceMaxDamage <= 0 then
+                return true
+            end
+            return amount >= (sliceMaxDamage * (threshold / 100))
+        end
+        return true
+    end
+    local visibleEntries = {}
+    local visibleIndexes = {}
+    if useBigFilter then
+        for i = sliceStart, sliceEnd do
+            local entry = data[i]
+            if entry and passesSliceThreshold(entry) then
+                table.insert(visibleEntries, entry)
+                table.insert(visibleIndexes, i)
+            end
+        end
+    else
+        for i = sliceStart, sliceEnd do
+            local entry = data[i]
+            if entry then
+                table.insert(visibleEntries, entry)
+                table.insert(visibleIndexes, i)
+            end
+        end
+    end
     local showOverheal = Goals and Goals.db and Goals.db.settings and Goals.db.settings.combatLogShowOverheal
     if showOverheal == nil then
         showOverheal = true
@@ -8413,7 +8920,8 @@ function UI:UpdateDamageTrackerList()
 
     for i = 1, DAMAGE_ROWS do
         local row = self.damageTrackerRows[i]
-        local entry = data[offset + i]
+        local entry = visibleEntries[i]
+        local entryIndex = visibleIndexes[i] or (offset + i)
         if entry then
             row:Show()
             row.entry = entry
@@ -8444,7 +8952,7 @@ function UI:UpdateDamageTrackerList()
                 setShown(row.breakBg, false)
                 setShown(row.breakText, false)
                 if row.stripe then
-                    setShown(row.stripe, ((offset + i) % 2) == 0)
+                    setShown(row.stripe, (entryIndex % 2) == 0)
                 end
                 row.timeText:SetText(formatCombatTimestamp(entry.ts))
                 local kind = entry.kind or "DAMAGE"
@@ -9883,67 +10391,19 @@ function UI:Refresh()
     if self.combatLogTrackingCheck then
         self.combatLogTrackingCheck:SetChecked(trackingEnabled)
     end
-    if self.combatLogHealingCheck then
-        local enabled = trackingEnabled
-        local showHealing = Goals.db.settings.combatLogShowHealing
-        if showHealing == nil then
-            showHealing = (Goals.db.settings.combatLogHealing and true or false)
-            Goals.db.settings.combatLogShowHealing = showHealing
-        end
-        self.combatLogHealingCheck:SetChecked(showHealing and true or false)
-        if self.combatLogHealingCheck.SetAlpha then
-            self.combatLogHealingCheck:SetAlpha(enabled and 1 or 0.6)
-        end
-        if enabled then
-            if self.combatLogHealingCheck.Enable then
-                self.combatLogHealingCheck:Enable()
-            end
-        else
-            if self.combatLogHealingCheck.Disable then
-                self.combatLogHealingCheck:Disable()
-            end
-        end
+    local showHealing = false
+    if Goals and Goals.db and Goals.db.settings then
+        showHealing = (self:NormalizeCombatShowFlags(Goals.db.settings))
     end
-    if self.combatLogOutgoingCheck then
+    if self.combatLogShowDropdown then
         local enabled = trackingEnabled
-        local showDealt = Goals.db.settings.combatLogShowDamageDealt
-        if showDealt == nil then
-            showDealt = (Goals.db.settings.combatLogTrackOutgoing and true or false)
-            Goals.db.settings.combatLogShowDamageDealt = showDealt
-        end
-        self.combatLogOutgoingCheck:SetChecked(showDealt and true or false)
-        if self.combatLogOutgoingCheck.SetAlpha then
-            self.combatLogOutgoingCheck:SetAlpha(enabled and 1 or 0.6)
-        end
-        if enabled then
-            if self.combatLogOutgoingCheck.Enable then
-                self.combatLogOutgoingCheck:Enable()
-            end
-        else
-            if self.combatLogOutgoingCheck.Disable then
-                self.combatLogOutgoingCheck:Disable()
-            end
-        end
-    end
-    if self.combatLogIncomingCheck then
-        local enabled = trackingEnabled
-        local showReceived = Goals.db.settings.combatLogShowDamageReceived
-        if showReceived == nil then
-            showReceived = true
-            Goals.db.settings.combatLogShowDamageReceived = showReceived
-        end
-        self.combatLogIncomingCheck:SetChecked(showReceived and true or false)
-        if self.combatLogIncomingCheck.SetAlpha then
-            self.combatLogIncomingCheck:SetAlpha(enabled and 1 or 0.6)
-        end
-        if enabled then
-            if self.combatLogIncomingCheck.Enable then
-                self.combatLogIncomingCheck:Enable()
-            end
-        else
-            if self.combatLogIncomingCheck.Disable then
-                self.combatLogIncomingCheck:Disable()
-            end
+        local mode = self:GetCombatShowMode(Goals.db.settings)
+        self.combatLogShowDropdown.selectedValue = mode
+        UIDropDownMenu_SetSelectedValue(self.combatLogShowDropdown, mode)
+        self:SetDropdownText(self.combatLogShowDropdown, mode)
+        setDropdownEnabled(self.combatLogShowDropdown, enabled)
+        if self.combatLogShowDropdown.SetAlpha then
+            self.combatLogShowDropdown:SetAlpha(enabled and 1 or 0.6)
         end
     end
     local function clampSliderValue(value)
@@ -9995,7 +10455,7 @@ function UI:Refresh()
         updateSlider(self.combatLogBigThresholdSlider, self.combatLogBigThresholdValue, threshold, trackingEnabled)
     end
     if self.combatLogShowOverhealCheck then
-        local enabled = trackingEnabled and (Goals.db.settings.combatLogShowHealing ~= false)
+        local enabled = trackingEnabled and (showHealing ~= false)
         local showOverheal = Goals.db.settings.combatLogShowOverheal
         if showOverheal == nil then
             showOverheal = true

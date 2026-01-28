@@ -18,6 +18,17 @@ local DAMAGE_EVENTS = {
 local PERIODIC_DAMAGE_EVENTS = {
     SPELL_PERIODIC_DAMAGE = true,
 }
+local AURA_APPLY_EVENTS = {
+    SPELL_AURA_APPLIED = true,
+    SPELL_AURA_REFRESH = true,
+    SPELL_AURA_APPLIED_DOSE = true,
+}
+local AURA_REMOVE_EVENTS = {
+    SPELL_AURA_REMOVED = true,
+    SPELL_AURA_REMOVED_DOSE = true,
+    SPELL_AURA_BROKEN = true,
+    SPELL_AURA_BROKEN_SPELL = true,
+}
 local HEAL_EVENTS = {
     SPELL_HEAL = true,
     SPELL_PERIODIC_HEAL = true,
@@ -30,7 +41,21 @@ local DEATH_EVENTS = {
     UNIT_DESTROYED = true,
     UNIT_DISSIPATES = true,
 }
+local PERIODIC_AURA_TTL = 120
+local PERIODIC_AURA_DIRECT_WINDOW = 1.0
+local PERIODIC_INCLUDE_DIRECT_WINDOW = 2.0
 local bit_band = bit and bit.band or nil
+
+local function cloneEntry(entry)
+    if type(entry) ~= "table" then
+        return entry
+    end
+    local copy = {}
+    for key, value in pairs(entry) do
+        copy[key] = value
+    end
+    return copy
+end
 
 local function looksLikeGuid(value)
     return type(value) == "string" and value:match("^0x") ~= nil
@@ -104,6 +129,22 @@ local function parseHealOverheal(args, spellBase)
         return nil
     end
     return tonumber(args[spellBase + 4])
+end
+
+local function parseAuraPayload(args, spellBase)
+    if not spellBase then
+        return nil, nil
+    end
+    local spellId = tonumber(args[spellBase]) or nil
+    local auraType = nil
+    for i = 0, 6 do
+        local value = args[spellBase + i]
+        if value == "BUFF" or value == "DEBUFF" then
+            auraType = value
+            break
+        end
+    end
+    return spellId, auraType
 end
 
 local function hasFlag(flags, mask)
@@ -205,8 +246,11 @@ function DamageTracker:Init()
     if Goals.db then
         Goals.db.combatLog = Goals.db.combatLog or {}
         Goals.state.damageLog = Goals.db.combatLog
+        Goals.db.combatLogRaw = Goals.db.combatLogRaw or Goals.db.combatLog or {}
+        Goals.state.damageLogRaw = Goals.db.combatLogRaw
     else
         Goals.state.damageLog = Goals.state.damageLog or {}
+        Goals.state.damageLogRaw = Goals.state.damageLogRaw or Goals.state.damageLog or {}
     end
     self.rosterGuids = self.rosterGuids or {}
     self.rosterNames = self.rosterNames or {}
@@ -219,6 +263,7 @@ function DamageTracker:Init()
     self.castStarts = self.castStarts or {}
     self.startTs = self.startTs or time()
     self:RefreshRoster()
+    self:RebuildPeriodicCombines()
 end
 
 function DamageTracker:SetEnabled(enabled)
@@ -239,8 +284,10 @@ end
 
 function DamageTracker:ClearLog()
     Goals.state.damageLog = {}
+    Goals.state.damageLogRaw = {}
     if Goals.db then
         Goals.db.combatLog = Goals.state.damageLog
+        Goals.db.combatLogRaw = Goals.state.damageLogRaw
     end
     self.startTs = time()
     self.activeCombines = {}
@@ -276,6 +323,15 @@ end
 function DamageTracker:AddEntry(entry)
     if type(entry) ~= "table" then
         return
+    end
+    local raw = Goals.state.damageLogRaw or {}
+    table.insert(raw, 1, cloneEntry(entry))
+    if #raw > MAX_LOG_ENTRIES then
+        table.remove(raw)
+    end
+    Goals.state.damageLogRaw = raw
+    if Goals.db then
+        Goals.db.combatLogRaw = raw
     end
     if self:TryCombineAll(entry) then
         if Goals.UI and Goals.UI.currentTab == (Goals.UI.damageTabId or 0) and Goals.UI.UpdateDamageTrackerList then
@@ -315,10 +371,13 @@ function DamageTracker:GetCombineGap()
 end
 
 function DamageTracker:ShouldCombinePeriodic(entry)
-    if not entry or entry.kind ~= "DAMAGE" then
+    if not entry then
         return false
     end
-    if not entry.periodic then
+    if entry.kind ~= "DAMAGE" and entry.kind ~= "DAMAGE_OUT" and entry.kind ~= "HEAL" and entry.kind ~= "HEAL_OUT" then
+        return false
+    end
+    if not entry.periodic and not entry.combineDirect then
         return false
     end
     return Goals and Goals.db and Goals.db.settings and Goals.db.settings.combatLogCombinePeriodic == true
@@ -364,11 +423,20 @@ function DamageTracker:TryCombinePeriodic(entry)
     if combine and combine.entry then
         local target = combine.entry
         target.amount = (tonumber(target.amount) or 0) + (tonumber(entry.amount) or 0)
+        if entry.overheal then
+            target.overheal = (tonumber(target.overheal) or 0) + (tonumber(entry.overheal) or 0)
+        end
+        target.combineCount = (tonumber(target.combineCount) or 0) + 1
         combine.lastTs = now
         target.combineStartTs = combine.startTs or target.combineStartTs or target.ts or now
         target.combineLastTs = combine.lastTs
         target.ts = now
-        local duration = math.floor((combine.lastTs - (target.combineStartTs or combine.lastTs)) + 0.5)
+        local startTs = target.combineStartTs or combine.lastTs
+        local duration = math.floor((combine.lastTs - startTs) + 0.5)
+        if target.combineCount and target.combineCount > 1 then
+            local interval = (combine.lastTs - startTs) / (target.combineCount - 1)
+            duration = math.floor((combine.lastTs - startTs + interval) + 0.5)
+        end
         if duration < 1 then
             duration = 1
         end
@@ -381,6 +449,7 @@ function DamageTracker:TryCombinePeriodic(entry)
     entry.combineStartTs = startTs
     entry.combineLastTs = now
     entry.spellDuration = 1
+    entry.combineCount = 1
     self.activeCombines[key] = {
         entry = entry,
         startTs = startTs,
@@ -390,6 +459,44 @@ function DamageTracker:TryCombinePeriodic(entry)
     return false
 end
 
+function DamageTracker:RebuildPeriodicCombines()
+    if not Goals or not Goals.state or not Goals.state.damageLogRaw then
+        return
+    end
+    local log = Goals.state.damageLogRaw
+    self.activeCombines = {}
+    local rebuilt = {}
+    Goals.state.damageLog = rebuilt
+    local combinePeriodic = Goals.db and Goals.db.settings and Goals.db.settings.combatLogCombinePeriodic == true
+    local combineAll = self:IsCombineAllEnabled()
+    for i = #log, 1, -1 do
+        local entry = log[i]
+        local work = cloneEntry(entry)
+        if entry then
+            if work.kind == "BREAK" or work.kind == "DEATH" or work.kind == "RES" then
+                table.insert(rebuilt, 1, work)
+            else
+                work.combineStartTs = nil
+                work.combineLastTs = nil
+                work.spellDuration = nil
+                work.combineCount = nil
+                if combineAll and self:TryCombineAll(work) then
+                    -- combined into existing entry
+                elseif combinePeriodic and self:ShouldCombinePeriodic(work) then
+                    if not self:TryCombinePeriodic(work) then
+                        table.insert(rebuilt, 1, work)
+                    end
+                else
+                    table.insert(rebuilt, 1, work)
+                end
+            end
+        end
+    end
+    if Goals.db then
+        Goals.db.combatLog = rebuilt
+    end
+end
+
 function DamageTracker:GetRosterNames()
     if not self.rosterNames or #self.rosterNames == 0 then
         self:RefreshRoster()
@@ -397,10 +504,11 @@ function DamageTracker:GetRosterNames()
     return self.rosterNames or {}
 end
 
-function DamageTracker:GetFilteredEntries(filter)
+function DamageTracker:GetFilteredEntries(filter, opts)
     local log = Goals.state.damageLog or {}
     local allLabel = getAllLabel()
     local settings = Goals and Goals.db and Goals.db.settings or nil
+    local options = opts or {}
     local showHealing = settings and settings.combatLogShowHealing
     local showDamageDealt = settings and settings.combatLogShowDamageDealt
     local showDamageReceived = settings and settings.combatLogShowDamageReceived
@@ -443,7 +551,7 @@ function DamageTracker:GetFilteredEntries(filter)
     elseif threshold > 100 then
         threshold = 100
     end
-    local useBigFilter = threshold > 0
+    local useBigFilter = threshold > 0 and not options.ignoreBigFilter
     local stats = nil
     if useBigFilter then
         stats = self:BuildEncounterStats(log)
@@ -668,9 +776,11 @@ function DamageTracker:BuildEncounterStats(log)
     local stats = {}
     local encounterId = 0
     local activeId = nil
+    local sawBreak = false
     for i = #log, 1, -1 do
         local entry = log[i]
         if entry.kind == "BREAK" then
+            sawBreak = true
             if entry.status == "START" then
                 encounterId = encounterId + 1
                 activeId = encounterId
@@ -704,6 +814,38 @@ function DamageTracker:BuildEncounterStats(log)
                     stats[activeId].healCount = stats[activeId].healCount + 1
                     if amount > (stats[activeId].maxHeal or 0) then
                         stats[activeId].maxHeal = amount
+                    end
+                end
+            end
+        end
+    end
+    if not sawBreak then
+        stats[1] = {
+            dmgTotal = 0,
+            dmgCount = 0,
+            healTotal = 0,
+            healCount = 0,
+            maxDamage = 0,
+            maxHeal = 0,
+        }
+        for i = #log, 1, -1 do
+            local entry = log[i]
+            if entry.kind ~= "BREAK" then
+                entry.encounterId = 1
+                if entry.amount then
+                    local amount = tonumber(entry.amount) or 0
+                    if entry.kind == "DAMAGE" and amount > 0 then
+                        stats[1].dmgTotal = stats[1].dmgTotal + amount
+                        stats[1].dmgCount = stats[1].dmgCount + 1
+                        if amount > (stats[1].maxDamage or 0) then
+                            stats[1].maxDamage = amount
+                        end
+                    elseif (entry.kind == "HEAL" or entry.kind == "HEAL_OUT") and amount > 0 then
+                        stats[1].healTotal = stats[1].healTotal + amount
+                        stats[1].healCount = stats[1].healCount + 1
+                        if amount > (stats[1].maxHeal or 0) then
+                            stats[1].maxHeal = amount
+                        end
                     end
                 end
             end
@@ -822,6 +964,86 @@ function DamageTracker:HandleGroupUpdate()
     self:RefreshRoster()
 end
 
+function DamageTracker:TrackPeriodicAura(subevent, sourceKey, destKey, spellId, auraType, timestamp)
+    if not (subevent and sourceKey and destKey and spellId and auraType) then
+        return
+    end
+    if auraType ~= "DEBUFF" and auraType ~= "BUFF" then
+        return
+    end
+    self.periodicAuras = self.periodicAuras or {}
+    local key = string.format("%s|%s|%s", tostring(sourceKey), tostring(destKey), tostring(spellId))
+    if AURA_APPLY_EVENTS[subevent] then
+        self.periodicAuras[key] = {
+            ts = timestamp or time(),
+            event = subevent,
+            auraType = auraType,
+        }
+    elseif AURA_REMOVE_EVENTS[subevent] then
+        self.periodicAuras[key] = nil
+    end
+end
+
+function DamageTracker:IsPeriodicAuraActive(sourceKey, destKey, spellId, wantAuraType, timestamp)
+    if not (sourceKey and destKey and spellId) then
+        return false
+    end
+    local key = string.format("%s|%s|%s", tostring(sourceKey), tostring(destKey), tostring(spellId))
+    local aura = self.periodicAuras and self.periodicAuras[key]
+    if not aura then
+        return false
+    end
+    if wantAuraType and aura.auraType and aura.auraType ~= wantAuraType then
+        return false
+    end
+    local now = timestamp or time()
+    if aura.ts and (now - aura.ts) > PERIODIC_AURA_TTL then
+        self.periodicAuras[key] = nil
+        return false
+    end
+    if aura.event == "SPELL_AURA_APPLIED" and aura.ts and (now - aura.ts) <= PERIODIC_AURA_DIRECT_WINDOW then
+        return false
+    end
+    return true
+end
+
+function DamageTracker:HasPeriodicAura(sourceKey, destKey, spellId, wantAuraType, timestamp)
+    if not (sourceKey and destKey and spellId) then
+        return false
+    end
+    local key = string.format("%s|%s|%s", tostring(sourceKey), tostring(destKey), tostring(spellId))
+    local aura = self.periodicAuras and self.periodicAuras[key]
+    if not aura then
+        return false
+    end
+    if wantAuraType and aura.auraType and aura.auraType ~= wantAuraType then
+        return false
+    end
+    local now = timestamp or time()
+    if aura.ts and (now - aura.ts) > PERIODIC_AURA_TTL then
+        self.periodicAuras[key] = nil
+        return false
+    end
+    if aura.event == "SPELL_AURA_APPLIED" and aura.ts and (now - aura.ts) > PERIODIC_INCLUDE_DIRECT_WINDOW then
+        return false
+    end
+    return true
+end
+
+function DamageTracker:IsPeriodicDamage(subevent, sourceKey, destKey, spellId, timestamp)
+    if PERIODIC_DAMAGE_EVENTS[subevent] then
+        return true
+    end
+    return self:IsPeriodicAuraActive(sourceKey, destKey, spellId, "DEBUFF", timestamp)
+end
+
+function DamageTracker:IsPeriodicHeal(subevent, sourceKey, destKey, spellId, timestamp)
+    if PERIODIC_HEAL_EVENTS[subevent] then
+        return true
+    end
+    return self:IsPeriodicAuraActive(sourceKey, destKey, spellId, "BUFF", timestamp)
+end
+
 function DamageTracker:HandleCombatLog(...)
     if not self:IsEnabled() then
         return
@@ -910,6 +1132,20 @@ function DamageTracker:HandleCombatLog(...)
         return
     end
 
+    if AURA_APPLY_EVENTS[subevent] or AURA_REMOVE_EVENTS[subevent] then
+        local spellId, auraType = parseAuraPayload(args, spellBase)
+        self:TrackPeriodicAura(
+            subevent,
+            sourceGUID or sourceName or "unknown",
+            destGUID or destName or "unknown",
+            spellId,
+            auraType,
+            timestamp
+        )
+        debug.lastSkip = "Aura event"
+        return
+    end
+
     local playerName = (destGUID and self.rosterGuids[destGUID]) or (isRosterDest and normalizedDest) or normalizeName(destName)
     local sourceKind = classifySource(sourceName, sourceFlags)
     local amount
@@ -942,8 +1178,25 @@ function DamageTracker:HandleCombatLog(...)
             return
         end
         local source = sourceName or "Unknown"
+        local periodic = self:IsPeriodicDamage(
+            subevent,
+            sourceGUID or sourceName or "unknown",
+            destGUID or destName or "unknown",
+            spellId,
+            timestamp
+        )
+        local combineDirect = false
+        if not periodic and spellId then
+            combineDirect = self:HasPeriodicAura(
+                sourceGUID or sourceName or "unknown",
+                destGUID or destName or "unknown",
+                spellId,
+                "DEBUFF",
+                timestamp
+            )
+        end
         local castStart = nil
-        if PERIODIC_DAMAGE_EVENTS[subevent] then
+        if periodic then
             self.castStarts = self.castStarts or {}
             local key = string.format("%s|%s", tostring(sourceGUID or sourceName or "unknown"), tostring(spellId or spellName or ""))
             castStart = self.castStarts[key]
@@ -964,7 +1217,8 @@ function DamageTracker:HandleCombatLog(...)
                 spellId = spellId,
                 source = source,
                 kind = "DAMAGE",
-                periodic = PERIODIC_DAMAGE_EVENTS[subevent] and true or false,
+                periodic = periodic,
+                combineDirect = combineDirect,
                 castStart = castStart,
                 sourceFlags = sourceFlags,
                 sourceKind = sourceKind,
@@ -988,7 +1242,8 @@ function DamageTracker:HandleCombatLog(...)
                 spellId = spellId,
                 source = targetName,
                 kind = "DAMAGE_OUT",
-                periodic = PERIODIC_DAMAGE_EVENTS[subevent] and true or false,
+                periodic = periodic,
+                combineDirect = combineDirect,
                 castStart = castStart,
                 sourceFlags = destFlags,
                 sourceKind = targetKind,
@@ -1026,6 +1281,23 @@ function DamageTracker:HandleCombatLog(...)
             return
         end
         local source = sourceName or "Unknown"
+        local periodic = self:IsPeriodicHeal(
+            subevent,
+            sourceGUID or sourceName or "unknown",
+            destGUID or destName or "unknown",
+            spellId,
+            timestamp
+        )
+        local combineDirect = false
+        if not periodic and spellId then
+            combineDirect = self:HasPeriodicAura(
+                sourceGUID or sourceName or "unknown",
+                destGUID or destName or "unknown",
+                spellId,
+                "BUFF",
+                timestamp
+            )
+        end
         local added = false
         if isRosterDest then
             if (not playerName or playerName == "") and Goals and Goals.GetPlayerName and destGUID == playerGuid then
@@ -1043,7 +1315,8 @@ function DamageTracker:HandleCombatLog(...)
                 spellId = spellId,
                 source = source,
                 kind = "HEAL",
-                periodic = PERIODIC_HEAL_EVENTS[subevent] and true or false,
+                periodic = periodic,
+                combineDirect = combineDirect,
                 sourceFlags = sourceFlags,
                 sourceKind = sourceKind,
                 overheal = overheal,
@@ -1069,7 +1342,8 @@ function DamageTracker:HandleCombatLog(...)
                 spellId = spellId,
                 source = targetName,
                 kind = "HEAL_OUT",
-                periodic = PERIODIC_HEAL_EVENTS[subevent] and true or false,
+                periodic = periodic,
+                combineDirect = combineDirect,
                 sourceFlags = destFlags,
                 sourceKind = targetKind,
                 overheal = overheal,
