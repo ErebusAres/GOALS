@@ -313,7 +313,7 @@ end
 
 function History:AddWishlistItemClaimed(slotKey, itemId, claimed)
     local link = getItemLink(itemId) or formatItemFallback(itemId)
-    local action = claimed and "Wishlist claimed" or "Wishlist unclaimed"
+    local action = claimed and "Wishlist item claimed" or "Wishlist item unclaimed"
     self:AddEntry(
         "WISHLIST_CLAIM",
         string.format("%s: %s %s", action, getSlotLabel(slotKey), link),

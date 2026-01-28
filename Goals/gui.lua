@@ -8176,7 +8176,7 @@ function UI:FormatHistoryEntry(entry)
         return string.format("Wishlist found: %s", formatItemLink(data.itemId, data.item))
     end
     if entry.kind == "WISHLIST_CLAIM" then
-        local action = data.claimed and "Wishlist claimed" or "Wishlist unclaimed"
+        local action = data.claimed and "Wishlist item claimed" or "Wishlist item unclaimed"
         local slot = formatSlotLabel(data.slot)
         return string.format("%s: %s %s", action, slot, formatItemLink(data.itemId, data.item))
     end
@@ -8361,7 +8361,7 @@ function UI:GetHistoryColumnData(entry)
     elseif kind == "WISHLIST_CLAIM" then
         event = formatItemLink(data.itemId, data.item)
         target = formatSlotLabel(data.slot)
-        notes = data.claimed and "Claimed" or "Unclaimed"
+        notes = data.claimed and "Wishlist item claimed" or "Wishlist item unclaimed"
     elseif kind == "WISHLIST_ADD" then
         event = formatItemLink(data.itemId, data.item)
         target = formatSlotLabel(data.slot)
@@ -9584,12 +9584,26 @@ function UI:UpdateWishlistUI()
                 if map then
                     for _, entry in pairs(wish.items) do
                         if entry and entry.itemId then
-                            local owned = Goals:IsWishlistItemOwned(entry.itemId)
-                            map[entry.itemId] = (owned or entry.manualFound) and true or nil
+                            local manual = entry.manualFound
+                            if manual == true then
+                                map[entry.itemId] = true
+                            elseif manual == false then
+                                map[entry.itemId] = nil
+                            else
+                                local owned = Goals:IsWishlistItemOwned(entry.itemId)
+                                map[entry.itemId] = owned and true or nil
+                            end
                         end
                         if entry and entry.tokenId and entry.tokenId > 0 then
-                            local owned = Goals:IsWishlistItemOwned(entry.tokenId)
-                            map[entry.tokenId] = (owned or entry.manualFound) and true or nil
+                            local manual = entry.manualFound
+                            if manual == true then
+                                map[entry.tokenId] = true
+                            elseif manual == false then
+                                map[entry.tokenId] = nil
+                            else
+                                local owned = Goals:IsWishlistItemOwned(entry.tokenId)
+                                map[entry.tokenId] = owned and true or nil
+                            end
                         end
                     end
                 end
