@@ -213,6 +213,8 @@ Please validate the new options panel spacing/alignment (Overview/Loot/History/C
 - Combat row tooltip: left-click a row to lock the tooltip open; switching tabs clears the lock.
 - Options controls: reduced control widths slightly to pull right edge in (buttons, dropdowns, edit boxes).
 - Wishlist manual claim: manual unclaim now overrides auto-owned/auto-found visuals; history wording uses “wishlist set claimed/unclaimed”.
+- Combat tracker: tracking checkbox explicitly defaults to unchecked when no saved setting is present.
+- Combat tracker: default filter dropdowns now start at All / All on fresh installs.
 - Combat log healing: outgoing heals are now tracked when "Track healing events" is enabled; outgoing heals use the -> flow arrow.
 - Combat log healing: outgoing heal rows show `+X (Y)` with `(Y)` as overheal in darker green.
 - Combat tracker table: columns reordered to Time | Source | Target | Amount | Ability (no per-row arrows).

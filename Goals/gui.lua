@@ -6133,6 +6133,17 @@ function UI:CreateDamageTrackerTab(page)
         end
     end, "Record combat log events for the tracker.")
     self.combatLogTrackingCheck = trackingCheck
+    do
+        local settings = Goals.db and Goals.db.settings or nil
+        local trackingEnabled = settings and settings.combatLogTracking
+        if trackingEnabled == nil then
+            trackingEnabled = false
+            if settings then
+                settings.combatLogTracking = false
+            end
+        end
+        trackingCheck:SetChecked(trackingEnabled and true or false)
+    end
     y = y - 8
 
     addSectionHeader("Filter")
