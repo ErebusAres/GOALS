@@ -105,11 +105,11 @@ local function ensureCombatTrackerEnabled(requireHealing)
         end
         return false
     end
-    if requireHealing and not (Goals.DamageTracker.IsHealingEnabled and Goals.DamageTracker:IsHealingEnabled()) then
-        if Goals and Goals.Print then
-            Goals:Print("Enable Healing Tracking first.")
+    if requireHealing then
+        local showHealing = Goals and Goals.db and Goals.db.settings and Goals.db.settings.combatLogShowHealing
+        if showHealing == false and Goals and Goals.Print then
+            Goals:Print("Healing events are hidden (Show healing is off).")
         end
-        return false
     end
     return true
 end

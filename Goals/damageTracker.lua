@@ -159,6 +159,31 @@ local function normalizeName(name)
     return name or ""
 end
 
+local function findUnitByGuid(guid)
+    if not guid or not UnitGUID then
+        return nil
+    end
+    if UnitGUID("player") == guid then
+        return "player"
+    end
+    if Goals and Goals.IsInRaid and Goals:IsInRaid() then
+        for i = 1, GetNumRaidMembers() do
+            local unit = "raid" .. i
+            if UnitGUID(unit) == guid then
+                return unit
+            end
+        end
+    elseif Goals and Goals.IsInParty and Goals:IsInParty() then
+        for i = 1, GetNumPartyMembers() do
+            local unit = "party" .. i
+            if UnitGUID(unit) == guid then
+                return unit
+            end
+        end
+    end
+    return nil
+end
+
 function DamageTracker:IsEnabled()
     return Goals.db and Goals.db.settings and Goals.db.settings.combatLogTracking and true or false
 end
@@ -229,13 +254,16 @@ function DamageTracker:TryCombineAll(entry)
     if not entry or not entry.kind or not entry.player then
         return false
     end
-    if entry.kind ~= "DAMAGE" and entry.kind ~= "HEAL" and entry.kind ~= "DAMAGE_OUT" then
+    if entry.kind ~= "DAMAGE" and entry.kind ~= "HEAL" and entry.kind ~= "DAMAGE_OUT" and entry.kind ~= "HEAL_OUT" then
         return false
     end
     local log = Goals.state.damageLog or {}
     local top = log[1]
     if top and top.kind == entry.kind and top.player == entry.player then
         top.amount = (tonumber(top.amount) or 0) + (tonumber(entry.amount) or 0)
+        if entry.overheal then
+            top.overheal = (tonumber(top.overheal) or 0) + (tonumber(entry.overheal) or 0)
+        end
         top.ts = entry.ts or time()
         top.combineCount = (top.combineCount or 1) + 1
         top.spell = "Combined"
@@ -372,30 +400,128 @@ end
 function DamageTracker:GetFilteredEntries(filter)
     local log = Goals.state.damageLog or {}
     local allLabel = getAllLabel()
-    local showBig = Goals and Goals.db and Goals.db.settings and Goals.db.settings.combatLogShowBig
-    local includeHeal = Goals and Goals.db and Goals.db.settings and Goals.db.settings.combatLogBigIncludeHealing
+    local settings = Goals and Goals.db and Goals.db.settings or nil
+    local showHealing = settings and settings.combatLogShowHealing
+    local showDamageDealt = settings and settings.combatLogShowDamageDealt
+    local showDamageReceived = settings and settings.combatLogShowDamageReceived
+    if showHealing == nil and settings then
+        if settings.combatLogHealing ~= nil then
+            showHealing = settings.combatLogHealing and true or false
+        else
+            showHealing = true
+        end
+        settings.combatLogShowHealing = showHealing
+    end
+    if showDamageDealt == nil and settings then
+        if settings.combatLogTrackOutgoing ~= nil then
+            showDamageDealt = settings.combatLogTrackOutgoing and true or false
+        else
+            showDamageDealt = true
+        end
+        settings.combatLogShowDamageDealt = showDamageDealt
+    end
+    if showDamageReceived == nil and settings then
+        showDamageReceived = true
+        settings.combatLogShowDamageReceived = showDamageReceived
+    end
+    local threshold = settings and tonumber(settings.combatLogBigThreshold) or nil
+    if threshold == nil and settings then
+        local oldDamage = tonumber(settings.combatLogBigDamageThreshold)
+        local oldHeal = tonumber(settings.combatLogBigHealingThreshold)
+        if oldDamage or oldHeal then
+            threshold = math.max(oldDamage or 0, oldHeal or 0)
+        end
+    end
+    if threshold == nil then
+        threshold = (settings and settings.combatLogShowBig) and 50 or 0
+        if settings then
+            settings.combatLogBigThreshold = threshold
+        end
+    end
+    if threshold < 0 then
+        threshold = 0
+    elseif threshold > 100 then
+        threshold = 100
+    end
+    local useBigFilter = threshold > 0
     local stats = nil
-    if showBig then
+    if useBigFilter then
         stats = self:BuildEncounterStats(log)
     end
-    if not filter or filter == "" or filter == allLabel then
-        if not showBig then
-            if not self:IsCombineAllEnabled() then
-                return log
+    local isAllView = not filter or filter == "" or filter == allLabel
+    local rosterMap = self.rosterNameMap or {}
+    local function isRosterName(name)
+        if not name or name == "" then
+            return false
+        end
+        return rosterMap[normalizeName(name)] and true or false
+    end
+    local function isSelfHeal(entry)
+        if not entry or entry.kind ~= "HEAL" then
+            return false
+        end
+        local source = entry.source or ""
+        local target = entry.player or ""
+        if source == "" or target == "" then
+            return false
+        end
+        return normalizeName(source) == normalizeName(target)
+    end
+    local function shouldIncludeAll(entry)
+        if not entry then
+            return false
+        end
+        if entry.kind == "HEAL" or entry.kind == "HEAL_OUT" or entry.kind == "RES" then
+            if not showHealing then
+                return false
             end
-            return self:BuildCombinedList(log)
+        elseif entry.kind == "DAMAGE_OUT" then
+            if not showDamageDealt then
+                return false
+            end
+        elseif entry.kind == "DAMAGE" or entry.kind == "DEATH" then
+            if not showDamageReceived then
+                return false
+            end
+        end
+        if entry.kind == "HEAL" then
+            if isRosterName(entry.source) and not isSelfHeal(entry) then
+                return false
+            end
+        end
+        return true
+    end
+    local function filterAllList(entries)
+        local list = {}
+        for _, entry in ipairs(entries or {}) do
+            if shouldIncludeAll(entry) then
+                table.insert(list, entry)
+            end
+        end
+        return list
+    end
+
+    if isAllView then
+        if not useBigFilter then
+            local list = filterAllList(log)
+            if not self:IsCombineAllEnabled() then
+                return list
+            end
+            return self:BuildCombinedList(list)
         end
         local list = {}
         for _, entry in ipairs(log) do
-            if entry.kind == "BREAK" or entry.kind == "DEATH" or entry.kind == "RES" then
-                table.insert(list, entry)
-            elseif entry.kind == "HEAL" then
-                if includeHeal and self:IsBigEntry(entry, stats, "HEAL") then
+            if shouldIncludeAll(entry) then
+                if entry.kind == "BREAK" or entry.kind == "DEATH" or entry.kind == "RES" then
                     table.insert(list, entry)
-                end
-            else
-                if self:IsBigEntry(entry, stats, "DAMAGE") then
-                    table.insert(list, entry)
+                elseif entry.kind == "HEAL" or entry.kind == "HEAL_OUT" then
+                    if self:IsBigEntry(entry, stats, "HEAL", threshold) then
+                        table.insert(list, entry)
+                    end
+                else
+                    if self:IsBigEntry(entry, stats, "DAMAGE", threshold) then
+                        table.insert(list, entry)
+                    end
                 end
             end
         end
@@ -404,22 +530,86 @@ function DamageTracker:GetFilteredEntries(filter)
         end
         return self:BuildCombinedList(list)
     end
+    local function entryMatchesFilter(entry, filterName)
+        if not entry or not filterName or filterName == "" then
+            return false
+        end
+        local targetName = nil
+        local sourceName = nil
+        if entry.kind == "DAMAGE" then
+            sourceName = entry.source
+            targetName = entry.player
+        elseif entry.kind == "DAMAGE_OUT" then
+            sourceName = entry.player
+            targetName = entry.source
+        elseif entry.kind == "HEAL" then
+            sourceName = entry.source
+            targetName = entry.player
+        elseif entry.kind == "HEAL_OUT" then
+            sourceName = entry.player
+            targetName = entry.source
+        elseif entry.kind == "RES" then
+            sourceName = entry.source
+            targetName = entry.player
+        elseif entry.kind == "DEATH" then
+            targetName = entry.player
+        else
+            targetName = entry.player
+        end
+        local normalizedFilter = normalizeName(filterName)
+        if sourceName and normalizeName(sourceName) == normalizedFilter then
+            return true
+        end
+        if targetName and normalizeName(targetName) == normalizedFilter then
+            return true
+        end
+        return false
+    end
+
     local list = {}
     for _, entry in ipairs(log) do
         if entry.kind == "BREAK" then
             table.insert(list, entry)
-        elseif entry.player == filter then
-            if not showBig then
-                table.insert(list, entry)
-            elseif entry.kind == "HEAL" then
-                if includeHeal and self:IsBigEntry(entry, stats, "HEAL") then
+        elseif entryMatchesFilter(entry, filter) then
+            if not useBigFilter then
+                if entry.kind == "HEAL" or entry.kind == "HEAL_OUT" or entry.kind == "RES" then
+                    if showHealing then
+                        table.insert(list, entry)
+                    end
+                elseif entry.kind == "DAMAGE_OUT" then
+                    if showDamageDealt then
+                        table.insert(list, entry)
+                    end
+                elseif entry.kind == "DAMAGE" or entry.kind == "DEATH" then
+                    if showDamageReceived then
+                        table.insert(list, entry)
+                    end
+                else
+                    table.insert(list, entry)
+                end
+            elseif entry.kind == "HEAL" or entry.kind == "HEAL_OUT" then
+                if showHealing and self:IsBigEntry(entry, stats, "HEAL", threshold) then
                     table.insert(list, entry)
                 end
             elseif entry.kind == "DEATH" or entry.kind == "RES" then
-                table.insert(list, entry)
+                if entry.kind == "RES" then
+                    if showHealing then
+                        table.insert(list, entry)
+                    end
+                else
+                    if showDamageReceived then
+                        table.insert(list, entry)
+                    end
+                end
             else
-                if self:IsBigEntry(entry, stats, "DAMAGE") then
-                    table.insert(list, entry)
+                if entry.kind == "DAMAGE_OUT" then
+                    if showDamageDealt and self:IsBigEntry(entry, stats, "DAMAGE", threshold) then
+                        table.insert(list, entry)
+                    end
+                else
+                    if showDamageReceived and self:IsBigEntry(entry, stats, "DAMAGE", threshold) then
+                        table.insert(list, entry)
+                    end
                 end
             end
         end
@@ -448,6 +638,7 @@ function DamageTracker:BuildCombinedList(entries)
                     kind = entry.kind,
                     player = entry.player,
                     amount = 0,
+                    overheal = 0,
                     ts = entry.ts,
                     spell = "Combined",
                     source = "Multiple",
@@ -458,6 +649,9 @@ function DamageTracker:BuildCombinedList(entries)
                 table.insert(combined, agg)
             end
             agg.amount = (tonumber(agg.amount) or 0) + (tonumber(entry.amount) or 0)
+            if entry.overheal then
+                agg.overheal = (tonumber(agg.overheal) or 0) + (tonumber(entry.overheal) or 0)
+            end
             agg.combineCount = (agg.combineCount or 0) + 1
             if entry.ts and (not agg.ts or entry.ts > agg.ts) then
                 agg.ts = entry.ts
@@ -480,7 +674,14 @@ function DamageTracker:BuildEncounterStats(log)
             if entry.status == "START" then
                 encounterId = encounterId + 1
                 activeId = encounterId
-                stats[activeId] = { dmgTotal = 0, dmgCount = 0, healTotal = 0, healCount = 0 }
+                stats[activeId] = {
+                    dmgTotal = 0,
+                    dmgCount = 0,
+                    healTotal = 0,
+                    healCount = 0,
+                    maxDamage = 0,
+                    maxHeal = 0,
+                }
                 entry.encounterId = activeId
             elseif entry.status == "SUCCESS" or entry.status == "FAIL" then
                 entry.encounterId = activeId
@@ -495,9 +696,15 @@ function DamageTracker:BuildEncounterStats(log)
                 if entry.kind == "DAMAGE" and amount > 0 then
                     stats[activeId].dmgTotal = stats[activeId].dmgTotal + amount
                     stats[activeId].dmgCount = stats[activeId].dmgCount + 1
-                elseif entry.kind == "HEAL" and amount > 0 then
+                    if amount > (stats[activeId].maxDamage or 0) then
+                        stats[activeId].maxDamage = amount
+                    end
+                elseif (entry.kind == "HEAL" or entry.kind == "HEAL_OUT") and amount > 0 then
                     stats[activeId].healTotal = stats[activeId].healTotal + amount
                     stats[activeId].healCount = stats[activeId].healCount + 1
+                    if amount > (stats[activeId].maxHeal or 0) then
+                        stats[activeId].maxHeal = amount
+                    end
                 end
             end
         end
@@ -509,9 +716,13 @@ function DamageTracker:BuildEncounterStats(log)
     return stats
 end
 
-function DamageTracker:IsBigEntry(entry, stats, kind)
+function DamageTracker:IsBigEntry(entry, stats, kind, thresholdPercent)
     if not entry or not stats then
         return false
+    end
+    local threshold = tonumber(thresholdPercent) or 0
+    if threshold <= 0 then
+        return true
     end
     local encounterId = entry.encounterId
     if not encounterId then
@@ -523,9 +734,17 @@ function DamageTracker:IsBigEntry(entry, stats, kind)
     end
     local amount = tonumber(entry.amount) or 0
     if kind == "HEAL" then
-        return amount > (stat.avgHeal or 0)
+        local maxAmount = tonumber(stat.maxHeal) or 0
+        if maxAmount <= 0 then
+            return true
+        end
+        return amount >= (maxAmount * (threshold / 100))
     end
-    return amount > (stat.avgDamage or 0)
+    local maxAmount = tonumber(stat.maxDamage) or 0
+    if maxAmount <= 0 then
+        return true
+    end
+    return amount >= (maxAmount * (threshold / 100))
 end
 
 function DamageTracker:AddBreakpoint(encounterName, status)
@@ -682,8 +901,7 @@ function DamageTracker:HandleCombatLog(...)
         or (normalizedDest ~= "" and rosterMap[normalizedDest])
     local isRosterSource = (sourceGUID and (sourceGUID == playerGuid or (self.rosterGuids and self.rosterGuids[sourceGUID])))
         or (normalizedSource ~= "" and rosterMap[normalizedSource])
-    local outgoingEnabled = self:IsOutgoingEnabled()
-    if not isRosterDest and not (outgoingEnabled and isRosterSource) then
+    if not isRosterDest and not isRosterSource then
         debug.lastSkip = "Not roster dest"
         return
     end
@@ -751,7 +969,7 @@ function DamageTracker:HandleCombatLog(...)
                 sourceFlags = sourceFlags,
                 sourceKind = sourceKind,
             })
-        elseif outgoingEnabled and isRosterSource then
+        elseif isRosterSource then
             local srcName = (sourceGUID and self.rosterGuids[sourceGUID]) or (isRosterSource and normalizedSource) or normalizeName(sourceName)
             if (not srcName or srcName == "") and Goals and Goals.GetPlayerName and sourceGUID == playerGuid then
                 srcName = Goals:GetPlayerName()
@@ -781,10 +999,6 @@ function DamageTracker:HandleCombatLog(...)
     end
 
     if HEAL_EVENTS[subevent] then
-        if not self:IsHealingEnabled() then
-            debug.lastSkip = "Heal disabled"
-            return
-        end
         local spellId
         if spellBase then
             if type(args[spellBase + 1]) == "string" then
@@ -807,35 +1021,65 @@ function DamageTracker:HandleCombatLog(...)
             end
             amount = effective
         end
-        if amount <= 0 then
+        if amount <= 0 and not (overheal and overheal > 0) then
             debug.lastSkip = "Zero heal"
             return
         end
         local source = sourceName or "Unknown"
-        if not isRosterDest then
+        local added = false
+        if isRosterDest then
+            if (not playerName or playerName == "") and Goals and Goals.GetPlayerName and destGUID == playerGuid then
+                playerName = Goals:GetPlayerName()
+            end
+            if not playerName or playerName == "" then
+                debug.lastSkip = "No player name"
+                return
+            end
+            self:AddEntry({
+                ts = timestamp,
+                player = playerName ~= "" and playerName or "Unknown",
+                amount = amount,
+                spell = spellName or "Unknown",
+                spellId = spellId,
+                source = source,
+                kind = "HEAL",
+                periodic = PERIODIC_HEAL_EVENTS[subevent] and true or false,
+                sourceFlags = sourceFlags,
+                sourceKind = sourceKind,
+                overheal = overheal,
+            })
+            added = true
+        end
+        if isRosterSource and (sourceGUID ~= destGUID) then
+            local srcName = (sourceGUID and self.rosterGuids[sourceGUID]) or (isRosterSource and normalizedSource) or normalizeName(sourceName)
+            if (not srcName or srcName == "") and Goals and Goals.GetPlayerName and sourceGUID == playerGuid then
+                srcName = Goals:GetPlayerName()
+            end
+            if not srcName or srcName == "" then
+                debug.lastSkip = "No player name"
+                return
+            end
+            local targetName = destName or "Unknown"
+            local targetKind = classifySource(targetName, destFlags)
+            self:AddEntry({
+                ts = timestamp,
+                player = srcName,
+                amount = amount,
+                spell = spellName or "Unknown",
+                spellId = spellId,
+                source = targetName,
+                kind = "HEAL_OUT",
+                periodic = PERIODIC_HEAL_EVENTS[subevent] and true or false,
+                sourceFlags = destFlags,
+                sourceKind = targetKind,
+                overheal = overheal,
+            })
+            added = true
+        end
+        if not added then
             debug.lastSkip = "Not roster dest"
             return
         end
-        if (not playerName or playerName == "") and Goals and Goals.GetPlayerName and destGUID == playerGuid then
-            playerName = Goals:GetPlayerName()
-        end
-        if not playerName or playerName == "" then
-            debug.lastSkip = "No player name"
-            return
-        end
-        self:AddEntry({
-            ts = timestamp,
-            player = playerName ~= "" and playerName or "Unknown",
-            amount = amount,
-            spell = spellName or "Unknown",
-            spellId = spellId,
-            source = source,
-            kind = "HEAL",
-            periodic = PERIODIC_HEAL_EVENTS[subevent] and true or false,
-            sourceFlags = sourceFlags,
-            sourceKind = sourceKind,
-            overheal = overheal,
-        })
         debug.lastAdded = true
         return
     end
@@ -882,6 +1126,17 @@ function DamageTracker:HandleCombatLog(...)
             spellId = id
             spellName = name
         end
+        local reviveAmount = nil
+        local revivePercent = nil
+        local unit = findUnitByGuid(destGUID)
+        if unit and UnitHealth and UnitHealthMax then
+            local health = UnitHealth(unit) or 0
+            local maxHealth = UnitHealthMax(unit) or 0
+            reviveAmount = health
+            if maxHealth > 0 then
+                revivePercent = math.floor((health / maxHealth) * 100 + 0.5)
+            end
+        end
         self:AddEntry({
             ts = timestamp,
             player = playerName ~= "" and playerName or "Unknown",
@@ -889,6 +1144,8 @@ function DamageTracker:HandleCombatLog(...)
             spellId = spellId,
             source = sourceName or "Unknown",
             kind = "RES",
+            amount = reviveAmount,
+            revivePercent = revivePercent,
             sourceFlags = sourceFlags,
             sourceKind = sourceKind,
         })

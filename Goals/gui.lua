@@ -20,10 +20,12 @@ local DEBUG_ROW_HEIGHT = 14
 local DAMAGE_ROWS = 20
 local DAMAGE_ROW_HEIGHT = 18
 local DAMAGE_COL_TIME = 70
-local DAMAGE_COL_PLAYER = 110
-local DAMAGE_COL_FLOW = 20
+local DAMAGE_COL_SOURCE = 120
+local DAMAGE_COL_TARGET = 120
 local DAMAGE_COL_AMOUNT = 70
 local DAMAGE_COL_SPELL = 120
+local DAMAGE_NAME_MAX_PLAYER = 12
+local DAMAGE_NAME_MAX_NPC = 24
 local MINI_ROW_HEIGHT = 16
 local MINI_HEADER_HEIGHT = 22
 local MINI_FRAME_WIDTH = 200
@@ -40,6 +42,12 @@ local OPTIONS_BUTTON_HEIGHT = 24
 local OPTIONS_CHECKBOX_SIZE = 24
 local OPTIONS_DROPDOWN_HEIGHT = 26
 local OPTIONS_EDITBOX_HEIGHT = 26
+local MAIN_FRAME_HEIGHT = 520
+local PAGE_BOTTOM_OFFSET = 12
+local FOOTER_BOTTOM_INSET = 6
+local FOOTER_BAR_HEIGHT = 24
+local FOOTER_BAR_GAP = 4
+local FOOTER_BAR_EXTRA = FOOTER_BAR_HEIGHT + FOOTER_BAR_GAP
 local OPTIONS_HEADER_HEIGHT = 16
 local OPTIONS_BUTTON_ID = 0
 local createLabel
@@ -228,6 +236,42 @@ local function styleOptionsEditBox(editBox, width)
     end
 end
 
+local function styleOptionsSlider(slider)
+    if not slider then
+        return
+    end
+    slider:SetWidth(OPTIONS_CONTROL_WIDTH)
+    slider:SetHeight(14)
+    if slider.SetMinMaxValues then
+        slider:SetMinMaxValues(0, 100)
+    end
+    if slider.SetValueStep then
+        slider:SetValueStep(1)
+    end
+    if slider.SetObeyStepOnDrag then
+        slider:SetObeyStepOnDrag(true)
+    end
+    local thumb = slider.GetThumbTexture and slider:GetThumbTexture() or nil
+    if thumb and thumb.SetTexture then
+        thumb:SetTexture("Interface\\Buttons\\UI-SliderBar-Button-Horizontal")
+    end
+    local name = slider.GetName and slider:GetName() or nil
+    if name then
+        local low = _G[name .. "Low"]
+        if low then
+            low:Hide()
+        end
+        local high = _G[name .. "High"]
+        if high then
+            high:Hide()
+        end
+        local text = _G[name .. "Text"]
+        if text then
+            text:Hide()
+        end
+    end
+end
+
 local function styleOptionsLabel(label)
     if not label then
         return
@@ -328,17 +372,14 @@ local function createOptionsHeader(parent, text, y)
     return label, heading
 end
 
-local function createTabFooter(ui, page, key)
+local function createFooterBar(ui, page, key, suffix)
     if not ui or not page then
         return nil
     end
-    ui.tabFooters = ui.tabFooters or {}
-    local name = "GoalsTabFooter" .. tostring(key or "")
+    local name = "GoalsTabFooter" .. (suffix or "") .. tostring(key or "")
     local footer = CreateFrame("Frame", name, page, "GoalsInsetTemplate")
     applyInsetTheme(footer)
-    footer:SetPoint("BOTTOMLEFT", page, "BOTTOMLEFT", 6, 6)
-    footer:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -6, 6)
-    footer:SetHeight(24)
+    footer:SetHeight(FOOTER_BAR_HEIGHT)
 
     local leftText = createLabel(footer, "", "GameFontHighlightSmall")
     leftText:SetPoint("LEFT", footer, "LEFT", 8, 0)
@@ -356,7 +397,36 @@ local function createTabFooter(ui, page, key)
     footer.rightText = rightText
 
     footer.key = key
+    return footer
+end
+
+local function createTabFooter(ui, page, key)
+    if not ui or not page then
+        return nil
+    end
+    ui.tabFooters = ui.tabFooters or {}
+    local footer = createFooterBar(ui, page, key)
+    footer:SetPoint("BOTTOMLEFT", page, "BOTTOMLEFT", FOOTER_BOTTOM_INSET, FOOTER_BOTTOM_INSET)
+    footer:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -FOOTER_BOTTOM_INSET, FOOTER_BOTTOM_INSET)
     ui.tabFooters[key] = footer
+    return footer
+end
+
+local function createTabFooter2(ui, page, key, footer1)
+    if not ui or not page then
+        return nil
+    end
+    ui.tabFooters2 = ui.tabFooters2 or {}
+    local footer = createFooterBar(ui, page, key, "2")
+    if ui.frame then
+        local yOffset = PAGE_BOTTOM_OFFSET + FOOTER_BOTTOM_INSET
+        footer:SetPoint("BOTTOMLEFT", ui.frame, "BOTTOMLEFT", FOOTER_BOTTOM_INSET, yOffset)
+        footer:SetPoint("BOTTOMRIGHT", ui.frame, "BOTTOMRIGHT", -FOOTER_BOTTOM_INSET, yOffset)
+    else
+        footer:SetPoint("BOTTOMLEFT", page, "BOTTOMLEFT", FOOTER_BOTTOM_INSET, FOOTER_BOTTOM_INSET)
+        footer:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -FOOTER_BOTTOM_INSET, FOOTER_BOTTOM_INSET)
+    end
+    ui.tabFooters2[key] = footer
     return footer
 end
 
@@ -1919,7 +1989,7 @@ function UI:CreateMainFrame()
     end
 
     local frame = CreateFrame("Frame", "GoalsMainFrame", UIParent, "GoalsFrameTemplate")
-    frame:SetSize(900, 520)
+    frame:SetSize(900, MAIN_FRAME_HEIGHT + FOOTER_BAR_EXTRA)
     frame:SetPoint("CENTER")
     frame:SetMovable(true)
     frame:EnableMouse(true)
@@ -2056,10 +2126,11 @@ function UI:CreateMainFrame()
 
         local page = CreateFrame("Frame", nil, frame)
         page:SetPoint("TOPLEFT", tabBar, "BOTTOMLEFT", 2, -6)
-        page:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -14, 12)
+        page:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -14, PAGE_BOTTOM_OFFSET + FOOTER_BAR_EXTRA)
         page:Hide()
         self.pages[i] = page
         page.footer = createTabFooter(self, page, def.key)
+        page.footer2 = createTabFooter2(self, page, def.key, page.footer)
 
         local createFunc = self[def.create]
         if createFunc then
@@ -2107,12 +2178,176 @@ function UI:UpdateDamageTabVisibility()
     self:LayoutTabs()
 end
 
+local function getQualityLabel(quality)
+    if not quality or quality <= 0 then
+        return "Any"
+    end
+    local desc = _G["ITEM_QUALITY" .. tostring(quality) .. "_DESC"]
+    if desc and desc ~= "" then
+        return desc
+    end
+    return "Quality " .. tostring(quality)
+end
+
+local function getSortLabel(mode)
+    if mode == "ALPHA" then
+        return "Sort: Name"
+    end
+    if mode == "PRESENCE" then
+        return "Sort: Presence"
+    end
+    return "Sort: Points"
+end
+
+local function getHistoryFilterSummary(settings)
+    local filters = {
+        { key = "historyFilterEncounter", label = "Encounters" },
+        { key = "historyFilterPoints", label = "Points" },
+        { key = "historyFilterBuild", label = "Builds" },
+        { key = "historyFilterWishlistStatus", label = "Wishlist status" },
+        { key = "historyFilterWishlistItems", label = "Wishlist items" },
+        { key = "historyFilterLoot", label = "Loot" },
+        { key = "historyFilterSync", label = "Sync" },
+    }
+    local enabled = {}
+    for _, entry in ipairs(filters) do
+        if getHistoryFilterValue(settings, entry.key) then
+            table.insert(enabled, entry.label)
+        end
+    end
+    if #enabled == 0 then
+        return "Filters: None"
+    end
+    if #enabled == #filters then
+        return "Filters: All"
+    end
+    if #enabled <= 3 then
+        return "Filters: " .. table.concat(enabled, ", ")
+    end
+    return string.format("Filters: %d/%d", #enabled, #filters)
+end
+
+function UI:GetTopPointsSummary()
+    if not self.GetSortedPlayers then
+        return nil
+    end
+    local list = self:GetSortedPlayers()
+    if #list == 0 then
+        return nil
+    end
+    local topPoints = list[1].points or 0
+    local topNames = {}
+    for _, entry in ipairs(list) do
+        if (entry.points or 0) ~= topPoints then
+            break
+        end
+        table.insert(topNames, entry.name)
+    end
+    if #topNames == 0 then
+        return nil
+    end
+    local displayName = colorizeName(topNames[1])
+    if #topNames > 1 then
+        displayName = string.format("%s +%d", displayName, #topNames - 1)
+    end
+    return string.format("Top: (%d) %s", topPoints, displayName)
+end
+
+function UI:GetWishlistTabLabel(tabKey)
+    local map = {
+        manage = "Manage",
+        search = "Search",
+        actions = "Actions",
+        options = "Options",
+    }
+    return map[tabKey]
+end
+
+function UI:GetWishlistAlertsSummary(settings)
+    local alerts = {}
+    if settings.wishlistAnnounce then
+        table.insert(alerts, "Chat")
+    end
+    if not settings.wishlistPopupDisabled then
+        table.insert(alerts, "Popup")
+    end
+    if #alerts == 0 then
+        return "Alerts: Off"
+    end
+    return "Alerts: " .. table.concat(alerts, " + ")
+end
+
+function UI:GetCombatShowSummary(settings)
+    local parts = {}
+    if settings.combatLogShowHealing then
+        table.insert(parts, "H")
+    end
+    if settings.combatLogShowDamageDealt then
+        table.insert(parts, "D")
+    end
+    if settings.combatLogShowDamageReceived then
+        table.insert(parts, "R")
+    end
+    if #parts == 0 then
+        return "Show: None"
+    end
+    return "Show: " .. table.concat(parts, "/")
+end
+
+function UI:GetTabFooter2Segments(key)
+    local settings = (Goals and Goals.db and Goals.db.settings) or {}
+    if key == "overview" then
+        local topText = self:GetTopPointsSummary()
+        local sortText = getSortLabel(settings.sortMode)
+        local presentText = settings.showPresentOnly and "Present only: On" or "Present only: Off"
+        return topText, sortText, presentText
+    end
+    if key == "loot" then
+        local minQuality = settings.lootHistoryMinQuality or 0
+        local qualityText = "Min quality: " .. getQualityLabel(minQuality)
+        local resetText = settings.resetRequiresLootWindow and "Mode: Manual" or "Mode: Auto"
+        local count = self.GetLootHistoryEntries and #self:GetLootHistoryEntries() or 0
+        local entriesText = "Entries: " .. tostring(count)
+        return qualityText, resetText, entriesText
+    end
+    if key == "history" then
+        local filtersText = getHistoryFilterSummary(settings)
+        local count = self.GetHistoryEntries and #self:GetHistoryEntries() or 0
+        local entriesText = "Entries: " .. tostring(count)
+        return filtersText, nil, entriesText
+    end
+    if key == "wishlist" then
+        local list = Goals.GetActiveWishlist and Goals:GetActiveWishlist() or nil
+        local listName = list and list.name or "Wishlist"
+        local listText = "List: " .. listName
+        local tabLabel = self:GetWishlistTabLabel(self.wishlistActiveTab)
+        local tabText = tabLabel and ("Tab: " .. tabLabel) or nil
+        local alertsText = self:GetWishlistAlertsSummary(settings)
+        return listText, tabText, alertsText
+    end
+    if key == "damage" then
+        local filter = self.damageTrackerFilter or L.DAMAGE_TRACKER_ALL
+        local filterText = "Filter: " .. tostring(filter)
+        local showText = self:GetCombatShowSummary(settings)
+        local threshold = settings.combatLogBigThreshold or 0
+        local thresholdText = string.format("Threshold: %d%%", math.floor(threshold + 0.5))
+        local rightText = thresholdText
+        if settings.combatLogShowHealing then
+            local overhealText = settings.combatLogShowOverheal and "Overheal: On" or "Overheal: Off"
+            rightText = thresholdText .. " | " .. overhealText
+        end
+        return filterText, showText, rightText
+    end
+    return nil, nil, nil
+end
+
 function UI:UpdateTabFooters()
     if not self.tabFooters then
         return
     end
     local access = getAccessStatus()
-    local localOnly = (Goals.db and Goals.db.settings and Goals.db.settings.localOnly) and "Local only" or "Sync enabled"
+    local settings = Goals.db and Goals.db.settings or {}
+    local localOnly = settings.localOnly and "Local only" or "Sync enabled"
     local syncFrom = "Unknown"
     if Goals and Goals.sync then
         if Goals.sync.isMaster then
@@ -2134,7 +2369,8 @@ function UI:UpdateTabFooters()
     local rightText = string.format("Tracking: Enabled | Disenchanter: %s", dis)
     local leftText = string.format("%s | %s", access, localOnly)
     local centerText = string.format("Syncing From: %s | %s ago", syncFrom, lastText)
-    for _, footer in pairs(self.tabFooters) do
+
+    for key, footer in pairs(self.tabFooters) do
         if footer.leftText then
             footer.leftText:SetText(leftText)
         end
@@ -2143,6 +2379,23 @@ function UI:UpdateTabFooters()
         end
         if footer.rightText then
             footer.rightText:SetText(rightText)
+        end
+
+        local footer2 = self.tabFooters2 and self.tabFooters2[key] or nil
+        if footer2 then
+            local left2, center2, right2 = self:GetTabFooter2Segments(key)
+            local hasAny = (left2 and left2 ~= "") or (center2 and center2 ~= "") or (right2 and right2 ~= "")
+            if footer2.leftText then
+                footer2.leftText:SetText(left2 or "")
+            end
+            if footer2.centerText then
+                footer2.centerText:SetText(center2 or "")
+            end
+            if footer2.rightText then
+                footer2.rightText:SetText(right2 or "")
+            end
+            setShown(footer2, hasAny)
+
         end
     end
 end
@@ -2273,10 +2526,10 @@ function UI:RefreshUpdateTab()
             self.updateVersionText:SetText("")
         end
     end
-    if updateUrl ~= "" then
-        self.updateUrlText:SetText(updateUrl)
-    else
-        self.updateUrlText:SetText(L.UPDATE_DOWNLOAD_MISSING)
+    local urlText = updateUrl ~= "" and updateUrl or L.UPDATE_DOWNLOAD_MISSING
+    if self.updateUrlText.SetText then
+        self.updateUrlText._lockedText = urlText
+        self.updateUrlText:SetText(urlText)
     end
     if self.updateDownloadButton then
         if updateUrl ~= "" then
@@ -2761,19 +3014,19 @@ function UI:CreateOverviewTab(page)
     addSectionHeader("Roster")
     addLabel(L.LABEL_SORT)
     local sortDrop = addDropdown("GoalsSortDropdown")
-    attachSideTooltip(sortDrop, "Choose how the roster list is sorted.")
+    attachSideTooltip(sortDrop, "Choose how the roster is sorted.")
     self.sortDropdown = sortDrop
     self:SetupSortDropdown(sortDrop)
 
-    local presentCheck = addCheck("Present only", function(selfBtn)
+    local presentCheck = addCheck("Show present players", function(selfBtn)
         Goals.db.settings.showPresentOnly = selfBtn:GetChecked() and true or false
         Goals:NotifyDataChanged()
-    end, "Only show players who are currently in your group or raid.")
+    end, "Show only players currently in your group.")
     self.presentCheck = presentCheck
 
-    local disableGainCheck = addCheck("Disable point gain", function(selfBtn)
+    local disableGainCheck = addCheck("Pause point gains", function(selfBtn)
         Goals:SetRaidSetting("disablePointGain", selfBtn:GetChecked() and true or false)
-    end, "Stop automatic point gains. Use this if you want to freeze point changes during a raid.")
+    end, "Pause automatic point awards and adjustments.")
     self.disablePointGainCheck = disableGainCheck
 
     local disableGainStatus = addInfoLabel("")
@@ -2784,20 +3037,20 @@ function UI:CreateOverviewTab(page)
     y = y - 8
     addSectionHeader("General")
 
-    local minimapCheck = addCheck("Minimap button", function(selfBtn)
+    local minimapCheck = addCheck("Show minimap button", function(selfBtn)
         Goals.db.settings.minimap.hide = not selfBtn:GetChecked()
         UI:UpdateMinimapButton()
-    end, "Show or hide the GOALS minimap button.")
+    end, "Show the GOALS minimap button.")
     self.minimapCheck = minimapCheck
 
     local autoMinCheck = addCheck("Auto-minimize in combat", function(selfBtn)
         Goals.db.settings.autoMinimizeCombat = selfBtn:GetChecked() and true or false
-    end, "Automatically minimize GOALS when combat starts.")
+    end, "Minimize GOALS automatically when combat starts.")
     self.autoMinimizeCheck = autoMinCheck
 
-    local localOnlyCheck = addCheck("Local only (no sync)", function(selfBtn)
+    local localOnlyCheck = addCheck("Local-only mode", function(selfBtn)
         Goals.db.settings.localOnly = selfBtn:GetChecked() and true or false
-    end, "Turn off all syncing. Changes will stay only on this client.")
+    end, "Disable syncing; changes stay on this client.")
     self.localOnlyCheck = localOnlyCheck
 
     local function hasDBM()
@@ -2816,12 +3069,12 @@ function UI:CreateOverviewTab(page)
             if Goals.db.settings.dbmIntegration and Goals.Events and Goals.Events.InitDBMCallbacks then
                 Goals.Events:InitDBMCallbacks()
             end
-        end, "Use DBM boss encounter events to improve tracking accuracy.")
+        end, "Use DBM encounter events to improve boss tracking (if installed).")
         self.dbmIntegrationCheck = dbmCheck
 
         local dbmWishlistCheck = addCheck("DBM wishlist alerts", function(selfBtn)
             Goals.db.settings.wishlistDbmIntegration = selfBtn:GetChecked() and true or false
-        end, "Use DBM events to help identify wishlist-related drops.")
+        end, "Use DBM events to help detect wishlist drops.")
         self.wishlistDbmIntegrationCheck = dbmWishlistCheck
     end
 
@@ -2838,15 +3091,23 @@ function UI:CreateOverviewTab(page)
     autoSyncLabel:SetJustifyH("LEFT")
     styleOptionsLabel(autoSyncLabel)
     self.autoSyncLabel = autoSyncLabel
+    y = y - 16
+
+    local syncNote = createLabel(optionsContent, "", "GameFontHighlightSmall")
+    syncNote:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
+    syncNote:SetJustifyH("LEFT")
+    styleOptionsLabel(syncNote)
+    syncNote:Hide()
+    self.syncNoteLabel = syncNote
     y = y - 20
 
-    local syncRequestBtn = addButton("Ask for sync", function()
+    local syncRequestBtn = addButton("Request sync", function()
         if Goals and Goals.Comm and Goals.Comm.RequestSync then
             Goals.Comm:RequestSync("MANUAL")
         end
     end)
     syncRequestBtn:SetScript("OnEnter", function(selfBtn)
-        showSideTooltip("Ask the loot master to send a full roster/points sync.")
+        showSideTooltip("Request a full roster and points sync from the loot master.")
     end)
     syncRequestBtn:SetScript("OnLeave", function()
         hideSideTooltip()
@@ -2981,7 +3242,7 @@ function UI:CreateOverviewTab(page)
     local keybindsLabel, keybindsBar = addSectionHeader("Keybindings")
     self.keybindsTitle = keybindsLabel
 
-    local uiBindLabel = addLabel("Toggle GOALS UI:")
+    local uiBindLabel = addLabel("Toggle main window:")
     self.keybindUiLabel = uiBindLabel
     local uiBindValue = createLabel(optionsContent, "", "GameFontHighlightSmall")
     uiBindValue:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
@@ -2990,7 +3251,7 @@ function UI:CreateOverviewTab(page)
     self.keybindUiValue = uiBindValue
     y = y - 16
 
-    local miniBindLabel = addLabel("Toggle Mini Viewer:")
+    local miniBindLabel = addLabel("Toggle mini tracker:")
     self.keybindMiniLabel = miniBindLabel
     local miniBindValue = createLabel(optionsContent, "", "GameFontHighlightSmall")
     miniBindValue:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
@@ -3206,7 +3467,7 @@ function UI:CreateLootTab(page)
     addLabel(L.LABEL_LOOT_HISTORY_FILTER)
 
     local minFilterDrop = addDropdown("GoalsLootHistoryMinQuality")
-    attachSideTooltip(minFilterDrop, "Hide loot below this quality in the history list.")
+    attachSideTooltip(minFilterDrop, "Hide items below this quality in Loot History.")
     minFilterDrop.options = getQualityOptions()
     UIDropDownMenu_Initialize(minFilterDrop, function(_, level)
         for _, option in ipairs(minFilterDrop.options) do
@@ -3227,35 +3488,35 @@ function UI:CreateLootTab(page)
 
     y = y - 8
     addSectionHeader(L.LABEL_RESET_POINTS)
-    self.resetMountsCheck = addCheck("Reset mounts", function(selfBtn)
+    self.resetMountsCheck = addCheck("Reset mounts to 0", function(selfBtn)
         Goals:SetRaidSetting("resetMounts", selfBtn:GetChecked() and true or false)
-    end, "Set mount winners back to 0 points when they win these items.")
-    self.resetPetsCheck = addCheck("Reset pets", function(selfBtn)
+    end, "Set mount winners to 0 points when they win these items.")
+    self.resetPetsCheck = addCheck("Reset pets to 0", function(selfBtn)
         Goals:SetRaidSetting("resetPets", selfBtn:GetChecked() and true or false)
-    end, "Set pet winners back to 0 points when they win these items.")
-    self.resetRecipesCheck = addCheck("Reset recipes", function(selfBtn)
+    end, "Set pet winners to 0 points when they win these items.")
+    self.resetRecipesCheck = addCheck("Reset recipes to 0", function(selfBtn)
         Goals:SetRaidSetting("resetRecipes", selfBtn:GetChecked() and true or false)
-    end, "Set recipe winners back to 0 points when they win these items.")
-    self.resetTokensCheck = addCheck("Reset tier tokens", function(selfBtn)
+    end, "Set recipe winners to 0 points when they win these items.")
+    self.resetTokensCheck = addCheck("Reset tier tokens to 0", function(selfBtn)
         Goals:SetRaidSetting("resetTokens", selfBtn:GetChecked() and true or false)
-    end, "Set tier token winners back to 0 points when they win these items.")
-    self.resetQuestItemsCheck = addCheck("Reset quest items", function(selfBtn)
+    end, "Set tier token winners to 0 points when they win these items.")
+    self.resetQuestItemsCheck = addCheck("Reset quest items to 0", function(selfBtn)
         Goals:SetRaidSetting("resetQuestItems", selfBtn:GetChecked() and true or false)
-    end, "Set quest item winners back to 0 points when they win these items.")
-    self.resetLootWindowCheck = addCheck("Require loot window", function(selfBtn)
+    end, "Set quest item winners to 0 points when they win these items.")
+    self.resetLootWindowCheck = addCheck("Manual mode", function(selfBtn)
         Goals:SetRaidSetting("resetRequiresLootWindow", selfBtn:GetChecked() and true or false)
-    end, "Only apply resets when the loot window is open (prevents accidental resets).")
+    end, "Disable automatic resets unless loot is being assigned.")
 
     addLabel(L.LABEL_MIN_RESET_QUALITY)
     local minDrop = addDropdown("GoalsResetQualityDropdown")
-    attachSideTooltip(minDrop, "Only reset points for loot at or above this quality.")
+    attachSideTooltip(minDrop, "Only reset points for items at or above this quality.")
     self.resetQualityDropdown = minDrop
     self:SetupResetQualityDropdown(minDrop)
 
     y = y - 8
     addSectionHeader("Notes")
 
-    addLabel("Selected")
+    addLabel("Selected entry")
     local selectedValue = createLabel(optionsContent, "None", "GameFontHighlightSmall")
     selectedValue:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
     selectedValue:SetWidth(OPTIONS_CONTROL_WIDTH)
@@ -3264,11 +3525,11 @@ function UI:CreateLootTab(page)
     self.lootNotesSelectedLabel = selectedValue
     y = y - 18
 
-    addLabel("Note")
+    addLabel("Note text")
     local notesBox = CreateFrame("EditBox", nil, optionsContent, "InputBoxTemplate")
     notesBox:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
     styleOptionsEditBox(notesBox, OPTIONS_CONTROL_WIDTH)
-    attachSideTooltip(notesBox, "Write a short note for the selected loot entry.")
+    attachSideTooltip(notesBox, "Add a note for the selected loot entry.")
     notesBox:SetAutoFocus(false)
     bindEscapeClear(notesBox)
     notesBox:SetScript("OnEnterPressed", function(selfBox)
@@ -3389,21 +3650,21 @@ function UI:CreateHistoryTab(page)
     addSectionHeader(L.LABEL_HISTORY_OPTIONS)
     addLabel(L.LABEL_HISTORY_FILTERS)
 
-    local combineCheck = addCheck("Combine boss history", "combineBossHistory",
-        "Group multiple boss kills into a single history entry for a cleaner list.")
+    local combineCheck = addCheck("Group boss kills", "combineBossHistory",
+        "Group multiple boss kills into one history entry.")
     combineCheck:SetScript("OnClick", function(selfBtn)
         Goals:SetRaidSetting("combineBossHistory", selfBtn:GetChecked() and true or false)
         UI:UpdateHistoryList()
     end)
     self.combineCheck = combineCheck
 
-    local encounterCheck = addCheck("Boss encounters", "historyFilterEncounter", "Show boss kill entries.")
-    local pointsCheck = addCheck("Point changes", "historyFilterPoints", "Show point awards, adjustments, and resets.")
-    local buildCheck = addCheck("Wishlist builds", "historyFilterBuild", "Show wishlist build/save entries.")
-    local wishlistStatusCheck = addCheck("Wishlist status", "historyFilterWishlistStatus", "Show wishlist status changes.")
-    local wishlistItemsCheck = addCheck("Wishlist items", "historyFilterWishlistItems", "Show wishlist item add/remove entries.")
-    local lootCheck = addCheck("Loot assignments", "historyFilterLoot", "Show loot assignments and resets.")
-    local syncCheck = addCheck("Sync events", "historyFilterSync", "Show sync send/receive events.")
+    local encounterCheck = addCheck("Show boss kills", "historyFilterEncounter", "Show boss kill entries.")
+    local pointsCheck = addCheck("Show point changes", "historyFilterPoints", "Show point awards, adjustments, and resets.")
+    local buildCheck = addCheck("Show wishlist builds", "historyFilterBuild", "Show wishlist build/save entries.")
+    local wishlistStatusCheck = addCheck("Show wishlist status", "historyFilterWishlistStatus", "Show wishlist status changes.")
+    local wishlistItemsCheck = addCheck("Show wishlist items", "historyFilterWishlistItems", "Show wishlist item add/remove entries.")
+    local lootCheck = addCheck("Show loot assignments", "historyFilterLoot", "Show loot assignments and resets.")
+    local syncCheck = addCheck("Show sync events", "historyFilterSync", "Show sync send/receive events.")
 
     self.historyEncounterCheck = encounterCheck
     self.historyPointsCheck = pointsCheck
@@ -3417,7 +3678,7 @@ function UI:CreateHistoryTab(page)
     addLabel(L.LABEL_HISTORY_LOOT_MIN_QUALITY)
 
     local minQualityDrop = addDropdown("GoalsHistoryMinQuality")
-    attachSideTooltip(minQualityDrop, "Only show history entries with loot at or above this quality.")
+    attachSideTooltip(minQualityDrop, "Only show loot entries at or above this quality.")
     minQualityDrop.options = getQualityOptions()
     UIDropDownMenu_Initialize(minQualityDrop, function(_, level)
         for _, option in ipairs(minQualityDrop.options) do
@@ -3565,6 +3826,19 @@ function UI:CreateWishlistTab(page)
                 setWishlistTabSelected(button, name == key)
             end
         end
+        if key == "options" and self.wishlistOptionsScroll then
+            self.wishlistOptionsScroll:SetVerticalScroll(0)
+            local child = self.wishlistOptionsScroll:GetScrollChild()
+            if child then
+                child:Show()
+            end
+            if self.UpdateWishlistOptionsLayout then
+                self:UpdateWishlistOptionsLayout()
+            end
+        end
+        if self.UpdateTabFooters then
+            self:UpdateTabFooters()
+        end
     end
 
     local function createTabButton(text, key, anchor)
@@ -3644,7 +3918,7 @@ function UI:CreateWishlistTab(page)
     if not self.wishlistHelpFrame then
         local outer = CreateFrame("Frame", "GoalsWishlistHelpOuter", self.frame)
         outer:SetPoint("TOPLEFT", self.frame, "TOPRIGHT", -2, -34)
-        outer:SetPoint("BOTTOMLEFT", self.frame, "BOTTOMRIGHT", -2, 26)
+        outer:SetPoint("BOTTOMLEFT", self.frame, "BOTTOMRIGHT", -2, 26 + FOOTER_BAR_EXTRA)
         outer:SetWidth(260)
         outer:SetBackdrop({
             edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
@@ -3727,7 +4001,7 @@ function UI:CreateWishlistTab(page)
     if not self.wishlistSocketPickerFrame then
         local outer = CreateFrame("Frame", "GoalsWishlistSocketPickerOuter", self.frame)
         outer:SetPoint("TOPLEFT", self.frame, "TOPRIGHT", -2, -34)
-        outer:SetPoint("BOTTOMLEFT", self.frame, "BOTTOMRIGHT", -2, 26)
+        outer:SetPoint("BOTTOMLEFT", self.frame, "BOTTOMRIGHT", -2, 26 + FOOTER_BAR_EXTRA)
         outer:SetWidth(260)
         outer:SetBackdrop({
             edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
@@ -4931,6 +5205,7 @@ function UI:CreateWishlistTab(page)
         Goals.db.settings.wishlistAnnounce = selfCheck:GetChecked() and true or false
         Goals:NotifyDataChanged()
     end)
+    attachSideTooltip(announceCheck, "Post wishlist alerts to chat when items are found.")
     self.wishlistAnnounceCheck = announceCheck
 
     local soundToggle = createSmallIconButton(optionsPopout, 20, "Interface\\Common\\VoiceChat-Speaker")
@@ -4951,9 +5226,9 @@ function UI:CreateWishlistTab(page)
     soundToggle:SetScript("OnEnter", function(selfBtn)
         GameTooltip:SetOwner(selfBtn, "ANCHOR_RIGHT")
         if Goals.db.settings.wishlistPopupSound then
-            GameTooltip:SetText("Sound on")
+            GameTooltip:SetText("Wishlist alert sound: enabled")
         else
-            GameTooltip:SetText("Sound muted")
+            GameTooltip:SetText("Wishlist alert sound: muted")
         end
         GameTooltip:Show()
     end)
@@ -4964,28 +5239,40 @@ function UI:CreateWishlistTab(page)
 
     local disablePopupCheck = CreateFrame("CheckButton", nil, optionsPopout, "UICheckButtonTemplate")
     disablePopupCheck:SetPoint("LEFT", announceCheck, "RIGHT", 120, 0)
-    setCheckText(disablePopupCheck, "Disable popup")
+    setCheckText(disablePopupCheck, "Disable popup alert")
     disablePopupCheck:SetScript("OnClick", function(selfCheck)
         Goals.db.settings.wishlistPopupDisabled = selfCheck:GetChecked() and true or false
         Goals:NotifyDataChanged()
     end)
+    attachSideTooltip(disablePopupCheck, "Disable the on-screen wishlist popup.")
     self.wishlistPopupDisableCheck = disablePopupCheck
 
     local function updateOptionsContentHeight()
+        local scrollWidth = optionsScroll:GetWidth() or 0
+        if scrollWidth > 0 then
+            optionsContent:SetWidth(scrollWidth - 24)
+        end
         local top = optionsContent:GetTop() or 0
         local bottom = disablePopupCheck:GetBottom() or 0
-        if top == 0 or bottom == 0 then
-            return
+        local height = 0
+        if top > 0 and bottom > 0 then
+            height = (top - bottom) + 30
         end
-        local height = (top - bottom) + 30
+        if height <= 0 then
+            height = math.max(optionsScroll:GetHeight() or 0, 160)
+        end
         if height < (optionsScroll:GetHeight() or 0) then
             height = optionsScroll:GetHeight()
         end
         optionsContent:SetHeight(height)
         setScrollBarAlwaysVisible(optionsScroll, height)
     end
-    optionsScroll:SetScript("OnShow", updateOptionsContentHeight)
+    optionsScroll:SetScript("OnShow", function(selfScroll)
+        updateOptionsContentHeight()
+        selfScroll:SetVerticalScroll(0)
+    end)
     optionsScroll:SetScript("OnSizeChanged", updateOptionsContentHeight)
+    self.UpdateWishlistOptionsLayout = updateOptionsContentHeight
 
     self.wishlistChannelDrop = nil
     -- Auto-only announcement channel; no user selection.
@@ -5011,7 +5298,7 @@ function UI:CreateSettingsTab(page)
 
     local settingsTitle = createLabel(leftInset, L.TAB_SETTINGS, "GameFontNormal")
     local settingsBar = applySectionHeader(settingsTitle, leftInset, -6)
-    applySectionCaption(settingsBar, "General toggles")
+    applySectionCaption(settingsBar, "General")
 
     local combineCheck = CreateFrame("CheckButton", nil, leftInset, "UICheckButtonTemplate")
     combineCheck:SetPoint("TOPLEFT", settingsTitle, "BOTTOMLEFT", 0, -10)
@@ -5040,7 +5327,7 @@ function UI:CreateSettingsTab(page)
 
     local localOnlyCheck = CreateFrame("CheckButton", nil, leftInset, "UICheckButtonTemplate")
     localOnlyCheck:SetPoint("TOPLEFT", autoMinCheck, "BOTTOMLEFT", 0, -8)
-    setCheckText(localOnlyCheck, "Disable sync (local only)")
+    setCheckText(localOnlyCheck, "Local-only mode")
     localOnlyCheck:SetScript("OnClick", function(selfBtn)
         Goals.db.settings.localOnly = selfBtn:GetChecked() and true or false
     end)
@@ -5303,11 +5590,10 @@ function UI:CreateDamageTrackerTab(page)
     local tableWidget = createTableWidget(inset, "GoalsDamageTrackerTable", {
         columns = {
             { key = "time", title = "Time", width = DAMAGE_COL_TIME, justify = "LEFT", wrap = false },
-            { key = "player", title = "Player", width = DAMAGE_COL_PLAYER, justify = "LEFT", wrap = false },
-            { key = "flow", title = "Dir", width = DAMAGE_COL_FLOW, justify = "CENTER", wrap = false },
+            { key = "source", title = "Source", width = DAMAGE_COL_SOURCE, justify = "LEFT", wrap = false },
+            { key = "target", title = "Target", width = DAMAGE_COL_TARGET, justify = "LEFT", wrap = false },
             { key = "amount", title = "Amount", width = DAMAGE_COL_AMOUNT, justify = "RIGHT", wrap = false },
-            { key = "spell", title = "Ability", width = DAMAGE_COL_SPELL, justify = "LEFT", wrap = false },
-            { key = "source", title = "Source", fill = true, justify = "LEFT", wrap = false },
+            { key = "spell", title = "Ability", fill = true, justify = "LEFT", wrap = false },
         },
         rowHeight = DAMAGE_ROW_HEIGHT,
         visibleRows = DAMAGE_ROWS,
@@ -5326,11 +5612,10 @@ function UI:CreateDamageTrackerTab(page)
         row:EnableMouse(true)
         if row.cols then
             row.timeText = row.cols.time
-            row.playerText = row.cols.player
-            row.flowText = row.cols.flow
+            row.sourceText = row.cols.source
+            row.targetText = row.cols.target
             row.amountText = row.cols.amount
             row.spellText = row.cols.spell
-            row.sourceText = row.cols.source
         end
 
         local breakBg = row:CreateTexture(nil, "BACKGROUND")
@@ -5363,6 +5648,16 @@ function UI:CreateDamageTrackerTab(page)
         row:SetScript("OnLeave", function()
             if GameTooltip then
                 GameTooltip:Hide()
+            end
+        end)
+        if row.RegisterForClicks then
+            row:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+        end
+        row:SetScript("OnMouseUp", function(selfRow, button)
+            if button == "RightButton" and selfRow.entry and selfRow.entry.kind ~= "BREAK" then
+                if UI and UI.ShowCombatRowMenu then
+                    UI:ShowCombatRowMenu(selfRow.entry, selfRow)
+                end
             end
         end)
     end
@@ -5399,7 +5694,31 @@ function UI:CreateDamageTrackerTab(page)
         return dropdown
     end
 
-    local trackingCheck = addCheck("Enable combat tracking", function(selfBtn)
+    local function addSlider(name, labelText, tooltipText)
+        local label = createLabel(optionsContent, labelText, "GameFontNormalSmall")
+        label:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
+        styleOptionsControlLabel(label)
+        local valueLabel = createLabel(optionsContent, "0%", "GameFontHighlightSmall")
+        valueLabel:SetPoint("TOPRIGHT", optionsContent, "TOPLEFT", 8 + OPTIONS_CONTROL_WIDTH, y)
+        valueLabel:SetJustifyH("RIGHT")
+        if valueLabel.SetTextColor then
+            valueLabel:SetTextColor(1, 1, 1, 1)
+        end
+        if valueLabel.SetWidth then
+            valueLabel:SetWidth(48)
+        end
+        y = y - 18
+
+        local slider = CreateFrame("Slider", name, optionsContent, "OptionsSliderTemplate")
+        slider:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
+        styleOptionsSlider(slider)
+        attachSideTooltip(slider, tooltipText)
+
+        y = y - 28
+        return slider, valueLabel
+    end
+
+    local trackingCheck = addCheck("Enable combat log tracking", function(selfBtn)
         local enabled = selfBtn:GetChecked() and true or false
         if Goals.DamageTracker and Goals.DamageTracker.SetEnabled then
             Goals.DamageTracker:SetEnabled(enabled)
@@ -5412,7 +5731,7 @@ function UI:CreateDamageTrackerTab(page)
         if UI and UI.UpdateCombatDebugStatus then
             UI:UpdateCombatDebugStatus()
         end
-    end, "Track combat log damage/healing events. Disable to save memory when you don't need it.")
+    end, "Record combat log events for the tracker.")
     self.combatLogTrackingCheck = trackingCheck
     y = y - 8
 
@@ -5420,7 +5739,7 @@ function UI:CreateDamageTrackerTab(page)
     addLabel("Show")
 
     local dropdown = addDropdown("GoalsDamageTrackerDropdown")
-    attachSideTooltip(dropdown, "Pick which entries to show in the damage tracker.")
+    attachSideTooltip(dropdown, "Choose which entries to show in the combat tracker.")
     self:SetupDropdown(dropdown, function()
         return self:GetDamageTrackerDropdownList()
     end, function(value)
@@ -5434,53 +5753,99 @@ function UI:CreateDamageTrackerTab(page)
     self.damageTrackerFilter = L.DAMAGE_TRACKER_ALL
     y = y - 8
     addSectionHeader("Tracking")
-    local combatLogHealingCheck = addCheck("Track healing events", function(selfBtn)
-        Goals.db.settings.combatLogHealing = selfBtn:GetChecked() and true or false
-    end, "Include healing events in the combat log tracker.")
-    self.combatLogHealingCheck = combatLogHealingCheck
-
-    local combatLogOutgoingCheck = addCheck("Track damage dealt", function(selfBtn)
-        Goals.db.settings.combatLogTrackOutgoing = selfBtn:GetChecked() and true or false
+    local combatLogHealingCheck = addCheck("Show healing", function(selfBtn)
+        Goals.db.settings.combatLogShowHealing = selfBtn:GetChecked() and true or false
         if Goals.UI and Goals.UI.UpdateDamageTrackerList then
             Goals.UI:UpdateDamageTrackerList()
         end
-    end, "Include damage you deal to enemies (outgoing damage).")
+    end, "Show healing events (incoming, outgoing, and revives).")
+    self.combatLogHealingCheck = combatLogHealingCheck
+
+    local combatLogOutgoingCheck = addCheck("Show damage dealt", function(selfBtn)
+        Goals.db.settings.combatLogShowDamageDealt = selfBtn:GetChecked() and true or false
+        if Goals.UI and Goals.UI.UpdateDamageTrackerList then
+            Goals.UI:UpdateDamageTrackerList()
+        end
+    end, "Show outgoing damage (you -> enemies).")
     self.combatLogOutgoingCheck = combatLogOutgoingCheck
+
+    local combatLogIncomingCheck = addCheck("Show damage received", function(selfBtn)
+        Goals.db.settings.combatLogShowDamageReceived = selfBtn:GetChecked() and true or false
+        if Goals.UI and Goals.UI.UpdateDamageTrackerList then
+            Goals.UI:UpdateDamageTrackerList()
+        end
+    end, "Show incoming damage (enemies -> you).")
+    self.combatLogIncomingCheck = combatLogIncomingCheck
 
     y = y - 8
     addSectionHeader(L.LABEL_DAMAGE_OPTIONS)
 
-    local bigDamageCheck = addCheck("Show big damage", function(selfBtn)
-        Goals.db.settings.combatLogShowBig = selfBtn:GetChecked() and true or false
-        if Goals.UI and Goals.UI.UpdateDamageTrackerList then
-            Goals.UI:UpdateDamageTrackerList()
+    local function clampSliderValue(value)
+        local clamped = math.floor((tonumber(value) or 0) + 0.5)
+        if clamped < 0 then
+            clamped = 0
+        elseif clamped > 100 then
+            clamped = 100
         end
-    end, "Show large damage spikes in the tracker.")
-    self.combatLogBigDamageCheck = bigDamageCheck
+        return clamped
+    end
 
-    local bigHealingCheck = addCheck("Include big healing", function(selfBtn)
-        Goals.db.settings.combatLogBigIncludeHealing = selfBtn:GetChecked() and true or false
+    local bigThresholdSlider, bigThresholdValue = addSlider("GoalsCombatBigThresholdSlider", "Big number threshold", "Set the big number cutoff. 0% shows all numbers; 100% shows only the highest value in each encounter.")
+    bigThresholdSlider:SetScript("OnValueChanged", function(selfSlider, value)
+        local clamped = clampSliderValue(value)
+        if clamped ~= value then
+            selfSlider:SetValue(clamped)
+        end
+        if Goals.db and Goals.db.settings then
+            Goals.db.settings.combatLogBigThreshold = clamped
+        end
+        if bigThresholdValue then
+            bigThresholdValue:SetText(string.format("%d%%", clamped))
+        end
         if Goals.UI and Goals.UI.UpdateDamageTrackerList then
             Goals.UI:UpdateDamageTrackerList()
         end
-    end, "Include large healing events in the tracker list.")
-    self.combatLogBigHealingCheck = bigHealingCheck
+    end)
+    self.combatLogBigThresholdSlider = bigThresholdSlider
+    self.combatLogBigThresholdValue = bigThresholdValue
+
+    local showOverhealCheck = addCheck("Show overheal", function(selfBtn)
+        Goals.db.settings.combatLogShowOverheal = selfBtn:GetChecked() and true or false
+        if Goals.UI and Goals.UI.UpdateDamageTrackerList then
+            Goals.UI:UpdateDamageTrackerList()
+        end
+    end, "Show overheal as +X (Y) in heals.")
+    self.combatLogShowOverhealCheck = showOverhealCheck
 
     local combinePeriodicCheck = addCheck("Combine periodic ticks", function(selfBtn)
         Goals.db.settings.combatLogCombinePeriodic = selfBtn:GetChecked() and true or false
         if Goals.UI and Goals.UI.UpdateDamageTrackerList then
             Goals.UI:UpdateDamageTrackerList()
         end
-    end, "Group repeated periodic ticks into a single entry to reduce spam.")
+    end, "Group periodic ticks into a single entry.")
     self.combatLogCombinePeriodicCheck = combinePeriodicCheck
 
-    local combineAllCheck = addCheck("Combine all damage/heal", function(selfBtn)
+    local combineAllCheck = addCheck("Collapse damage/healing", function(selfBtn)
         Goals.db.settings.combatLogCombineAll = selfBtn:GetChecked() and true or false
         if Goals.UI and Goals.UI.UpdateDamageTrackerList then
             Goals.UI:UpdateDamageTrackerList()
         end
-    end, "Merge all damage/heal entries per player into a single rolling line.")
+    end, "Collapse damage/heal entries per player into one line.")
     self.combatLogCombineAllCheck = combineAllCheck
+
+    y = y - 8
+    addSectionHeader("Broadcast")
+    local broadcastBtn = createOptionsButton(optionsContent)
+    styleOptionsButton(broadcastBtn, OPTIONS_CONTROL_WIDTH)
+    broadcastBtn:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
+    broadcastBtn:SetText("Open broadcast panel")
+    broadcastBtn:SetScript("OnClick", function()
+        if UI and UI.ToggleCombatBroadcastPopout then
+            UI:ToggleCombatBroadcastPopout()
+        end
+    end)
+    attachSideTooltip(broadcastBtn, "Open a panel to send recent combat log lines to chat.")
+    y = y - 28
 
     local clearBtn = createOptionsButton(optionsContent)
     styleOptionsButton(clearBtn, OPTIONS_CONTROL_WIDTH)
@@ -6113,11 +6478,39 @@ function UI:CreateUpdateTab(page)
     local urlLabel = createLabel(inset, L.UPDATE_DOWNLOAD_LABEL, "GameFontNormal")
     urlLabel:SetPoint("TOPLEFT", versionLine, "BOTTOMLEFT", 0, -12)
 
-    local urlText = createLabel(inset, "", "GameFontHighlightSmall")
-    urlText:SetPoint("TOPLEFT", urlLabel, "BOTTOMLEFT", 0, -4)
-    urlText:SetWidth(520)
-    urlText:SetJustifyH("LEFT")
-    self.updateUrlText = urlText
+    local urlBox = CreateFrame("EditBox", "GoalsUpdateUrlBox", inset, "InputBoxTemplate")
+    urlBox:SetPoint("TOPLEFT", urlLabel, "BOTTOMLEFT", -4, -6)
+    urlBox:SetSize(520, OPTIONS_EDITBOX_HEIGHT)
+    urlBox:SetAutoFocus(false)
+    urlBox:SetFontObject("ChatFontNormal")
+    urlBox:SetTextInsets(6, 6, 3, 3)
+    urlBox:SetScript("OnEditFocusGained", function(selfBox)
+        selfBox:HighlightText()
+    end)
+    urlBox:SetScript("OnMouseUp", function(selfBox)
+        if not selfBox:HasFocus() then
+            selfBox:SetFocus()
+        end
+        selfBox:HighlightText()
+    end)
+    urlBox:SetScript("OnEscapePressed", function(selfBox)
+        selfBox:ClearFocus()
+    end)
+    urlBox:SetScript("OnTextChanged", function(selfBox, userInput)
+        if userInput then
+            local locked = selfBox._lockedText or ""
+            if selfBox:GetText() ~= locked then
+                selfBox:SetText(locked)
+                selfBox:HighlightText()
+            end
+        end
+    end)
+    urlBox:SetScript("OnShow", function(selfBox)
+        if selfBox:GetText() ~= "" then
+            selfBox:HighlightText()
+        end
+    end)
+    self.updateUrlText = urlBox
 
     local downloadBtn = CreateFrame("Button", nil, inset, "UIPanelButtonTemplate")
     downloadBtn:SetSize(120, 20)
@@ -6136,10 +6529,13 @@ function UI:CreateUpdateTab(page)
     self.updateDownloadButton = downloadBtn
 
     local copyHint = createLabel(inset, L.UPDATE_COPY_HINT, "GameFontHighlightSmall")
-    copyHint:SetPoint("TOPLEFT", urlText, "BOTTOMLEFT", 0, -6)
+    copyHint:SetPoint("TOPLEFT", urlBox, "BOTTOMLEFT", 4, -6)
+
+    local stepsLabel = createLabel(inset, "Quick steps", "GameFontNormal")
+    stepsLabel:SetPoint("TOPLEFT", copyHint, "BOTTOMLEFT", 0, -12)
 
     local step1 = createLabel(inset, L.UPDATE_STEP1, "GameFontHighlight")
-    step1:SetPoint("TOPLEFT", copyHint, "BOTTOMLEFT", 0, -14)
+    step1:SetPoint("TOPLEFT", stepsLabel, "BOTTOMLEFT", 0, -6)
     step1:SetWidth(520)
     step1:SetJustifyH("LEFT")
 
@@ -6666,6 +7062,475 @@ function UI:CreateDebugTab(page)
         end
     end)
     self.debugCopyBox = edit
+end
+
+function UI:EnsureCombatWhisperPopup()
+    if not StaticPopupDialogs or StaticPopupDialogs.GOALS_COMBAT_WHISPER then
+        return
+    end
+    StaticPopupDialogs.GOALS_COMBAT_WHISPER = {
+        text = "Whisper target",
+        button1 = "Send",
+        button2 = "Cancel",
+        hasEditBox = 1,
+        maxLetters = 64,
+        timeout = 0,
+        whileDead = 1,
+        hideOnEscape = 1,
+        OnShow = function(selfPopup, data)
+            local target = data and data.target or ""
+            selfPopup.editBox:SetText(target or "")
+            selfPopup.editBox:SetFocus()
+            selfPopup.editBox:HighlightText()
+        end,
+        OnAccept = function(selfPopup, data)
+            local target = selfPopup.editBox:GetText()
+            if target and target ~= "" and data and data.entry and Goals and Goals.UI and Goals.UI.SendCombatEntryToChannel then
+                if Goals.db and Goals.db.settings then
+                    Goals.db.settings.combatLogBroadcastWhisperTarget = target
+                end
+                Goals.UI:SendCombatEntryToChannel(data.entry, "WHISPER", target)
+            end
+        end,
+        EditBoxOnEnterPressed = function(selfPopup)
+            local parent = selfPopup:GetParent()
+            local target = selfPopup:GetText()
+            local data = parent and parent.data or nil
+            if target and target ~= "" and data and data.entry and Goals and Goals.UI and Goals.UI.SendCombatEntryToChannel then
+                if Goals.db and Goals.db.settings then
+                    Goals.db.settings.combatLogBroadcastWhisperTarget = target
+                end
+                Goals.UI:SendCombatEntryToChannel(data.entry, "WHISPER", target)
+            end
+            parent:Hide()
+        end,
+    }
+end
+
+function UI:ShowCombatWhisperPopup(entry, defaultTarget)
+    self:EnsureCombatWhisperPopup()
+    if StaticPopup_Show then
+        StaticPopup_Show("GOALS_COMBAT_WHISPER", nil, nil, { entry = entry, target = defaultTarget })
+    end
+end
+
+function UI:SendCombatEntryToChannel(entry, channel, target)
+    local line = self:FormatCombatBroadcastLine(entry)
+    if not line or line == "" then
+        return
+    end
+    if channel == "WHISPER_TARGET" then
+        if UnitExists and UnitExists("target") and UnitIsPlayer and UnitIsPlayer("target") then
+            target = UnitName and UnitName("target") or target
+            channel = "WHISPER"
+        end
+    end
+    self:SendCombatChatLine(line, channel, target)
+end
+
+function UI:ShowCombatRowMenu(entry, anchor)
+    if not entry then
+        return
+    end
+    if not self.combatRowMenu then
+        self.combatRowMenu = CreateFrame("Frame", "GoalsCombatRowMenu", UIParent, "UIDropDownMenuTemplate")
+    end
+    local menu = self.combatRowMenu
+    menu.entry = entry
+    local preview = self:FormatCombatBroadcastLine(entry)
+    UIDropDownMenu_Initialize(menu, function(_, level)
+        if level == 1 then
+            local info = UIDropDownMenu_CreateInfo()
+            info.isTitle = true
+            info.text = "Send To..."
+            UIDropDownMenu_AddButton(info, level)
+
+            local inRaid = Goals and Goals.IsInRaid and Goals:IsInRaid()
+            local inParty = Goals and Goals.IsInParty and Goals:IsInParty() and (GetNumPartyMembers and GetNumPartyMembers() > 0)
+            local isLeader = Goals and Goals.IsGroupLeader and Goals:IsGroupLeader()
+
+            if inRaid then
+                if isLeader then
+                    info = UIDropDownMenu_CreateInfo()
+                    info.text = "Raid"
+                    info.value = "RAID_MENU"
+                    info.hasArrow = true
+                    info.tooltipTitle = "Raid"
+                    info.tooltipText = preview
+                    UIDropDownMenu_AddButton(info, level)
+                else
+                    info = UIDropDownMenu_CreateInfo()
+                    info.text = "Raid"
+                    info.func = function() UI:SendCombatEntryToChannel(entry, "RAID") end
+                    info.tooltipTitle = "Raid"
+                    info.tooltipText = preview
+                    UIDropDownMenu_AddButton(info, level)
+                end
+            end
+
+            if inParty then
+                info = UIDropDownMenu_CreateInfo()
+                info.text = "Party"
+                info.func = function() UI:SendCombatEntryToChannel(entry, "PARTY") end
+                info.tooltipTitle = "Party"
+                info.tooltipText = preview
+                UIDropDownMenu_AddButton(info, level)
+            end
+
+            info = UIDropDownMenu_CreateInfo()
+            info.text = "Local"
+            info.func = function() UI:SendCombatEntryToChannel(entry, "SAY") end
+            info.tooltipTitle = "Local"
+            info.tooltipText = preview
+            UIDropDownMenu_AddButton(info, level)
+
+            if IsInGuild and IsInGuild() then
+                info = UIDropDownMenu_CreateInfo()
+                info.text = "Guild"
+                info.func = function() UI:SendCombatEntryToChannel(entry, "GUILD") end
+                info.tooltipTitle = "Guild"
+                info.tooltipText = preview
+                UIDropDownMenu_AddButton(info, level)
+            end
+
+            if UnitExists and UnitExists("target") and UnitIsPlayer and UnitIsPlayer("target") then
+                info = UIDropDownMenu_CreateInfo()
+                info.text = "Whisper Target"
+                info.func = function() UI:SendCombatEntryToChannel(entry, "WHISPER_TARGET") end
+                info.tooltipTitle = "Whisper Target"
+                info.tooltipText = preview
+                UIDropDownMenu_AddButton(info, level)
+            end
+
+            info = UIDropDownMenu_CreateInfo()
+            info.text = "Whisper..."
+            info.func = function() UI:ShowCombatWhisperPopup(entry, Goals.db.settings.combatLogBroadcastWhisperTarget or "") end
+            info.tooltipTitle = "Whisper..."
+            info.tooltipText = preview
+            UIDropDownMenu_AddButton(info, level)
+        elseif level == 2 and UIDROPDOWNMENU_MENU_VALUE == "RAID_MENU" then
+            local info = UIDropDownMenu_CreateInfo()
+            info.text = "Raid"
+            info.func = function() UI:SendCombatEntryToChannel(entry, "RAID") end
+            info.tooltipTitle = "Raid"
+            info.tooltipText = preview
+            UIDropDownMenu_AddButton(info, level)
+
+            info = UIDropDownMenu_CreateInfo()
+            info.text = "Raid Warning"
+            info.func = function() UI:SendCombatEntryToChannel(entry, "RAID_WARNING") end
+            info.tooltipTitle = "Raid Warning"
+            info.tooltipText = preview
+            UIDropDownMenu_AddButton(info, level)
+        end
+    end)
+    ToggleDropDownMenu(1, nil, menu, anchor, 0, 0)
+end
+
+function UI:CreateCombatBroadcastPopout()
+    if self.combatBroadcastPopout then
+        return
+    end
+    local frame = CreateFrame("Frame", "GoalsCombatBroadcastPopout", UIParent, "GoalsInsetTemplate")
+    applyInsetTheme(frame)
+    frame:SetSize(OPTIONS_PANEL_WIDTH, 200)
+    frame.baseHeight = 170
+    frame.whisperExtra = 44
+    if self.frame then
+        frame:SetPoint("TOPLEFT", self.frame, "TOPRIGHT", -2, -34)
+    else
+        frame:SetPoint("CENTER")
+    end
+    frame:SetFrameStrata("DIALOG")
+    frame:SetClampedToScreen(true)
+    frame:Hide()
+    self.combatBroadcastPopout = frame
+
+    local title = createLabel(frame, "Combat Broadcast", "GameFontNormal")
+    title:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, -8)
+
+    local close = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
+    close:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -4, -4)
+    close:SetScript("OnClick", function()
+        frame:Hide()
+    end)
+
+    local y = -32
+    local sendLabel = createLabel(frame, "Send to", "GameFontNormalSmall")
+    sendLabel:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, y)
+    styleOptionsControlLabel(sendLabel)
+    y = y - 18
+
+    local dropdown = CreateFrame("Frame", "GoalsCombatBroadcastChannelDropdown", frame, "UIDropDownMenuTemplate")
+    dropdown:SetPoint("TOPLEFT", frame, "TOPLEFT", -4, y)
+    styleDropdown(dropdown, OPTIONS_CONTROL_WIDTH)
+    self:SetupCombatBroadcastDropdown(dropdown)
+    self.combatBroadcastChannelDropdown = dropdown
+    y = y - 36
+    frame.broadcastYAfterDropdown = y
+
+    local whisperLabel = createLabel(frame, "Whisper target", "GameFontNormalSmall")
+    whisperLabel:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, y)
+    styleOptionsControlLabel(whisperLabel)
+    local whisperBox = CreateFrame("EditBox", "GoalsCombatBroadcastWhisperBox", frame, "InputBoxTemplate")
+    whisperBox:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, y - 18)
+    whisperBox:SetAutoFocus(false)
+    whisperBox:SetText(Goals.db.settings.combatLogBroadcastWhisperTarget or "")
+    styleOptionsEditBox(whisperBox, OPTIONS_CONTROL_WIDTH)
+    self.combatBroadcastWhisperLabel = whisperLabel
+    self.combatBroadcastWhisperBox = whisperBox
+    y = y - 54
+    frame.broadcastYAfterWhisper = y
+
+    local countLabel = createLabel(frame, "Lines to send", "GameFontNormalSmall")
+    countLabel:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, y)
+    styleOptionsControlLabel(countLabel)
+    local countValue = createLabel(frame, "9", "GameFontHighlightSmall")
+    countValue:SetPoint("TOPRIGHT", frame, "TOPLEFT", 10 + OPTIONS_CONTROL_WIDTH, y)
+    countValue:SetJustifyH("RIGHT")
+    y = y - 18
+
+    local countSlider = CreateFrame("Slider", "GoalsCombatBroadcastCountSlider", frame, "OptionsSliderTemplate")
+    countSlider:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, y)
+    styleOptionsSlider(countSlider)
+    countSlider:SetMinMaxValues(0, 9)
+    countSlider:SetValueStep(1)
+    if countSlider.SetObeyStepOnDrag then
+        countSlider:SetObeyStepOnDrag(true)
+    end
+    self.combatBroadcastCountSlider = countSlider
+    self.combatBroadcastCountValue = countValue
+    y = y - 28
+
+    local sendBtn = createOptionsButton(frame)
+    styleOptionsButton(sendBtn, OPTIONS_CONTROL_WIDTH)
+    sendBtn:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, y)
+    sendBtn:SetText("Send")
+    sendBtn:SetScript("OnClick", function()
+        local channel = Goals.db.settings.combatLogBroadcastChannel or "SAY"
+        local count = Goals.db.settings.combatLogBroadcastCount or 9
+        local target = Goals.db.settings.combatLogBroadcastWhisperTarget or ""
+        if channel == "WHISPER" then
+            if self.combatBroadcastWhisperBox then
+                target = self.combatBroadcastWhisperBox:GetText() or ""
+                Goals.db.settings.combatLogBroadcastWhisperTarget = target
+            end
+            if target == "" then
+                if Goals and Goals.Print then
+                    Goals:Print("Enter a whisper target.")
+                end
+                return
+            end
+        elseif channel == "WHISPER_TARGET" then
+            if UnitExists and UnitExists("target") and UnitIsPlayer and UnitIsPlayer("target") then
+                target = UnitName and UnitName("target") or target
+            else
+                if Goals and Goals.Print then
+                    Goals:Print("No whisper target selected.")
+                end
+                return
+            end
+            channel = "WHISPER"
+        end
+        self:SendCombatBroadcastLines(channel, target, count)
+    end)
+    attachSideTooltip(sendBtn, "Send recent combat log lines to the selected chat.")
+
+    countSlider:SetScript("OnValueChanged", function(selfSlider, value)
+        local val = math.floor((tonumber(value) or 0) + 0.5)
+        if val < 0 then
+            val = 0
+        elseif val > 9 then
+            val = 9
+        end
+        Goals.db.settings.combatLogBroadcastCount = val
+        if countValue then
+            countValue:SetText(string.format("%d", val))
+        end
+    end)
+
+    local count = tonumber(Goals.db.settings.combatLogBroadcastCount) or 9
+    if count < 0 then
+        count = 0
+    elseif count > 9 then
+        count = 9
+    end
+    Goals.db.settings.combatLogBroadcastCount = count
+    countSlider:SetValue(count)
+
+    self:RefreshCombatBroadcastDropdown()
+    self:UpdateCombatBroadcastLayout()
+
+    self.combatBroadcastCountLabel = countLabel
+    self.combatBroadcastCountValue = countValue
+    self.combatBroadcastCountSlider = countSlider
+    self.combatBroadcastSendButton = sendBtn
+end
+
+function UI:ToggleCombatBroadcastPopout()
+    if not self.combatBroadcastPopout then
+        self:CreateCombatBroadcastPopout()
+    end
+    if not self.combatBroadcastPopout then
+        return
+    end
+    if self.combatBroadcastPopout:IsShown() then
+        self.combatBroadcastPopout:Hide()
+    else
+        self.combatBroadcastPopout:Show()
+        self:RefreshCombatBroadcastDropdown()
+        self:UpdateCombatBroadcastLayout()
+    end
+end
+
+function UI:GetCombatBroadcastOptions()
+    local options = {}
+    local function add(label, value, target)
+        table.insert(options, { label = label, value = value, target = target })
+    end
+    add("Local", "SAY")
+    if Goals and Goals.IsInParty and Goals:IsInParty() then
+        if GetNumPartyMembers and GetNumPartyMembers() > 0 then
+            add("Party", "PARTY")
+        end
+    end
+    if Goals and Goals.IsInRaid and Goals:IsInRaid() then
+        add("Raid", "RAID")
+        if Goals.IsGroupLeader and Goals:IsGroupLeader() then
+            add("Raid Warning", "RAID_WARNING")
+        end
+    end
+    if IsInGuild and IsInGuild() then
+        add("Guild", "GUILD")
+    end
+    if UnitExists and UnitExists("target") and UnitIsPlayer and UnitIsPlayer("target") then
+        local targetName = UnitName and UnitName("target") or nil
+        if targetName and targetName ~= "" then
+            add("Whisper Target", "WHISPER_TARGET", targetName)
+        end
+    end
+    add("Whisper", "WHISPER")
+    return options
+end
+
+function UI:SetupCombatBroadcastDropdown(dropdown)
+    if not dropdown then
+        return
+    end
+    UIDropDownMenu_Initialize(dropdown, function(_, level)
+        local options = self:GetCombatBroadcastOptions()
+        for _, option in ipairs(options) do
+            local info = UIDropDownMenu_CreateInfo()
+            info.text = option.label
+            info.value = option.value
+            info.func = function()
+                Goals.db.settings.combatLogBroadcastChannel = option.value
+                if option.value == "WHISPER_TARGET" and option.target then
+                    Goals.db.settings.combatLogBroadcastWhisperTarget = option.target
+                end
+                UIDropDownMenu_SetSelectedValue(dropdown, option.value)
+                self:SetDropdownText(dropdown, option.label)
+                if self.combatBroadcastWhisperBox then
+                    if option.value == "WHISPER" then
+                        self.combatBroadcastWhisperBox:Show()
+                        if self.combatBroadcastWhisperLabel then
+                            self.combatBroadcastWhisperLabel:Show()
+                        end
+                    else
+                        self.combatBroadcastWhisperBox:Hide()
+                        if self.combatBroadcastWhisperLabel then
+                            self.combatBroadcastWhisperLabel:Hide()
+                        end
+                    end
+                end
+                if self.UpdateCombatBroadcastLayout then
+                    self:UpdateCombatBroadcastLayout()
+                end
+            end
+            info.checked = Goals.db.settings.combatLogBroadcastChannel == option.value
+            UIDropDownMenu_AddButton(info, level)
+        end
+    end)
+end
+
+function UI:RefreshCombatBroadcastDropdown()
+    local dropdown = self.combatBroadcastChannelDropdown
+    if not dropdown then
+        return
+    end
+    local options = self:GetCombatBroadcastOptions()
+    local selected = Goals.db.settings.combatLogBroadcastChannel or "SAY"
+    local selectedLabel = nil
+    local whisperTarget = Goals.db.settings.combatLogBroadcastWhisperTarget or ""
+    for _, option in ipairs(options) do
+        if option.value == selected then
+            selectedLabel = option.label
+            if option.value == "WHISPER_TARGET" and option.target then
+                whisperTarget = option.target
+            end
+            break
+        end
+    end
+    if not selectedLabel and options[1] then
+        selected = options[1].value
+        selectedLabel = options[1].label
+    end
+    Goals.db.settings.combatLogBroadcastChannel = selected
+    if whisperTarget ~= "" then
+        Goals.db.settings.combatLogBroadcastWhisperTarget = whisperTarget
+    end
+    UIDropDownMenu_SetSelectedValue(dropdown, selected)
+    self:SetDropdownText(dropdown, selectedLabel or L.SELECT_OPTION)
+    if self.combatBroadcastWhisperBox then
+        if selected == "WHISPER" then
+            self.combatBroadcastWhisperBox:Show()
+            if self.combatBroadcastWhisperLabel then
+                self.combatBroadcastWhisperLabel:Show()
+            end
+        else
+            self.combatBroadcastWhisperBox:Hide()
+            if self.combatBroadcastWhisperLabel then
+                self.combatBroadcastWhisperLabel:Hide()
+            end
+        end
+    end
+    if self.UpdateCombatBroadcastLayout then
+        self:UpdateCombatBroadcastLayout()
+    end
+end
+
+function UI:UpdateCombatBroadcastLayout()
+    if not self.combatBroadcastPopout then
+        return
+    end
+    local frame = self.combatBroadcastPopout
+    local showWhisper = self.combatBroadcastWhisperBox and self.combatBroadcastWhisperBox:IsShown()
+    local height = frame.baseHeight or 170
+    if showWhisper then
+        height = height + (frame.whisperExtra or 44)
+    end
+    frame:SetHeight(height)
+
+    local countY = frame.broadcastYAfterDropdown or -86
+    if showWhisper then
+        countY = frame.broadcastYAfterWhisper or countY
+    end
+    if self.combatBroadcastCountLabel then
+        self.combatBroadcastCountLabel:ClearAllPoints()
+        self.combatBroadcastCountLabel:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, countY)
+    end
+    if self.combatBroadcastCountValue then
+        self.combatBroadcastCountValue:ClearAllPoints()
+        self.combatBroadcastCountValue:SetPoint("TOPRIGHT", frame, "TOPLEFT", 10 + OPTIONS_CONTROL_WIDTH, countY)
+    end
+    if self.combatBroadcastCountSlider then
+        self.combatBroadcastCountSlider:ClearAllPoints()
+        self.combatBroadcastCountSlider:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, countY - 18)
+    end
+    if self.combatBroadcastSendButton then
+        self.combatBroadcastSendButton:ClearAllPoints()
+        self.combatBroadcastSendButton:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, countY - 46)
+    end
 end
 
 function UI:UpdateCombatDebugStatus()
@@ -7263,27 +8128,216 @@ function UI:FormatDamageTrackerEntry(entry)
     if not entry then
         return ""
     end
+    local function truncateName(name, maxLen)
+        if not name or name == "" then
+            return name or ""
+        end
+        local limit = tonumber(maxLen) or 0
+        if limit < 4 then
+            return name
+        end
+        if string.len(name) > limit then
+            return string.sub(name, 1, limit - 3) .. "..."
+        end
+        return name
+    end
+
+    local function isPlayerName(name)
+        if not name or name == "" then
+            return false
+        end
+        if Goals and Goals.NormalizeName and Goals.DamageTracker and Goals.DamageTracker.rosterNameMap then
+            local normalized = Goals:NormalizeName(name)
+            return Goals.DamageTracker.rosterNameMap[normalized] and true or false
+        end
+        if Goals and Goals.GetPlayerName and Goals.NormalizeName then
+            return Goals:NormalizeName(name) == Goals:NormalizeName(Goals:GetPlayerName())
+        end
+        return false
+    end
+
+    local function fitName(name)
+        if isPlayerName(name) then
+            return truncateName(name, DAMAGE_NAME_MAX_PLAYER)
+        end
+        return truncateName(name, DAMAGE_NAME_MAX_NPC)
+    end
+
     local ts = formatCombatTimestamp(entry.ts)
     local player = entry.player or "Unknown"
     local kind = entry.kind or "DAMAGE"
+    local sourceName = ""
+    local targetName = ""
+    if kind == "DAMAGE" then
+        sourceName = entry.source or "Unknown"
+        targetName = player
+    elseif kind == "DAMAGE_OUT" then
+        sourceName = player
+        targetName = entry.source or "Unknown"
+    elseif kind == "HEAL" then
+        sourceName = entry.source or "Unknown"
+        targetName = player
+    elseif kind == "HEAL_OUT" then
+        sourceName = player
+        targetName = entry.source or "Unknown"
+    elseif kind == "RES" then
+        sourceName = entry.source or "Unknown"
+        targetName = player
+    elseif kind == "DEATH" then
+        sourceName = ""
+        targetName = player
+    end
+    sourceName = fitName(sourceName)
+    targetName = fitName(targetName)
     if kind == "DEATH" then
-        return string.format("%s | %s | Died | |", ts, player)
+        return string.format("%s | %s | %s | Died |", ts, sourceName, targetName)
     end
     if kind == "RES" then
         local spell = entry.spell or "Unknown"
-        local source = entry.source or "Unknown"
-        return string.format("%s | %s | Revived | %s | %s", ts, player, spell, source)
+        local amount = math.floor(tonumber(entry.amount) or 0)
+        if amount > 0 then
+            return string.format("%s | %s | %s | Revived +%d | %s", ts, sourceName, targetName, amount, spell)
+        end
+        return string.format("%s | %s | %s | Revived | %s", ts, sourceName, targetName, spell)
     end
     local amount = math.floor(tonumber(entry.amount) or 0)
     local spell = entry.spell or "Unknown"
-    local source = entry.source or "Unknown"
+    local showOverheal = Goals and Goals.db and Goals.db.settings and Goals.db.settings.combatLogShowOverheal
+    if showOverheal == nil then
+        showOverheal = true
+    end
     if kind == "HEAL" then
-        return string.format("%s | %s | +%d | %s | %s", ts, player, amount, spell, source)
+        local overheal = math.floor(tonumber(entry.overheal) or 0)
+        if showOverheal and overheal > 0 then
+            return string.format("%s | %s | %s | +%d (%d) | %s", ts, sourceName, targetName, amount, overheal, spell)
+        end
+        return string.format("%s | %s | %s | +%d | %s", ts, sourceName, targetName, amount, spell)
+    end
+    if kind == "HEAL_OUT" then
+        local overheal = math.floor(tonumber(entry.overheal) or 0)
+        if showOverheal and overheal > 0 then
+            return string.format("%s | %s | %s | +%d (%d) | %s", ts, sourceName, targetName, amount, overheal, spell)
+        end
+        return string.format("%s | %s | %s | +%d | %s", ts, sourceName, targetName, amount, spell)
     end
     if kind == "DAMAGE_OUT" then
-        return string.format("%s | %s | -%d | %s | %s", ts, player, amount, spell, source)
+        return string.format("%s | %s | %s | -%d | %s", ts, sourceName, targetName, amount, spell)
     end
-    return string.format("%s | %s | -%d | %s | %s", ts, player, amount, spell, source)
+    return string.format("%s | %s | %s | -%d | %s", ts, sourceName, targetName, amount, spell)
+end
+
+function UI:GetCombatEntrySourceTarget(entry)
+    if not entry then
+        return "", ""
+    end
+    local kind = entry.kind or "DAMAGE"
+    if kind == "DAMAGE" then
+        return entry.source or "Unknown", entry.player or "Unknown"
+    end
+    if kind == "DAMAGE_OUT" then
+        return entry.player or "Unknown", entry.source or "Unknown"
+    end
+    if kind == "HEAL" then
+        return entry.source or "Unknown", entry.player or "Unknown"
+    end
+    if kind == "HEAL_OUT" then
+        return entry.player or "Unknown", entry.source or "Unknown"
+    end
+    if kind == "RES" then
+        return entry.source or "Unknown", entry.player or "Unknown"
+    end
+    if kind == "DEATH" then
+        return "", entry.player or "Unknown"
+    end
+    return entry.source or "Unknown", entry.player or "Unknown"
+end
+
+function UI:FormatCombatBroadcastLine(entry)
+    if not entry or entry.kind == "BREAK" then
+        return nil
+    end
+    local sourceName, targetName = self:GetCombatEntrySourceTarget(entry)
+    local showOverheal = Goals and Goals.db and Goals.db.settings and Goals.db.settings.combatLogShowOverheal
+    if showOverheal == nil then
+        showOverheal = true
+    end
+    local amount = math.floor(tonumber(entry.amount) or 0)
+    local overheal = math.floor(tonumber(entry.overheal) or 0)
+    local spell = entry.spell or "Unknown"
+    local kind = entry.kind or "DAMAGE"
+    local prefix = ""
+    if sourceName ~= "" then
+        prefix = sourceName .. " -> " .. (targetName ~= "" and targetName or "Unknown")
+    else
+        prefix = targetName ~= "" and targetName or "Unknown"
+    end
+    local amountText = ""
+    local abilityText = spell
+    if kind == "HEAL" or kind == "HEAL_OUT" then
+        amountText = string.format("+%d", amount)
+        if showOverheal and overheal > 0 then
+            amountText = string.format("+%d (%d)", amount, overheal)
+        end
+    elseif kind == "RES" then
+        if amount > 0 then
+            amountText = string.format("Revived +%d", amount)
+        else
+            amountText = "Revived"
+        end
+    elseif kind == "DEATH" then
+        amountText = "Died"
+        abilityText = ""
+    else
+        amountText = string.format("-%d", amount)
+    end
+    if abilityText ~= "" then
+        return string.format("%s %s %s", prefix, amountText, abilityText)
+    end
+    return string.format("%s %s", prefix, amountText)
+end
+
+function UI:SendCombatChatLine(line, channel, target)
+    if not line or line == "" then
+        return
+    end
+    if not SendChatMessage then
+        return
+    end
+    if channel == "WHISPER" then
+        if target and target ~= "" then
+            SendChatMessage(line, "WHISPER", nil, target)
+        end
+        return
+    end
+    SendChatMessage(line, channel)
+end
+
+function UI:SendCombatBroadcastLines(channel, target, count)
+    local tracker = Goals and Goals.DamageTracker
+    if not tracker or not tracker.GetFilteredEntries then
+        return
+    end
+    local filter = self.damageTrackerFilter or L.DAMAGE_TRACKER_ALL
+    local data = tracker:GetFilteredEntries(filter) or {}
+    local limit = tonumber(count) or 0
+    if limit < 0 then
+        limit = 0
+    end
+    local lines = {}
+    for _, entry in ipairs(data) do
+        if entry and entry.kind ~= "BREAK" then
+            local line = self:FormatCombatBroadcastLine(entry)
+            if line and line ~= "" then
+                table.insert(lines, line)
+                if limit > 0 and #lines >= limit then
+                    break
+                end
+            end
+        end
+    end
+    for i = #lines, 1, -1 do
+        self:SendCombatChatLine(lines[i], channel, target)
+    end
 end
 
 function UI:UpdateDamageTrackerList()
@@ -7296,6 +8350,67 @@ function UI:UpdateDamageTrackerList()
     local offset = FauxScrollFrame_GetOffset(self.damageTrackerScroll) or 0
     FauxScrollFrame_Update(self.damageTrackerScroll, #data, DAMAGE_ROWS, DAMAGE_ROW_HEIGHT)
     setScrollBarAlwaysVisible(self.damageTrackerScroll, #data * DAMAGE_ROW_HEIGHT)
+    local showOverheal = Goals and Goals.db and Goals.db.settings and Goals.db.settings.combatLogShowOverheal
+    if showOverheal == nil then
+        showOverheal = true
+    end
+    local function setNameText(font, name, r, g, b)
+        if not font then
+            return
+        end
+        font:SetText(name or "")
+        if r and g and b then
+            font:SetTextColor(r, g, b)
+        else
+            font:SetTextColor(1, 1, 1)
+        end
+    end
+
+    local function getPlayerColor(name)
+        if Goals and Goals.GetPlayerColor and name and name ~= "" then
+            local pr, pg, pb = Goals:GetPlayerColor(name)
+            if pr and pg and pb then
+                return pr, pg, pb
+            end
+        end
+        return 1, 1, 1
+    end
+
+    local function truncateName(name, maxLen)
+        if not name or name == "" then
+            return name or ""
+        end
+        local limit = tonumber(maxLen) or 0
+        if limit < 4 then
+            return name
+        end
+        if string.len(name) > limit then
+            return string.sub(name, 1, limit - 3) .. "..."
+        end
+        return name
+    end
+
+    local function isPlayerName(name)
+        if not name or name == "" then
+            return false
+        end
+        if Goals and Goals.NormalizeName and Goals.DamageTracker and Goals.DamageTracker.rosterNameMap then
+            local normalized = Goals:NormalizeName(name)
+            return Goals.DamageTracker.rosterNameMap[normalized] and true or false
+        end
+        if Goals and Goals.GetPlayerName and Goals.NormalizeName then
+            return Goals:NormalizeName(name) == Goals:NormalizeName(Goals:GetPlayerName())
+        end
+        return false
+    end
+
+    local function fitName(name)
+        if isPlayerName(name) then
+            return truncateName(name, DAMAGE_NAME_MAX_PLAYER)
+        end
+        return truncateName(name, DAMAGE_NAME_MAX_NPC)
+    end
+
     for i = 1, DAMAGE_ROWS do
         local row = self.damageTrackerRows[i]
         local entry = data[offset + i]
@@ -7317,13 +8432,14 @@ function UI:UpdateDamageTrackerList()
                 row.breakText:SetText(label)
                 row.breakText:SetTextColor(0.9, 0.9, 0.9)
                 row.timeText:SetText("")
-                row.playerText:SetText("")
-                if row.flowText then
-                    row.flowText:SetText("")
+                if row.sourceText then
+                    row.sourceText:SetText("")
+                end
+                if row.targetText then
+                    row.targetText:SetText("")
                 end
                 row.amountText:SetText("")
                 row.spellText:SetText("")
-                row.sourceText:SetText("")
             else
                 setShown(row.breakBg, false)
                 setShown(row.breakText, false)
@@ -7331,77 +8447,132 @@ function UI:UpdateDamageTrackerList()
                     setShown(row.stripe, ((offset + i) % 2) == 0)
                 end
                 row.timeText:SetText(formatCombatTimestamp(entry.ts))
-
-                local playerName = entry.player or "Unknown"
-                row.playerText:SetText(playerName)
-                local pr, pg, pb = Goals:GetPlayerColor(playerName)
-                row.playerText:SetTextColor(pr, pg, pb)
-
                 local kind = entry.kind or "DAMAGE"
+                local sourceName = ""
+                local targetName = ""
+                local sourceColorR, sourceColorG, sourceColorB = 1, 1, 1
+                local targetColorR, targetColorG, targetColorB = 1, 1, 1
+
+                if kind == "DAMAGE" then
+                    sourceName = entry.source or "Unknown"
+                    targetName = entry.player or "Unknown"
+                    sourceColorR, sourceColorG, sourceColorB = getSourceColor(entry)
+                    targetColorR, targetColorG, targetColorB = getPlayerColor(targetName)
+                elseif kind == "DAMAGE_OUT" then
+                    sourceName = entry.player or "Unknown"
+                    targetName = entry.source or "Unknown"
+                    sourceColorR, sourceColorG, sourceColorB = getPlayerColor(sourceName)
+                    targetColorR, targetColorG, targetColorB = getSourceColor(entry)
+                elseif kind == "HEAL" then
+                    sourceName = entry.source or "Unknown"
+                    targetName = entry.player or "Unknown"
+                    sourceColorR, sourceColorG, sourceColorB = getPlayerColor(sourceName)
+                    targetColorR, targetColorG, targetColorB = getPlayerColor(targetName)
+                elseif kind == "HEAL_OUT" then
+                    sourceName = entry.player or "Unknown"
+                    targetName = entry.source or "Unknown"
+                    sourceColorR, sourceColorG, sourceColorB = getPlayerColor(sourceName)
+                    targetColorR, targetColorG, targetColorB = getPlayerColor(targetName)
+                elseif kind == "RES" then
+                    sourceName = entry.source or "Unknown"
+                    targetName = entry.player or "Unknown"
+                    sourceColorR, sourceColorG, sourceColorB = getSourceColor(entry)
+                    targetColorR, targetColorG, targetColorB = getPlayerColor(targetName)
+                elseif kind == "DEATH" then
+                    sourceName = ""
+                    targetName = entry.player or "Unknown"
+                    targetColorR, targetColorG, targetColorB = getPlayerColor(targetName)
+                end
+
+                sourceName = fitName(sourceName)
+                targetName = fitName(targetName)
+
+                setNameText(row.sourceText, sourceName, sourceColorR, sourceColorG, sourceColorB)
+                setNameText(row.targetText, targetName, targetColorR, targetColorG, targetColorB)
+
                 if kind == "DEATH" then
-                    if row.flowText then
-                        row.flowText:SetText("")
-                    end
+                if row.amountText then
                     row.amountText:SetText("Died")
                     row.amountText:SetTextColor(DEATH_COLOR[1], DEATH_COLOR[2], DEATH_COLOR[3])
-                    row.spellText:SetText("")
-                    row.sourceText:SetText("")
-                    row.sourceText:SetTextColor(1, 1, 1)
-            elseif kind == "RES" then
-                if row.flowText then
-                    row.flowText:SetText("")
                 end
-                row.amountText:SetText("Revived")
-                row.amountText:SetTextColor(REVIVE_COLOR[1], REVIVE_COLOR[2], REVIVE_COLOR[3])
-                row.spellText:SetText(entry.spell or "")
-                row.sourceText:SetText(entry.source or "")
-                local sr, sg, sb = getSourceColor(entry)
-                row.sourceText:SetTextColor(sr, sg, sb)
+                if row.spellText then
+                    row.spellText:SetText("")
+                end
+            elseif kind == "RES" then
+                local amount = math.floor(tonumber(entry.amount) or 0)
+                if row.amountText then
+                    if amount > 0 then
+                        row.amountText:SetText(string.format("Revived +%d", amount))
+                    else
+                        row.amountText:SetText("Revived")
+                    end
+                    row.amountText:SetTextColor(REVIVE_COLOR[1], REVIVE_COLOR[2], REVIVE_COLOR[3])
+                end
+                if row.spellText then
+                    row.spellText:SetText(entry.spell or "")
+                end
             elseif kind == "HEAL" then
                 local amount = math.floor(tonumber(entry.amount) or 0)
-                if row.flowText then
-                    row.flowText:SetText("<-")
+                local overheal = math.floor(tonumber(entry.overheal) or 0)
+                if row.amountText then
+                    if showOverheal and overheal > 0 then
+                        row.amountText:SetText(string.format("+%d |cff55aa55(%d)|r", amount, overheal))
+                    else
+                        row.amountText:SetText(string.format("+%d", amount))
+                    end
+                    row.amountText:SetTextColor(HEAL_COLOR[1], HEAL_COLOR[2], HEAL_COLOR[3])
                 end
-                row.amountText:SetText(string.format("+%d", amount))
-                row.amountText:SetTextColor(HEAL_COLOR[1], HEAL_COLOR[2], HEAL_COLOR[3])
                 local spellText = entry.spell or ""
                 if entry.spellDuration and entry.spellDuration > 1 then
                     spellText = string.format("%s (%ds)", spellText ~= "" and spellText or "Unknown", entry.spellDuration)
                 end
-                row.spellText:SetText(spellText)
-                row.sourceText:SetText(entry.source or "")
-                local sr, sg, sb = getSourceColor(entry)
-                row.sourceText:SetTextColor(sr, sg, sb)
+                if row.spellText then
+                    row.spellText:SetText(spellText)
+                end
+            elseif kind == "HEAL_OUT" then
+                local amount = math.floor(tonumber(entry.amount) or 0)
+                local overheal = math.floor(tonumber(entry.overheal) or 0)
+                if row.amountText then
+                    if showOverheal and overheal > 0 then
+                        row.amountText:SetText(string.format("+%d |cff55aa55(%d)|r", amount, overheal))
+                    else
+                        row.amountText:SetText(string.format("+%d", amount))
+                    end
+                    row.amountText:SetTextColor(HEAL_COLOR[1], HEAL_COLOR[2], HEAL_COLOR[3])
+                end
+                local spellText = entry.spell or ""
+                if entry.spellDuration and entry.spellDuration > 1 then
+                    spellText = string.format("%s (%ds)", spellText ~= "" and spellText or "Unknown", entry.spellDuration)
+                end
+                if row.spellText then
+                    row.spellText:SetText(spellText)
+                end
             elseif kind == "DAMAGE_OUT" then
                 local amount = math.floor(tonumber(entry.amount) or 0)
-                if row.flowText then
-                    row.flowText:SetText("->")
+                if row.amountText then
+                    row.amountText:SetText(string.format("-%d", amount))
+                    row.amountText:SetTextColor(DAMAGE_COLOR[1], DAMAGE_COLOR[2], DAMAGE_COLOR[3])
                 end
-                row.amountText:SetText(string.format("-%d", amount))
-                row.amountText:SetTextColor(DAMAGE_COLOR[1], DAMAGE_COLOR[2], DAMAGE_COLOR[3])
                 local spellText = entry.spell or ""
                 if entry.spellDuration and entry.spellDuration > 1 then
                     spellText = string.format("%s (%ds)", spellText ~= "" and spellText or "Unknown", entry.spellDuration)
                 end
-                row.spellText:SetText(spellText)
-                row.sourceText:SetText(entry.source or "")
-                local sr, sg, sb = getSourceColor(entry)
-                row.sourceText:SetTextColor(sr, sg, sb)
+                if row.spellText then
+                    row.spellText:SetText(spellText)
+                end
             else
                 local amount = math.floor(tonumber(entry.amount) or 0)
-                if row.flowText then
-                    row.flowText:SetText("<-")
+                if row.amountText then
+                    row.amountText:SetText(string.format("-%d", amount))
+                    row.amountText:SetTextColor(DAMAGE_COLOR[1], DAMAGE_COLOR[2], DAMAGE_COLOR[3])
                 end
-                row.amountText:SetText(string.format("-%d", amount))
-                row.amountText:SetTextColor(DAMAGE_COLOR[1], DAMAGE_COLOR[2], DAMAGE_COLOR[3])
                 local spellText = entry.spell or ""
                 if entry.spellDuration and entry.spellDuration > 1 then
                     spellText = string.format("%s (%ds)", spellText ~= "" and spellText or "Unknown", entry.spellDuration)
                 end
-                row.spellText:SetText(spellText)
-                row.sourceText:SetText(entry.source or "")
-                local sr, sg, sb = getSourceColor(entry)
-                row.sourceText:SetTextColor(sr, sg, sb)
+                if row.spellText then
+                    row.spellText:SetText(spellText)
+                end
             end
             end
         else
@@ -7410,13 +8581,18 @@ function UI:UpdateDamageTrackerList()
             setShown(row.breakBg, false)
             setShown(row.breakText, false)
             row.timeText:SetText("")
-            row.playerText:SetText("")
-            if row.flowText then
-                row.flowText:SetText("")
+            if row.sourceText then
+                row.sourceText:SetText("")
             end
-            row.amountText:SetText("")
-            row.spellText:SetText("")
-            row.sourceText:SetText("")
+            if row.targetText then
+                row.targetText:SetText("")
+            end
+            if row.amountText then
+                row.amountText:SetText("")
+            end
+            if row.spellText then
+                row.spellText:SetText("")
+            end
         end
     end
 end
@@ -7891,16 +9067,24 @@ function UI:UpdateWishlistUI()
     if list and list.id and Goals.GetWishlistFoundMap then
         foundMap = Goals:GetWishlistFoundMap(list.id)
     end
-    local allowAutoFound = Goals and Goals.sync and Goals.sync.isMaster and not (Goals.Dev and Goals.Dev.enabled)
-    if list and foundMap and Goals.IsWishlistItemOwned and allowAutoFound then
-        for _, entry in pairs(list.items or {}) do
-            if entry and entry.itemId then
-                local owned = Goals:IsWishlistItemOwned(entry.itemId)
-                foundMap[entry.itemId] = (owned or entry.manualFound) and true or nil
-            end
-            if entry and entry.tokenId and entry.tokenId > 0 then
-                local owned = Goals:IsWishlistItemOwned(entry.tokenId)
-                foundMap[entry.tokenId] = (owned or entry.manualFound) and true or nil
+    if Goals and Goals.IsWishlistItemOwned and Goals.GetWishlistFoundMap and Goals.EnsureWishlistData then
+        local data = Goals:EnsureWishlistData()
+        local lists = data and data.lists or {}
+        for _, wish in pairs(lists) do
+            if wish and wish.id and wish.items then
+                local map = Goals:GetWishlistFoundMap(wish.id)
+                if map then
+                    for _, entry in pairs(wish.items) do
+                        if entry and entry.itemId then
+                            local owned = Goals:IsWishlistItemOwned(entry.itemId)
+                            map[entry.itemId] = (owned or entry.manualFound) and true or nil
+                        end
+                        if entry and entry.tokenId and entry.tokenId > 0 then
+                            local owned = Goals:IsWishlistItemOwned(entry.tokenId)
+                            map[entry.tokenId] = (owned or entry.manualFound) and true or nil
+                        end
+                    end
+                end
             end
         end
     end
@@ -8630,6 +9814,15 @@ function UI:RefreshStatus()
     if self.UpdateAutoSyncLabel then
         self:UpdateAutoSyncLabel()
     end
+    if self.syncNoteLabel then
+        if Goals and Goals.db and Goals.db.settings and Goals.db.settings.localOnly then
+            self.syncNoteLabel:SetText("Sync disabled (Local-only mode).")
+            self.syncNoteLabel:Show()
+        else
+            self.syncNoteLabel:SetText("")
+            self.syncNoteLabel:Hide()
+        end
+    end
 end
 
 function UI:UpdateAutoSyncLabel()
@@ -8692,7 +9885,12 @@ function UI:Refresh()
     end
     if self.combatLogHealingCheck then
         local enabled = trackingEnabled
-        self.combatLogHealingCheck:SetChecked(Goals.db.settings.combatLogHealing and true or false)
+        local showHealing = Goals.db.settings.combatLogShowHealing
+        if showHealing == nil then
+            showHealing = (Goals.db.settings.combatLogHealing and true or false)
+            Goals.db.settings.combatLogShowHealing = showHealing
+        end
+        self.combatLogHealingCheck:SetChecked(showHealing and true or false)
         if self.combatLogHealingCheck.SetAlpha then
             self.combatLogHealingCheck:SetAlpha(enabled and 1 or 0.6)
         end
@@ -8708,7 +9906,12 @@ function UI:Refresh()
     end
     if self.combatLogOutgoingCheck then
         local enabled = trackingEnabled
-        self.combatLogOutgoingCheck:SetChecked(Goals.db.settings.combatLogTrackOutgoing and true or false)
+        local showDealt = Goals.db.settings.combatLogShowDamageDealt
+        if showDealt == nil then
+            showDealt = (Goals.db.settings.combatLogTrackOutgoing and true or false)
+            Goals.db.settings.combatLogShowDamageDealt = showDealt
+        end
+        self.combatLogOutgoingCheck:SetChecked(showDealt and true or false)
         if self.combatLogOutgoingCheck.SetAlpha then
             self.combatLogOutgoingCheck:SetAlpha(enabled and 1 or 0.6)
         end
@@ -8722,36 +9925,93 @@ function UI:Refresh()
             end
         end
     end
-    if self.combatLogBigDamageCheck then
+    if self.combatLogIncomingCheck then
         local enabled = trackingEnabled
-        self.combatLogBigDamageCheck:SetChecked(Goals.db.settings.combatLogShowBig and true or false)
-        if self.combatLogBigDamageCheck.SetAlpha then
-            self.combatLogBigDamageCheck:SetAlpha(enabled and 1 or 0.6)
+        local showReceived = Goals.db.settings.combatLogShowDamageReceived
+        if showReceived == nil then
+            showReceived = true
+            Goals.db.settings.combatLogShowDamageReceived = showReceived
+        end
+        self.combatLogIncomingCheck:SetChecked(showReceived and true or false)
+        if self.combatLogIncomingCheck.SetAlpha then
+            self.combatLogIncomingCheck:SetAlpha(enabled and 1 or 0.6)
         end
         if enabled then
-            if self.combatLogBigDamageCheck.Enable then
-                self.combatLogBigDamageCheck:Enable()
+            if self.combatLogIncomingCheck.Enable then
+                self.combatLogIncomingCheck:Enable()
             end
         else
-            if self.combatLogBigDamageCheck.Disable then
-                self.combatLogBigDamageCheck:Disable()
+            if self.combatLogIncomingCheck.Disable then
+                self.combatLogIncomingCheck:Disable()
             end
         end
     end
-    if self.combatLogBigHealingCheck then
-        local enabled = trackingEnabled
-        self.combatLogBigHealingCheck:SetChecked(Goals.db.settings.combatLogBigIncludeHealing and true or false)
-        if self.combatLogBigHealingCheck.SetAlpha then
-            local alpha = enabled and (Goals.db.settings.combatLogShowBig and 1 or 0.6) or 0.6
-            self.combatLogBigHealingCheck:SetAlpha(alpha)
+    local function clampSliderValue(value)
+        local clamped = math.floor((tonumber(value) or 0) + 0.5)
+        if clamped < 0 then
+            clamped = 0
+        elseif clamped > 100 then
+            clamped = 100
+        end
+        return clamped
+    end
+
+    local threshold = tonumber(Goals.db.settings.combatLogBigThreshold)
+    if threshold == nil then
+        local oldDamage = tonumber(Goals.db.settings.combatLogBigDamageThreshold)
+        local oldHeal = tonumber(Goals.db.settings.combatLogBigHealingThreshold)
+        if oldDamage or oldHeal then
+            threshold = math.max(oldDamage or 0, oldHeal or 0)
+        end
+    end
+    if threshold == nil then
+        threshold = (Goals.db.settings.combatLogShowBig and 50 or 0)
+    end
+    Goals.db.settings.combatLogBigThreshold = threshold
+    threshold = clampSliderValue(threshold)
+
+    local function updateSlider(slider, valueLabel, value, enabled)
+        if slider then
+            slider:SetValue(value)
+            if slider.SetAlpha then
+                slider:SetAlpha(enabled and 1 or 0.6)
+            end
+            if enabled then
+                if slider.Enable then
+                    slider:Enable()
+                end
+            else
+                if slider.Disable then
+                    slider:Disable()
+                end
+            end
+        end
+        if valueLabel then
+            valueLabel:SetText(string.format("%d%%", value))
+        end
+    end
+
+    if self.combatLogBigThresholdSlider then
+        updateSlider(self.combatLogBigThresholdSlider, self.combatLogBigThresholdValue, threshold, trackingEnabled)
+    end
+    if self.combatLogShowOverhealCheck then
+        local enabled = trackingEnabled and (Goals.db.settings.combatLogShowHealing ~= false)
+        local showOverheal = Goals.db.settings.combatLogShowOverheal
+        if showOverheal == nil then
+            showOverheal = true
+            Goals.db.settings.combatLogShowOverheal = showOverheal
+        end
+        self.combatLogShowOverhealCheck:SetChecked(showOverheal and true or false)
+        if self.combatLogShowOverhealCheck.SetAlpha then
+            self.combatLogShowOverhealCheck:SetAlpha(enabled and 1 or 0.6)
         end
         if enabled then
-            if self.combatLogBigHealingCheck.Enable then
-                self.combatLogBigHealingCheck:Enable()
+            if self.combatLogShowOverhealCheck.Enable then
+                self.combatLogShowOverhealCheck:Enable()
             end
         else
-            if self.combatLogBigHealingCheck.Disable then
-                self.combatLogBigHealingCheck:Disable()
+            if self.combatLogShowOverhealCheck.Disable then
+                self.combatLogShowOverhealCheck:Disable()
             end
         end
     end
@@ -9031,19 +10291,23 @@ function UI:UpdateMinimapPositionFromCursor()
     local dy = y - my
     local angle = math.deg(math.atan2(dy, dx))
     Goals.db.settings.minimap.angle = angle
-    self:UpdateMinimapPosition()
+    self:UpdateMinimapPosition(true)
 end
 
-function UI:UpdateMinimapPosition()
+function UI:UpdateMinimapPosition(force)
     if not self.minimapButton then
         return
     end
     local angle = Goals.db.settings.minimap.angle or 220
+    if not force and self.minimapLastAngle == angle then
+        return
+    end
     local radius = (Minimap:GetWidth() / 2) + 8
     local x = math.cos(math.rad(angle)) * radius
     local y = math.sin(math.rad(angle)) * radius
     self.minimapButton:ClearAllPoints()
     self.minimapButton:SetPoint("CENTER", Minimap, "CENTER", x, y)
+    self.minimapLastAngle = angle
 end
 
 function UI:UpdateMinimapButton()
@@ -9051,10 +10315,14 @@ function UI:UpdateMinimapButton()
         return
     end
     if Goals.db.settings.minimap.hide then
-        self.minimapButton:Hide()
+        if self.minimapButton:IsShown() then
+            self.minimapButton:Hide()
+        end
         return
     end
-    self.minimapButton:Show()
+    if not self.minimapButton:IsShown() then
+        self.minimapButton:Show()
+    end
     self:UpdateMinimapPosition()
 end
 

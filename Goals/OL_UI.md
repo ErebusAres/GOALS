@@ -116,6 +116,22 @@ Goal: reshape GOALS UI to match Ouro Loot's layout and readability while **keepi
 - Decide whether to reintroduce a Settings tab later in OL tone.
 - If reintroduced, define what belongs there vs per-tab options.
 
+### Combat Broadcast Tool (Implemented)
+
+- OL-styled popout window for broadcasting recent combat log entries.
+- Uses currently visible/filtered entries (respects filters + show toggles + big-number threshold).
+- Slider: 0–9 (default 9) for how many recent entries to send.
+- Channel dropdown: shows only available chat types (no /raid or /rl unless in raid; /rl only if leader; no /party unless in party).
+- Whisper + Whisper Target options; selecting Whisper reveals a target input box.
+- Send button outputs lines without timestamps (Source -> Target Amount Ability).
+
+### Combat Row Context Menu (Implemented)
+
+- Right-click on a combat row opens a Send To menu.
+- Menu shows available channels (same rules as dropdown).
+- Whisper opens a prompt for target name.
+- Sends only that row’s formatted text.
+
 ---
 
 ## Testing Checklist (Run Each Session)
@@ -130,6 +146,7 @@ Goal: reshape GOALS UI to match Ouro Loot's layout and readability while **keepi
 - Loot item truncation works with `...` and tooltip still opens.
 - Found loot assignment via right-click works as before.
 - Combat log always active and combat tab always visible.
+- Combat broadcast: send button posts correct lines with current filters; right-click Send To menu works per row.
 - Wishlist Options tab scrolls with scrollbar always visible.
 - Dev/Admin buttons hidden for non-admin players.
 
@@ -139,9 +156,9 @@ Goal: reshape GOALS UI to match Ouro Loot's layout and readability while **keepi
 
 Use this prompt to continue in a new chat:
 
-"I'm working on GOALS (WoW 3.3.5a) UI to match Ouro Loot. Main tabs are a top OL-style bar (OptionsFrameTabButtonTemplate + dark strip + divider), wishlist sub-tabs match. Tables use the shared widget with 16px headers, tighter spacing, stripes, and alignment to scrollbar edge. Right option panels now mimic AceGUI: 240px wide, Heading-style section headers with tooltip-border lines and centered gold text; controls are 200x24; dropdown/edit box labels are above controls (gold); dropdown text is white; checkboxes are 24px with white GameFontHighlight labels; buttons use UIPanelButtonTemplate2 and are stacked vertically. Loot table merges Found+Assign rows, notes system + UI, right-click assign works, long loot names truncate with ..., tooltip only on item name column. Combat log always on; filter in combat options. Overview actions align under Actions column; admin controls hidden for non-admins; Ask for sync in Sync section; Sync Seen hidden. Wishlist layout stays Wowhead-style with options scroll.
+"I'm working on GOALS (WoW 3.3.5a) UI to match Ouro Loot. Main tabs are a top OL-style bar (OptionsFrameTabButtonTemplate + dark strip + divider), wishlist sub-tabs match. Tables use the shared widget with 16px headers, tighter spacing, stripes, and alignment to scrollbar edge. Right option panels now mimic AceGUI: 240px wide, Heading-style section headers with tooltip-border lines and centered gold text; controls are 200x24; dropdown/edit box labels are above controls (gold); dropdown text is white; checkboxes are 24px with white GameFontHighlight labels; buttons use UIPanelButtonTemplate2 and are stacked vertically. Loot table merges Found+Assign rows, notes system + UI, right-click assign works, long loot names truncate with ..., tooltip only on item name column. Combat log is toggleable; filter in combat options; big number threshold is a single percent slider with a live label; heal/damage display is controlled by Show Healing / Show Damage Dealt / Show Damage Received (still tracks). Combat tracker columns are Time | Source | Target | Amount | Ability. Overview actions align under Actions column; admin controls hidden for non-admins; Ask for sync in Sync section; Sync Seen hidden. Wishlist layout stays Wowhead-style with options scroll.
 
-Please validate the new options panel spacing/alignment (Overview/Loot/History/Combat), check for clipping with the 240px width and label-above layout, confirm scrollbars don't overlap, and then continue any remaining OL-alignment tweaks (table column widths, separators, etc). Update `Goals/gui.lua` and **always update `Goals/OuroLoot_UI_Plan.md` with changes, remaining work, and the next prompt for continuity**."
+Please validate the new options panel spacing/alignment (Overview/Loot/History/Combat), check for clipping with the 240px width and label-above layout, confirm scrollbars don't overlap, and then continue any remaining OL-alignment tweaks (table column widths, separators, etc). Combat options now use a single percent slider for big-number thresholds (with a live label); confirm it aligns with OL control spacing. Update `Goals/gui.lua` and **always update `Goals/OL_UI.md` with changes, remaining work, and the next prompt for continuity**."
 
 ---
 
@@ -184,6 +201,22 @@ Please validate the new options panel spacing/alignment (Overview/Loot/History/C
 - Wishlist alerts: chat and popup now include the matching wishlist names for each found item.
 - Wishlist layout: nudged column 2 slots left slightly to fit within the inset box.
 
+## Changes / Changelog (1/28/2026)
+
+- Combat options: replaced separate big damage/heal sliders with a single percent slider + live label (applies to damage/heal, incoming/outgoing).
+- Combat log filtering: now uses per-encounter max damage/heal to apply the shared slider threshold.
+- Combat log healing: outgoing heals are now tracked when "Track healing events" is enabled; outgoing heals use the -> flow arrow.
+- Combat log healing: outgoing heal rows show `+X (Y)` with `(Y)` as overheal in darker green.
+- Combat tracker table: columns reordered to Time | Source | Target | Amount | Ability (no per-row arrows).
+- Combat tracker table: source/target names truncate with ellipsis (players capped at 12 chars; NPCs capped longer).
+- Combat tracker list: in All view, incoming heals from roster sources are suppressed to avoid duplicate (self-heals and NPC->player heals still show).
+- Combat tracker: resurrection entries now try to include revived health amount when available (shows "Revived +X").
+- Combat tracker: combine-all now sums overheal values, and overheal display can be toggled on/off.
+- Combat tracker options: "Show healing", "Show damage dealt", and "Show damage received" now control visibility (data still tracks).
+- Combat tracker: added broadcast popout (channel dropdown + 0–9 slider + whisper target) and right-click Send To menu.
+- Update tab: added selectable URL box + quick steps header for a cleaner layout.
+- Info bars: added a tab-aware second footer bar with per-tab summary segments.
+
 ## OL Parity Recheck (1/27/2026)
 
 ### Looks On-Track (Parity Achieved)
@@ -203,9 +236,48 @@ Please validate the new options panel spacing/alignment (Overview/Loot/History/C
 - Scrollbars: confirm always-visible scrollbars on all scroll frames (Wishlist options, History, Loot, Debug log box).
 - Buttons: confirm remaining buttons use `UIPanelButtonTemplate2` (especially History/Wishlist).
 - Combat log section text in plan should reflect tracking toggle (now OFF by default).
+- Combat options: confirm the shared big-number slider matches OL spacing and label style.
 
 ### Optional OL Polish
 
 - Tighten column widths in Loot/History/Combat for closer OL proportions.
 - Add subtle divider between left table and right options on non-Wishlist tabs (if desired).
 - Align top padding so headers sit on a consistent baseline across tabs.
+
+---
+
+## UI Wording Review (1/28/2026)
+
+### Obvious Changes Applied
+
+- Overview: clearer toggle labels (e.g. "Show present players", "Pause point gains", "Local-only mode") with tighter tooltips.
+- Sync: "Request sync" wording plus clearer tooltip.
+- Sync: inline note now appears when Local-only mode is enabled.
+- Keybinds: clarified to "main window" and "mini tracker".
+- Loot: reset labels now state "to 0"; quality filter and notes tooltips are clearer.
+- History: show/hide labels now start with "Show"; clearer quality filter tooltip.
+- Combat: updated toggle/tooltips for show/hide logic, combine options, and broadcast panel.
+- Wishlist: "Disable popup alert" label; sound tooltip wording improved.
+- Wishlist: added tooltips for announce + popup toggles.
+- Combat tracker: filter tooltip now says "combat tracker"; roster sort tooltip tightened.
+- Settings (legacy): section caption shortened; local-only label aligned with main options wording.
+
+### Non-Obvious Suggestions (Consider)
+
+- Use consistent nouns for items vs entries across all tooltips (continue tightening any remaining “list/row” wording you spot).
+
+---
+
+## Info Bar Expansion (Implemented 1/28/2026)
+
+Goal: add tab-aware info density without clutter. Provide up to 6 short, glanceable metrics per tab while keeping OL-style footer readability.
+
+- Added Info Bar 2 per tab (same inset style + left/center/right segments).
+- Bar 2 lives in extra frame height below Bar 1, keeping content size unchanged.
+- Bar 1 remains global: access/local-only, sync source + last sync, tracking/disenchanter.
+- Per-tab Bar 2 segments:
+  - Overview: Top points holder(s) with ties as "+N", sort mode, present-only toggle.
+  - Loot: Min quality, reset mode, entries count.
+  - History: Filter summary, entries count.
+  - Combat: Filter, show toggles (H/D/R), threshold + overheal status.
+  - Wishlist: Active list name, active sub-tab, alerts status (Chat/Popup).
