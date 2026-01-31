@@ -127,6 +127,10 @@ local function findTierById(library, tierId)
 end
 
 function Goals:GetWishlistBuildLibrary()
+    if (not self.WishlistBuildLibrary.builds or #self.WishlistBuildLibrary.builds == 0)
+        and self.WishlistBuildData and self.WishlistBuildData.builds then
+        ensureBuildsPopulated()
+    end
     return self.WishlistBuildLibrary
 end
 
@@ -252,7 +256,7 @@ function Goals:GetEffectiveWishlistBuildFilters(settings)
 end
 
 local function buildHasTag(build, tag)
-    if not tag or tag == "" or tag == "ALL" then
+    if not tag or tag == "" or tag == "ALL" or tag == "all" then
         return true
     end
     local tags = normalizeTags(build.tags)
@@ -302,20 +306,56 @@ function Goals:FilterWishlistBuilds(filters)
     return results
 end
 
+local function normalizeItemId(rawId)
+    local itemId = tonumber(rawId) or 0
+    if itemId <= 0 then
+        return 0, nil
+    end
+    -- Some imported lists use 6-digit IDs; trim to last 5 digits for 3.3.5a.
+    if itemId > 100000 and itemId < 1000000 then
+        local trimmed = itemId % 100000
+        if trimmed > 0 then
+            return trimmed, itemId
+        end
+    end
+    return itemId, nil
+end
+
+local function normalizeGemIds(gemIds)
+    if type(gemIds) ~= "table" then
+        return {}
+    end
+    local normalized = {}
+    for _, gemId in ipairs(gemIds) do
+        local normalizedId = normalizeItemId(gemId)
+        if normalizedId and normalizedId > 0 then
+            table.insert(normalized, normalizedId)
+        end
+    end
+    return normalized
+end
+
 local function addItemEntry(list, slotKey, entry)
     if not slotKey or slotKey == "" or not entry then
         return
     end
-    local itemId = tonumber(entry.itemId) or 0
+    local itemId, originalItemId = normalizeItemId(entry.itemId)
     if itemId <= 0 then
         return
+    end
+    local notes = entry.notes or ""
+    if originalItemId and originalItemId ~= itemId then
+        if notes ~= "" then
+            notes = notes .. " "
+        end
+        notes = notes .. "(ID normalized from " .. tostring(originalItemId) .. ")"
     end
     table.insert(list, {
         slotKey = slotKey,
         itemId = itemId,
         enchantId = tonumber(entry.enchantId) or 0,
-        gemIds = entry.gemIds or {},
-        notes = entry.notes or "",
+        gemIds = normalizeGemIds(entry.gemIds),
+        notes = notes,
         source = entry.source or "Build",
     })
 end

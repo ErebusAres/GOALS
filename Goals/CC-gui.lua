@@ -2551,21 +2551,17 @@ function UI:GetTopPointsSummary()
     if #list == 0 then
         return nil
     end
-    local topPoints = nil
+    local topPoints = list[1].points or 0
     local topNames = {}
     for _, entry in ipairs(list) do
-        local points = entry.points or 0
-        if topPoints == nil or points > topPoints then
-            topPoints = points
-            topNames = { entry.name }
-        elseif points == topPoints then
-            table.insert(topNames, entry.name)
+        if (entry.points or 0) ~= topPoints then
+            break
         end
+        table.insert(topNames, entry.name)
     end
     if #topNames == 0 then
         return nil
     end
-    table.sort(topNames)
     local displayName = colorizeName(topNames[1])
     if #topNames > 1 then
         displayName = string.format("%s +%d", displayName, #topNames - 1)
@@ -3541,8 +3537,6 @@ function UI:CreateOverviewTab(page)
 
     y = y - 8
     local maintenanceLabel, maintenanceBar = addSectionHeader("Maintenance")
-    self.overviewMaintenanceLabel = maintenanceLabel
-    self.overviewMaintenanceBar = maintenanceBar
     trackAdmin(maintenanceLabel)
     trackAdmin(maintenanceBar)
 
@@ -3552,7 +3546,6 @@ function UI:CreateOverviewTab(page)
         end
     end)
     trackAdmin(clearPointsBtn)
-    self.overviewClearPointsBtn = clearPointsBtn
 
     local clearPlayersBtn = addActionButton("Clear Players List", function()
         if Goals and Goals.ClearPlayersLocal then
@@ -3560,7 +3553,6 @@ function UI:CreateOverviewTab(page)
         end
     end)
     trackAdmin(clearPlayersBtn)
-    self.overviewClearPlayersBtn = clearPlayersBtn
 
     local clearHistoryBtn = addActionButton("Clear History", function()
         if Goals and Goals.ClearHistoryLocal then
@@ -3568,7 +3560,6 @@ function UI:CreateOverviewTab(page)
         end
     end)
     trackAdmin(clearHistoryBtn)
-    self.overviewClearHistoryBtn = clearHistoryBtn
 
     local clearAllBtn = addActionButton("Clear All", function()
         if Goals and Goals.ClearAllLocal then
@@ -3576,18 +3567,14 @@ function UI:CreateOverviewTab(page)
         end
     end)
     trackAdmin(clearAllBtn)
-    self.overviewClearAllBtn = clearAllBtn
 
     y = y - 8
     local miniLabel, miniBar = addSectionHeader(L.LABEL_MINI_TRACKER)
-    self.overviewMiniLabel = miniLabel
-    self.overviewMiniBar = miniBar
     local resetMiniBtn = addActionButton("Reset Mini Position", function()
         if UI and UI.ResetMiniTrackerPosition then
             UI:ResetMiniTrackerPosition()
         end
     end)
-    self.overviewResetMiniBtn = resetMiniBtn
 
     local miniBtn = addActionButton(L.BUTTON_TOGGLE_MINI_TRACKER, function()
         if UI and UI.ToggleMiniTracker then
@@ -3598,8 +3585,6 @@ function UI:CreateOverviewTab(page)
 
     y = y - 8
     local tableLabel, tableBar = addSectionHeader(L.LABEL_SAVE_TABLES)
-    self.overviewTableLabel = tableLabel
-    self.overviewTableBar = tableBar
     local autoSeenCheck = addCheck(L.CHECK_AUTOLOAD_SEEN, function(selfBtn)
         Goals.db.settings.tableAutoLoadSeen = selfBtn:GetChecked() and true or false
     end)
@@ -3621,8 +3606,6 @@ function UI:CreateOverviewTab(page)
 
     y = y - 8
     local devLabel, devBar = addSectionHeader("Dev Tools")
-    self.overviewDevLabel = devLabel
-    self.overviewDevBar = devBar
     trackAdmin(devLabel)
     trackAdmin(devBar)
 
@@ -3641,8 +3624,6 @@ function UI:CreateOverviewTab(page)
 
     y = y - 8
     local keybindsLabel, keybindsBar = addSectionHeader("Keybindings")
-    self.overviewKeybindsLabel = keybindsLabel
-    self.overviewKeybindsBar = keybindsBar
     self.keybindsTitle = keybindsLabel
 
     local uiBindLabel = addLabel("Toggle main window:")
@@ -3662,143 +3643,6 @@ function UI:CreateOverviewTab(page)
     styleOptionsLabel(miniBindValue)
     self.keybindMiniValue = miniBindValue
     y = y - 16
-
-    local function storeOverviewAnchor(control)
-        if not control or control._overviewAnchor then
-            return
-        end
-        local point, relative, relativePoint, x, y = control:GetPoint(1)
-        if not point then
-            return
-        end
-        control._overviewAnchor = {
-            point = point,
-            relative = relative,
-            relativePoint = relativePoint,
-            x = x or 0,
-            y = y or 0,
-        }
-    end
-
-    self.overviewShiftBelowMaintenance = {
-        self.overviewMiniBar,
-        self.overviewResetMiniBtn,
-        self.miniTrackerButton,
-        self.overviewTableBar,
-        self.autoLoadSeenCheck,
-        self.combinedTablesCheck,
-        self.syncSeenButton,
-        self.overviewDevBar,
-        self.sudoDevButton,
-    }
-
-    self.overviewShiftBelowDev = {
-        self.overviewKeybindsBar,
-        self.keybindsTitle,
-        self.keybindUiLabel,
-        self.keybindUiValue,
-        self.keybindMiniLabel,
-        self.keybindMiniValue,
-    }
-
-    for _, control in ipairs(self.overviewShiftBelowMaintenance) do
-        storeOverviewAnchor(control)
-    end
-    for _, control in ipairs(self.overviewShiftBelowDev) do
-        storeOverviewAnchor(control)
-    end
-    storeOverviewAnchor(self.overviewMaintenanceBar)
-
-    function UI:UpdateOverviewOptionsLayout(hasAccess)
-        local function restore(list)
-            for _, control in ipairs(list or {}) do
-                local anchor = control and control._overviewAnchor or nil
-                if anchor and control.ClearAllPoints then
-                    control:ClearAllPoints()
-                    control:SetPoint(anchor.point, anchor.relative, anchor.relativePoint, anchor.x, anchor.y)
-                end
-            end
-        end
-
-        local function shift(list, delta)
-            for _, control in ipairs(list or {}) do
-                local anchor = control and control._overviewAnchor or nil
-                if anchor and control.ClearAllPoints then
-                    control:ClearAllPoints()
-                    control:SetPoint(anchor.point, anchor.relative, anchor.relativePoint, anchor.x, anchor.y + delta)
-                end
-            end
-        end
-
-        restore(self.overviewShiftBelowMaintenance)
-        restore(self.overviewShiftBelowDev)
-
-        if not hasAccess then
-            local content = self.overviewOptionsContent or nil
-            local anchor = self.overviewMaintenanceBar and self.overviewMaintenanceBar._overviewAnchor or nil
-            if content and anchor then
-                local y = anchor.y or 0
-                local function setHeader(bar)
-                    if not bar or not bar.ClearAllPoints then
-                        return
-                    end
-                    bar:ClearAllPoints()
-                    bar:SetPoint("TOPLEFT", content, "TOPLEFT", 0, y)
-                    bar:SetPoint("TOPRIGHT", content, "TOPRIGHT", 0, y)
-                    y = y - 22
-                end
-                local function setControl(control, step)
-                    if not control or not control.ClearAllPoints then
-                        return
-                    end
-                    control:ClearAllPoints()
-                    control:SetPoint("TOPLEFT", content, "TOPLEFT", 8, y)
-                    y = y - (step or 30)
-                end
-                local function setSpacer(amount)
-                    y = y - (amount or 8)
-                end
-
-                -- Mini section
-                setHeader(self.overviewMiniBar)
-                setControl(self.overviewResetMiniBtn, 30)
-                setControl(self.miniTrackerButton, 30)
-
-                -- Save tables section
-                setSpacer(8)
-                setHeader(self.overviewTableBar)
-                setControl(self.autoLoadSeenCheck, 28)
-                setControl(self.combinedTablesCheck, 28)
-                setControl(self.syncSeenButton, 30)
-
-                -- Keybindings section (skip Dev Tools entirely)
-                setSpacer(8)
-                setHeader(self.overviewKeybindsBar)
-                if self.keybindUiLabel and self.keybindUiLabel.ClearAllPoints then
-                    self.keybindUiLabel:ClearAllPoints()
-                    self.keybindUiLabel:SetPoint("TOPLEFT", content, "TOPLEFT", 8, y)
-                    y = y - 18
-                end
-                if self.keybindUiValue and self.keybindUiValue.ClearAllPoints then
-                    self.keybindUiValue:ClearAllPoints()
-                    self.keybindUiValue:SetPoint("TOPLEFT", content, "TOPLEFT", 8, y)
-                    y = y - 16
-                end
-                if self.keybindMiniLabel and self.keybindMiniLabel.ClearAllPoints then
-                    self.keybindMiniLabel:ClearAllPoints()
-                    self.keybindMiniLabel:SetPoint("TOPLEFT", content, "TOPLEFT", 8, y)
-                    y = y - 18
-                end
-                if self.keybindMiniValue and self.keybindMiniValue.ClearAllPoints then
-                    self.keybindMiniValue:ClearAllPoints()
-                    self.keybindMiniValue:SetPoint("TOPLEFT", content, "TOPLEFT", 8, y)
-                    y = y - 16
-                end
-            else
-                shift(self.overviewShiftBelowMaintenance, 0)
-            end
-        end
-    end
 
     local contentHeight = math.abs(y) + 40
     optionsContent:SetHeight(contentHeight)
@@ -5227,9 +5071,6 @@ function UI:CreateWishlistTab(page)
                 notes = "",
                 source = entry.source or "",
             })
-            if UI and UI.TriggerWishlistRefresh then
-                UI:TriggerWishlistRefresh()
-            end
         end
     end)
     self.wishlistAddSlotButton = addSlotBtn
@@ -5302,9 +5143,6 @@ function UI:CreateWishlistTab(page)
             end
         end
         Goals:SetWishlistItemSmart(UI.selectedWishlistSlot, entry)
-        if UI and UI.TriggerWishlistRefresh then
-            UI:TriggerWishlistRefresh()
-        end
     end)
     self.wishlistApplyGemsButton = applyGemsBtn
 
@@ -5757,58 +5595,52 @@ function UI:CreateWishlistTab(page)
         end
     end
 
-    local buildLibraryAnchor = optionsTitle
+    local buildLibraryAnchor = self.wishlistAtlasButton or wowheadBtn
 
-    local buildFilterLabel = createLabel(optionsPopout, L.LABEL_WISHLIST_BUILD_FILTERS, "GameFontHighlightSmall")
-    buildFilterLabel:SetPoint("TOPLEFT", buildLibraryAnchor, "BOTTOMLEFT", 0, -6)
-    buildFilterLabel:SetPoint("LEFT", optionsTitle, "LEFT", 0, 0)
+    local buildTitle = createLabel(popout, L.LABEL_WISHLIST_BUILDS, "GameFontNormal")
+    buildTitle:SetPoint("TOPLEFT", buildLibraryAnchor, "BOTTOMLEFT", 0, -12)
+    self.wishlistBuildTitle = buildTitle
+
+    local buildFilterLabel = createLabel(popout, L.LABEL_WISHLIST_BUILD_FILTERS, "GameFontHighlightSmall")
+    buildFilterLabel:SetPoint("TOPLEFT", buildTitle, "BOTTOMLEFT", 0, -4)
     self.wishlistBuildFilterLabel = buildFilterLabel
 
-    local classLabel = createLabel(optionsPopout, L.LABEL_WISHLIST_BUILD_CLASS, "GameFontNormalSmall")
+    local classLabel = createLabel(popout, L.LABEL_WISHLIST_BUILD_CLASS, "GameFontNormalSmall")
     classLabel:SetPoint("TOPLEFT", buildFilterLabel, "BOTTOMLEFT", 0, -8)
-    classLabel:SetPoint("LEFT", optionsTitle, "LEFT", 0, 0)
 
-    local classDrop = CreateFrame("Frame", "GoalsWishlistBuildClassDrop", optionsPopout, "UIDropDownMenuTemplate")
+    local classDrop = CreateFrame("Frame", "GoalsWishlistBuildClassDrop", popout, "UIDropDownMenuTemplate")
     classDrop:SetPoint("TOPLEFT", classLabel, "BOTTOMLEFT", -16, -2)
     styleDropdown(classDrop, 140)
     self.wishlistBuildClassDrop = classDrop
 
-    local specLabel = createLabel(optionsPopout, L.LABEL_WISHLIST_BUILD_SPEC, "GameFontNormalSmall")
+    local specLabel = createLabel(popout, L.LABEL_WISHLIST_BUILD_SPEC, "GameFontNormalSmall")
     specLabel:SetPoint("TOPLEFT", classDrop, "BOTTOMLEFT", 16, -8)
-    specLabel:SetPoint("LEFT", optionsTitle, "LEFT", 0, 0)
 
-    local specDrop = CreateFrame("Frame", "GoalsWishlistBuildSpecDrop", optionsPopout, "UIDropDownMenuTemplate")
+    local specDrop = CreateFrame("Frame", "GoalsWishlistBuildSpecDrop", popout, "UIDropDownMenuTemplate")
     specDrop:SetPoint("TOPLEFT", specLabel, "BOTTOMLEFT", -16, -2)
     styleDropdown(specDrop, 140)
     self.wishlistBuildSpecDrop = specDrop
 
-    local rightColumnAnchor = CreateFrame("Frame", nil, optionsPopout)
-    rightColumnAnchor:SetPoint("TOPLEFT", buildFilterLabel, "BOTTOMLEFT", 170, -8)
-    rightColumnAnchor:SetSize(1, 1)
+    local tierLabel = createLabel(popout, L.LABEL_WISHLIST_BUILD_TIER, "GameFontNormalSmall")
+    tierLabel:SetPoint("TOPLEFT", buildFilterLabel, "BOTTOMLEFT", 190, -8)
 
-    local tierLabel = createLabel(optionsPopout, L.LABEL_WISHLIST_BUILD_TIER, "GameFontNormalSmall")
-    tierLabel:SetPoint("TOPLEFT", rightColumnAnchor, "TOPLEFT", 0, 0)
-
-    local tierDrop = CreateFrame("Frame", "GoalsWishlistBuildTierDrop", optionsPopout, "UIDropDownMenuTemplate")
+    local tierDrop = CreateFrame("Frame", "GoalsWishlistBuildTierDrop", popout, "UIDropDownMenuTemplate")
     tierDrop:SetPoint("TOPLEFT", tierLabel, "BOTTOMLEFT", -16, -2)
     styleDropdown(tierDrop, 170)
     self.wishlistBuildTierDrop = tierDrop
 
-    local tagLabel = createLabel(optionsPopout, L.LABEL_WISHLIST_BUILD_TAG, "GameFontNormalSmall")
+    local tagLabel = createLabel(popout, L.LABEL_WISHLIST_BUILD_TAG, "GameFontNormalSmall")
     tagLabel:SetPoint("TOPLEFT", tierDrop, "BOTTOMLEFT", 16, -8)
-    tagLabel:SetPoint("LEFT", rightColumnAnchor, "LEFT", 0, 0)
 
-    local tagDrop = CreateFrame("Frame", "GoalsWishlistBuildTagDrop", optionsPopout, "UIDropDownMenuTemplate")
+    local tagDrop = CreateFrame("Frame", "GoalsWishlistBuildTagDrop", popout, "UIDropDownMenuTemplate")
     tagDrop:SetPoint("TOPLEFT", tagLabel, "BOTTOMLEFT", -16, -2)
     styleDropdown(tagDrop, 170)
     self.wishlistBuildTagDrop = tagDrop
-    tagDrop:SetPoint("LEFT", tierDrop, "LEFT", 0, 0)
 
-    local levelLabel = createLabel(optionsPopout, L.LABEL_WISHLIST_BUILD_LEVEL, "GameFontNormalSmall")
+    local levelLabel = createLabel(popout, L.LABEL_WISHLIST_BUILD_LEVEL, "GameFontNormalSmall")
     levelLabel:SetPoint("TOPLEFT", specDrop, "BOTTOMLEFT", 16, -8)
-    levelLabel:SetPoint("LEFT", optionsTitle, "LEFT", 0, 0)
 
-    local levelBox = CreateFrame("EditBox", "GoalsWishlistBuildLevelBox", optionsPopout, "InputBoxTemplate")
+    local levelBox = CreateFrame("EditBox", "GoalsWishlistBuildLevelBox", popout, "InputBoxTemplate")
     levelBox:SetPoint("LEFT", levelLabel, "RIGHT", 8, 0)
     levelBox:SetSize(40, 18)
     levelBox:SetAutoFocus(false)
@@ -5822,7 +5654,7 @@ function UI:CreateWishlistTab(page)
     end)
     self.wishlistBuildLevelBox = levelBox
 
-    local levelAutoCheck = CreateFrame("CheckButton", nil, optionsPopout, "UICheckButtonTemplate")
+    local levelAutoCheck = CreateFrame("CheckButton", nil, popout, "UICheckButtonTemplate")
     levelAutoCheck:SetPoint("LEFT", levelBox, "RIGHT", 6, 0)
     setCheckText(levelAutoCheck, "Auto")
     levelAutoCheck:SetScript("OnClick", function(selfCheck)
@@ -5835,7 +5667,7 @@ function UI:CreateWishlistTab(page)
     end)
     self.wishlistBuildLevelAuto = levelAutoCheck
 
-    local resetFiltersBtn = CreateFrame("Button", nil, optionsPopout, "UIPanelButtonTemplate")
+    local resetFiltersBtn = CreateFrame("Button", nil, popout, "UIPanelButtonTemplate")
     resetFiltersBtn:SetPoint("TOPLEFT", levelLabel, "BOTTOMLEFT", -2, -8)
     resetFiltersBtn:SetSize(110, 20)
     resetFiltersBtn:SetText(L.BUTTON_RESET_FILTERS)
@@ -5846,7 +5678,7 @@ function UI:CreateWishlistTab(page)
     end)
     self.wishlistBuildResetFilters = resetFiltersBtn
 
-    local useDetectedBtn = CreateFrame("Button", nil, optionsPopout, "UIPanelButtonTemplate")
+    local useDetectedBtn = CreateFrame("Button", nil, popout, "UIPanelButtonTemplate")
     useDetectedBtn:SetPoint("LEFT", resetFiltersBtn, "RIGHT", 6, 0)
     useDetectedBtn:SetSize(110, 20)
     useDetectedBtn:SetText(L.BUTTON_USE_DETECTED)
@@ -5857,15 +5689,14 @@ function UI:CreateWishlistTab(page)
     end)
     self.wishlistBuildUseDetected = useDetectedBtn
 
-    local buildResultsLabel = createLabel(optionsPopout, L.LABEL_WISHLIST_BUILD_RESULTS, "GameFontNormal")
+    local buildResultsLabel = createLabel(popout, L.LABEL_WISHLIST_BUILD_RESULTS, "GameFontNormal")
     buildResultsLabel:SetPoint("TOPLEFT", resetFiltersBtn, "BOTTOMLEFT", 2, -10)
-    buildResultsLabel:SetPoint("LEFT", optionsTitle, "LEFT", 0, 0)
     self.wishlistBuildResultsLabel = buildResultsLabel
 
-    local buildResultsInset = CreateFrame("Frame", "GoalsWishlistBuildResultsInset", optionsPopout, "GoalsInsetTemplate")
+    local buildResultsInset = CreateFrame("Frame", "GoalsWishlistBuildResultsInset", popout, "GoalsInsetTemplate")
     applyInsetTheme(buildResultsInset)
     buildResultsInset:SetPoint("TOPLEFT", buildResultsLabel, "BOTTOMLEFT", -4, -6)
-    buildResultsInset:SetPoint("TOPRIGHT", optionsPopout, "TOPRIGHT", -10, 0)
+    buildResultsInset:SetPoint("TOPRIGHT", popout, "TOPRIGHT", -10, 0)
     buildResultsInset:SetHeight(110)
     self.wishlistBuildResultsInset = buildResultsInset
 
@@ -5909,6 +5740,59 @@ function UI:CreateWishlistTab(page)
         self.wishlistBuildResultsRows[i] = row
     end
 
+    local buildImportBtn = CreateFrame("Button", nil, popout, "UIPanelButtonTemplate")
+    buildImportBtn:SetPoint("TOPLEFT", buildResultsInset, "BOTTOMLEFT", 0, -8)
+    buildImportBtn:SetSize(120, 20)
+    buildImportBtn:SetText(L.BUTTON_IMPORT_BUILD)
+    buildImportBtn:SetScript("OnClick", function()
+        if not UI.selectedWishlistBuild then
+            Goals:Print("Select a build to import.")
+            return
+        end
+        local mode = importModeDrop and importModeDrop.selectedValue or "NEW"
+        local ok, msg = Goals:ApplyWishlistBuild(UI.selectedWishlistBuild, mode)
+        if msg then
+            Goals:Print(msg)
+        end
+        if ok and Goals.UI and Goals.UI.UpdateWishlistUI then
+            Goals.UI:UpdateWishlistUI()
+        end
+    end)
+    self.wishlistBuildImportButton = buildImportBtn
+
+    local syncLabel = createLabel(popout, L.LABEL_BUILD_SHARE, "GameFontNormal")
+    syncLabel:SetPoint("TOPLEFT", buildImportBtn, "BOTTOMLEFT", 0, -12)
+
+    self.wishlistBuildResultsRows = {}
+    for i = 1, 5 do
+        local row = CreateFrame("Button", nil, buildResultsInset)
+        row:SetHeight(ROW_HEIGHT)
+        row:SetPoint("TOPLEFT", buildResultsInset, "TOPLEFT", 8, -6 - (i - 1) * ROW_HEIGHT)
+        row:SetPoint("RIGHT", buildResultsInset, "RIGHT", -26, 0)
+        local highlight = row:CreateTexture(nil, "HIGHLIGHT")
+        highlight:SetAllPoints(row)
+        highlight:SetTexture("Interface\\Buttons\\UI-Listbox-Highlight")
+        highlight:SetBlendMode("ADD")
+        row:SetHighlightTexture(highlight)
+        local text = row:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+        text:SetPoint("LEFT", row, "LEFT", 2, 0)
+        text:SetPoint("RIGHT", row, "RIGHT", -4, 0)
+        row.text = text
+        local selected = row:CreateTexture(nil, "ARTWORK")
+        selected:SetAllPoints(row)
+        selected:SetTexture("Interface\\Buttons\\UI-Listbox-Highlight")
+        selected:SetBlendMode("ADD")
+        selected:Hide()
+        row.selected = selected
+        row:SetScript("OnClick", function(selfRow)
+            if selfRow.build then
+                UI.selectedWishlistBuild = selfRow.build
+                UI:UpdateWishlistBuildList()
+            end
+        end)
+        self.wishlistBuildResultsRows[i] = row
+    end
+
     local buildEmptyLabel = buildResultsInset:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
     buildEmptyLabel:SetPoint("TOPLEFT", buildResultsInset, "TOPLEFT", 8, -10)
     buildEmptyLabel:SetPoint("TOPRIGHT", buildResultsInset, "TOPRIGHT", -8, -10)
@@ -5916,14 +5800,6 @@ function UI:CreateWishlistTab(page)
     buildEmptyLabel:SetText("Build library is installed, but item data is not available yet.")
     buildEmptyLabel:Hide()
     self.wishlistBuildEmptyLabel = buildEmptyLabel
-
-    local buildNoMatchLabel = buildResultsInset:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
-    buildNoMatchLabel:SetPoint("TOPLEFT", buildResultsInset, "TOPLEFT", 8, -10)
-    buildNoMatchLabel:SetPoint("TOPRIGHT", buildResultsInset, "TOPRIGHT", -8, -10)
-    buildNoMatchLabel:SetJustifyH("LEFT")
-    buildNoMatchLabel:SetText("No builds match the current filters.")
-    buildNoMatchLabel:Hide()
-    self.wishlistBuildNoMatchLabel = buildNoMatchLabel
 
     local buildModeLabel = createLabel(optionsPopout, L.WISHLIST_IMPORT_MODE, "GameFontNormalSmall")
     buildModeLabel:SetPoint("TOPLEFT", buildResultsInset, "BOTTOMLEFT", 0, -8)
@@ -5975,9 +5851,6 @@ function UI:CreateWishlistTab(page)
         end
         if ok and Goals.UI and Goals.UI.UpdateWishlistUI then
             Goals.UI:UpdateWishlistUI()
-        end
-        if ok and UI and UI.TriggerWishlistRefresh then
-            UI:TriggerWishlistRefresh()
         end
     end)
     self.wishlistBuildImportButton = buildImportBtn
@@ -9946,9 +9819,6 @@ function UI:ApplyWishlistSocketSelection(mode, result, socketIndex)
     Goals:SetWishlistItem(self.selectedWishlistSlot, entry)
     self:UpdateWishlistSocketPickerResults()
     self:UpdateWishlistUI()
-    if self.TriggerWishlistRefresh then
-        self:TriggerWishlistRefresh()
-    end
 end
 
 function UI:ClearWishlistSocketSelection(mode, socketIndex)
@@ -10023,27 +9893,6 @@ function UI:UpdateWishlistBuildFilterControls()
     for _, tier in ipairs(library.tiers or {}) do
         tierLabels[tier.id] = tier.label or tier.id
     end
-    local classSpecs = {}
-    for _, build in ipairs(library.builds or {}) do
-        if build.class and build.spec then
-            classSpecs[tostring(build.class)] = classSpecs[tostring(build.class)] or {}
-            classSpecs[tostring(build.class)][tostring(build.spec)] = true
-        end
-    end
-
-    local function getClassHex(classId)
-        if Goals and Goals.GetClassColor then
-            local r, g, b = Goals:GetClassColor(classId)
-            if r and g and b then
-                return string.format("|cff%02x%02x%02x", r * 255, g * 255, b * 255)
-            end
-        end
-        if RAID_CLASS_COLORS and RAID_CLASS_COLORS[classId] then
-            local c = RAID_CLASS_COLORS[classId]
-            return string.format("|cff%02x%02x%02x", (c.r or 1) * 255, (c.g or 1) * 255, (c.b or 1) * 255)
-        end
-        return nil
-    end
 
     local function addOption(list, value, text)
         table.insert(list, { value = value, text = text or value })
@@ -10053,31 +9902,14 @@ function UI:UpdateWishlistBuildFilterControls()
     addOption(classOptions, "AUTO", "Auto")
     addOption(classOptions, "ANY", "Any")
     for _, classId in ipairs(options.classes or {}) do
-        local hex = getClassHex(classId)
-        if hex then
-            addOption(classOptions, classId, string.format("%s%s|r", hex, classId))
-        else
-            addOption(classOptions, classId, classId)
-        end
+        addOption(classOptions, classId, classId)
     end
 
     local specOptions = {}
     addOption(specOptions, "AUTO", "Auto")
     addOption(specOptions, "ANY", "Any")
-    local selectedClass = tostring(settings.class or "AUTO")
-    if selectedClass ~= "AUTO" and selectedClass ~= "ANY" and classSpecs[selectedClass] then
-        local specList = {}
-        for spec in pairs(classSpecs[selectedClass]) do
-            table.insert(specList, spec)
-        end
-        table.sort(specList)
-        for _, spec in ipairs(specList) do
-            addOption(specOptions, spec, spec)
-        end
-    else
-        for _, spec in ipairs(options.specs or {}) do
-            addOption(specOptions, spec, spec)
-        end
+    for _, spec in ipairs(options.specs or {}) do
+        addOption(specOptions, spec, spec)
     end
 
     local tierOptions = {}
@@ -10112,16 +9944,6 @@ function UI:UpdateWishlistBuildFilterControls()
                 UIDropDownMenu_AddButton(info, level)
             end
         end)
-        local valid = false
-        for _, option in ipairs(optionList) do
-            if option.value == selectedValue then
-                valid = true
-                break
-            end
-        end
-        if not valid then
-            selectedValue = "AUTO"
-        end
         dropdown.selectedValue = selectedValue
         UIDropDownMenu_SetSelectedValue(dropdown, selectedValue)
         local selectedLabel = nil
@@ -10197,54 +10019,7 @@ function UI:UpdateWishlistBuildList()
     self:UpdateWishlistBuildFilterControls()
     local filters = Goals.GetEffectiveWishlistBuildFilters and Goals:GetEffectiveWishlistBuildFilters(settings) or settings
     local builds = Goals.FilterWishlistBuilds and Goals:FilterWishlistBuilds(filters) or {}
-    if #builds == 0 then
-        local fallback = {}
-        for key, value in pairs(filters or {}) do
-            fallback[key] = value
-        end
-        local function tryFallback()
-            builds = Goals.FilterWishlistBuilds and Goals:FilterWishlistBuilds(fallback) or {}
-            return #builds > 0
-        end
-        if settings.spec == "AUTO" then
-            fallback.spec = "ANY"
-        end
-        if #builds == 0 and not tryFallback() and settings.tier == "AUTO" then
-            fallback.tier = "ANY"
-        end
-        if #builds == 0 and not tryFallback() and settings.class == "AUTO" then
-            fallback.class = "ANY"
-        end
-        if #builds == 0 and not tryFallback() and settings.levelMode == "AUTO" then
-            fallback.level = nil
-        end
-        if #builds == 0 then
-            tryFallback()
-        end
-    end
     self.wishlistBuildResults = builds
-    local library = Goals.GetWishlistBuildLibrary and Goals:GetWishlistBuildLibrary() or {}
-    local totalBuilds = library.builds and #library.builds or 0
-    local hasBuildItems = false
-    for _, build in ipairs(builds) do
-        if (build.items and #build.items > 0)
-            or (build.itemsBySlot and next(build.itemsBySlot))
-            or (build.wishlist and build.wishlist ~= "")
-            or (build.wowhead and build.wowhead ~= "") then
-            hasBuildItems = true
-            break
-        end
-    end
-    if self.wishlistBuildEmptyLabel then
-        setShown(self.wishlistBuildEmptyLabel, (#builds > 0) and (not hasBuildItems))
-    end
-    if self.wishlistBuildNoMatchLabel then
-        setShown(self.wishlistBuildNoMatchLabel, (totalBuilds > 0) and (#builds == 0))
-        if #builds == 0 and totalBuilds > 0 then
-            local detail = string.format("No builds match filters. (%d builds loaded)", totalBuilds)
-            self.wishlistBuildNoMatchLabel:SetText(detail)
-        end
-    end
     local offset = FauxScrollFrame_GetOffset(self.wishlistBuildResultsScroll) or 0
     FauxScrollFrame_Update(self.wishlistBuildResultsScroll, #builds, #self.wishlistBuildResultsRows, ROW_HEIGHT)
     for i = 1, #self.wishlistBuildResultsRows do
@@ -11386,9 +11161,6 @@ function UI:Refresh()
             setShown(control, hasAccess)
         end
     end
-    if self.UpdateOverviewOptionsLayout then
-        self:UpdateOverviewOptionsLayout(hasAccess)
-    end
     self:UpdateRosterList()
     self:UpdateHistoryList()
     self:UpdateLootHistoryList()
@@ -11399,19 +11171,6 @@ function UI:Refresh()
     self:UpdateMiniTracker()
     self:UpdateMiniFloatingButtonPosition()
     self:UpdateMinimapButton()
-end
-
-function UI:TriggerWishlistRefresh()
-    if self.wishlistRefreshButton and self.wishlistRefreshButton.Click then
-        self.wishlistRefreshButton:Click()
-        return
-    end
-    if Goals and Goals.RefreshWishlistItemCache then
-        Goals:RefreshWishlistItemCache()
-    end
-    if self.UpdateWishlistUI then
-        self:UpdateWishlistUI()
-    end
 end
 
 function UI:CreateMinimapButton()

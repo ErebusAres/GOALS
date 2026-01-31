@@ -335,6 +335,7 @@ function Comm:SerializeSettings()
         "combineBossHistory=" .. (settings.combineBossHistory and "1" or "0"),
         "disenchanter=" .. (settings.disenchanter or ""),
         "debug=" .. (settings.debug and "1" or "0"),
+        "disablePointGain=" .. (settings.disablePointGain and "1" or "0"),
         "resetMounts=" .. (settings.resetMounts and "1" or "0"),
         "resetPets=" .. (settings.resetPets and "1" or "0"),
         "resetRecipes=" .. (settings.resetRecipes and "1" or "0"),
@@ -367,6 +368,10 @@ function Comm:ApplySetting(key, value)
     end
     if key == "debug" then
         Goals.db.settings.debug = value == "1" or value == "true"
+        return
+    end
+    if key == "disablePointGain" then
+        Goals.db.settings.disablePointGain = value == "1" or value == "true"
         return
     end
     if key == "resetMounts" then
