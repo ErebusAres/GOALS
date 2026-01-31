@@ -9876,11 +9876,26 @@ function UI:UpdateWishlistBuildFilterControls()
     end
     if self.wishlistBuildLevelBox then
         local effective = Goals.GetEffectiveWishlistBuildFilters and Goals:GetEffectiveWishlistBuildFilters(settings) or settings
+        local function setLevelBoxEnabled(isEnabled)
+            if isEnabled then
+                if self.wishlistBuildLevelBox.Enable then
+                    self.wishlistBuildLevelBox:Enable()
+                elseif self.wishlistBuildLevelBox.EnableKeyboard then
+                    self.wishlistBuildLevelBox:EnableKeyboard(true)
+                end
+            else
+                if self.wishlistBuildLevelBox.Disable then
+                    self.wishlistBuildLevelBox:Disable()
+                elseif self.wishlistBuildLevelBox.EnableKeyboard then
+                    self.wishlistBuildLevelBox:EnableKeyboard(false)
+                end
+            end
+        end
         if settings.levelMode == "AUTO" then
             self.wishlistBuildLevelBox:SetText(effective.level or "")
-            self.wishlistBuildLevelBox:Disable()
+            setLevelBoxEnabled(false)
         else
-            self.wishlistBuildLevelBox:Enable()
+            setLevelBoxEnabled(true)
             if settings.level then
                 self.wishlistBuildLevelBox:SetText(tostring(settings.level))
             end
