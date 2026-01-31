@@ -12,6 +12,8 @@ bindings.xml
 armorTokens.lua
 gemsAndEnchants.lua
 wishlistBanner.lua
+wishlistBuildData.lua
+wishlistBuilds.lua
 Core.lua
 loc.lua
 savedvars.lua
