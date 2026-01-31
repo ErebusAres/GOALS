@@ -83,6 +83,14 @@ Goals.defaults = {
         wishlistPopupSound = true,
         atlasImportPrompted = false,
         atlasSelectedListKey = "",
+        wishlistBuildFilters = {
+            class = "AUTO",
+            spec = "AUTO",
+            tier = "AUTO",
+            tag = "ALL",
+            levelMode = "AUTO",
+            level = 80,
+        },
         minimap = {
             hide = false,
             angle = 220,

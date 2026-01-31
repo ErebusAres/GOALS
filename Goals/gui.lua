@@ -5543,8 +5543,173 @@ function UI:CreateWishlistTab(page)
         end
     end
 
+    local buildLibraryAnchor = self.wishlistAtlasButton or wowheadBtn
+
+    local buildTitle = createLabel(popout, L.LABEL_WISHLIST_BUILDS, "GameFontNormal")
+    buildTitle:SetPoint("TOPLEFT", buildLibraryAnchor, "BOTTOMLEFT", 0, -12)
+    self.wishlistBuildTitle = buildTitle
+
+    local buildFilterLabel = createLabel(popout, L.LABEL_WISHLIST_BUILD_FILTERS, "GameFontHighlightSmall")
+    buildFilterLabel:SetPoint("TOPLEFT", buildTitle, "BOTTOMLEFT", 0, -4)
+    self.wishlistBuildFilterLabel = buildFilterLabel
+
+    local classLabel = createLabel(popout, L.LABEL_WISHLIST_BUILD_CLASS, "GameFontNormalSmall")
+    classLabel:SetPoint("TOPLEFT", buildFilterLabel, "BOTTOMLEFT", 0, -8)
+
+    local classDrop = CreateFrame("Frame", "GoalsWishlistBuildClassDrop", popout, "UIDropDownMenuTemplate")
+    classDrop:SetPoint("TOPLEFT", classLabel, "BOTTOMLEFT", -16, -2)
+    styleDropdown(classDrop, 140)
+    self.wishlistBuildClassDrop = classDrop
+
+    local specLabel = createLabel(popout, L.LABEL_WISHLIST_BUILD_SPEC, "GameFontNormalSmall")
+    specLabel:SetPoint("TOPLEFT", classDrop, "BOTTOMLEFT", 16, -8)
+
+    local specDrop = CreateFrame("Frame", "GoalsWishlistBuildSpecDrop", popout, "UIDropDownMenuTemplate")
+    specDrop:SetPoint("TOPLEFT", specLabel, "BOTTOMLEFT", -16, -2)
+    styleDropdown(specDrop, 140)
+    self.wishlistBuildSpecDrop = specDrop
+
+    local tierLabel = createLabel(popout, L.LABEL_WISHLIST_BUILD_TIER, "GameFontNormalSmall")
+    tierLabel:SetPoint("TOPLEFT", buildFilterLabel, "BOTTOMLEFT", 190, -8)
+
+    local tierDrop = CreateFrame("Frame", "GoalsWishlistBuildTierDrop", popout, "UIDropDownMenuTemplate")
+    tierDrop:SetPoint("TOPLEFT", tierLabel, "BOTTOMLEFT", -16, -2)
+    styleDropdown(tierDrop, 170)
+    self.wishlistBuildTierDrop = tierDrop
+
+    local tagLabel = createLabel(popout, L.LABEL_WISHLIST_BUILD_TAG, "GameFontNormalSmall")
+    tagLabel:SetPoint("TOPLEFT", tierDrop, "BOTTOMLEFT", 16, -8)
+
+    local tagDrop = CreateFrame("Frame", "GoalsWishlistBuildTagDrop", popout, "UIDropDownMenuTemplate")
+    tagDrop:SetPoint("TOPLEFT", tagLabel, "BOTTOMLEFT", -16, -2)
+    styleDropdown(tagDrop, 170)
+    self.wishlistBuildTagDrop = tagDrop
+
+    local levelLabel = createLabel(popout, L.LABEL_WISHLIST_BUILD_LEVEL, "GameFontNormalSmall")
+    levelLabel:SetPoint("TOPLEFT", specDrop, "BOTTOMLEFT", 16, -8)
+
+    local levelBox = CreateFrame("EditBox", "GoalsWishlistBuildLevelBox", popout, "InputBoxTemplate")
+    levelBox:SetPoint("LEFT", levelLabel, "RIGHT", 8, 0)
+    levelBox:SetSize(40, 18)
+    levelBox:SetAutoFocus(false)
+    levelBox:SetNumeric(true)
+    bindEscapeClear(levelBox)
+    levelBox:SetScript("OnEnterPressed", function(selfBox)
+        selfBox:ClearFocus()
+        if UI and UI.UpdateWishlistBuildList then
+            UI:UpdateWishlistBuildList()
+        end
+    end)
+    self.wishlistBuildLevelBox = levelBox
+
+    local levelAutoCheck = CreateFrame("CheckButton", nil, popout, "UICheckButtonTemplate")
+    levelAutoCheck:SetPoint("LEFT", levelBox, "RIGHT", 6, 0)
+    setCheckText(levelAutoCheck, "Auto")
+    levelAutoCheck:SetScript("OnClick", function(selfCheck)
+        if Goals.db and Goals.db.settings and Goals.db.settings.wishlistBuildFilters then
+            Goals.db.settings.wishlistBuildFilters.levelMode = selfCheck:GetChecked() and "AUTO" or "MANUAL"
+        end
+        if UI and UI.UpdateWishlistBuildList then
+            UI:UpdateWishlistBuildList()
+        end
+    end)
+    self.wishlistBuildLevelAuto = levelAutoCheck
+
+    local resetFiltersBtn = CreateFrame("Button", nil, popout, "UIPanelButtonTemplate")
+    resetFiltersBtn:SetPoint("TOPLEFT", levelLabel, "BOTTOMLEFT", -2, -8)
+    resetFiltersBtn:SetSize(110, 20)
+    resetFiltersBtn:SetText(L.BUTTON_RESET_FILTERS)
+    resetFiltersBtn:SetScript("OnClick", function()
+        if UI and UI.ResetWishlistBuildFilters then
+            UI:ResetWishlistBuildFilters(false)
+        end
+    end)
+    self.wishlistBuildResetFilters = resetFiltersBtn
+
+    local useDetectedBtn = CreateFrame("Button", nil, popout, "UIPanelButtonTemplate")
+    useDetectedBtn:SetPoint("LEFT", resetFiltersBtn, "RIGHT", 6, 0)
+    useDetectedBtn:SetSize(110, 20)
+    useDetectedBtn:SetText(L.BUTTON_USE_DETECTED)
+    useDetectedBtn:SetScript("OnClick", function()
+        if UI and UI.ResetWishlistBuildFilters then
+            UI:ResetWishlistBuildFilters(true)
+        end
+    end)
+    self.wishlistBuildUseDetected = useDetectedBtn
+
+    local buildResultsLabel = createLabel(popout, L.LABEL_WISHLIST_BUILD_RESULTS, "GameFontNormal")
+    buildResultsLabel:SetPoint("TOPLEFT", resetFiltersBtn, "BOTTOMLEFT", 2, -10)
+    self.wishlistBuildResultsLabel = buildResultsLabel
+
+    local buildResultsInset = CreateFrame("Frame", "GoalsWishlistBuildResultsInset", popout, "GoalsInsetTemplate")
+    applyInsetTheme(buildResultsInset)
+    buildResultsInset:SetPoint("TOPLEFT", buildResultsLabel, "BOTTOMLEFT", -4, -6)
+    buildResultsInset:SetPoint("TOPRIGHT", popout, "TOPRIGHT", -10, 0)
+    buildResultsInset:SetHeight(110)
+    self.wishlistBuildResultsInset = buildResultsInset
+
+    local buildResultsScroll = CreateFrame("ScrollFrame", "GoalsWishlistBuildResultsScroll", buildResultsInset, "FauxScrollFrameTemplate")
+    buildResultsScroll:SetPoint("TOPLEFT", buildResultsInset, "TOPLEFT", 2, -6)
+    buildResultsScroll:SetPoint("BOTTOMRIGHT", buildResultsInset, "BOTTOMRIGHT", -26, 6)
+    buildResultsScroll:SetScript("OnVerticalScroll", function(selfScroll, offset)
+        FauxScrollFrame_OnVerticalScroll(selfScroll, offset, ROW_HEIGHT, function()
+            UI:UpdateWishlistBuildList()
+        end)
+    end)
+    self.wishlistBuildResultsScroll = buildResultsScroll
+
+    self.wishlistBuildResultsRows = {}
+    for i = 1, 5 do
+        local row = CreateFrame("Button", nil, buildResultsInset)
+        row:SetHeight(ROW_HEIGHT)
+        row:SetPoint("TOPLEFT", buildResultsInset, "TOPLEFT", 8, -6 - (i - 1) * ROW_HEIGHT)
+        row:SetPoint("RIGHT", buildResultsInset, "RIGHT", -26, 0)
+        local highlight = row:CreateTexture(nil, "HIGHLIGHT")
+        highlight:SetAllPoints(row)
+        highlight:SetTexture("Interface\\Buttons\\UI-Listbox-Highlight")
+        highlight:SetBlendMode("ADD")
+        row:SetHighlightTexture(highlight)
+        local text = row:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+        text:SetPoint("LEFT", row, "LEFT", 2, 0)
+        text:SetPoint("RIGHT", row, "RIGHT", -4, 0)
+        row.text = text
+        local selected = row:CreateTexture(nil, "ARTWORK")
+        selected:SetAllPoints(row)
+        selected:SetTexture("Interface\\Buttons\\UI-Listbox-Highlight")
+        selected:SetBlendMode("ADD")
+        selected:Hide()
+        row.selected = selected
+        row:SetScript("OnClick", function(selfRow)
+            if selfRow.build then
+                UI.selectedWishlistBuild = selfRow.build
+                UI:UpdateWishlistBuildList()
+            end
+        end)
+        self.wishlistBuildResultsRows[i] = row
+    end
+
+    local buildImportBtn = CreateFrame("Button", nil, popout, "UIPanelButtonTemplate")
+    buildImportBtn:SetPoint("TOPLEFT", buildResultsInset, "BOTTOMLEFT", 0, -8)
+    buildImportBtn:SetSize(120, 20)
+    buildImportBtn:SetText(L.BUTTON_IMPORT_BUILD)
+    buildImportBtn:SetScript("OnClick", function()
+        if not UI.selectedWishlistBuild then
+            Goals:Print("Select a build to import.")
+            return
+        end
+        local mode = importModeDrop and importModeDrop.selectedValue or "NEW"
+        local ok, msg = Goals:ApplyWishlistBuild(UI.selectedWishlistBuild, mode)
+        if msg then
+            Goals:Print(msg)
+        end
+        if ok and Goals.UI and Goals.UI.UpdateWishlistUI then
+            Goals.UI:UpdateWishlistUI()
+        end
+    end)
+    self.wishlistBuildImportButton = buildImportBtn
+
     local syncLabel = createLabel(popout, L.LABEL_BUILD_SHARE, "GameFontNormal")
-    syncLabel:SetPoint("TOPLEFT", wowheadBtn, "BOTTOMLEFT", 0, -10)
+    syncLabel:SetPoint("TOPLEFT", buildImportBtn, "BOTTOMLEFT", 0, -12)
 
     local sendBuildBtn = CreateFrame("Button", nil, popout, "UIPanelButtonTemplate")
     sendBuildBtn:SetPoint("TOPLEFT", syncLabel, "BOTTOMLEFT", -6, -4)
@@ -9577,6 +9742,227 @@ function UI:ClearWishlistSocketSelection(mode, socketIndex)
     self:UpdateWishlistUI()
 end
 
+function UI:GetWishlistBuildSettings()
+    if not (Goals.db and Goals.db.settings) then
+        return {}
+    end
+    Goals.db.settings.wishlistBuildFilters = Goals.db.settings.wishlistBuildFilters or {
+        class = "AUTO",
+        spec = "AUTO",
+        tier = "AUTO",
+        tag = "ALL",
+        levelMode = "AUTO",
+        level = 80,
+    }
+    return Goals.db.settings.wishlistBuildFilters
+end
+
+function UI:ResetWishlistBuildFilters(useDetected)
+    local settings = self:GetWishlistBuildSettings()
+    if useDetected then
+        settings.class = "AUTO"
+        settings.spec = "AUTO"
+        settings.tier = "AUTO"
+        settings.tag = "ALL"
+        settings.levelMode = "AUTO"
+        local detected = Goals.GetPlayerLevel and Goals:GetPlayerLevel()
+        if detected then
+            settings.level = detected
+        end
+    else
+        settings.class = "AUTO"
+        settings.spec = "AUTO"
+        settings.tier = "AUTO"
+        settings.tag = "ALL"
+        settings.levelMode = "AUTO"
+        settings.level = 80
+    end
+    self:UpdateWishlistBuildList()
+end
+
+function UI:UpdateWishlistBuildFilterControls()
+    if not (self.wishlistBuildClassDrop and self.wishlistBuildSpecDrop and self.wishlistBuildTierDrop and self.wishlistBuildTagDrop) then
+        return
+    end
+    local settings = self:GetWishlistBuildSettings()
+    local library = Goals.GetWishlistBuildLibrary and Goals:GetWishlistBuildLibrary() or {}
+    local options = Goals.GetWishlistBuildFilterOptions and Goals:GetWishlistBuildFilterOptions() or {}
+    local tierLabels = {}
+    for _, tier in ipairs(library.tiers or {}) do
+        tierLabels[tier.id] = tier.label or tier.id
+    end
+
+    local function addOption(list, value, text)
+        table.insert(list, { value = value, text = text or value })
+    end
+
+    local classOptions = {}
+    addOption(classOptions, "AUTO", "Auto")
+    addOption(classOptions, "ANY", "Any")
+    for _, classId in ipairs(options.classes or {}) do
+        addOption(classOptions, classId, classId)
+    end
+
+    local specOptions = {}
+    addOption(specOptions, "AUTO", "Auto")
+    addOption(specOptions, "ANY", "Any")
+    for _, spec in ipairs(options.specs or {}) do
+        addOption(specOptions, spec, spec)
+    end
+
+    local tierOptions = {}
+    addOption(tierOptions, "AUTO", "Auto")
+    addOption(tierOptions, "ANY", "Any")
+    for _, tierId in ipairs(options.tiers or {}) do
+        local label = tierLabels[tierId] or tierId
+        addOption(tierOptions, tierId, label)
+    end
+
+    local tagOptions = {}
+    addOption(tagOptions, "ALL", "All")
+    for _, tag in ipairs(options.tags or {}) do
+        addOption(tagOptions, tag, tag)
+    end
+
+    local function setupDropdown(dropdown, optionList, selectedValue, onSelect)
+        UIDropDownMenu_Initialize(dropdown, function(_, level)
+            for _, option in ipairs(optionList) do
+                local info = UIDropDownMenu_CreateInfo()
+                info.text = option.text
+                info.value = option.value
+                info.func = function()
+                    dropdown.selectedValue = option.value
+                    UIDropDownMenu_SetSelectedValue(dropdown, option.value)
+                    UI:SetDropdownText(dropdown, option.text)
+                    if onSelect then
+                        onSelect(option.value)
+                    end
+                end
+                info.checked = dropdown.selectedValue == option.value
+                UIDropDownMenu_AddButton(info, level)
+            end
+        end)
+        dropdown.selectedValue = selectedValue
+        UIDropDownMenu_SetSelectedValue(dropdown, selectedValue)
+        local selectedLabel = nil
+        for _, option in ipairs(optionList) do
+            if option.value == selectedValue then
+                selectedLabel = option.text
+                break
+            end
+        end
+        UI:SetDropdownText(dropdown, selectedLabel or L.SELECT_OPTION)
+    end
+
+    setupDropdown(self.wishlistBuildClassDrop, classOptions, settings.class or "AUTO", function(value)
+        settings.class = value
+        UI:UpdateWishlistBuildList()
+    end)
+    setupDropdown(self.wishlistBuildSpecDrop, specOptions, settings.spec or "AUTO", function(value)
+        settings.spec = value
+        UI:UpdateWishlistBuildList()
+    end)
+    setupDropdown(self.wishlistBuildTierDrop, tierOptions, settings.tier or "AUTO", function(value)
+        settings.tier = value
+        UI:UpdateWishlistBuildList()
+    end)
+    setupDropdown(self.wishlistBuildTagDrop, tagOptions, settings.tag or "ALL", function(value)
+        settings.tag = value
+        UI:UpdateWishlistBuildList()
+    end)
+
+    if self.wishlistBuildLevelAuto then
+        self.wishlistBuildLevelAuto:SetChecked(settings.levelMode == "AUTO")
+    end
+    if self.wishlistBuildLevelBox then
+        local effective = Goals.GetEffectiveWishlistBuildFilters and Goals:GetEffectiveWishlistBuildFilters(settings) or settings
+        local function setLevelBoxEnabled(isEnabled)
+            if isEnabled then
+                if self.wishlistBuildLevelBox.Enable then
+                    self.wishlistBuildLevelBox:Enable()
+                elseif self.wishlistBuildLevelBox.EnableKeyboard then
+                    self.wishlistBuildLevelBox:EnableKeyboard(true)
+                end
+            else
+                if self.wishlistBuildLevelBox.Disable then
+                    self.wishlistBuildLevelBox:Disable()
+                elseif self.wishlistBuildLevelBox.EnableKeyboard then
+                    self.wishlistBuildLevelBox:EnableKeyboard(false)
+                end
+            end
+        end
+        if settings.levelMode == "AUTO" then
+            self.wishlistBuildLevelBox:SetText(effective.level or "")
+            setLevelBoxEnabled(false)
+        else
+            setLevelBoxEnabled(true)
+            if settings.level then
+                self.wishlistBuildLevelBox:SetText(tostring(settings.level))
+            end
+        end
+    end
+end
+
+function UI:UpdateWishlistBuildList()
+    if not self.wishlistBuildResultsScroll or not self.wishlistBuildResultsRows then
+        return
+    end
+    local settings = self:GetWishlistBuildSettings()
+    if self.wishlistBuildLevelBox and settings.levelMode ~= "AUTO" then
+        local value = tonumber(self.wishlistBuildLevelBox:GetText())
+        if value then
+            settings.level = value
+        end
+    end
+    self:UpdateWishlistBuildFilterControls()
+    local filters = Goals.GetEffectiveWishlistBuildFilters and Goals:GetEffectiveWishlistBuildFilters(settings) or settings
+    local builds = Goals.FilterWishlistBuilds and Goals:FilterWishlistBuilds(filters) or {}
+    self.wishlistBuildResults = builds
+    local offset = FauxScrollFrame_GetOffset(self.wishlistBuildResultsScroll) or 0
+    FauxScrollFrame_Update(self.wishlistBuildResultsScroll, #builds, #self.wishlistBuildResultsRows, ROW_HEIGHT)
+    for i = 1, #self.wishlistBuildResultsRows do
+        local row = self.wishlistBuildResultsRows[i]
+        local index = offset + i
+        local build = builds[index]
+        if build then
+            row:Show()
+            row.build = build
+            local tierLabel = build.tier
+            local library = Goals.GetWishlistBuildLibrary and Goals:GetWishlistBuildLibrary() or {}
+            for _, tier in ipairs(library.tiers or {}) do
+                if tier.id == build.tier then
+                    tierLabel = tier.label or build.tier
+                    break
+                end
+            end
+            local meta = {}
+            if build.class then
+                table.insert(meta, build.class)
+            end
+            if build.spec then
+                table.insert(meta, build.spec)
+            end
+            if tierLabel then
+                table.insert(meta, tierLabel)
+            end
+            local metaText = table.concat(meta, " / ")
+            if metaText ~= "" then
+                row.text:SetText(string.format("%s (%s)", build.name or "Build", metaText))
+            else
+                row.text:SetText(build.name or "Build")
+            end
+            if self.selectedWishlistBuild == build then
+                row.selected:Show()
+            else
+                row.selected:Hide()
+            end
+        else
+            row:Hide()
+            row.build = nil
+        end
+    end
+end
+
 function UI:UpdateWishlistUI()
     if not self.wishlistSlotButtons then
         return
@@ -9953,6 +10339,9 @@ function UI:UpdateWishlistUI()
     end
     self:UpdateWishlistManagerList()
     self:UpdateWishlistSearchResults()
+    if self.UpdateWishlistBuildList then
+        self:UpdateWishlistBuildList()
+    end
     if self.wishlistSocketPickerOpen then
         self:UpdateWishlistSocketPickerResults()
     end
@@ -11170,6 +11559,3 @@ function UI:CreateOptionsPanel()
     InterfaceOptions_AddCategory(panel)
     self.optionsPanel = panel
 end
-
-
-
