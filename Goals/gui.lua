@@ -4248,7 +4248,7 @@ function UI:CreateWishlistTab(page)
     self.wishlistSubTabs.manage = createTabButton("Manage", "manage", nil)
     self.wishlistSubTabs.search = createTabButton("Search", "search", self.wishlistSubTabs.manage)
     self.wishlistSubTabs.actions = createTabButton("Actions", "actions", self.wishlistSubTabs.search)
-    self.wishlistSubTabs.options = createTabButton("Options", "options", self.wishlistSubTabs.actions)
+    self.wishlistSubTabs.options = createTabButton("Builds", "options", self.wishlistSubTabs.actions)
 
     local helpBtn = CreateFrame("Button", "GoalsWishlistHelpButton", tabBar)
     helpBtn:SetSize(18, 18)
@@ -4915,6 +4915,58 @@ function UI:CreateWishlistTab(page)
     end)
     self.wishlistDeleteButton = deleteBtn
 
+    local announceLabel = createLabel(managerPage, L.LABEL_WISHLIST_ANNOUNCE, "GameFontNormal")
+    announceLabel:SetPoint("TOPLEFT", copyBtn, "BOTTOMLEFT", 0, -14)
+
+    local announceCheck = CreateFrame("CheckButton", nil, managerPage, "UICheckButtonTemplate")
+    announceCheck:SetPoint("TOPLEFT", announceLabel, "BOTTOMLEFT", -4, -2)
+    setCheckText(announceCheck, L.CHECK_WISHLIST_ANNOUNCE)
+    announceCheck:SetScript("OnClick", function(selfCheck)
+        Goals.db.settings.wishlistAnnounce = selfCheck:GetChecked() and true or false
+        Goals:NotifyDataChanged()
+    end)
+    attachSideTooltip(announceCheck, "Post wishlist alerts to chat when items are found.")
+    self.wishlistAnnounceCheck = announceCheck
+
+    local soundToggle = createSmallIconButton(managerPage, 20, "Interface\\Common\\VoiceChat-Speaker")
+    soundToggle:SetPoint("LEFT", announceLabel, "RIGHT", 6, 0)
+    local soundWave = soundToggle:CreateTexture(nil, "OVERLAY")
+    soundWave:SetAllPoints(soundToggle)
+    soundWave:SetTexture("Interface\\Common\\VoiceChat-On")
+    soundWave:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    soundToggle.waveIcon = soundWave
+    soundToggle:SetScript("OnClick", function()
+        local enabled = Goals.db.settings.wishlistPopupSound and true or false
+        Goals.db.settings.wishlistPopupSound = not enabled
+        if soundToggle.waveIcon then
+            setShown(soundToggle.waveIcon, Goals.db.settings.wishlistPopupSound)
+        end
+        Goals:NotifyDataChanged()
+    end)
+    soundToggle:SetScript("OnEnter", function(selfBtn)
+        GameTooltip:SetOwner(selfBtn, "ANCHOR_RIGHT")
+        if Goals.db.settings.wishlistPopupSound then
+            GameTooltip:SetText("Wishlist alert sound: enabled")
+        else
+            GameTooltip:SetText("Wishlist alert sound: muted")
+        end
+        GameTooltip:Show()
+    end)
+    soundToggle:SetScript("OnLeave", function()
+        GameTooltip:Hide()
+    end)
+    self.wishlistPopupSoundToggle = soundToggle
+
+    local disablePopupCheck = CreateFrame("CheckButton", nil, managerPage, "UICheckButtonTemplate")
+    disablePopupCheck:SetPoint("LEFT", announceCheck, "RIGHT", 120, 0)
+    setCheckText(disablePopupCheck, "Disable popup alert")
+    disablePopupCheck:SetScript("OnClick", function(selfCheck)
+        Goals.db.settings.wishlistPopupDisabled = selfCheck:GetChecked() and true or false
+        Goals:NotifyDataChanged()
+    end)
+    attachSideTooltip(disablePopupCheck, "Disable the on-screen wishlist popup.")
+    self.wishlistPopupDisableCheck = disablePopupCheck
+
     local searchLabel = createLabel(searchPage, L.LABEL_WISHLIST_SEARCH, "GameFontNormal")
     searchLabel:SetPoint("TOPLEFT", searchPage, "TOPLEFT", 4, -4)
 
@@ -5158,7 +5210,7 @@ function UI:CreateWishlistTab(page)
     local popoutTitle = createLabel(popout, L.LABEL_WISHLIST_ACTIONS, "GameFontNormal")
     popoutTitle:SetPoint("TOPLEFT", popout, "TOPLEFT", 4, -4)
 
-    local optionsTitle = createLabel(optionsPopout, L.LABEL_WISHLIST_OPTIONS, "GameFontNormal")
+    local optionsTitle = createLabel(optionsPopout, "Builds", "GameFontNormal")
     optionsTitle:SetPoint("TOPLEFT", optionsPopout, "TOPLEFT", 4, -4)
 
     local notesLabel = createLabel(popout, L.LABEL_WISHLIST_NOTES, "GameFontNormal")
@@ -5543,52 +5595,58 @@ function UI:CreateWishlistTab(page)
         end
     end
 
-    local buildLibraryAnchor = self.wishlistAtlasButton or wowheadBtn
+    local buildLibraryAnchor = optionsTitle
 
-    local buildTitle = createLabel(popout, L.LABEL_WISHLIST_BUILDS, "GameFontNormal")
-    buildTitle:SetPoint("TOPLEFT", buildLibraryAnchor, "BOTTOMLEFT", 0, -12)
-    self.wishlistBuildTitle = buildTitle
-
-    local buildFilterLabel = createLabel(popout, L.LABEL_WISHLIST_BUILD_FILTERS, "GameFontHighlightSmall")
-    buildFilterLabel:SetPoint("TOPLEFT", buildTitle, "BOTTOMLEFT", 0, -4)
+    local buildFilterLabel = createLabel(optionsPopout, L.LABEL_WISHLIST_BUILD_FILTERS, "GameFontHighlightSmall")
+    buildFilterLabel:SetPoint("TOPLEFT", buildLibraryAnchor, "BOTTOMLEFT", 0, -6)
+    buildFilterLabel:SetPoint("LEFT", optionsTitle, "LEFT", 0, 0)
     self.wishlistBuildFilterLabel = buildFilterLabel
 
-    local classLabel = createLabel(popout, L.LABEL_WISHLIST_BUILD_CLASS, "GameFontNormalSmall")
+    local classLabel = createLabel(optionsPopout, L.LABEL_WISHLIST_BUILD_CLASS, "GameFontNormalSmall")
     classLabel:SetPoint("TOPLEFT", buildFilterLabel, "BOTTOMLEFT", 0, -8)
+    classLabel:SetPoint("LEFT", optionsTitle, "LEFT", 0, 0)
 
-    local classDrop = CreateFrame("Frame", "GoalsWishlistBuildClassDrop", popout, "UIDropDownMenuTemplate")
+    local classDrop = CreateFrame("Frame", "GoalsWishlistBuildClassDrop", optionsPopout, "UIDropDownMenuTemplate")
     classDrop:SetPoint("TOPLEFT", classLabel, "BOTTOMLEFT", -16, -2)
     styleDropdown(classDrop, 140)
     self.wishlistBuildClassDrop = classDrop
 
-    local specLabel = createLabel(popout, L.LABEL_WISHLIST_BUILD_SPEC, "GameFontNormalSmall")
+    local specLabel = createLabel(optionsPopout, L.LABEL_WISHLIST_BUILD_SPEC, "GameFontNormalSmall")
     specLabel:SetPoint("TOPLEFT", classDrop, "BOTTOMLEFT", 16, -8)
+    specLabel:SetPoint("LEFT", optionsTitle, "LEFT", 0, 0)
 
-    local specDrop = CreateFrame("Frame", "GoalsWishlistBuildSpecDrop", popout, "UIDropDownMenuTemplate")
+    local specDrop = CreateFrame("Frame", "GoalsWishlistBuildSpecDrop", optionsPopout, "UIDropDownMenuTemplate")
     specDrop:SetPoint("TOPLEFT", specLabel, "BOTTOMLEFT", -16, -2)
     styleDropdown(specDrop, 140)
     self.wishlistBuildSpecDrop = specDrop
 
-    local tierLabel = createLabel(popout, L.LABEL_WISHLIST_BUILD_TIER, "GameFontNormalSmall")
-    tierLabel:SetPoint("TOPLEFT", buildFilterLabel, "BOTTOMLEFT", 190, -8)
+    local rightColumnAnchor = CreateFrame("Frame", nil, optionsPopout)
+    rightColumnAnchor:SetPoint("TOPLEFT", buildFilterLabel, "BOTTOMLEFT", 170, -8)
+    rightColumnAnchor:SetSize(1, 1)
 
-    local tierDrop = CreateFrame("Frame", "GoalsWishlistBuildTierDrop", popout, "UIDropDownMenuTemplate")
+    local tierLabel = createLabel(optionsPopout, L.LABEL_WISHLIST_BUILD_TIER, "GameFontNormalSmall")
+    tierLabel:SetPoint("TOPLEFT", rightColumnAnchor, "TOPLEFT", 0, 0)
+
+    local tierDrop = CreateFrame("Frame", "GoalsWishlistBuildTierDrop", optionsPopout, "UIDropDownMenuTemplate")
     tierDrop:SetPoint("TOPLEFT", tierLabel, "BOTTOMLEFT", -16, -2)
     styleDropdown(tierDrop, 170)
     self.wishlistBuildTierDrop = tierDrop
 
-    local tagLabel = createLabel(popout, L.LABEL_WISHLIST_BUILD_TAG, "GameFontNormalSmall")
+    local tagLabel = createLabel(optionsPopout, L.LABEL_WISHLIST_BUILD_TAG, "GameFontNormalSmall")
     tagLabel:SetPoint("TOPLEFT", tierDrop, "BOTTOMLEFT", 16, -8)
+    tagLabel:SetPoint("LEFT", rightColumnAnchor, "LEFT", 0, 0)
 
-    local tagDrop = CreateFrame("Frame", "GoalsWishlistBuildTagDrop", popout, "UIDropDownMenuTemplate")
+    local tagDrop = CreateFrame("Frame", "GoalsWishlistBuildTagDrop", optionsPopout, "UIDropDownMenuTemplate")
     tagDrop:SetPoint("TOPLEFT", tagLabel, "BOTTOMLEFT", -16, -2)
     styleDropdown(tagDrop, 170)
     self.wishlistBuildTagDrop = tagDrop
+    tagDrop:SetPoint("LEFT", tierDrop, "LEFT", 0, 0)
 
-    local levelLabel = createLabel(popout, L.LABEL_WISHLIST_BUILD_LEVEL, "GameFontNormalSmall")
+    local levelLabel = createLabel(optionsPopout, L.LABEL_WISHLIST_BUILD_LEVEL, "GameFontNormalSmall")
     levelLabel:SetPoint("TOPLEFT", specDrop, "BOTTOMLEFT", 16, -8)
+    levelLabel:SetPoint("LEFT", optionsTitle, "LEFT", 0, 0)
 
-    local levelBox = CreateFrame("EditBox", "GoalsWishlistBuildLevelBox", popout, "InputBoxTemplate")
+    local levelBox = CreateFrame("EditBox", "GoalsWishlistBuildLevelBox", optionsPopout, "InputBoxTemplate")
     levelBox:SetPoint("LEFT", levelLabel, "RIGHT", 8, 0)
     levelBox:SetSize(40, 18)
     levelBox:SetAutoFocus(false)
@@ -5602,7 +5660,7 @@ function UI:CreateWishlistTab(page)
     end)
     self.wishlistBuildLevelBox = levelBox
 
-    local levelAutoCheck = CreateFrame("CheckButton", nil, popout, "UICheckButtonTemplate")
+    local levelAutoCheck = CreateFrame("CheckButton", nil, optionsPopout, "UICheckButtonTemplate")
     levelAutoCheck:SetPoint("LEFT", levelBox, "RIGHT", 6, 0)
     setCheckText(levelAutoCheck, "Auto")
     levelAutoCheck:SetScript("OnClick", function(selfCheck)
@@ -5615,7 +5673,7 @@ function UI:CreateWishlistTab(page)
     end)
     self.wishlistBuildLevelAuto = levelAutoCheck
 
-    local resetFiltersBtn = CreateFrame("Button", nil, popout, "UIPanelButtonTemplate")
+    local resetFiltersBtn = CreateFrame("Button", nil, optionsPopout, "UIPanelButtonTemplate")
     resetFiltersBtn:SetPoint("TOPLEFT", levelLabel, "BOTTOMLEFT", -2, -8)
     resetFiltersBtn:SetSize(110, 20)
     resetFiltersBtn:SetText(L.BUTTON_RESET_FILTERS)
@@ -5626,7 +5684,7 @@ function UI:CreateWishlistTab(page)
     end)
     self.wishlistBuildResetFilters = resetFiltersBtn
 
-    local useDetectedBtn = CreateFrame("Button", nil, popout, "UIPanelButtonTemplate")
+    local useDetectedBtn = CreateFrame("Button", nil, optionsPopout, "UIPanelButtonTemplate")
     useDetectedBtn:SetPoint("LEFT", resetFiltersBtn, "RIGHT", 6, 0)
     useDetectedBtn:SetSize(110, 20)
     useDetectedBtn:SetText(L.BUTTON_USE_DETECTED)
@@ -5637,14 +5695,15 @@ function UI:CreateWishlistTab(page)
     end)
     self.wishlistBuildUseDetected = useDetectedBtn
 
-    local buildResultsLabel = createLabel(popout, L.LABEL_WISHLIST_BUILD_RESULTS, "GameFontNormal")
+    local buildResultsLabel = createLabel(optionsPopout, L.LABEL_WISHLIST_BUILD_RESULTS, "GameFontNormal")
     buildResultsLabel:SetPoint("TOPLEFT", resetFiltersBtn, "BOTTOMLEFT", 2, -10)
+    buildResultsLabel:SetPoint("LEFT", optionsTitle, "LEFT", 0, 0)
     self.wishlistBuildResultsLabel = buildResultsLabel
 
-    local buildResultsInset = CreateFrame("Frame", "GoalsWishlistBuildResultsInset", popout, "GoalsInsetTemplate")
+    local buildResultsInset = CreateFrame("Frame", "GoalsWishlistBuildResultsInset", optionsPopout, "GoalsInsetTemplate")
     applyInsetTheme(buildResultsInset)
     buildResultsInset:SetPoint("TOPLEFT", buildResultsLabel, "BOTTOMLEFT", -4, -6)
-    buildResultsInset:SetPoint("TOPRIGHT", popout, "TOPRIGHT", -10, 0)
+    buildResultsInset:SetPoint("TOPRIGHT", optionsPopout, "TOPRIGHT", -10, 0)
     buildResultsInset:SetHeight(110)
     self.wishlistBuildResultsInset = buildResultsInset
 
@@ -5688,8 +5747,50 @@ function UI:CreateWishlistTab(page)
         self.wishlistBuildResultsRows[i] = row
     end
 
-    local buildImportBtn = CreateFrame("Button", nil, popout, "UIPanelButtonTemplate")
-    buildImportBtn:SetPoint("TOPLEFT", buildResultsInset, "BOTTOMLEFT", 0, -8)
+    local buildEmptyLabel = buildResultsInset:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    buildEmptyLabel:SetPoint("TOPLEFT", buildResultsInset, "TOPLEFT", 8, -10)
+    buildEmptyLabel:SetPoint("TOPRIGHT", buildResultsInset, "TOPRIGHT", -8, -10)
+    buildEmptyLabel:SetJustifyH("LEFT")
+    buildEmptyLabel:SetText("Build library is installed, but item data is not available yet.")
+    buildEmptyLabel:Hide()
+    self.wishlistBuildEmptyLabel = buildEmptyLabel
+
+    local buildModeLabel = createLabel(optionsPopout, L.WISHLIST_IMPORT_MODE, "GameFontNormalSmall")
+    buildModeLabel:SetPoint("TOPLEFT", buildResultsInset, "BOTTOMLEFT", 0, -8)
+    buildModeLabel:SetPoint("LEFT", optionsTitle, "LEFT", 0, 0)
+
+    local buildModeDrop = CreateFrame("Frame", "GoalsWishlistBuildImportModeDropdown", optionsPopout, "UIDropDownMenuTemplate")
+    buildModeDrop:SetPoint("TOPLEFT", buildModeLabel, "BOTTOMLEFT", -16, -2)
+    UIDropDownMenu_SetWidth(buildModeDrop, 90)
+    UIDropDownMenu_SetButtonWidth(buildModeDrop, 104)
+    buildModeDrop.selectedValue = "NEW"
+    UIDropDownMenu_Initialize(buildModeDrop, function(_, level)
+        local info = UIDropDownMenu_CreateInfo()
+        info.text = L.WISHLIST_IMPORT_NEW
+        info.value = "NEW"
+        info.func = function()
+            buildModeDrop.selectedValue = "NEW"
+            UIDropDownMenu_SetSelectedValue(buildModeDrop, "NEW")
+            UI:SetDropdownText(buildModeDrop, L.WISHLIST_IMPORT_NEW)
+        end
+        info.checked = buildModeDrop.selectedValue == "NEW"
+        UIDropDownMenu_AddButton(info, level)
+        info = UIDropDownMenu_CreateInfo()
+        info.text = L.WISHLIST_IMPORT_ACTIVE
+        info.value = "ACTIVE"
+        info.func = function()
+            buildModeDrop.selectedValue = "ACTIVE"
+            UIDropDownMenu_SetSelectedValue(buildModeDrop, "ACTIVE")
+            UI:SetDropdownText(buildModeDrop, L.WISHLIST_IMPORT_ACTIVE)
+        end
+        info.checked = buildModeDrop.selectedValue == "ACTIVE"
+        UIDropDownMenu_AddButton(info, level)
+    end)
+    self.wishlistBuildImportMode = buildModeDrop
+    self:SetDropdownText(buildModeDrop, L.WISHLIST_IMPORT_NEW)
+
+    local buildImportBtn = CreateFrame("Button", nil, optionsPopout, "UIPanelButtonTemplate")
+    buildImportBtn:SetPoint("LEFT", buildModeDrop, "RIGHT", 0, 2)
     buildImportBtn:SetSize(120, 20)
     buildImportBtn:SetText(L.BUTTON_IMPORT_BUILD)
     buildImportBtn:SetScript("OnClick", function()
@@ -5697,7 +5798,7 @@ function UI:CreateWishlistTab(page)
             Goals:Print("Select a build to import.")
             return
         end
-        local mode = importModeDrop and importModeDrop.selectedValue or "NEW"
+        local mode = buildModeDrop and buildModeDrop.selectedValue or "NEW"
         local ok, msg = Goals:ApplyWishlistBuild(UI.selectedWishlistBuild, mode)
         if msg then
             Goals:Print(msg)
@@ -5708,11 +5809,13 @@ function UI:CreateWishlistTab(page)
     end)
     self.wishlistBuildImportButton = buildImportBtn
 
-    local syncLabel = createLabel(popout, L.LABEL_BUILD_SHARE, "GameFontNormal")
-    syncLabel:SetPoint("TOPLEFT", buildImportBtn, "BOTTOMLEFT", 0, -12)
+    local syncLabel = createLabel(optionsPopout, L.LABEL_BUILD_SHARE, "GameFontNormal")
+    syncLabel:SetPoint("TOPLEFT", buildModeDrop, "BOTTOMLEFT", 16, -10)
+    syncLabel:SetPoint("LEFT", optionsTitle, "LEFT", 0, 0)
 
-    local sendBuildBtn = CreateFrame("Button", nil, popout, "UIPanelButtonTemplate")
-    sendBuildBtn:SetPoint("TOPLEFT", syncLabel, "BOTTOMLEFT", -6, -4)
+    local sendBuildBtn = CreateFrame("Button", nil, optionsPopout, "UIPanelButtonTemplate")
+    sendBuildBtn:SetPoint("TOPLEFT", syncLabel, "BOTTOMLEFT", 0, -4)
+    sendBuildBtn:SetPoint("LEFT", optionsTitle, "LEFT", 0, 0)
     sendBuildBtn:SetSize(120, 20)
     sendBuildBtn:SetText(L.BUTTON_SEND_BUILD)
     sendBuildBtn:SetScript("OnClick", function()
@@ -5743,66 +5846,19 @@ function UI:CreateWishlistTab(page)
     end)
     self.wishlistSendBuildButton = sendBuildBtn
 
-    local announceLabel = createLabel(optionsPopout, L.LABEL_WISHLIST_ANNOUNCE, "GameFontNormal")
-    announceLabel:SetPoint("TOPLEFT", optionsTitle, "BOTTOMLEFT", 0, -10)
-    announceLabel:SetPoint("LEFT", optionsTitle, "LEFT", 0, 0)
-
-    local announceCheck = CreateFrame("CheckButton", nil, optionsPopout, "UICheckButtonTemplate")
-    announceCheck:SetPoint("TOPLEFT", announceLabel, "BOTTOMLEFT", -4, -2)
-    setCheckText(announceCheck, L.CHECK_WISHLIST_ANNOUNCE)
-    announceCheck:SetScript("OnClick", function(selfCheck)
-        Goals.db.settings.wishlistAnnounce = selfCheck:GetChecked() and true or false
-        Goals:NotifyDataChanged()
-    end)
-    attachSideTooltip(announceCheck, "Post wishlist alerts to chat when items are found.")
-    self.wishlistAnnounceCheck = announceCheck
-
-    local soundToggle = createSmallIconButton(optionsPopout, 20, "Interface\\Common\\VoiceChat-Speaker")
-    soundToggle:SetPoint("LEFT", announceLabel, "RIGHT", 6, 0)
-    local soundWave = soundToggle:CreateTexture(nil, "OVERLAY")
-    soundWave:SetAllPoints(soundToggle)
-    soundWave:SetTexture("Interface\\Common\\VoiceChat-On")
-    soundWave:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-    soundToggle.waveIcon = soundWave
-    soundToggle:SetScript("OnClick", function()
-        local enabled = Goals.db.settings.wishlistPopupSound and true or false
-        Goals.db.settings.wishlistPopupSound = not enabled
-        if soundToggle.waveIcon then
-            setShown(soundToggle.waveIcon, Goals.db.settings.wishlistPopupSound)
-        end
-        Goals:NotifyDataChanged()
-    end)
-    soundToggle:SetScript("OnEnter", function(selfBtn)
-        GameTooltip:SetOwner(selfBtn, "ANCHOR_RIGHT")
-        if Goals.db.settings.wishlistPopupSound then
-            GameTooltip:SetText("Wishlist alert sound: enabled")
-        else
-            GameTooltip:SetText("Wishlist alert sound: muted")
-        end
-        GameTooltip:Show()
-    end)
-    soundToggle:SetScript("OnLeave", function()
-        GameTooltip:Hide()
-    end)
-    self.wishlistPopupSoundToggle = soundToggle
-
-    local disablePopupCheck = CreateFrame("CheckButton", nil, optionsPopout, "UICheckButtonTemplate")
-    disablePopupCheck:SetPoint("LEFT", announceCheck, "RIGHT", 120, 0)
-    setCheckText(disablePopupCheck, "Disable popup alert")
-    disablePopupCheck:SetScript("OnClick", function(selfCheck)
-        Goals.db.settings.wishlistPopupDisabled = selfCheck:GetChecked() and true or false
-        Goals:NotifyDataChanged()
-    end)
-    attachSideTooltip(disablePopupCheck, "Disable the on-screen wishlist popup.")
-    self.wishlistPopupDisableCheck = disablePopupCheck
-
     local function updateOptionsContentHeight()
         local scrollWidth = optionsScroll:GetWidth() or 0
         if scrollWidth > 0 then
             optionsContent:SetWidth(scrollWidth - 24)
         end
         local top = optionsContent:GetTop() or 0
-        local bottom = disablePopupCheck:GetBottom() or 0
+        local bottom = 0
+        if sendBuildBtn and sendBuildBtn.GetBottom then
+            bottom = sendBuildBtn:GetBottom() or 0
+        end
+        if bottom <= 0 and buildImportBtn and buildImportBtn.GetBottom then
+            bottom = buildImportBtn:GetBottom() or 0
+        end
         local height = 0
         if top > 0 and bottom > 0 then
             height = (top - bottom) + 30
@@ -9918,6 +9974,19 @@ function UI:UpdateWishlistBuildList()
     local filters = Goals.GetEffectiveWishlistBuildFilters and Goals:GetEffectiveWishlistBuildFilters(settings) or settings
     local builds = Goals.FilterWishlistBuilds and Goals:FilterWishlistBuilds(filters) or {}
     self.wishlistBuildResults = builds
+    local hasBuildItems = false
+    for _, build in ipairs(builds) do
+        if (build.items and #build.items > 0)
+            or (build.itemsBySlot and next(build.itemsBySlot))
+            or (build.wishlist and build.wishlist ~= "")
+            or (build.wowhead and build.wowhead ~= "") then
+            hasBuildItems = true
+            break
+        end
+    end
+    if self.wishlistBuildEmptyLabel then
+        setShown(self.wishlistBuildEmptyLabel, (#builds > 0) and (not hasBuildItems))
+    end
     local offset = FauxScrollFrame_GetOffset(self.wishlistBuildResultsScroll) or 0
     FauxScrollFrame_Update(self.wishlistBuildResultsScroll, #builds, #self.wishlistBuildResultsRows, ROW_HEIGHT)
     for i = 1, #self.wishlistBuildResultsRows do
