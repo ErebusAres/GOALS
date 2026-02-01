@@ -2128,49 +2128,69 @@ function UI:CreateBuildShareTargetFrame()
     if self.buildShareTargetFrame then
         return
     end
-    local frame = CreateFrame("Frame", "GoalsBuildShareTargetFrame", UIParent, "GoalsInsetTemplate")
-    applyInsetTheme(frame)
-    frame:SetSize(280, 140)
-    frame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
+    local frame = CreateFrame("Frame", "GoalsBuildShareTargetFrame", UIParent, "GoalsFrameTemplate")
+    applyFrameTheme(frame)
+    frame:SetSize(OPTIONS_PANEL_WIDTH + 12, 140)
+    if self.frame then
+        frame:SetPoint("TOPLEFT", self.frame, "TOPRIGHT", -2, -34)
+    else
+        frame:SetPoint("CENTER")
+    end
     frame:SetFrameStrata("DIALOG")
-    frame:EnableMouse(true)
-    frame:SetMovable(true)
-    frame:RegisterForDrag("LeftButton")
-    frame:SetScript("OnDragStart", frame.StartMoving)
-    frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
+    frame:SetClampedToScreen(true)
     frame:Hide()
 
-    local title = createLabel(frame, L.BUTTON_SEND_BUILD, "GameFontNormal")
-    title:SetPoint("TOPLEFT", frame, "TOPLEFT", 12, -10)
-    frame.title = title
+    if frame.TitleText then
+        frame.TitleText:SetText(L.BUTTON_SEND_BUILD)
+        frame.TitleText:Show()
+    end
+    if frame.CloseButton then
+        frame.CloseButton:SetScript("OnClick", function()
+            frame:Hide()
+        end)
+    end
 
-    local dropdown = CreateFrame("Frame", "GoalsBuildShareTargetDropdown", frame, "UIDropDownMenuTemplate")
-    dropdown:SetPoint("TOPLEFT", title, "BOTTOMLEFT", -12, -6)
+    local content = CreateFrame("Frame", nil, frame, "GoalsInsetTemplate")
+    applyInsetTheme(content)
+    content:SetPoint("TOPLEFT", frame, "TOPLEFT", 6, -24)
+    content:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -6, 6)
+    frame.content = content
+
+    local y = -20
+    local targetLabel = createLabel(content, "Send to", "GameFontNormalSmall")
+    targetLabel:SetPoint("TOPLEFT", content, "TOPLEFT", 8, y)
+    styleOptionsControlLabel(targetLabel)
+    y = y - 18
+
+    local dropdown = CreateFrame("Frame", "GoalsBuildShareTargetDropdown", content, "UIDropDownMenuTemplate")
+    dropdown:SetPoint("TOPLEFT", content, "TOPLEFT", -6, y)
     dropdown.colorize = true
     self:SetupDropdown(dropdown, function()
         return self:GetBuildShareCandidates()
     end, function(name)
+        if frame.editBox then
+            frame.editBox:SetText(name or "")
+        end
         frame.selectedTarget = name
     end, L.SELECT_OPTION)
-    styleDropdown(dropdown, 180)
+    styleDropdown(dropdown, OPTIONS_CONTROL_WIDTH)
     frame.dropdown = dropdown
+    y = y - 36
 
-    local editBox = CreateFrame("EditBox", "GoalsBuildShareTargetEditBox", frame, "InputBoxTemplate")
-    editBox:SetSize(180, 20)
-    editBox:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -8)
+    local editBox = CreateFrame("EditBox", "GoalsBuildShareTargetEditBox", content, "InputBoxTemplate")
+    editBox:SetPoint("TOPLEFT", content, "TOPLEFT", 16, y)
     editBox:SetAutoFocus(false)
+    styleOptionsEditBox(editBox, OPTIONS_CONTROL_WIDTH)
     bindEscapeClear(editBox)
     frame.editBox = editBox
+    y = y - 30
 
-    local sendBtn = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
-    sendBtn:SetSize(90, 20)
-    sendBtn:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -10, 10)
+    local sendBtn = createOptionsButton(content)
+    styleOptionsButton(sendBtn, OPTIONS_CONTROL_WIDTH)
+    sendBtn:SetPoint("TOPLEFT", content, "TOPLEFT", 8, y)
     sendBtn:SetText(L.BUTTON_SEND_BUILD)
     sendBtn:SetScript("OnClick", function()
-        local target = frame.selectedTarget
-        if frame.editBox:IsShown() then
-            target = frame.editBox:GetText()
-        end
+        local target = frame.editBox and frame.editBox:GetText() or frame.selectedTarget
         if not target or target == "" then
             Goals:Print("No target selected.")
             return
@@ -2189,15 +2209,6 @@ function UI:CreateBuildShareTargetFrame()
     end)
     frame.sendBtn = sendBtn
 
-    local cancelBtn = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
-    cancelBtn:SetSize(80, 20)
-    cancelBtn:SetPoint("RIGHT", sendBtn, "LEFT", -6, 0)
-    cancelBtn:SetText(CANCEL)
-    cancelBtn:SetScript("OnClick", function()
-        frame:Hide()
-    end)
-    frame.cancelBtn = cancelBtn
-
     self.buildShareTargetFrame = frame
 end
 
@@ -2205,18 +2216,39 @@ function UI:ShowBuildShareTargetPrompt()
     self:CreateBuildShareTargetFrame()
     local frame = self.buildShareTargetFrame
     local candidates = self:GetBuildShareCandidates()
+    local targetName = nil
+    if UnitExists and UnitIsPlayer and UnitExists("target") and UnitIsPlayer("target") then
+        targetName = UnitName and UnitName("target") or nil
+    end
+
     if #candidates > 0 then
-        frame.editBox:Hide()
         frame.dropdown:Show()
-        frame.selectedTarget = candidates[1]
-        UIDropDownMenu_SetSelectedValue(frame.dropdown, candidates[1])
-        self:SetDropdownText(frame.dropdown, candidates[1])
+        local selected = candidates[1]
+        if targetName then
+            for _, name in ipairs(candidates) do
+                if name == targetName then
+                    selected = name
+                    break
+                end
+            end
+        end
+        frame.selectedTarget = selected
+        UIDropDownMenu_SetSelectedValue(frame.dropdown, selected)
+        self:SetDropdownText(frame.dropdown, selected)
     else
         frame.dropdown:Hide()
-        frame.editBox:Show()
-        frame.editBox:SetText("")
         frame.selectedTarget = nil
     end
+
+    frame.editBox:Show()
+    if targetName and targetName ~= "" then
+        frame.editBox:SetText(targetName)
+    elseif frame.selectedTarget then
+        frame.editBox:SetText(frame.selectedTarget)
+    else
+        frame.editBox:SetText("")
+    end
+
     frame:Show()
 end
 
@@ -2578,7 +2610,8 @@ function UI:GetWishlistTabLabel(tabKey)
         manage = "Manage",
         search = "Search",
         actions = "Actions",
-        options = "Options",
+        options = "Builds",
+        builds = "Builds",
     }
     return map[tabKey]
 end
@@ -3755,6 +3788,12 @@ function UI:CreateOverviewTab(page)
                     control:SetPoint("TOPLEFT", content, "TOPLEFT", 8, y)
                     y = y - (step or 30)
                 end
+                local function setControlIfShown(control, step)
+                    if control and control.IsShown and not control:IsShown() then
+                        return
+                    end
+                    setControl(control, step)
+                end
                 local function setSpacer(amount)
                     y = y - (amount or 8)
                 end
@@ -3769,10 +3808,10 @@ function UI:CreateOverviewTab(page)
                 setHeader(self.overviewTableBar)
                 setControl(self.autoLoadSeenCheck, 28)
                 setControl(self.combinedTablesCheck, 28)
-                setControl(self.syncSeenButton, 30)
+                setControlIfShown(self.syncSeenButton, 30)
 
                 -- Keybindings section (skip Dev Tools entirely)
-                setSpacer(8)
+                setSpacer(0)
                 setHeader(self.overviewKeybindsBar)
                 if self.keybindUiLabel and self.keybindUiLabel.ClearAllPoints then
                     self.keybindUiLabel:ClearAllPoints()
@@ -3794,14 +3833,29 @@ function UI:CreateOverviewTab(page)
                     self.keybindMiniValue:SetPoint("TOPLEFT", content, "TOPLEFT", 8, y)
                     y = y - 16
                 end
+
+                local contentHeight = math.abs(y) + 24
+                content:SetHeight(contentHeight)
+                if self.overviewOptionsScroll then
+                    setScrollBarAlwaysVisible(self.overviewOptionsScroll, contentHeight)
+                end
             else
                 shift(self.overviewShiftBelowMaintenance, 0)
+            end
+        else
+            local content = self.overviewOptionsContent
+            if content and content._defaultHeight then
+                content:SetHeight(content._defaultHeight)
+                if self.overviewOptionsScroll then
+                    setScrollBarAlwaysVisible(self.overviewOptionsScroll, content._defaultHeight)
+                end
             end
         end
     end
 
     local contentHeight = math.abs(y) + 40
     optionsContent:SetHeight(contentHeight)
+    optionsContent._defaultHeight = contentHeight
     setScrollBarAlwaysVisible(optionsPanel.scroll, contentHeight)
     optionsPanel.scroll:SetScript("OnShow", function(selfScroll)
         setScrollBarAlwaysVisible(selfScroll, contentHeight)
@@ -10308,22 +10362,16 @@ function UI:UpdateWishlistUI()
                 if map then
                     for _, entry in pairs(wish.items) do
                         if entry and entry.itemId then
-                            local manual = entry.manualFound
-                            if manual == true then
+                            if entry.manualFound == true then
                                 map[entry.itemId] = true
-                            elseif manual == false then
-                                map[entry.itemId] = nil
                             else
                                 local owned = Goals:IsWishlistItemOwned(entry.itemId)
                                 map[entry.itemId] = owned and true or nil
                             end
                         end
                         if entry and entry.tokenId and entry.tokenId > 0 then
-                            local manual = entry.manualFound
-                            if manual == true then
+                            if entry.manualFound == true then
                                 map[entry.tokenId] = true
-                            elseif manual == false then
-                                map[entry.tokenId] = nil
                             else
                                 local owned = Goals:IsWishlistItemOwned(entry.tokenId)
                                 map[entry.tokenId] = owned and true or nil

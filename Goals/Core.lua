@@ -1933,9 +1933,7 @@ function Goals:SetWishlistItem(slotKey, itemData)
     if itemData.found == nil then
         itemData.found = false
     end
-    if itemData.manualFound == nil then
-        itemData.manualFound = false
-    end
+    -- Leave manualFound nil by default so ownership auto-detect can apply.
     list.items = list.items or {}
     if oldEntry and oldEntry.itemId and itemData.itemId and oldEntry.itemId ~= itemData.itemId then
         local foundMap = self:GetWishlistFoundMap(list.id)
@@ -2326,7 +2324,7 @@ function Goals:DeserializeWishlist(text)
                         gemIds = gemIds,
                         notes = unescapeWishlistText(notes),
                         source = unescapeWishlistText(source),
-                        manualFound = tonumber(manualFound) == 1,
+                        manualFound = (tonumber(manualFound) == 1) and true or nil,
                     }
                 end
             end
@@ -3218,7 +3216,7 @@ function Goals:ToggleWishlistFoundForSlot(slotKey)
         if entry.tokenId and entry.tokenId > 0 then
             foundMap[entry.tokenId] = nil
         end
-        entry.manualFound = false
+        entry.manualFound = nil
     end
     if self.History then
         self.History:AddWishlistItemClaimed(slotKey, entry.itemId, nextState)
