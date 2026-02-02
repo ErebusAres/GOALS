@@ -4,6 +4,13 @@ local addonName = ...
 local Goals = _G.Goals or {}
 _G.Goals = Goals
 
+-- Icons
+local ICONS = {
+    WOWHEAD = "|TInterface\\AddOns\\" .. addonName .. "\\Icons\\wowhead-rocket_icon:16:16|t",
+    WARLOCK = "|TInterface\\Icons\\ClassIcon_Warlock:16:16|t",
+    DESTRUCTION = "|TInterface\\Icons\\Spell_Fire_FireBolt02:16:16|t",
+}
+
 Goals.WishlistBuildData = {
     builds = {
         {
@@ -2965,16 +2972,32 @@ Goals.WishlistBuildData = {
         },
         {
             id = "PALADIN_RETRIBUTION_TBC_T6",
-            name = "Paladin Retribution - TBC_T6",
+            name = "T6 Paladin Retribution - Wowhead TBC",
             class = "PALADIN",
             spec = "Retribution",
             tier = "TBC_T6",
             level = 70,
             tags = {"bis"},
             itemsBySlot = {
+                HEAD = { itemId = 32235, enchantId = 29192, gemIds = {32409, 24058}, notes = "", source = "wowhead" },
+                NECK = { itemId = 30022, enchantId = 0, gemIds = {}, notes = "", source = "wowhead" },
+                SHOULDER = { itemId = 30055, enchantId = 28888, gemIds = {24027}, notes = "", source = "wowhead" },
+                BACK = { itemId = 33122, enchantId = 34004, gemIds = {24054}, notes = "", source = "wowhead" },
+                CHEST = { itemId = 30905, enchantId = 27960, gemIds = {24054, 24027, 24058}, notes = "", source = "wowhead" },
+                WRIST = { itemId = 32574, enchantId = 27899, gemIds = {}, notes = "", source = "wowhead" },
+                HANDS = { itemId = 29947, enchantId = 33995, gemIds = {}, notes = "", source = "wowhead" },
+                WAIST = { itemId = 30106, enchantId = 0, gemIds = {24027, 24054}, notes = "", source =  "wowhead" },
+                LEGS = { itemId = 30900, enchantId = 29535, gemIds = {24027, 24058, 24054}, notes = "", source = "wowhead" },
+                FEET = { itemId = 32366, enchantId = 27951, gemIds ={24027, 24058}, notes = "", source = "wowhead" },
+                RING1 = { itemId = 30834, enchantId = 27927, gemIds = {}, notes = "", source ="wowhead" },
+                RING2 = { itemId = 32526, enchantId =27927, gemIds= {}, notes ="Use 'Band of the Ranger-General' instead for +HR", source ="wowhead" },
+                TRINKET1 ={ itemId=29383, enchantId=0, gemIds={}, notes="", source="wowhead" },
+                TRINKET2 ={ itemId=28830, enchantId=0, gemIds={}, notes="", source="wowhead" },
+                MAINHAND ={ itemId=32332, enchantId=27984, gemIds={}, notes="", source="wowhead" },
+                RELIC ={ itemId=27484, enchantId=0, gemIds={}, notes="", source="wowhead" },
             },
-            sources = {"wowtbc-gg-tbc", "wowhead"},
-            notes = "Phase data 't6' sourced from wowtbc.gg; item IDs resolved via Wowhead.",
+            sources = {"wowhead"},
+            notes = "Phase data 't6' sourced from wowhead.com; item IDs resolved via Wowhead.",
         },
         {
             id = "PALADIN_RETRIBUTION_TBC_T6_SWP",
@@ -4448,16 +4471,32 @@ Goals.WishlistBuildData = {
         },
         {
             id = "SHAMAN_ELEMENTAL_TBC_T6",
-            name = "Shaman Elemental - TBC_T6",
+            name = "T6 Shaman Elemental - Wowhead TBC",
             class = "SHAMAN",
             spec = "Elemental",
             tier = "TBC_T6",
             level = 70,
             tags = {"bis"},
             itemsBySlot = {
+                HEAD = { itemId = 31014, enchantId = 29191, gemIds = {34220, 24056}, notes = "", source = "wowhead" },
+                NECK = { itemId = 30015, enchantId = 0, gemIds = {}, notes = "", source = "wowhead" },
+                SHOULDER = { itemId = 31023, enchantId = 28886, gemIds = {24056, 24059}, notes = "", source = "wowhead" },
+                BACK = { itemId = 32331, enchantId = 34003, gemIds = {}, notes = "", source = "wowhead" },
+                CHEST = { itemId = 31017, enchantId = 27960, gemIds = {24056, 24059, 24059}, notes = "", source = "wowhead" },
+                WRIST = { itemId = 32586, enchantId = 27917, gemIds = {}, notes = "", source = "wowhead" },
+                HANDS = { itemId = 31008, enchantId = 33997, gemIds = {24059}, notes = "", source = "wowhead" },
+                WAIST = { itemId = 32276, enchantId = 0, gemIds = {}, notes = "", source = "wowhead" },
+                LEGS = { itemId = 30916, enchantId = 24274, gemIds = {24059, 24059, 24056}, notes = "", source = "wowhead" },
+                FEET = { itemId = 32239, enchantId = 34008, gemIds = {24059, 24056}, notes = "", source = "wowhead" },
+                RING1 = { itemId = 32527, enchantId = 27924, gemIds = {}, notes = "", source = "wowhead" },
+                RING2 = { itemId = 29305, enchantId = 27924, gemIds = {}, notes = "", source = "wowhead" },
+                TRINKET1 = { itemId = 32483, enchantId = 0, gemIds = {}, notes = "", source = "wowhead" },
+                TRINKET2 = { itemId = 28785, enchantId = 0, gemIds = {}, notes = "", source = "wowhead" },
+                MAINHAND = { itemId = 32374, enchantId = 27975, gemIds = {}, notes = "", source = "wowhead" },
+                RELIC = { itemId = 32330, enchantId = 0, gemIds = {}, notes = "", source = "wowhead" },
             },
-            sources = {"wowtbc-gg-tbc", "wowhead"},
-            notes = "Phase data 't6' sourced from wowtbc.gg; item IDs resolved via Wowhead.",
+            sources = {"wowhead"},
+            notes = "Phase data 't6' sourced from wowhead.com; item IDs resolved via Wowhead.",
         },
         {
             id = "SHAMAN_ELEMENTAL_TBC_T6_SWP",
@@ -4974,7 +5013,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_AFFLICTION_CLASSIC_PRE",
-            name = "Warlock Affliction - CLASSIC_PRE",
+            name = "PRE-T1 Warlock Affliction - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Affliction",
             tier = "CLASSIC_PRE",
@@ -5004,7 +5043,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_AFFLICTION_CLASSIC_T1",
-            name = "Warlock Affliction - CLASSIC_T1",
+            name = "T1 Warlock Affliction - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Affliction",
             tier = "CLASSIC_T1",
@@ -5034,7 +5073,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_AFFLICTION_CLASSIC_T2",
-            name = "Warlock Affliction - CLASSIC_T2",
+            name = "T2 Warlock Affliction - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Affliction",
             tier = "CLASSIC_T2",
@@ -5063,7 +5102,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_AFFLICTION_CLASSIC_T25",
-            name = "Warlock Affliction - CLASSIC_T25",
+            name = "T2.5 Warlock Affliction - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Affliction",
             tier = "CLASSIC_T25",
@@ -5093,7 +5132,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_AFFLICTION_CLASSIC_T3",
-            name = "Warlock Affliction - CLASSIC_T3",
+            name = "T3 Warlock Affliction - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Affliction",
             tier = "CLASSIC_T3",
@@ -5123,7 +5162,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_AFFLICTION_TBC_PRE",
-            name = "Warlock Affliction - TBC_PRE",
+            name = "TBC_PRE Warlock Affliction - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Affliction",
             tier = "TBC_PRE",
@@ -5154,7 +5193,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_AFFLICTION_TBC_T4",
-            name = "Warlock Affliction - TBC_T4",
+            name = "T4 Warlock Affliction - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Affliction",
             tier = "TBC_T4",
@@ -5184,7 +5223,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_AFFLICTION_TBC_T5",
-            name = "Warlock Affliction - TBC_T5",
+            name = "T5 Warlock Affliction - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Affliction",
             tier = "TBC_T5",
@@ -5214,7 +5253,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_AFFLICTION_TBC_T6",
-            name = "Warlock Affliction - TBC_T6",
+            name = "T6 Warlock Affliction - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Affliction",
             tier = "TBC_T6",
@@ -5243,7 +5282,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_AFFLICTION_TBC_T6_SWP",
-            name = "Warlock Affliction - TBC Sunwell (BiS)",
+            name = "T6 Warlock Affliction - TBC Sunwell (BiS)",
             class = "WARLOCK",
             spec = "Affliction",
             tier = "TBC_T6",
@@ -5272,7 +5311,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_AFFLICTION_WOTLK_PRE",
-            name = "Warlock Affliction - WOTLK_PRE",
+            name = "PRE-T7 Warlock Affliction - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Affliction",
             tier = "WOTLK_PRE",
@@ -5302,7 +5341,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_AFFLICTION_WOTLK_T7",
-            name = "Warlock Affliction - WOTLK_T7",
+            name = "T7 Warlock Affliction - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Affliction",
             tier = "WOTLK_T7",
@@ -5332,7 +5371,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_AFFLICTION_WOTLK_T8",
-            name = "Warlock Affliction - WOTLK_T8",
+            name = "T8 Warlock Affliction - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Affliction",
             tier = "WOTLK_T8",
@@ -5362,7 +5401,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_AFFLICTION_WOTLK_T9",
-            name = "Warlock Affliction - WOTLK_T9",
+            name = "T9 Warlock Affliction - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Affliction",
             tier = "WOTLK_T9",
@@ -5393,7 +5432,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_AFFLICTION_WOTLK_T10",
-            name = "Warlock Affliction - WOTLK_T10",
+            name = "T10 Warlock Affliction - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Affliction",
             tier = "WOTLK_T10",
@@ -5423,7 +5462,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_AFFLICTION_WOTLK_T10_PROGRESS",
-            name = "Warlock Affliction - WotLK T10 Progression",
+            name = "T10-PRG Warlock Affliction - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Affliction",
             tier = "WOTLK_T10",
@@ -5453,7 +5492,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_DEMONOLOGY_CLASSIC_PRE",
-            name = "Warlock Demonology - CLASSIC_PRE",
+            name = "PRE-T1 Warlock Demonology - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Demonology",
             tier = "CLASSIC_PRE",
@@ -5483,7 +5522,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_DEMONOLOGY_CLASSIC_T1",
-            name = "Warlock Demonology - CLASSIC_T1",
+            name = "T1 Warlock Demonology - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Demonology",
             tier = "CLASSIC_T1",
@@ -5513,7 +5552,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_DEMONOLOGY_CLASSIC_T2",
-            name = "Warlock Demonology - CLASSIC_T2",
+            name = "T2 Warlock Demonology - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Demonology",
             tier = "CLASSIC_T2",
@@ -5542,7 +5581,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_DEMONOLOGY_CLASSIC_T25",
-            name = "Warlock Demonology - CLASSIC_T25",
+            name = "T2.5 Warlock Demonology - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Demonology",
             tier = "CLASSIC_T25",
@@ -5572,7 +5611,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_DEMONOLOGY_CLASSIC_T3",
-            name = "Warlock Demonology - CLASSIC_T3",
+            name = "T3 Warlock Demonology - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Demonology",
             tier = "CLASSIC_T3",
@@ -5602,7 +5641,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_DEMONOLOGY_TBC_PRE",
-            name = "Warlock Demonology - TBC_PRE",
+            name = "PRE-T4 Warlock Demonology - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Demonology",
             tier = "TBC_PRE",
@@ -5633,7 +5672,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_DEMONOLOGY_TBC_T4",
-            name = "Warlock Demonology - TBC_T4",
+            name = "T4 Warlock Demonology - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Demonology",
             tier = "TBC_T4",
@@ -5663,7 +5702,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_DEMONOLOGY_TBC_T5",
-            name = "Warlock Demonology - TBC_T5",
+            name = "T5 Warlock Demonology - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Demonology",
             tier = "TBC_T5",
@@ -5693,7 +5732,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_DEMONOLOGY_TBC_T6",
-            name = "Warlock Demonology - TBC_T6",
+            name = "T6 Warlock Demonology - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Demonology",
             tier = "TBC_T6",
@@ -5751,7 +5790,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_DEMONOLOGY_WOTLK_PRE",
-            name = "Warlock Demonology - WOTLK_PRE",
+            name = "PRE-T7 Warlock Demonology - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Demonology",
             tier = "WOTLK_PRE",
@@ -5781,7 +5820,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_DEMONOLOGY_WOTLK_T7",
-            name = "Warlock Demonology - WOTLK_T7",
+            name = "T7 Warlock Demonology - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Demonology",
             tier = "WOTLK_T7",
@@ -5811,7 +5850,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_DEMONOLOGY_WOTLK_T8",
-            name = "Warlock Demonology - WOTLK_T8",
+            name = "T8 Warlock Demonology - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Demonology",
             tier = "WOTLK_T8",
@@ -5841,7 +5880,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_DEMONOLOGY_WOTLK_T9",
-            name = "Warlock Demonology - WOTLK_T9",
+            name = "T9 Warlock Demonology - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Demonology",
             tier = "WOTLK_T9",
@@ -5872,7 +5911,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_DEMONOLOGY_WOTLK_T10",
-            name = "Warlock Demonology - WOTLK_T10",
+            name = "T10 Warlock Demonology - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Demonology",
             tier = "WOTLK_T10",
@@ -5902,7 +5941,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_DEMONOLOGY_WOTLK_T10_PROGRESS",
-            name = "Warlock Demonology - WotLK T10 Progression",
+            name = "T10-PRG Warlock Demonology - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Demonology",
             tier = "WOTLK_T10",
@@ -5932,7 +5971,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_DESTRUCTION_CLASSIC_PRE",
-            name = "Warlock Destruction - CLASSIC_PRE",
+            name = "PRE-T1 Warlock Destruction - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Destruction",
             tier = "CLASSIC_PRE",
@@ -5962,7 +6001,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_DESTRUCTION_CLASSIC_T1",
-            name = "Warlock Destruction - CLASSIC_T1",
+            name = "T1 Warlock Destruction - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Destruction",
             tier = "CLASSIC_T1",
@@ -5992,7 +6031,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_DESTRUCTION_CLASSIC_T2",
-            name = "Warlock Destruction - CLASSIC_T2",
+            name = "T2 Warlock Destruction - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Destruction",
             tier = "CLASSIC_T2",
@@ -6021,7 +6060,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_DESTRUCTION_CLASSIC_T25",
-            name = "Warlock Destruction - CLASSIC_T25",
+            name = "T2.5 Warlock Destruction - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Destruction",
             tier = "CLASSIC_T25",
@@ -6051,7 +6090,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_DESTRUCTION_CLASSIC_T3",
-            name = "Warlock Destruction - CLASSIC_T3",
+            name = "T3 Warlock Destruction - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Destruction",
             tier = "CLASSIC_T3",
@@ -6081,7 +6120,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_DESTRUCTION_TBC_PRE",
-            name = "Warlock Destruction - TBC_PRE",
+            name = "PRE-T4 Warlock Destruction - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Destruction",
             tier = "TBC_PRE",
@@ -6112,7 +6151,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_DESTRUCTION_TBC_T4",
-            name = "Warlock Destruction - TBC_T4",
+            name = "T4 Warlock Destruction - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Destruction",
             tier = "TBC_T4",
@@ -6142,7 +6181,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_DESTRUCTION_TBC_T5",
-            name = "Warlock Destruction - TBC_T5",
+            name = "T5 Warlock Destruction - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Destruction",
             tier = "TBC_T5",
@@ -6172,7 +6211,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_DESTRUCTION_TBC_T6",
-            name = "Warlock Destruction - TBC_T6",
+            name = "T6 Warlock Destruction - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Destruction",
             tier = "TBC_T6",
@@ -6201,7 +6240,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_DESTRUCTION_TBC_T6_SWP",
-            name = "Warlock Destruction - TBC Sunwell (BiS)",
+            name = "T6 Warlock Destruction - Sunwell (BiS)",
             class = "WARLOCK",
             spec = "Destruction",
             tier = "TBC_T6",
@@ -6229,8 +6268,140 @@ Goals.WishlistBuildData = {
             notes = "Sunwell Plateau final-phase BiS from wowtbc.gg; item, gem, and enchant IDs resolved via WotLKDB.",
         },
         {
+            id = "WARLOCK_DESTRUCTION_WOTLK_P6_WOWHEAD",
+            name = ICONS.WOWHEAD .. " PRE-T7 " .. ICONS.WARLOCK .. " " .. ICONS.DESTRUCTION .. " - Wowhead",
+            class = "WARLOCK",
+            spec = "Destruction",
+            tier = "WOTLK_P6",
+            level = 80,
+            tags = {"progression", "wowhead"},
+            itemsBySlot = {
+                HEAD = {
+                    itemId = 47778,
+                    enchantId = 59970,
+                    gemIds = {41285, 40133},
+                    notes = "",
+                    source = "wowhead"
+                },
+                NECK = {
+                    itemId = 45133,
+                    enchantId = 0,
+                    gemIds = {40153},
+                    notes = "",
+                    source = "wowhead"
+                },
+                SHOULDER = {
+                    itemId = 47781,
+                    enchantId = 59937,
+                    gemIds = {40155},
+                    notes = "",
+                    source = "wowhead"
+                },
+                BACK = {
+                    itemId = 45518,
+                    enchantId = 0,
+                    gemIds = {},
+                    notes = "",
+                    source = "wowhead"
+                },
+                CHEST = {
+                    itemId = 47779,
+                    enchantId = 60692,
+                    gemIds = {40113, 40133},
+                    notes = "",
+                    source = "wowhead"
+                },
+                WRIST = {
+                    itemId = 47585,
+                    enchantId = 60767,
+                    gemIds = {40113},
+                    notes = "",
+                    source = "wowhead"
+                },
+                HANDS = {
+                    itemId = 47782,
+                    enchantId = 54999,
+                    gemIds = {40113},
+                    notes = "",
+                    source = "wowhead"
+                },
+                WAIST = {
+                    itemId = 46972,
+                    enchantId = 0,
+                    gemIds = {40133, 40113},
+                    notes = "",
+                    source = "wowhead"
+                },
+                LEGS = {
+                    itemId = 49891,
+                    enchantId = 56039,
+                    gemIds = {40113, 40155, 40133},
+                    notes = "",
+                    source = "wowhead"
+                },
+                FEET = {
+                    itemId = 49890,
+                    enchantId = 55016,
+                    gemIds = {40113, 40133},
+                    notes = "",
+                    source = "wowhead"
+                },
+                RING1 = {
+                    itemId = 46046,
+                    enchantId = 0,
+                    gemIds = {40113},
+                    notes = "",
+                    source = "wowhead"
+                },
+                RING2 = {
+                    itemId = 47732,
+                    enchantId = 0,
+                    gemIds = {},
+                    notes = "",
+                    source = "wowhead"
+                },
+                TRINKET1 = {
+                    itemId = 47182,
+                    enchantId = 0,
+                    gemIds = {},
+                    notes = "",
+                    source = "wowhead"
+                },
+                TRINKET2 = {
+                    itemId = 45294,
+                    enchantId = 0,
+                    gemIds = {40155},
+                    notes = "",
+                    source = "wowhead"
+                },
+                MAINHAND = {
+                    itemId = 46976,
+                    enchantId = 55642,
+                    gemIds = {},
+                    notes = "",
+                    source = "wowhead"
+                },
+                OFFHAND = {
+                    itemId = 46979,
+                    enchantId = 60714,
+                    gemIds = {},
+                    notes = "",
+                    source = "wowhead"
+                },
+                RELIC = {
+                    itemId = 47138,
+                    enchantId = 0,
+                    gemIds = {},
+                    notes = "",
+                    source = "wowhead"
+                },
+            },
+            sources = {"wowhead-wotlk"},
+            notes = "Imported directly from Wowhead WotLK gear planner (Phase 6). Item, enchant, and gem IDs preserved from import string."
+        },
+        {
             id = "WARLOCK_DESTRUCTION_WOTLK_PRE",
-            name = "Warlock Destruction - WOTLK_PRE",
+            name = "PRE-T7 Warlock Destruction - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Destruction",
             tier = "WOTLK_PRE",
@@ -6260,7 +6431,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_DESTRUCTION_WOTLK_T7",
-            name = "Warlock Destruction - WOTLK_T7",
+            name = "T7 Warlock Destruction - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Destruction",
             tier = "WOTLK_T7",
@@ -6290,7 +6461,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_DESTRUCTION_WOTLK_T8",
-            name = "Warlock Destruction - WOTLK_T8",
+            name = "T8 Warlock Destruction - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Destruction",
             tier = "WOTLK_T8",
@@ -6320,7 +6491,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_DESTRUCTION_WOTLK_T9",
-            name = "Warlock Destruction - WOTLK_T9",
+            name = "T9 Warlock Destruction - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Destruction",
             tier = "WOTLK_T9",
@@ -6351,7 +6522,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_DESTRUCTION_WOTLK_T10",
-            name = "Warlock Destruction - WOTLK_T10",
+            name = "T10 Warlock Destruction - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Destruction",
             tier = "WOTLK_T10",
@@ -6381,7 +6552,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_DESTRUCTION_WOTLK_T10_PROGRESS",
-            name = "Warlock Destruction - WotLK T10 Progression",
+            name = "T10-PRG Warlock Destruction - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Destruction",
             tier = "WOTLK_T10",
