@@ -1194,6 +1194,32 @@ local function showSideTooltip(text)
     tip:Show()
 end
 
+local function showSideTooltipAt(text, anchor, point, relativePoint, xOffset, yOffset)
+    if not text or text == "" then
+        return
+    end
+    local anchorFrame = anchor or (UI and UI.frame) or UIParent
+    local tip = UI and UI.sideTooltip or nil
+    if not tip then
+        tip = CreateFrame("GameTooltip", "GoalsSideTooltip", UIParent, "GameTooltipTemplate")
+        tip:SetFrameStrata("TOOLTIP")
+        tip:SetClampedToScreen(true)
+        if UI then
+            UI.sideTooltip = tip
+        end
+    end
+    tip:Hide()
+    tip:ClearLines()
+    tip:SetOwner(anchorFrame, "ANCHOR_NONE")
+    tip:ClearAllPoints()
+    tip:SetPoint(point or "TOPLEFT", anchorFrame, relativePoint or "TOPRIGHT", xOffset or 10, yOffset or -30)
+    if tip.SetWidth then
+        tip:SetWidth(OPTIONS_PANEL_WIDTH)
+    end
+    tip:SetText(text, 1, 1, 1, true)
+    tip:Show()
+end
+
 local function hideSideTooltip()
     if UI and UI.sideTooltip then
         UI.sideTooltip:Hide()
@@ -2218,6 +2244,57 @@ function UI:CreateBuildShareTargetFrame()
     self.buildShareTargetFrame = frame
 end
 
+local function ensureBuildShareTooltip()
+    if not UI or not UI.frame then
+        return nil
+    end
+    if UI.buildShareTooltip then
+        return UI.buildShareTooltip
+    end
+    local tip = CreateFrame("Frame", "GoalsBuildShareTooltip", UIParent, "GoalsFrameTemplate")
+    applyFrameTheme(tip)
+    tip:SetFrameStrata("TOOLTIP")
+    tip:SetClampedToScreen(true)
+    tip:SetWidth(OPTIONS_PANEL_WIDTH + 12)
+    tip:Hide()
+
+    if tip.TitleText then
+        tip.TitleText:SetText("Send Build")
+        tip.TitleText:Show()
+    end
+    local tipName = tip.GetName and tip:GetName() or nil
+    local close = tip.CloseButton or (tipName and _G[tipName .. "CloseButton"]) or nil
+    if close then
+        close:Hide()
+        close:SetAlpha(0)
+        close:EnableMouse(false)
+    end
+    if tipName then
+        local titleBg = _G[tipName .. "TitleBg"]
+        if titleBg then
+            titleBg:ClearAllPoints()
+            titleBg:SetPoint("TOPLEFT", tip, "TOPLEFT", 2, -3)
+            titleBg:SetPoint("TOPRIGHT", tip, "TOPRIGHT", -2, -3)
+        end
+    end
+
+    local content = CreateFrame("Frame", nil, tip, "GoalsInsetTemplate")
+    applyInsetTheme(content)
+    content:SetPoint("TOPLEFT", tip, "TOPLEFT", 6, -24)
+    content:SetPoint("BOTTOMRIGHT", tip, "BOTTOMRIGHT", -6, 6)
+    tip.content = content
+
+    local label = createLabel(content, "", "GameFontHighlightSmall")
+    label:SetPoint("TOPLEFT", content, "TOPLEFT", 6, -4)
+    label:SetPoint("TOPRIGHT", content, "TOPRIGHT", -6, -4)
+    label:SetJustifyH("LEFT")
+    label:SetWordWrap(true)
+    tip.text = label
+
+    UI.buildShareTooltip = tip
+    return tip
+end
+
 local function ensureBuildPreviewTooltip()
     if not UI or not UI.frame then
         return nil
@@ -2336,6 +2413,35 @@ hideBuildPreviewTooltip = function()
     end
 end
 
+local function showBuildShareTooltip(text)
+    local tip = ensureBuildShareTooltip()
+    if not tip then
+        return
+    end
+    tip.text:SetText(text or "")
+    local height = (tip.text.GetStringHeight and tip.text:GetStringHeight() or 16) + 34
+    tip:SetHeight(height)
+    tip:ClearAllPoints()
+    if UI and UI.buildPreviewTooltip and UI.buildPreviewTooltip:IsShown() then
+        local left = UI.buildPreviewTooltip:GetLeft()
+        local bottom = UI.buildPreviewTooltip:GetBottom()
+        if left and bottom then
+            tip:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", left, bottom - 6)
+        else
+            tip:SetPoint("TOPLEFT", UI.buildPreviewTooltip, "BOTTOMLEFT", 0, -6)
+        end
+    else
+        tip:SetPoint("TOPLEFT", UI.frame, "TOPRIGHT", 10, -30)
+    end
+    tip:Show()
+end
+
+local function hideBuildShareTooltip()
+    if UI and UI.buildShareTooltip then
+        UI.buildShareTooltip:Hide()
+    end
+end
+
 function UI:ShowBuildShareTargetPrompt()
     self:CreateBuildShareTargetFrame()
     local frame = self.buildShareTargetFrame
@@ -2371,6 +2477,31 @@ function UI:ShowBuildShareTargetPrompt()
         frame.editBox:SetText(frame.selectedTarget)
     else
         frame.editBox:SetText("")
+    end
+
+    if self.buildPreviewTooltip and self.buildPreviewTooltip:IsShown() then
+        local left = self.buildPreviewTooltip:GetLeft()
+        local bottom = self.buildPreviewTooltip:GetBottom()
+        frame:ClearAllPoints()
+        if left and bottom then
+            frame:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", left, bottom - 6)
+        else
+            frame:SetPoint("TOPLEFT", self.buildPreviewTooltip, "BOTTOMLEFT", 0, -6)
+        end
+    else
+        frame:ClearAllPoints()
+        frame:SetPoint("TOPLEFT", self.frame, "TOPRIGHT", 10, -30)
+    end
+
+    local content = frame.content
+    if content and content.GetTop and frame.sendBtn and frame.sendBtn.GetBottom then
+        local top = content:GetTop() or 0
+        local bottom = frame.sendBtn:GetBottom() or 0
+        if top > 0 and bottom > 0 then
+            local contentHeight = (top - bottom) + 12
+            local totalHeight = contentHeight + 30
+            frame:SetHeight(totalHeight)
+        end
     end
 
     frame:Show()
@@ -3112,6 +3243,10 @@ function UI:SelectTab(id)
     hideCombatRowTooltip()
     if self.wishlistTabId and id ~= self.wishlistTabId then
         hideBuildPreviewTooltip()
+        hideBuildShareTooltip()
+        if self.buildShareTargetFrame then
+            self.buildShareTargetFrame:Hide()
+        end
     end
     if self.UpdateLootOptionsVisibility then
         self:UpdateLootOptionsVisibility()
@@ -4544,6 +4679,10 @@ function UI:CreateWishlistTab(page)
         self.wishlistActiveTab = key
         if key ~= "options" then
             hideBuildPreviewTooltip()
+            hideBuildShareTooltip()
+        end
+        if key ~= "manage" and self.buildShareTargetFrame then
+            self.buildShareTargetFrame:Hide()
         end
         if self.wishlistSubTabs then
             for name, button in pairs(self.wishlistSubTabs) do
@@ -5276,8 +5415,49 @@ function UI:CreateWishlistTab(page)
     end)
     self.wishlistDeleteButton = deleteBtn
 
+    local sendBuildLabel = createLabel(managerPage, L.LABEL_BUILD_SHARE, "GameFontNormal")
+    sendBuildLabel:SetPoint("TOPLEFT", copyBtn, "BOTTOMLEFT", 0, -14)
+
+    local sendBuildBtn = CreateFrame("Button", nil, managerPage, "UIPanelButtonTemplate")
+    sendBuildBtn:SetPoint("TOPLEFT", sendBuildLabel, "BOTTOMLEFT", 0, -4)
+    sendBuildBtn:SetSize(120, 20)
+    sendBuildBtn:SetText(L.BUTTON_SEND_BUILD)
+    sendBuildBtn:SetScript("OnClick", function()
+        if UnitExists and UnitIsPlayer and UnitExists("target") and UnitIsPlayer("target") then
+            if UnitCanCooperate and not UnitCanCooperate("player", "target") then
+                Goals:Print("Build share requires a friendly target or party/raid member.")
+                if UI and UI.ShowBuildShareTargetPrompt then
+                    UI:ShowBuildShareTargetPrompt()
+                end
+                return
+            end
+            local targetName = UnitName("target")
+            local ok, err = Goals:SendWishlistBuildTo(targetName)
+            if ok then
+                Goals:Print(err)
+            else
+                if err == "SEND_FAILED" or not err or err == "" then
+                    Goals:Print("Failed to send build.")
+                else
+                    Goals:Print(err)
+                end
+            end
+            return
+        end
+        if UI and UI.ShowBuildShareTargetPrompt then
+            UI:ShowBuildShareTargetPrompt()
+        end
+    end)
+    sendBuildBtn:SetScript("OnEnter", function()
+        showBuildShareTooltip("Send the selected build to a friendly target, party member, or raid member.")
+    end)
+    sendBuildBtn:SetScript("OnLeave", function()
+        hideBuildShareTooltip()
+    end)
+    self.wishlistSendBuildButton = sendBuildBtn
+
     local announceLabel = createLabel(managerPage, L.LABEL_WISHLIST_ANNOUNCE, "GameFontNormal")
-    announceLabel:SetPoint("TOPLEFT", copyBtn, "BOTTOMLEFT", 0, -14)
+    announceLabel:SetPoint("TOPLEFT", sendBuildBtn, "BOTTOMLEFT", 0, -14)
 
     local announceCheck = CreateFrame("CheckButton", nil, managerPage, "UICheckButtonTemplate")
     announceCheck:SetPoint("TOPLEFT", announceLabel, "BOTTOMLEFT", -4, -2)
@@ -6212,43 +6392,6 @@ function UI:CreateWishlistTab(page)
     end)
     self.wishlistBuildImportButton = buildImportBtn
 
-    local syncLabel = createLabel(optionsPopout, L.LABEL_BUILD_SHARE, "GameFontNormal")
-    syncLabel:SetPoint("TOPLEFT", buildModeDrop, "BOTTOMLEFT", 16, -10)
-    syncLabel:SetPoint("LEFT", optionsTitle, "LEFT", 0, 0)
-
-    local sendBuildBtn = CreateFrame("Button", nil, optionsPopout, "UIPanelButtonTemplate")
-    sendBuildBtn:SetPoint("TOPLEFT", syncLabel, "BOTTOMLEFT", 0, -4)
-    sendBuildBtn:SetPoint("LEFT", optionsTitle, "LEFT", 0, 0)
-    sendBuildBtn:SetSize(120, 20)
-    sendBuildBtn:SetText(L.BUTTON_SEND_BUILD)
-    sendBuildBtn:SetScript("OnClick", function()
-        if UnitExists and UnitIsPlayer and UnitExists("target") and UnitIsPlayer("target") then
-            if UnitCanCooperate and not UnitCanCooperate("player", "target") then
-                Goals:Print("Build share requires a friendly target or party/raid member.")
-                if UI and UI.ShowBuildShareTargetPrompt then
-                    UI:ShowBuildShareTargetPrompt()
-                end
-                return
-            end
-            local targetName = UnitName("target")
-            local ok, err = Goals:SendWishlistBuildTo(targetName)
-            if ok then
-                Goals:Print(err)
-            else
-                if err == "SEND_FAILED" or not err or err == "" then
-                    Goals:Print("Failed to send build.")
-                else
-                    Goals:Print(err)
-                end
-            end
-            return
-        end
-        if UI and UI.ShowBuildShareTargetPrompt then
-            UI:ShowBuildShareTargetPrompt()
-        end
-    end)
-    self.wishlistSendBuildButton = sendBuildBtn
-
     local function updateOptionsContentHeight()
         local scrollWidth = optionsScroll:GetWidth() or 0
         if scrollWidth > 0 then
@@ -6256,10 +6399,7 @@ function UI:CreateWishlistTab(page)
         end
         local top = optionsContent:GetTop() or 0
         local bottom = 0
-        if sendBuildBtn and sendBuildBtn.GetBottom then
-            bottom = sendBuildBtn:GetBottom() or 0
-        end
-        if bottom <= 0 and buildImportBtn and buildImportBtn.GetBottom then
+        if buildImportBtn and buildImportBtn.GetBottom then
             bottom = buildImportBtn:GetBottom() or 0
         end
         local height = 0
