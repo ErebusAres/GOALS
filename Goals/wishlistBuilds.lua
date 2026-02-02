@@ -401,13 +401,40 @@ function Goals:ApplyWishlistBuild(build, mode)
     if not build then
         return false, "No build selected."
     end
+    local function copyList(list)
+        if type(list) ~= "table" then
+            return nil
+        end
+        local out = {}
+        for _, value in ipairs(list) do
+            out[#out + 1] = value
+        end
+        return out
+    end
+    local function applyBuildMeta(listRef, buildRef)
+        if not listRef or not buildRef then
+            return
+        end
+        listRef.buildMeta = {
+            id = buildRef.id,
+            name = buildRef.name,
+            class = buildRef.class,
+            spec = buildRef.spec,
+            tier = buildRef.tier,
+            tags = copyList(buildRef.tags),
+            sources = copyList(buildRef.sources),
+        }
+        listRef.updated = time()
+    end
     local items = self:ResolveWishlistBuildItems(build)
     local targetId = nil
     if mode == "NEW" then
         local list = self:CreateWishlist(build.name or "Build")
+        applyBuildMeta(list, build)
         targetId = list and list.id or nil
     else
         local list = self:GetActiveWishlist()
+        applyBuildMeta(list, build)
         targetId = list and list.id or nil
     end
     if not targetId then
