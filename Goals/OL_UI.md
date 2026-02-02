@@ -291,3 +291,7 @@ Goal: add tab-aware info density without clutter. Provide up to 6 short, glancea
   - History: Filter summary, entries count.
   - Combat: Filter, show toggles (H/D/R), threshold + overheal status.
   - Wishlist: Active list name, active sub-tab, alerts status (Chat/Popup).
+
+## Issues to fix Feb 3rd
+
+- Continue work on the Wishlist tab's `Share Build` button's 'pop out box'. (fix placements and match theme/style to the combat tab's custom tooltip.)
