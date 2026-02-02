@@ -1,0 +1,1739 @@
+﻿[
+    {
+        "source_file":  "PriestHoly.lua",
+        "class":  "PRIEST",
+        "spec":  "Holy",
+        "id":  "PRIEST_HOLY_TBC_T6_WOWHEAD",
+        "notes_suffix":  "",
+        "items":  {
+                      "RING2":  [
+                                    32528
+                                ],
+                      "RELIC":  [
+                                    32363
+                                ],
+                      "TRINKET2":  [
+                                       28823
+                                   ],
+                      "HEAD":  [
+                                   31063
+                               ],
+                      "RING1":  [
+                                    32528
+                                ],
+                      "LEGS":  [
+                                   30912
+                               ],
+                      "OFFHAND":  [
+                                      30911
+                                  ],
+                      "BACK":  [
+                                   32524
+                               ],
+                      "TRINKET1":  [
+                                       29376
+                                   ],
+                      "CHEST":  [
+                                    31066
+                                ],
+                      "SHOULDER":  [
+                                       31069
+                                   ],
+                      "NECK":  [
+                                   32370
+                               ],
+                      "WRIST":  [
+                                    32584
+                                ],
+                      "MAINHAND":  [
+                                       32500
+                                   ],
+                      "WAIST":  [
+                                    30895
+                                ],
+                      "HANDS":  [
+                                    31060
+                                ],
+                      "FEET":  [
+                                   32609
+                               ]
+                  },
+        "enchants":  {
+                         "SHOULDER":  35404,
+                         "LEGS":  31370,
+                         "CHEST":  33990,
+                         "BACK":  25084,
+                         "FEET":  34008,
+                         "RING":  27926,
+                         "WRIST":  27911,
+                         "MAINHAND":  34010,
+                         "HANDS":  33999,
+                         "HEAD":  35445
+                     }
+    },
+    {
+        "source_file":  "WarlockDemonology.lua",
+        "class":  "WARLOCK",
+        "spec":  "Demonology",
+        "id":  "WARLOCK_DEMONOLOGY_TBC_T6_WOWHEAD",
+        "notes_suffix":  "",
+        "items":  {
+                      "RING2":  [
+                                    32247
+                                ],
+                      "RELIC":  [
+                                    29982
+                                ],
+                      "TRINKET2":  [
+                                       27683
+                                   ],
+                      "HEAD":  [
+                                   31051
+                               ],
+                      "RING1":  [
+                                    32527
+                                ],
+                      "LEGS":  [
+                                   30916
+                               ],
+                      "OFFHAND":  [
+                                      30872
+                                  ],
+                      "BACK":  [
+                                   32590
+                               ],
+                      "TRINKET1":  [
+                                       32483
+                                   ],
+                      "CHEST":  [
+                                    30107
+                                ],
+                      "SHOULDER":  [
+                                       31054
+                                   ],
+                      "NECK":  [
+                                   32349
+                               ],
+                      "WRIST":  [
+                                    32586
+                                ],
+                      "MAINHAND":  [
+                                       30910
+                                   ],
+                      "WAIST":  [
+                                    30038
+                                ],
+                      "HANDS":  [
+                                    31050
+                                ],
+                      "FEET":  [
+                                   32239
+                               ]
+                  },
+        "enchants":  {
+                         "SHOULDER":  35406,
+                         "LEGS":  31372,
+                         "CHEST":  27960,
+                         "BACK":  25084,
+                         "FEET":  34008,
+                         "WRIST":  27917,
+                         "MAINHAND":  27982,
+                         "HANDS":  33997,
+                         "HEAD":  35447
+                     }
+    },
+    {
+        "source_file":  "WarriorProtection.lua",
+        "class":  "WARRIOR",
+        "spec":  "Protection",
+        "id":  "WARRIOR_PROTECTION_TBC_T6_WOWHEAD",
+        "notes_suffix":  "",
+        "items":  {
+                      "NECK":  [
+                                   32362
+                               ],
+                      "SHOULDER":  [
+                                       33732
+                                   ],
+                      "OFFHAND":  [
+                                      32375
+                                  ],
+                      "RELIC":  [
+                                    32253
+                                ],
+                      "LEGS":  [
+                                   33731
+                               ],
+                      "CHEST":  [
+                                    33728
+                                ],
+                      "BACK":  [
+                                   34010
+                               ],
+                      "FEET":  [
+                                   33812
+                               ],
+                      "WRIST":  [
+                                    33813
+                                ],
+                      "MAINHAND":  [
+                                       32254
+                                   ],
+                      "HANDS":  [
+                                    32280
+                                ]
+                  },
+        "enchants":  {
+                         "OFFHAND":  34009,
+                         "HANDS":  25072,
+                         "CHEST":  27960,
+                         "BACK":  34004,
+                         "FEET":  34008,
+                         "WRIST":  27914,
+                         "MAINHAND":  20034,
+                         "SHOULDER":  35439,
+                         "HEAD":  35443
+                     }
+    },
+    {
+        "source_file":  "WarriorArms.lua",
+        "class":  "WARRIOR",
+        "spec":  "Arms",
+        "id":  "WARRIOR_ARMS_TBC_T6_WOWHEAD",
+        "notes_suffix":  "",
+        "items":  {
+                      "RING2":  [
+                                    32335
+                                ],
+                      "RELIC":  [
+                                    32326
+                                ],
+                      "TRINKET2":  [
+                                       32505
+                                   ],
+                      "HEAD":  [
+                                   32235
+                               ],
+                      "RING1":  [
+                                    32497
+                                ],
+                      "LEGS":  [
+                                   32341
+                               ],
+                      "OFFHAND":  [
+                                      32838
+                                  ],
+                      "BACK":  [
+                                   32323
+                               ],
+                      "TRINKET1":  [
+                                       28830
+                                   ],
+                      "CHEST":  [
+                                    30975
+                                ],
+                      "SHOULDER":  [
+                                       30979
+                                   ],
+                      "NECK":  [
+                                   32260
+                               ],
+                      "WRIST":  [
+                                    30863
+                                ],
+                      "MAINHAND":  [
+                                       32837
+                                   ],
+                      "WAIST":  [
+                                    30106
+                                ],
+                      "HANDS":  [
+                                    32278
+                                ],
+                      "FEET":  [
+                                   32345
+                               ]
+                  },
+        "enchants":  {
+                         "SHOULDER":  29483,
+                         "RELIC":  30252,
+                         "LEGS":  35490,
+                         "CHEST":  27960,
+                         "BACK":  34004,
+                         "FEET":  34007,
+                         "WRIST":  27899,
+                         "HANDS":  33995,
+                         "HEAD":  35452
+                     }
+    },
+    {
+        "source_file":  "HunterMarksmanship.lua",
+        "class":  "HUNTER",
+        "spec":  "Marksmanship",
+        "id":  "HUNTER_MARKSMANSHIP_TBC_T6_WOWHEAD",
+        "notes_suffix":  "",
+        "items":  {
+                      "RING2":  [
+                                    29301
+                                ],
+                      "RELIC":  [
+                                    30906
+                                ],
+                      "TRINKET2":  [
+                                       32505
+                                   ],
+                      "HEAD":  [
+                                   32235
+                               ],
+                      "RING1":  [
+                                    32497
+                                ],
+                      "LEGS":  [
+                                   31005
+                               ],
+                      "OFFHAND":  [
+                                      30881
+                                  ],
+                      "BACK":  [
+                                   29994
+                               ],
+                      "TRINKET1":  [
+                                       28830
+                                   ],
+                      "CHEST":  [
+                                    31004
+                                ],
+                      "SHOULDER":  [
+                                       31006
+                                   ],
+                      "NECK":  [
+                                   32591
+                               ],
+                      "WRIST":  [
+                                    32324
+                                ],
+                      "MAINHAND":  [
+                                       30901
+                                   ],
+                      "WAIST":  [
+                                    30879
+                                ],
+                      "HANDS":  [
+                                    31001
+                                ],
+                      "FEET":  [
+                                   32366
+                               ]
+                  },
+        "enchants":  {
+                         "SHOULDER":  29483,
+                         "RELIC":  30252,
+                         "LEGS":  35490,
+                         "CHEST":  27960,
+                         "BACK":  34004,
+                         "WRIST":  34002,
+                         "MAINHAND":  27977,
+                         "HANDS":  25080,
+                         "HEAD":  35452
+                     }
+    },
+    {
+        "source_file":  "PaladinProtection.lua",
+        "class":  "PALADIN",
+        "spec":  "Protection",
+        "id":  "PALADIN_PROTECTION_TBC_T6_WOWHEAD",
+        "notes_suffix":  "",
+        "items":  {
+                      "TRINKET2":  [
+                                       29370
+                                   ],
+                      "TRINKET1":  [
+                                       32501
+                                   ],
+                      "SHOULDER":  [
+                                       30998
+                                   ],
+                      "NECK":  [
+                                   32362
+                               ],
+                      "LEGS":  [
+                                   30995
+                               ],
+                      "BACK":  [
+                                   34010
+                               ],
+                      "RELIC":  [
+                                    29388
+                                ],
+                      "CHEST":  [
+                                    30991
+                                ],
+                      "MAINHAND":  [
+                                       30910
+                                   ],
+                      "OFFHAND":  [
+                                      32375
+                                  ],
+                      "WRIST":  [
+                                    32279
+                                ],
+                      "WAIST":  [
+                                    32342
+                                ],
+                      "HANDS":  [
+                                    30985
+                                ],
+                      "FEET":  [
+                                   32245
+                               ]
+                  },
+        "enchants":  {
+                         "SHOULDER":  35402,
+                         "OFFHAND":  34009,
+                         "LEGS":  35495,
+                         "CHEST":  27960,
+                         "BACK":  25086,
+                         "FEET":  27950,
+                         "RING":  27924,
+                         "WRIST":  27914,
+                         "MAINHAND":  27975,
+                         "HANDS":  25072,
+                         "HEAD":  35447
+                     }
+    },
+    {
+        "source_file":  "DruidCat.lua",
+        "class":  "DRUID",
+        "spec":  "Feral (DPS)",
+        "id":  "DRUID_FERAL_DPS_TBC_T6_WOWHEAD",
+        "notes_suffix":  "",
+        "items":  {
+                      "RING2":  [
+                                    29301
+                                ],
+                      "RELIC":  [
+                                    29390
+                                ],
+                      "TRINKET2":  [
+                                       32505
+                                   ],
+                      "HEAD":  [
+                                   8345
+                               ],
+                      "RING1":  [
+                                    32497
+                                ],
+                      "LEGS":  [
+                                   31044
+                               ],
+                      "BACK":  [
+                                   32323
+                               ],
+                      "TRINKET1":  [
+                                       30627
+                                   ],
+                      "CHEST":  [
+                                    32252
+                                ],
+                      "SHOULDER":  [
+                                       31048
+                                   ],
+                      "NECK":  [
+                                   32260
+                               ],
+                      "WRIST":  [
+                                    32324
+                                ],
+                      "MAINHAND":  [
+                                       33716
+                                   ],
+                      "WAIST":  [
+                                    30106
+                                ],
+                      "HANDS":  [
+                                    29947
+                                ],
+                      "FEET":  [
+                                   32366
+                               ]
+                  },
+        "enchants":  {
+                         "SHOULDER":  35407,
+                         "LEGS":  35488,
+                         "CHEST":  27960,
+                         "BACK":  34004,
+                         "FEET":  34007,
+                         "RING":  27920,
+                         "WRIST":  27899,
+                         "MAINHAND":  27977,
+                         "HANDS":  25080,
+                         "HEAD":  35452
+                     }
+    },
+    {
+        "source_file":  "PriestShadow.lua",
+        "class":  "PRIEST",
+        "spec":  "Shadow",
+        "id":  "PRIEST_SHADOW_TBC_T6_WOWHEAD",
+        "notes_suffix":  "",
+        "items":  {
+                      "RING2":  [
+                                    32527
+                                ],
+                      "RELIC":  [
+                                    29982
+                                ],
+                      "TRINKET2":  [
+                                       31856
+                                   ],
+                      "HEAD":  [
+                                   31064
+                               ],
+                      "RING1":  [
+                                    32527
+                                ],
+                      "LEGS":  [
+                                   30916
+                               ],
+                      "MAINHAND":  [
+                                       32374
+                                   ],
+                      "BACK":  [
+                                   32590
+                               ],
+                      "TRINKET1":  [
+                                       32483
+                                   ],
+                      "CHEST":  [
+                                    31065
+                                ],
+                      "SHOULDER":  [
+                                       31070
+                                   ],
+                      "NECK":  [
+                                   32349
+                               ],
+                      "WRIST":  [
+                                    32586
+                                ],
+                      "OFFHAND":  [
+                                      29272
+                                  ],
+                      "WAIST":  [
+                                    32256
+                                ],
+                      "HANDS":  [
+                                    31061
+                                ],
+                      "FEET":  [
+                                   32239
+                               ]
+                  },
+        "enchants":  {
+                         "SHOULDER":  35406,
+                         "LEGS":  31372,
+                         "CHEST":  27960,
+                         "BACK":  25084,
+                         "FEET":  34008,
+                         "WRIST":  27917,
+                         "MAINHAND":  27982,
+                         "HANDS":  33997,
+                         "HEAD":  35447
+                     }
+    },
+    {
+        "source_file":  "ShamanRestoration.lua",
+        "class":  "SHAMAN",
+        "spec":  "Restoration",
+        "id":  "SHAMAN_RESTORATION_TBC_T6_WOWHEAD",
+        "notes_suffix":  "",
+        "items":  {
+                      "RING2":  [
+                                    32528
+                                ],
+                      "RELIC":  [
+                                    28523
+                                ],
+                      "TRINKET2":  [
+                                       29376
+                                   ],
+                      "HEAD":  [
+                                   31012
+                               ],
+                      "RING1":  [
+                                    32528
+                                ],
+                      "LEGS":  [
+                                   31019
+                               ],
+                      "OFFHAND":  [
+                                      30882
+                                  ],
+                      "BACK":  [
+                                   32524
+                               ],
+                      "TRINKET1":  [
+                                       32496
+                                   ],
+                      "CHEST":  [
+                                    31016
+                                ],
+                      "SHOULDER":  [
+                                       31022
+                                   ],
+                      "NECK":  [
+                                   32370
+                               ],
+                      "WRIST":  [
+                                    32577
+                                ],
+                      "MAINHAND":  [
+                                       32500
+                                   ],
+                      "WAIST":  [
+                                    32258
+                                ],
+                      "HANDS":  [
+                                    32328
+                                ],
+                      "FEET":  [
+                                   30873
+                               ]
+                  },
+        "enchants":  {
+                         "SHOULDER":  35404,
+                         "OFFHAND":  27945,
+                         "LEGS":  31370,
+                         "CHEST":  27960,
+                         "BACK":  34006,
+                         "FEET":  34008,
+                         "WRIST":  27911,
+                         "MAINHAND":  34010,
+                         "HANDS":  33999,
+                         "HEAD":  35445
+                     }
+    },
+    {
+        "source_file":  "MageArcane.lua",
+        "class":  "MAGE",
+        "spec":  "Arcane",
+        "id":  "MAGE_ARCANE_TBC_T6_WOWHEAD",
+        "notes_suffix":  "",
+        "items":  {
+                      "RING2":  [
+                                    32527
+                                ],
+                      "RELIC":  [
+                                    28783
+                                ],
+                      "TRINKET2":  [
+                                       32483
+                                   ],
+                      "HEAD":  [
+                                   30206
+                               ],
+                      "RING1":  [
+                                    29305
+                                ],
+                      "LEGS":  [
+                                   31058
+                               ],
+                      "OFFHAND":  [
+                                      30872
+                                  ],
+                      "BACK":  [
+                                   32331
+                               ],
+                      "TRINKET1":  [
+                                       30720
+                                   ],
+                      "CHEST":  [
+                                    30196
+                                ],
+                      "SHOULDER":  [
+                                       30210
+                                   ],
+                      "NECK":  [
+                                   30015
+                               ],
+                      "WRIST":  [
+                                    30870
+                                ],
+                      "MAINHAND":  [
+                                       30910
+                                   ],
+                      "WAIST":  [
+                                    30888
+                                ],
+                      "HANDS":  [
+                                    30205
+                                ],
+                      "FEET":  [
+                                   32239
+                               ]
+                  },
+        "enchants":  {
+                         "SHOULDER":  35406,
+                         "LEGS":  31372,
+                         "CHEST":  27960,
+                         "BACK":  25084,
+                         "FEET":  34008,
+                         "RING":  27924,
+                         "WRIST":  27917,
+                         "MAINHAND":  27975,
+                         "HANDS":  33997,
+                         "HEAD":  35447
+                     }
+    },
+    {
+        "source_file":  "WarriorFury.lua",
+        "class":  "WARRIOR",
+        "spec":  "Fury",
+        "id":  "WARRIOR_FURY_TBC_T6_WOWHEAD",
+        "notes_suffix":  "",
+        "items":  {
+                      "RING2":  [
+                                    32335
+                                ],
+                      "RELIC":  [
+                                    32326
+                                ],
+                      "TRINKET2":  [
+                                       32505
+                                   ],
+                      "HEAD":  [
+                                   32235
+                               ],
+                      "RING1":  [
+                                    32497
+                                ],
+                      "LEGS":  [
+                                   32341
+                               ],
+                      "OFFHAND":  [
+                                      32838
+                                  ],
+                      "BACK":  [
+                                   32323
+                               ],
+                      "TRINKET1":  [
+                                       28830
+                                   ],
+                      "CHEST":  [
+                                    30975
+                                ],
+                      "SHOULDER":  [
+                                       30979
+                                   ],
+                      "NECK":  [
+                                   32260
+                               ],
+                      "WRIST":  [
+                                    30863
+                                ],
+                      "MAINHAND":  [
+                                       32837
+                                   ],
+                      "WAIST":  [
+                                    30106
+                                ],
+                      "HANDS":  [
+                                    32278
+                                ],
+                      "FEET":  [
+                                   32345
+                               ]
+                  },
+        "enchants":  {
+                         "SHOULDER":  29483,
+                         "RELIC":  30252,
+                         "LEGS":  35490,
+                         "CHEST":  27960,
+                         "BACK":  34004,
+                         "FEET":  34007,
+                         "WRIST":  27899,
+                         "HANDS":  33995,
+                         "HEAD":  35452
+                     }
+    },
+    {
+        "source_file":  "WarlockAffliction.lua",
+        "class":  "WARLOCK",
+        "spec":  "Affliction",
+        "id":  "WARLOCK_AFFLICTION_TBC_T6_WOWHEAD",
+        "notes_suffix":  "",
+        "items":  {
+                      "RING2":  [
+                                    32247
+                                ],
+                      "RELIC":  [
+                                    29982
+                                ],
+                      "TRINKET2":  [
+                                       27683
+                                   ],
+                      "HEAD":  [
+                                   31051
+                               ],
+                      "RING1":  [
+                                    32527
+                                ],
+                      "LEGS":  [
+                                   30916
+                               ],
+                      "OFFHAND":  [
+                                      30872
+                                  ],
+                      "BACK":  [
+                                   32590
+                               ],
+                      "TRINKET1":  [
+                                       32483
+                                   ],
+                      "CHEST":  [
+                                    30107
+                                ],
+                      "SHOULDER":  [
+                                       31054
+                                   ],
+                      "NECK":  [
+                                   32349
+                               ],
+                      "WRIST":  [
+                                    32586
+                                ],
+                      "MAINHAND":  [
+                                       30910
+                                   ],
+                      "WAIST":  [
+                                    30038
+                                ],
+                      "HANDS":  [
+                                    31050
+                                ],
+                      "FEET":  [
+                                   32239
+                               ]
+                  },
+        "enchants":  {
+                         "SHOULDER":  35406,
+                         "LEGS":  31372,
+                         "CHEST":  27960,
+                         "BACK":  25084,
+                         "FEET":  34008,
+                         "WRIST":  27917,
+                         "MAINHAND":  27982,
+                         "HANDS":  33997,
+                         "HEAD":  35447
+                     }
+    },
+    {
+        "source_file":  "HunterSurvival.lua",
+        "class":  "HUNTER",
+        "spec":  "Survival",
+        "id":  "HUNTER_SURVIVAL_TBC_T6_WOWHEAD",
+        "notes_suffix":  "",
+        "items":  {
+                      "RING2":  [
+                                    29301
+                                ],
+                      "RELIC":  [
+                                    30906
+                                ],
+                      "TRINKET2":  [
+                                       32505
+                                   ],
+                      "HEAD":  [
+                                   31003
+                               ],
+                      "RING1":  [
+                                    28791
+                                ],
+                      "LEGS":  [
+                                   30900
+                               ],
+                      "BACK":  [
+                                   29994
+                               ],
+                      "TRINKET1":  [
+                                       28830
+                                   ],
+                      "CHEST":  [
+                                    31004
+                                ],
+                      "SHOULDER":  [
+                                       31006
+                                   ],
+                      "NECK":  [
+                                   30017
+                               ],
+                      "WRIST":  [
+                                    32324
+                                ],
+                      "MAINHAND":  [
+                                       32248
+                                   ],
+                      "WAIST":  [
+                                    30879
+                                ],
+                      "HANDS":  [
+                                    31001
+                                ],
+                      "FEET":  [
+                                   32366
+                               ]
+                  },
+        "enchants":  {
+                         "SHOULDER":  35417,
+                         "RELIC":  22779,
+                         "LEGS":  35490,
+                         "CHEST":  27960,
+                         "BACK":  34004,
+                         "FEET":  27951,
+                         "WRIST":  34002,
+                         "HANDS":  25080,
+                         "HEAD":  35452
+                     }
+    },
+    {
+        "source_file":  "DruidRestoration.lua",
+        "class":  "DRUID",
+        "spec":  "Restoration",
+        "id":  "DRUID_RESTORATION_TBC_T6_WOWHEAD",
+        "notes_suffix":  "",
+        "items":  {
+                      "RING2":  [
+                                    30110
+                                ],
+                      "RELIC":  [
+                                    27886
+                                ],
+                      "TRINKET2":  [
+                                       38288
+                                   ],
+                      "HEAD":  [
+                                   31037
+                               ],
+                      "RING1":  [
+                                    32528
+                                ],
+                      "LEGS":  [
+                                   30912
+                               ],
+                      "OFFHAND":  [
+                                      30911
+                                  ],
+                      "BACK":  [
+                                   32524
+                               ],
+                      "TRINKET1":  [
+                                       29376
+                                   ],
+                      "CHEST":  [
+                                    31041
+                                ],
+                      "SHOULDER":  [
+                                       31047
+                                   ],
+                      "NECK":  [
+                                   30018
+                               ],
+                      "WRIST":  [
+                                    30868
+                                ],
+                      "MAINHAND":  [
+                                       32500
+                                   ],
+                      "WAIST":  [
+                                    30895
+                                ],
+                      "HANDS":  [
+                                    32328
+                                ],
+                      "FEET":  [
+                                   30737
+                               ]
+                  },
+        "enchants":  {
+                         "SHOULDER":  35404,
+                         "LEGS":  31370,
+                         "CHEST":  33990,
+                         "BACK":  25084,
+                         "FEET":  34008,
+                         "RING":  27926,
+                         "WRIST":  27911,
+                         "MAINHAND":  34010,
+                         "HANDS":  33999,
+                         "HEAD":  35445
+                     }
+    },
+    {
+        "source_file":  "DruidBalance.lua",
+        "class":  "DRUID",
+        "spec":  "Balance",
+        "id":  "DRUID_BALANCE_TBC_T6_WOWHEAD",
+        "notes_suffix":  "",
+        "items":  {
+                      "RING2":  [
+                                    29305
+                                ],
+                      "RELIC":  [
+                                    32387
+                                ],
+                      "TRINKET2":  [
+                                       32486
+                                   ],
+                      "HEAD":  [
+                                   31040
+                               ],
+                      "RING1":  [
+                                    32527
+                                ],
+                      "LEGS":  [
+                                   30916
+                               ],
+                      "OFFHAND":  [
+                                      30872
+                                  ],
+                      "BACK":  [
+                                   32524
+                               ],
+                      "TRINKET1":  [
+                                       32483
+                                   ],
+                      "CHEST":  [
+                                    31043
+                                ],
+                      "SHOULDER":  [
+                                       31049
+                                   ],
+                      "NECK":  [
+                                   30015
+                               ],
+                      "WRIST":  [
+                                    32586
+                                ],
+                      "MAINHAND":  [
+                                       33687
+                                   ],
+                      "WAIST":  [
+                                    30888
+                                ],
+                      "HANDS":  [
+                                    31035
+                                ],
+                      "FEET":  [
+                                   32239
+                               ]
+                  },
+        "enchants":  {
+                         "SHOULDER":  35437,
+                         "LEGS":  31372,
+                         "CHEST":  27960,
+                         "BACK":  25084,
+                         "FEET":  34008,
+                         "RING":  27924,
+                         "WRIST":  27917,
+                         "MAINHAND":  27981,
+                         "HANDS":  33997,
+                         "HEAD":  35447
+                     }
+    },
+    {
+        "source_file":  "ShamanEnhancement.lua",
+        "class":  "SHAMAN",
+        "spec":  "Enhancement",
+        "id":  "SHAMAN_ENHANCEMENT_TBC_T6_WOWHEAD",
+        "notes_suffix":  "",
+        "items":  {
+                      "RING2":  [
+                                    29301
+                                ],
+                      "RELIC":  [
+                                    27815
+                                ],
+                      "TRINKET2":  [
+                                       29383
+                                   ],
+                      "HEAD":  [
+                                   32235
+                               ],
+                      "RING1":  [
+                                    32497
+                                ],
+                      "LEGS":  [
+                                   30900
+                               ],
+                      "BACK":  [
+                                   32323
+                               ],
+                      "TRINKET1":  [
+                                       32505
+                                   ],
+                      "CHEST":  [
+                                    30905
+                                ],
+                      "SHOULDER":  [
+                                       32581
+                                   ],
+                      "NECK":  [
+                                   32260
+                               ],
+                      "WRIST":  [
+                                    30863
+                                ],
+                      "MAINHAND":  [
+                                       33669
+                                   ],
+                      "WAIST":  [
+                                    30106
+                                ],
+                      "HANDS":  [
+                                    32234
+                                ],
+                      "FEET":  [
+                                   32366
+                               ]
+                  },
+        "enchants":  {
+                         "SHOULDER":  35417,
+                         "LEGS":  35490,
+                         "CHEST":  27960,
+                         "BACK":  34004,
+                         "FEET":  34007,
+                         "WRIST":  27899,
+                         "HANDS":  33995,
+                         "HEAD":  35452
+                     }
+    },
+    {
+        "source_file":  "HunterBeastMastery.lua",
+        "class":  "HUNTER",
+        "spec":  "Beast Mastery",
+        "id":  "HUNTER_BEAST_MASTERY_TBC_T6_WOWHEAD",
+        "notes_suffix":  "",
+        "items":  {
+                      "RING2":  [
+                                    29301
+                                ],
+                      "RELIC":  [
+                                    30906
+                                ],
+                      "TRINKET2":  [
+                                       32505
+                                   ],
+                      "HEAD":  [
+                                   32235
+                               ],
+                      "RING1":  [
+                                    32497
+                                ],
+                      "LEGS":  [
+                                   31005
+                               ],
+                      "OFFHAND":  [
+                                      30881
+                                  ],
+                      "BACK":  [
+                                   29994
+                               ],
+                      "TRINKET1":  [
+                                       28830
+                                   ],
+                      "CHEST":  [
+                                    31004
+                                ],
+                      "SHOULDER":  [
+                                       31006
+                                   ],
+                      "NECK":  [
+                                   32591
+                               ],
+                      "WRIST":  [
+                                    32324
+                                ],
+                      "MAINHAND":  [
+                                       30901
+                                   ],
+                      "WAIST":  [
+                                    30879
+                                ],
+                      "HANDS":  [
+                                    31001
+                                ],
+                      "FEET":  [
+                                   32366
+                               ]
+                  },
+        "enchants":  {
+                         "BACK":  34004,
+                         "RELIC":  30252,
+                         "SHOULDER":  29483,
+                         "CHEST":  27960,
+                         "LEGS":  35490,
+                         "FEET":  27951,
+                         "WRIST":  34002,
+                         "MAINHAND":  27977,
+                         "HANDS":  25080,
+                         "HEAD":  35452
+                     }
+    },
+    {
+        "source_file":  "DruidBear.lua",
+        "class":  "DRUID",
+        "spec":  "Feral (Tank)",
+        "id":  "DRUID_FERAL_TANK_TBC_T6_WOWHEAD",
+        "notes_suffix":  "",
+        "items":  {
+                      "TRINKET1":  [
+                                       32658
+                                   ],
+                      "TRINKET2":  [
+                                       30627
+                                   ],
+                      "RING1":  [
+                                    29279
+                                ],
+                      "LEGS":  [
+                                   31044
+                               ],
+                      "RELIC":  [
+                                    32387
+                                ],
+                      "CHEST":  [
+                                    31042
+                                ],
+                      "MAINHAND":  [
+                                       30883
+                                   ],
+                      "WRIST":  [
+                                    32324
+                                ],
+                      "WAIST":  [
+                                    30106
+                                ],
+                      "HANDS":  [
+                                    31034
+                                ],
+                      "SHOULDER":  [
+                                       31048
+                                   ],
+                      "RING2":  [
+                                    32266
+                                ],
+                      "NECK":  [
+                                   30017
+                               ]
+                  },
+        "enchants":  {
+                         "SHOULDER":  35417,
+                         "LEGS":  35495,
+                         "CHEST":  27960,
+                         "BACK":  34004,
+                         "FEET":  34008,
+                         "RING":  27927,
+                         "WRIST":  27914,
+                         "MAINHAND":  27977,
+                         "HANDS":  25072,
+                         "HEAD":  35452
+                     }
+    },
+    {
+        "source_file":  "MageFire.lua",
+        "class":  "MAGE",
+        "spec":  "Fire",
+        "id":  "MAGE_FIRE_TBC_T6_WOWHEAD",
+        "notes_suffix":  "",
+        "items":  {
+                      "RING2":  [
+                                    32527
+                                ],
+                      "RELIC":  [
+                                    29982
+                                ],
+                      "TRINKET2":  [
+                                       30720
+                                   ],
+                      "HEAD":  [
+                                   32525
+                               ],
+                      "RING1":  [
+                                    32527
+                                ],
+                      "LEGS":  [
+                                   31058
+                               ],
+                      "OFFHAND":  [
+                                      30872
+                                  ],
+                      "BACK":  [
+                                   32524
+                               ],
+                      "TRINKET1":  [
+                                       32483
+                                   ],
+                      "CHEST":  [
+                                    31057
+                                ],
+                      "SHOULDER":  [
+                                       31059
+                                   ],
+                      "NECK":  [
+                                   32589
+                               ],
+                      "WRIST":  [
+                                    32586
+                                ],
+                      "MAINHAND":  [
+                                       30910
+                                   ],
+                      "WAIST":  [
+                                    30038
+                                ],
+                      "HANDS":  [
+                                    31055
+                                ],
+                      "FEET":  [
+                                   32239
+                               ]
+                  },
+        "enchants":  {
+                         "SHOULDER":  35406,
+                         "LEGS":  31372,
+                         "CHEST":  27960,
+                         "BACK":  25084,
+                         "FEET":  34008,
+                         "RING":  27924,
+                         "WRIST":  27917,
+                         "MAINHAND":  27975,
+                         "HANDS":  33994,
+                         "HEAD":  35447
+                     }
+    },
+    {
+        "source_file":  "PaladinHoly.lua",
+        "class":  "PALADIN",
+        "spec":  "Holy",
+        "id":  "PALADIN_HOLY_TBC_T6_WOWHEAD",
+        "notes_suffix":  "",
+        "items":  {
+                      "RING2":  [
+                                    32238
+                                ],
+                      "RELIC":  [
+                                    28592
+                                ],
+                      "TRINKET2":  [
+                                       29376
+                                   ],
+                      "HEAD":  [
+                                   30988
+                               ],
+                      "RING1":  [
+                                    32528
+                                ],
+                      "LEGS":  [
+                                   30994
+                               ],
+                      "OFFHAND":  [
+                                      32255
+                                  ],
+                      "BACK":  [
+                                   32524
+                               ],
+                      "TRINKET1":  [
+                                       32496
+                                   ],
+                      "CHEST":  [
+                                    30992
+                                ],
+                      "SHOULDER":  [
+                                       30996
+                                   ],
+                      "NECK":  [
+                                   32370
+                               ],
+                      "WRIST":  [
+                                    30862
+                                ],
+                      "MAINHAND":  [
+                                       32500
+                                   ],
+                      "WAIST":  [
+                                    30897
+                                ],
+                      "HANDS":  [
+                                    30112
+                                ],
+                      "FEET":  [
+                                   32243
+                               ]
+                  },
+        "enchants":  {
+                         "SHOULDER":  35404,
+                         "LEGS":  31370,
+                         "CHEST":  33991,
+                         "BACK":  27962,
+                         "FEET":  34008,
+                         "RING":  27926,
+                         "WRIST":  27911,
+                         "MAINHAND":  34010,
+                         "HANDS":  33999,
+                         "HEAD":  35445
+                     }
+    },
+    {
+        "source_file":  "MageFrost.lua",
+        "class":  "MAGE",
+        "spec":  "Frost",
+        "id":  "MAGE_FROST_TBC_T6_WOWHEAD",
+        "notes_suffix":  "",
+        "items":  {
+                      "RING2":  [
+                                    32527
+                                ],
+                      "RELIC":  [
+                                    29982
+                                ],
+                      "TRINKET2":  [
+                                       32488
+                                   ],
+                      "HEAD":  [
+                                   32525
+                               ],
+                      "RING1":  [
+                                    32527
+                                ],
+                      "LEGS":  [
+                                   31058
+                               ],
+                      "MAINHAND":  [
+                                       32374
+                                   ],
+                      "BACK":  [
+                                   32524
+                               ],
+                      "TRINKET1":  [
+                                       32483
+                                   ],
+                      "CHEST":  [
+                                    31057
+                                ],
+                      "SHOULDER":  [
+                                       31059
+                                   ],
+                      "NECK":  [
+                                   30015
+                               ],
+                      "WRIST":  [
+                                    32586
+                                ],
+                      "OFFHAND":  [
+                                      30872
+                                  ],
+                      "WAIST":  [
+                                    32256
+                                ],
+                      "HANDS":  [
+                                    31055
+                                ],
+                      "FEET":  [
+                                   32239
+                               ]
+                  },
+        "enchants":  {
+                         "SHOULDER":  35406,
+                         "LEGS":  31372,
+                         "CHEST":  27960,
+                         "BACK":  25084,
+                         "FEET":  34008,
+                         "RING":  27924,
+                         "WRIST":  27917,
+                         "MAINHAND":  27975,
+                         "HANDS":  25074,
+                         "HEAD":  35447
+                     }
+    },
+    {
+        "source_file":  "RogueDps.lua",
+        "class":  "ROGUE",
+        "spec":  "Combat",
+        "id":  "ROGUE_COMBAT_TBC_T6_WOWHEAD",
+        "notes_suffix":  "",
+        "items":  {
+                      "RING2":  [
+                                    29301
+                                ],
+                      "RELIC":  [
+                                    29949
+                                ],
+                      "TRINKET2":  [
+                                       30450
+                                   ],
+                      "HEAD":  [
+                                   32235
+                               ],
+                      "RING1":  [
+                                    32497
+                                ],
+                      "LEGS":  [
+                                   31029
+                               ],
+                      "OFFHAND":  [
+                                      32838
+                                  ],
+                      "BACK":  [
+                                   32323
+                               ],
+                      "TRINKET1":  [
+                                       28830
+                                   ],
+                      "CHEST":  [
+                                    31028
+                                ],
+                      "SHOULDER":  [
+                                       31030
+                                   ],
+                      "NECK":  [
+                                   32260
+                               ],
+                      "WRIST":  [
+                                    32324
+                                ],
+                      "MAINHAND":  [
+                                       32837
+                                   ],
+                      "WAIST":  [
+                                    30106
+                                ],
+                      "HANDS":  [
+                                    31026
+                                ],
+                      "FEET":  [
+                                   32366
+                               ]
+                  },
+        "enchants":  {
+                         "SHOULDER":  35417,
+                         "LEGS":  35490,
+                         "CHEST":  27960,
+                         "BACK":  34004,
+                         "FEET":  34007,
+                         "WRIST":  34002,
+                         "HANDS":  25080,
+                         "HEAD":  35452
+                     }
+    },
+    {
+        "source_file":  "PriestHoly.lua",
+        "class":  "PRIEST",
+        "spec":  "Discipline",
+        "id":  "PRIEST_DISCIPLINE_TBC_T6_WOWHEAD",
+        "notes_suffix":  "Closest available Wowhead guide used (Holy).",
+        "items":  {
+                      "RING2":  [
+                                    32528
+                                ],
+                      "RELIC":  [
+                                    32363
+                                ],
+                      "TRINKET2":  [
+                                       28823
+                                   ],
+                      "HEAD":  [
+                                   31063
+                               ],
+                      "RING1":  [
+                                    32528
+                                ],
+                      "LEGS":  [
+                                   30912
+                               ],
+                      "OFFHAND":  [
+                                      30911
+                                  ],
+                      "BACK":  [
+                                   32524
+                               ],
+                      "TRINKET1":  [
+                                       29376
+                                   ],
+                      "CHEST":  [
+                                    31066
+                                ],
+                      "SHOULDER":  [
+                                       31069
+                                   ],
+                      "NECK":  [
+                                   32370
+                               ],
+                      "WRIST":  [
+                                    32584
+                                ],
+                      "MAINHAND":  [
+                                       32500
+                                   ],
+                      "WAIST":  [
+                                    30895
+                                ],
+                      "HANDS":  [
+                                    31060
+                                ],
+                      "FEET":  [
+                                   32609
+                               ]
+                  },
+        "enchants":  {
+                         "SHOULDER":  35404,
+                         "LEGS":  31370,
+                         "CHEST":  33990,
+                         "BACK":  25084,
+                         "FEET":  34008,
+                         "RING":  27926,
+                         "WRIST":  27911,
+                         "MAINHAND":  34010,
+                         "HANDS":  33999,
+                         "HEAD":  35445
+                     }
+    },
+    {
+        "source_file":  "RogueDps.lua",
+        "class":  "ROGUE",
+        "spec":  "Assassination",
+        "id":  "ROGUE_ASSASSINATION_TBC_T6_WOWHEAD",
+        "notes_suffix":  "Closest available Wowhead guide used (Rogue DPS).",
+        "items":  {
+                      "RING2":  [
+                                    29301
+                                ],
+                      "RELIC":  [
+                                    29949
+                                ],
+                      "TRINKET2":  [
+                                       30450
+                                   ],
+                      "HEAD":  [
+                                   32235
+                               ],
+                      "RING1":  [
+                                    32497
+                                ],
+                      "LEGS":  [
+                                   31029
+                               ],
+                      "OFFHAND":  [
+                                      32838
+                                  ],
+                      "BACK":  [
+                                   32323
+                               ],
+                      "TRINKET1":  [
+                                       28830
+                                   ],
+                      "CHEST":  [
+                                    31028
+                                ],
+                      "SHOULDER":  [
+                                       31030
+                                   ],
+                      "NECK":  [
+                                   32260
+                               ],
+                      "WRIST":  [
+                                    32324
+                                ],
+                      "MAINHAND":  [
+                                       32837
+                                   ],
+                      "WAIST":  [
+                                    30106
+                                ],
+                      "HANDS":  [
+                                    31026
+                                ],
+                      "FEET":  [
+                                   32366
+                               ]
+                  },
+        "enchants":  {
+                         "SHOULDER":  35417,
+                         "LEGS":  35490,
+                         "CHEST":  27960,
+                         "BACK":  34004,
+                         "FEET":  34007,
+                         "WRIST":  34002,
+                         "HANDS":  25080,
+                         "HEAD":  35452
+                     }
+    },
+    {
+        "source_file":  "RogueDps.lua",
+        "class":  "ROGUE",
+        "spec":  "Subtlety",
+        "id":  "ROGUE_SUBTLETY_TBC_T6_WOWHEAD",
+        "notes_suffix":  "Closest available Wowhead guide used (Rogue DPS).",
+        "items":  {
+                      "RING2":  [
+                                    29301
+                                ],
+                      "RELIC":  [
+                                    29949
+                                ],
+                      "TRINKET2":  [
+                                       30450
+                                   ],
+                      "HEAD":  [
+                                   32235
+                               ],
+                      "RING1":  [
+                                    32497
+                                ],
+                      "LEGS":  [
+                                   31029
+                               ],
+                      "OFFHAND":  [
+                                      32838
+                                  ],
+                      "BACK":  [
+                                   32323
+                               ],
+                      "TRINKET1":  [
+                                       28830
+                                   ],
+                      "CHEST":  [
+                                    31028
+                                ],
+                      "SHOULDER":  [
+                                       31030
+                                   ],
+                      "NECK":  [
+                                   32260
+                               ],
+                      "WRIST":  [
+                                    32324
+                                ],
+                      "MAINHAND":  [
+                                       32837
+                                   ],
+                      "WAIST":  [
+                                    30106
+                                ],
+                      "HANDS":  [
+                                    31026
+                                ],
+                      "FEET":  [
+                                   32366
+                               ]
+                  },
+        "enchants":  {
+                         "SHOULDER":  35417,
+                         "LEGS":  35490,
+                         "CHEST":  27960,
+                         "BACK":  34004,
+                         "FEET":  34007,
+                         "WRIST":  34002,
+                         "HANDS":  25080,
+                         "HEAD":  35452
+                     }
+    }
+]

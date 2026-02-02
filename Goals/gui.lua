@@ -40,6 +40,7 @@ local OPTIONS_PANEL_WIDTH = 240
 local OPTIONS_CONTROL_WIDTH = 196
 
 local wishlistHasWowhead
+local wishlistHasLoon
 local wishlistSpecKey
 local stripTextureTags
 local showBuildPreviewTooltip
@@ -5333,6 +5334,7 @@ function UI:CreateWishlistTab(page)
             icon:Hide()
             return icon
         end
+        row.iconLoon = createIcon()
         row.iconWowhead = createIcon()
         row.iconClass = createIcon()
         row.iconSpec = createIcon()
@@ -6297,6 +6299,7 @@ function UI:CreateWishlistTab(page)
             icon:Hide()
             return icon
         end
+        row.iconLoon = createIcon()
         row.iconWowhead = createIcon()
         row.iconClass = createIcon()
         row.iconSpec = createIcon()
@@ -9936,6 +9939,14 @@ function UI:UpdateWishlistManagerList()
             end
             local meta = list.buildMeta
             if meta then
+                local loonTexture = Goals.IconTextures and Goals.IconTextures.loonbis or nil
+                if loonTexture and wishlistHasLoon(meta) then
+                    row.iconLoon.tex:SetTexture(loonTexture)
+                    row.iconLoon.tex:SetTexCoord(0, 1, 0, 1)
+                    placeIcon(row.iconLoon, "LoonBiS")
+                else
+                    row.iconLoon:Hide()
+                end
                 local wowheadTexture = Goals.IconTextures and Goals.IconTextures.wowhead or nil
                 if wowheadTexture and wishlistHasWowhead(meta) then
                     row.iconWowhead.tex:SetTexture(wowheadTexture)
@@ -9969,6 +9980,7 @@ function UI:UpdateWishlistManagerList()
                     row.iconSpec:Hide()
                 end
             else
+                row.iconLoon:Hide()
                 row.iconWowhead:Hide()
                 row.iconClass:Hide()
                 row.iconSpec:Hide()
@@ -9986,6 +9998,7 @@ function UI:UpdateWishlistManagerList()
         else
             row:Hide()
             row.listId = nil
+            if row.iconLoon then row.iconLoon:Hide() end
             if row.iconWowhead then row.iconWowhead:Hide() end
             if row.iconClass then row.iconClass:Hide() end
             if row.iconSpec then row.iconSpec:Hide() end
@@ -10630,6 +10643,29 @@ wishlistHasWowhead = function(build)
     return false
 end
 
+wishlistHasLoon = function(build)
+    if not build then
+        return false
+    end
+    if type(build.tags) == "table" then
+        for _, tag in ipairs(build.tags) do
+            local value = tostring(tag or ""):lower()
+            if value == "loonbis" or value == "loon bis" or value == "loonbestinslot" or value == "loon" then
+                return true
+            end
+        end
+    end
+    if type(build.sources) == "table" then
+        for _, source in ipairs(build.sources) do
+            local value = tostring(source or ""):lower()
+            if value:find("loonbis", 1, true) or value:find("loonbestinslot", 1, true) then
+                return true
+            end
+        end
+    end
+    return false
+end
+
 stripTextureTags = function(text)
     if not text then
         return ""
@@ -10769,6 +10805,14 @@ function UI:UpdateWishlistBuildList()
                 icon:Show()
                 iconX = iconX + 18
             end
+            local loonTexture = Goals.IconTextures and Goals.IconTextures.loonbis or nil
+            if loonTexture and wishlistHasLoon(build) then
+                row.iconLoon.tex:SetTexture(loonTexture)
+                row.iconLoon.tex:SetTexCoord(0, 1, 0, 1)
+                placeIcon(row.iconLoon, "LoonBiS")
+            else
+                row.iconLoon:Hide()
+            end
             local wowheadTexture = Goals.IconTextures and Goals.IconTextures.wowhead or nil
             if wowheadTexture and wishlistHasWowhead(build) then
                 row.iconWowhead.tex:SetTexture(wowheadTexture)
@@ -10836,6 +10880,7 @@ function UI:UpdateWishlistBuildList()
         else
             row:Hide()
             row.build = nil
+            if row.iconLoon then row.iconLoon:Hide() end
             if row.iconWowhead then row.iconWowhead:Hide() end
             if row.iconClass then row.iconClass:Hide() end
             if row.iconSpec then row.iconSpec:Hide() end
@@ -12552,3 +12597,4 @@ function UI:CreateOptionsPanel()
     InterfaceOptions_AddCategory(panel)
     self.optionsPanel = panel
 end
+

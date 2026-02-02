@@ -1,0 +1,38 @@
+Next steps for TBC Phase 3 (T6) Wowhead builds
+
+Context for a new chat (what Codex should know):
+- Project: WoW addon data in `Goals/wishlistBuildData.lua` (build library) and `Goals/gui.lua` (icons in UI).
+- We cannot browse wowhead.com/tbc directly (robots/blocked), so we use locally saved Wowhead HTML pages.
+- LoonBestInSlot (TBC addon) was used as a proxy for T6 builds; those entries are labeled as LoonBiS now.
+- LoonBiS source token is `loonbis` (lowercase) in `source =` and `sources =` fields.
+- Loon icon is wired in UI: `Goals.IconTextures.loonbis` and row.iconLoon in `Goals/gui.lua`.
+  - Icon file path: `Goals/Icons/loonbestinslot_icon.tga` (keep this path unless you rename the file).
+  - UI shows Loon icon if `wishlistHasLoon(build)` finds `loonbis` (or legacy `loonbestinslot`) in tags/sources.
+- Wowhead icon shows if `sources` or `tags` include the string `wowhead` (case-insensitive).
+- Druid T6 entries already have Wowhead enchants from local HTML files; most other gemIds remain empty.
+- Existing T6 LoonBiS notes format: "Phase data 't6' sourced from LoonBiS (TBC addon). Enchants from Wowhead gem/enchants guides."
+- New Wowhead builds should follow the same slot order/formatting as existing entries.
+- Do NOT replace unrelated builds; add/update only the targeted T6 entries.
+
+What to do next:
+1) Download Wowhead TBC Phase 3 (T6) BiS guide page AND the matching "Gems & Enchants" guide for each class/spec.
+2) Save the HTML files into `workspace/` (the *_files directories are OK but not required).
+3) Tell Codex which class/specs to process.
+
+User required steps (manual):
+- You must manually download the Wowhead HTML files and place them in `workspace/`.
+- Codex does NOT browse Wowhead directly; it only parses the local HTML files you provide.
+
+How to build/update:
+- Parse the Wowhead HTML to extract item IDs, gem IDs, and enchant IDs.
+- Create or update the *_TBC_T6_WOWHEAD entries in `Goals/wishlistBuildData.lua` to match existing formatting.
+- If Wowhead item IDs match the LoonBiS build exactly, then either:
+  - remove the LoonBiS build entirely, OR
+  - relabel it to Wowhead and include the Wowhead enchants/gems.
+  (Either approach is fine; just be consistent and note it in sources/notes.)
+- After extracting data, remove the downloaded Wowhead HTML files from `workspace/`.
+
+Reminders:
+- Keep existing builds; do not replace unrelated entries.
+- Maintain the same slot order and formatting used in current entries.
+- Use `sources = {"wowhead"}` or include "wowhead" so the Wowhead icon appears in the UI.
