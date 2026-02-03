@@ -385,6 +385,32 @@ local function createOptionsHeader(parent, text, y)
     return label, heading
 end
 
+local function wishlistCustomSources(build)
+    local has = {}
+    local function mark(value)
+        if value == "custom-classic" then
+            has["custom-classic"] = true
+        elseif value == "custom-tbc" then
+            has["custom-tbc"] = true
+        elseif value == "custom-wotlk" then
+            has["custom-wotlk"] = true
+        end
+    end
+    if build then
+        if type(build.tags) == "table" then
+            for _, tag in ipairs(build.tags) do
+                mark(tostring(tag or ""):lower())
+            end
+        end
+        if type(build.sources) == "table" then
+            for _, source in ipairs(build.sources) do
+                mark(tostring(source or ""):lower())
+            end
+        end
+    end
+    return has
+end
+
 local function createFooterBar(ui, page, key, suffix)
     if not ui or not page then
         return nil
@@ -5383,12 +5409,15 @@ function UI:CreateWishlistTab(page)
             icon:Hide()
             return icon
         end
-        row.iconLoon = createIcon()
-        row.iconBistooltip = createIcon()
-        row.iconWowtbc = createIcon()
-        row.iconWowhead = createIcon()
-        row.iconClass = createIcon()
-        row.iconSpec = createIcon()
+                row.iconLoon = createIcon()
+                row.iconBistooltip = createIcon()
+                row.iconWowtbc = createIcon()
+                row.iconCustomClassic = createIcon()
+                row.iconCustomTbc = createIcon()
+                row.iconCustomWotlk = createIcon()
+                row.iconWowhead = createIcon()
+                row.iconClass = createIcon()
+                row.iconSpec = createIcon()
         row:SetScript("OnClick", function(selfRow)
             if selfRow.listId then
                 Goals:SetActiveWishlist(selfRow.listId)
@@ -6350,12 +6379,15 @@ function UI:CreateWishlistTab(page)
             icon:Hide()
             return icon
         end
-        row.iconLoon = createIcon()
-        row.iconBistooltip = createIcon()
-        row.iconWowtbc = createIcon()
-        row.iconWowhead = createIcon()
-        row.iconClass = createIcon()
-        row.iconSpec = createIcon()
+            row.iconLoon = createIcon()
+            row.iconBistooltip = createIcon()
+            row.iconWowtbc = createIcon()
+            row.iconCustomClassic = createIcon()
+            row.iconCustomTbc = createIcon()
+            row.iconCustomWotlk = createIcon()
+            row.iconWowhead = createIcon()
+            row.iconClass = createIcon()
+            row.iconSpec = createIcon()
         local selected = row:CreateTexture(nil, "ARTWORK")
         selected:SetAllPoints(row)
         selected:SetTexture("Interface\\Buttons\\UI-Listbox-Highlight")
@@ -9971,6 +10003,31 @@ function UI:UpdateWishlistManagerList()
                 else
                     row.iconWowtbc:Hide()
                 end
+                local customSources = wishlistCustomSources(meta)
+                local customClassic = Goals.IconTextures and Goals.IconTextures["custom-classic"] or nil
+                if customClassic and customSources["custom-classic"] then
+                    row.iconCustomClassic.tex:SetTexture(customClassic)
+                    row.iconCustomClassic.tex:SetTexCoord(0, 1, 0, 1)
+                    placeIcon(row.iconCustomClassic, "Custom Classic")
+                else
+                    row.iconCustomClassic:Hide()
+                end
+                local customTbc = Goals.IconTextures and Goals.IconTextures["custom-tbc"] or nil
+                if customTbc and customSources["custom-tbc"] then
+                    row.iconCustomTbc.tex:SetTexture(customTbc)
+                    row.iconCustomTbc.tex:SetTexCoord(0, 1, 0, 1)
+                    placeIcon(row.iconCustomTbc, "Custom TBC")
+                else
+                    row.iconCustomTbc:Hide()
+                end
+                local customWotlk = Goals.IconTextures and Goals.IconTextures["custom-wotlk"] or nil
+                if customWotlk and customSources["custom-wotlk"] then
+                    row.iconCustomWotlk.tex:SetTexture(customWotlk)
+                    row.iconCustomWotlk.tex:SetTexCoord(0, 1, 0, 1)
+                    placeIcon(row.iconCustomWotlk, "Custom WotLK")
+                else
+                    row.iconCustomWotlk:Hide()
+                end
                 local wowheadTexture = Goals.IconTextures and Goals.IconTextures.wowhead or nil
                 if wowheadTexture and wishlistHasWowhead(meta) then
                     row.iconWowhead.tex:SetTexture(wowheadTexture)
@@ -10007,6 +10064,9 @@ function UI:UpdateWishlistManagerList()
                 row.iconLoon:Hide()
                 row.iconBistooltip:Hide()
                 row.iconWowtbc:Hide()
+                row.iconCustomClassic:Hide()
+                row.iconCustomTbc:Hide()
+                row.iconCustomWotlk:Hide()
                 row.iconWowhead:Hide()
                 row.iconClass:Hide()
                 row.iconSpec:Hide()
@@ -10027,6 +10087,9 @@ function UI:UpdateWishlistManagerList()
             if row.iconLoon then row.iconLoon:Hide() end
             if row.iconBistooltip then row.iconBistooltip:Hide() end
             if row.iconWowtbc then row.iconWowtbc:Hide() end
+            if row.iconCustomClassic then row.iconCustomClassic:Hide() end
+            if row.iconCustomTbc then row.iconCustomTbc:Hide() end
+            if row.iconCustomWotlk then row.iconCustomWotlk:Hide() end
             if row.iconWowhead then row.iconWowhead:Hide() end
             if row.iconClass then row.iconClass:Hide() end
             if row.iconSpec then row.iconSpec:Hide() end
@@ -10927,6 +10990,31 @@ function UI:UpdateWishlistBuildList()
             else
                 row.iconWowtbc:Hide()
             end
+            local customSources = wishlistCustomSources(build)
+            local customClassic = Goals.IconTextures and Goals.IconTextures["custom-classic"] or nil
+            if customClassic and customSources["custom-classic"] then
+                row.iconCustomClassic.tex:SetTexture(customClassic)
+                row.iconCustomClassic.tex:SetTexCoord(0, 1, 0, 1)
+                placeIcon(row.iconCustomClassic, "Custom Classic")
+            else
+                row.iconCustomClassic:Hide()
+            end
+            local customTbc = Goals.IconTextures and Goals.IconTextures["custom-tbc"] or nil
+            if customTbc and customSources["custom-tbc"] then
+                row.iconCustomTbc.tex:SetTexture(customTbc)
+                row.iconCustomTbc.tex:SetTexCoord(0, 1, 0, 1)
+                placeIcon(row.iconCustomTbc, "Custom TBC")
+            else
+                row.iconCustomTbc:Hide()
+            end
+            local customWotlk = Goals.IconTextures and Goals.IconTextures["custom-wotlk"] or nil
+            if customWotlk and customSources["custom-wotlk"] then
+                row.iconCustomWotlk.tex:SetTexture(customWotlk)
+                row.iconCustomWotlk.tex:SetTexCoord(0, 1, 0, 1)
+                placeIcon(row.iconCustomWotlk, "Custom WotLK")
+            else
+                row.iconCustomWotlk:Hide()
+            end
             local wowheadTexture = Goals.IconTextures and Goals.IconTextures.wowhead or nil
             if wowheadTexture and wishlistHasWowhead(build) then
                 row.iconWowhead.tex:SetTexture(wowheadTexture)
@@ -10997,6 +11085,9 @@ function UI:UpdateWishlistBuildList()
             if row.iconLoon then row.iconLoon:Hide() end
             if row.iconBistooltip then row.iconBistooltip:Hide() end
             if row.iconWowtbc then row.iconWowtbc:Hide() end
+            if row.iconCustomClassic then row.iconCustomClassic:Hide() end
+            if row.iconCustomTbc then row.iconCustomTbc:Hide() end
+            if row.iconCustomWotlk then row.iconCustomWotlk:Hide() end
             if row.iconWowhead then row.iconWowhead:Hide() end
             if row.iconClass then row.iconClass:Hide() end
             if row.iconSpec then row.iconSpec:Hide() end
