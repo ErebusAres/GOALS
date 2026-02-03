@@ -21,6 +21,7 @@
 -- - sources are used for the source icons in the build list. For custom icons, use:
 --     "custom-classic", "custom-tbc", or "custom-wotlk"
 -- - Set disabled = true to keep a build out of the searchable build list.
+-- - use `/reload` to reload the UI and see your changes.
 --
 -- Paths for icons:
 --   Goals/Icons/custom-classic.tga
