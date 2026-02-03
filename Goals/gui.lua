@@ -10694,22 +10694,31 @@ wishlistHasBistooltip = function(build)
     return false
 end
 
-wishlistWowtbcSource = function(build)
-    if not build then
-        return nil, nil
-    end
-    local function normalize(value)
-        if value:find("wowtbc-gg-wotlk", 1, true) then
-            return "wowtbc-gg-wotlk", "wowtbc.gg WotLK"
+    wishlistWowtbcSource = function(build)
+        if not build then
+            return nil, nil
         end
-        if value:find("wowtbc-gg-tbc", 1, true) then
-            return "wowtbc-gg-tbc", "wowtbc.gg TBC"
+        local function normalize(value)
+            if value:find("wowtbc-gg-wotlk", 1, true) then
+                return "wowtbc-gg-wotlk", "wowtbc.gg WotLK"
+            end
+            if value:find("wowtbc-gg-tbc", 1, true) then
+                return "wowtbc-gg-tbc", "wowtbc.gg TBC"
+            end
+            if value:find("wowtbc-gg-classic", 1, true) then
+                return "wowtbc-gg-classic", "wowtbc.gg Classic"
+            end
+            if value:find("custom-wotlk", 1, true) then
+                return "custom-wotlk", "Custom WotLK"
+            end
+            if value:find("custom-tbc", 1, true) then
+                return "custom-tbc", "Custom TBC"
+            end
+            if value:find("custom-classic", 1, true) then
+                return "custom-classic", "Custom Classic"
+            end
+            return nil, nil
         end
-        if value:find("wowtbc-gg-classic", 1, true) then
-            return "wowtbc-gg-classic", "wowtbc.gg Classic"
-        end
-        return nil, nil
-    end
     if type(build.tags) == "table" then
         for _, tag in ipairs(build.tags) do
             local value = tostring(tag or ""):lower()

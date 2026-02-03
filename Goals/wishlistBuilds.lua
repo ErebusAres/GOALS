@@ -48,6 +48,7 @@ Goals.WishlistBuildLibrary = Goals.WishlistBuildLibrary or {
         "Builds are expected to be importable into the wishlist via slot item IDs.",
         "Alternate builds are included when sources disagree or when progression vs. end-phase lists differ.",
         "If a build uses wowhead data, store the URL or the raw data string in the wowhead field.",
+        "Custom builds can be added in wishlistBuildCustom.lua and load alongside this library.",
     },
     sources = {
         {
@@ -86,6 +87,24 @@ Goals.WishlistBuildLibrary = Goals.WishlistBuildLibrary or {
             url = "https://wowpedia.fandom.com",
             notes = "Reference for tier set names and slot coverage.",
         },
+        {
+            id = "custom-classic",
+            name = "Custom Classic builds",
+            url = "",
+            notes = "User-maintained builds in wishlistBuildCustom.lua.",
+        },
+        {
+            id = "custom-tbc",
+            name = "Custom TBC builds",
+            url = "",
+            notes = "User-maintained builds in wishlistBuildCustom.lua.",
+        },
+        {
+            id = "custom-wotlk",
+            name = "Custom WotLK builds",
+            url = "",
+            notes = "User-maintained builds in wishlistBuildCustom.lua.",
+        },
     },
     tiers = {
         { id = "CLASSIC_PRE", label = "Classic Pre-Raid", minLevel = 60, maxLevel = 60, expansion = "Classic" },
@@ -107,9 +126,22 @@ Goals.WishlistBuildLibrary = Goals.WishlistBuildLibrary or {
 }
 
 local function ensureBuildsPopulated()
+    local merged = {}
     if Goals.WishlistBuildData and Goals.WishlistBuildData.builds then
-        Goals.WishlistBuildLibrary.builds = Goals.WishlistBuildData.builds
+        for _, build in ipairs(Goals.WishlistBuildData.builds) do
+            if not (build and build.disabled) then
+                table.insert(merged, build)
+            end
+        end
     end
+    if Goals.WishlistBuildCustomData and Goals.WishlistBuildCustomData.builds then
+        for _, build in ipairs(Goals.WishlistBuildCustomData.builds) do
+            if not (build and build.disabled) then
+                table.insert(merged, build)
+            end
+        end
+    end
+    Goals.WishlistBuildLibrary.builds = merged
 end
 
 ensureBuildsPopulated()
@@ -127,8 +159,7 @@ local function findTierById(library, tierId)
 end
 
 function Goals:GetWishlistBuildLibrary()
-    if (not self.WishlistBuildLibrary.builds or #self.WishlistBuildLibrary.builds == 0)
-        and self.WishlistBuildData and self.WishlistBuildData.builds then
+    if not self.WishlistBuildLibrary.builds or #self.WishlistBuildLibrary.builds == 0 then
         ensureBuildsPopulated()
     end
     return self.WishlistBuildLibrary
