@@ -305,7 +305,8 @@ end
 
 function Comm:SerializePoints()
     local parts = {}
-    for name, data in pairs(Goals.db.players) do
+    local players = Goals.GetOverviewPlayers and Goals:GetOverviewPlayers() or (Goals.db and Goals.db.players) or {}
+    for name, data in pairs(players) do
         local class = data.class or ""
         local points = data.points or 0
         table.insert(parts, name .. "," .. points .. "," .. class)
@@ -314,7 +315,7 @@ function Comm:SerializePoints()
 end
 
 function Comm:ApplyPoints(payload)
-    local players = Goals.db.players or {}
+    local players = Goals.GetOverviewPlayers and Goals:GetOverviewPlayers() or (Goals.db and Goals.db.players) or {}
     for entry in string.gmatch(payload or "", "([^;]+)") do
         local name, points, class = entry:match("([^,]+),([^,]+),?(.*)")
         if name and points then
@@ -324,18 +325,18 @@ function Comm:ApplyPoints(payload)
             end
         end
     end
-    Goals.db.players = players
     Goals.lastSyncReceivedAt = time()
     Goals:NotifyDataChanged()
 end
 
 function Comm:SerializeSettings()
     local settings = Goals.db.settings
+    local overviewSettings = Goals.GetOverviewSettings and Goals:GetOverviewSettings() or settings
     local parts = {
         "combineBossHistory=" .. (settings.combineBossHistory and "1" or "0"),
         "disenchanter=" .. (settings.disenchanter or ""),
         "debug=" .. (settings.debug and "1" or "0"),
-        "disablePointGain=" .. (settings.disablePointGain and "1" or "0"),
+        "disablePointGain=" .. (overviewSettings.disablePointGain and "1" or "0"),
         "resetMounts=" .. (settings.resetMounts and "1" or "0"),
         "resetPets=" .. (settings.resetPets and "1" or "0"),
         "resetRecipes=" .. (settings.resetRecipes and "1" or "0"),
@@ -371,7 +372,8 @@ function Comm:ApplySetting(key, value)
         return
     end
     if key == "disablePointGain" then
-        Goals.db.settings.disablePointGain = value == "1" or value == "true"
+        local overviewSettings = Goals.GetOverviewSettings and Goals:GetOverviewSettings() or (Goals.db and Goals.db.settings) or {}
+        overviewSettings.disablePointGain = value == "1" or value == "true"
         return
     end
     if key == "resetMounts" then

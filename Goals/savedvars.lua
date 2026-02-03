@@ -9,6 +9,15 @@ _G.Goals = Goals
 Goals.defaults = {
     version = 1,
     players = {},
+    overviewMigrated = false,
+    overviewMigrationPending = false,
+    overviewMigrationPrompted = false,
+    overviewLastUpdated = 0,
+    overviewSettings = {
+        showPresentOnly = false,
+        sortMode = "POINTS",
+        disablePointGain = false,
+    },
     history = {},
     debugLog = {},
     combatLog = {},
@@ -58,7 +67,7 @@ Goals.defaults = {
         tableAutoLoadSeen = true,
         tableCombined = false,
         sudoDev = false,
-        updateSeenVersion = 17,
+        updateSeenVersion = 18,
         updateSeenMajor = 2,
         updateAvailableVersion = 0,
         updateAvailableMajor = 0,
@@ -216,6 +225,16 @@ function Goals:InitDB()
     if GoalsDB.players then
         GoalsDB.players["Unknown"] = nil
         GoalsDB.players["unknown"] = nil
+    end
+    if not GoalsDB.overviewMigrated then
+        local hasLegacy = false
+        for _, tableData in pairs(GoalsDB.tables or {}) do
+            if tableData and tableData.players and next(tableData.players) then
+                hasLegacy = true
+                break
+            end
+        end
+        GoalsDB.overviewMigrationPending = hasLegacy and true or false
     end
     self.db = GoalsDB
 end

@@ -996,16 +996,77 @@ local function setupSudoDevPopup()
 end
 
 local function setupSaveTableHelpPopup()
-    if not StaticPopupDialogs or StaticPopupDialogs.GOALS_SAVE_TABLE_HELP then
-        return
+    return
+end
+
+local function ensureOverviewMigrationPrompt()
+    if not UI or UI.overviewMigrationPrompt then
+        return UI and UI.overviewMigrationPrompt or nil
     end
-    StaticPopupDialogs.GOALS_SAVE_TABLE_HELP = {
-        text = L.POPUP_SAVE_TABLE_HELP,
-        button1 = OKAY,
-        timeout = 0,
-        whileDead = 1,
-        hideOnEscape = 1,
-    }
+    local frame = CreateFrame("Frame", "GoalsOverviewMigrationPrompt", UIParent, "GoalsFrameTemplate")
+    applyFrameTheme(frame)
+    frame:SetSize(OPTIONS_PANEL_WIDTH + 40, 140)
+    frame:SetFrameStrata("FULLSCREEN_DIALOG")
+    frame:SetFrameLevel(1000)
+    frame:SetToplevel(true)
+    frame:SetClampedToScreen(true)
+    frame:Hide()
+
+    if frame.TitleText then
+        frame.TitleText:SetText("Account Data")
+        frame.TitleText:Show()
+    end
+    local frameName = frame.GetName and frame:GetName() or nil
+    local close = frame.CloseButton or (frameName and _G[frameName .. "CloseButton"]) or nil
+    if close then
+        close:SetScript("OnClick", function()
+            frame:Hide()
+            if Goals and Goals.dbRoot then
+                Goals.dbRoot.overviewMigrationPending = false
+            end
+        end)
+    end
+
+    local content = CreateFrame("Frame", nil, frame, "GoalsInsetTemplate")
+    applyInsetTheme(content)
+    content:SetPoint("TOPLEFT", frame, "TOPLEFT", 6, -24)
+    content:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -6, 6)
+    frame.content = content
+
+    local body = createLabel(content, L.POPUP_OVERVIEW_MIGRATE, "GameFontHighlightSmall")
+    body:SetPoint("TOPLEFT", content, "TOPLEFT", 8, -8)
+    body:SetPoint("TOPRIGHT", content, "TOPRIGHT", -8, -8)
+    body:SetJustifyH("LEFT")
+    body:SetWordWrap(true)
+    frame.body = body
+
+    local okBtn = createOptionsButton(content)
+    styleOptionsButton(okBtn, 120)
+    okBtn:SetPoint("BOTTOMRIGHT", content, "BOTTOMRIGHT", -8, 8)
+    okBtn:SetText(OKAY)
+    okBtn:SetScript("OnClick", function()
+        if Goals and Goals.MergeLegacyOverviewTables then
+            Goals:MergeLegacyOverviewTables()
+        end
+        frame:Hide()
+    end)
+    frame.okBtn = okBtn
+
+    local cancelBtn = createOptionsButton(content)
+    styleOptionsButton(cancelBtn, 120)
+    cancelBtn:SetPoint("RIGHT", okBtn, "LEFT", -8, 0)
+    cancelBtn:SetText(CANCEL)
+    cancelBtn:SetScript("OnClick", function()
+        frame:Hide()
+        if Goals and Goals.dbRoot then
+            Goals.dbRoot.overviewMigrationPending = false
+        end
+    end)
+    frame.cancelBtn = cancelBtn
+
+    registerSpecialFrame(frame:GetName())
+    UI.overviewMigrationPrompt = frame
+    return frame
 end
 
 local function setupBuildSharePopup()
@@ -1559,10 +1620,9 @@ end
 
 function UI:GetAllPlayerNames()
     local names = {}
-    if Goals.db and Goals.db.players then
-        for name in pairs(Goals.db.players) do
-            table.insert(names, name)
-        end
+    local players = Goals.GetOverviewPlayers and Goals:GetOverviewPlayers() or (Goals.db and Goals.db.players) or {}
+    for name in pairs(players) do
+        table.insert(names, name)
     end
     table.sort(names)
     return names
@@ -1624,15 +1684,13 @@ end
 
 function UI:GetSortedPlayers()
     local list = {}
-    if not Goals.db or not Goals.db.players then
+    local playerMap = Goals.GetOverviewPlayers and Goals:GetOverviewPlayers() or (Goals.db and Goals.db.players)
+    if not playerMap then
         return list
     end
-    local playerMap = Goals.db.players
-    if Goals.db.settings and Goals.db.settings.tableCombined and Goals.GetCombinedPlayers then
-        playerMap = Goals:GetCombinedPlayers()
-    end
+    local overviewSettings = Goals.GetOverviewSettings and Goals:GetOverviewSettings() or (Goals.db and Goals.db.settings) or {}
     local present = Goals:GetPresenceMap()
-    local showPresentOnly = Goals.db.settings and Goals.db.settings.showPresentOnly
+    local showPresentOnly = overviewSettings.showPresentOnly
     for name, data in pairs(playerMap) do
         local isPresent = present[name] or false
         if not showPresentOnly or isPresent then
@@ -1644,7 +1702,7 @@ function UI:GetSortedPlayers()
             })
         end
     end
-    local mode = (Goals.db.settings and Goals.db.settings.sortMode) or "POINTS"
+    local mode = overviewSettings.sortMode or "POINTS"
     table.sort(list, function(a, b)
         if mode == "ALPHA" then
             return a.name < b.name
@@ -2092,12 +2150,14 @@ function UI:SetupSortDropdown(dropdown)
             info.text = option.text
             info.value = option.value
             info.func = function()
-                Goals.db.settings.sortMode = option.value
+                local overviewSettings = Goals.GetOverviewSettings and Goals:GetOverviewSettings() or (Goals.db and Goals.db.settings) or {}
+                overviewSettings.sortMode = option.value
                 UIDropDownMenu_SetSelectedValue(dropdown, option.value)
                 UIDropDownMenu_SetText(dropdown, option.text)
                 Goals:NotifyDataChanged()
             end
-            info.checked = Goals.db.settings.sortMode == option.value
+            local overviewSettings = Goals.GetOverviewSettings and Goals:GetOverviewSettings() or (Goals.db and Goals.db.settings) or {}
+            info.checked = overviewSettings.sortMode == option.value
             UIDropDownMenu_AddButton(info, level)
         end
     end)
@@ -2108,7 +2168,8 @@ function UI:SyncSortDropdown()
     if not self.sortDropdown then
         return
     end
-    local selected = Goals.db.settings.sortMode or "POINTS"
+    local overviewSettings = Goals.GetOverviewSettings and Goals:GetOverviewSettings() or (Goals.db and Goals.db.settings) or {}
+    local selected = overviewSettings.sortMode or "POINTS"
     local text = L.SORT_POINTS
     if self.sortOptions then
         for _, option in ipairs(self.sortOptions) do
@@ -2155,6 +2216,21 @@ function UI:ShowBuildSharePrompt()
     if StaticPopup_Show then
         StaticPopup_Show("GOALS_BUILD_SHARE")
     end
+end
+
+function UI:ShowOverviewMigrationPrompt()
+    local frame = ensureOverviewMigrationPrompt()
+    if not frame then
+        return
+    end
+    if self.frame and self.frame:IsShown() then
+        frame:ClearAllPoints()
+        frame:SetPoint("TOPLEFT", self.frame, "TOPRIGHT", -2, -34)
+    else
+        frame:ClearAllPoints()
+        frame:SetPoint("CENTER", UIParent, "CENTER", 0, 120)
+    end
+    frame:Show()
 end
 
 function UI:CreateBuildShareTargetFrame()
@@ -2627,6 +2703,9 @@ function UI:CreateMainFrame()
         if UI and UI.combatBroadcastPopout and UI.combatBroadcastPopout:IsShown() then
             UI.combatBroadcastPopout:Hide()
         end
+        if hideBuildPreviewTooltip then
+            hideBuildPreviewTooltip()
+        end
     end)
 
     registerSpecialFrame(frame:GetName())
@@ -2970,8 +3049,9 @@ function UI:GetTabFooter2Segments(key)
     local settings = (Goals and Goals.db and Goals.db.settings) or {}
     if key == "overview" then
         local topText = self:GetTopPointsSummary()
-        local sortText = getSortLabel(settings.sortMode)
-        local presentText = settings.showPresentOnly and "Present only: On" or "Present only: Off"
+        local overviewSettings = Goals.GetOverviewSettings and Goals:GetOverviewSettings() or settings or {}
+        local sortText = getSortLabel(overviewSettings.sortMode)
+        local presentText = overviewSettings.showPresentOnly and "Present only: On" or "Present only: Off"
         return topText, sortText, presentText
     end
     if key == "loot" then
@@ -3703,7 +3783,8 @@ function UI:CreateOverviewTab(page)
     self:SetupSortDropdown(sortDrop)
 
     local presentCheck = addCheck("Show present players", function(selfBtn)
-        Goals.db.settings.showPresentOnly = selfBtn:GetChecked() and true or false
+        local overviewSettings = Goals.GetOverviewSettings and Goals:GetOverviewSettings() or (Goals.db and Goals.db.settings) or {}
+        overviewSettings.showPresentOnly = selfBtn:GetChecked() and true or false
         Goals:NotifyDataChanged()
     end, "Show only players currently in your group.")
     self.presentCheck = presentCheck
@@ -3893,29 +3974,6 @@ function UI:CreateOverviewTab(page)
     self.miniTrackerButton = miniBtn
 
     y = y - 8
-    local tableLabel, tableBar = addSectionHeader(L.LABEL_SAVE_TABLES)
-    self.overviewTableLabel = tableLabel
-    self.overviewTableBar = tableBar
-    local autoSeenCheck = addCheck(L.CHECK_AUTOLOAD_SEEN, function(selfBtn)
-        Goals.db.settings.tableAutoLoadSeen = selfBtn:GetChecked() and true or false
-    end)
-    self.autoLoadSeenCheck = autoSeenCheck
-
-    local combinedCheck = addCheck(L.CHECK_COMBINED_TABLES, function(selfBtn)
-        Goals.db.settings.tableCombined = selfBtn:GetChecked() and true or false
-        Goals:NotifyDataChanged()
-    end)
-    self.combinedTablesCheck = combinedCheck
-
-    local syncSeenBtn = addActionButton(L.BUTTON_SYNC_SEEN, function()
-        if Goals and Goals.MergeSeenPlayersIntoCurrent then
-            Goals:MergeSeenPlayersIntoCurrent()
-        end
-    end)
-    self.syncSeenButton = syncSeenBtn
-    syncSeenBtn:Hide()
-
-    y = y - 8
     local devLabel, devBar = addSectionHeader("Dev Tools")
     self.overviewDevLabel = devLabel
     self.overviewDevBar = devBar
@@ -3980,10 +4038,6 @@ function UI:CreateOverviewTab(page)
         self.overviewMiniBar,
         self.overviewResetMiniBtn,
         self.miniTrackerButton,
-        self.overviewTableBar,
-        self.autoLoadSeenCheck,
-        self.combinedTablesCheck,
-        self.syncSeenButton,
         self.overviewDevBar,
         self.sudoDevButton,
     }
@@ -4065,13 +4119,6 @@ function UI:CreateOverviewTab(page)
                 setHeader(self.overviewMiniBar)
                 setControl(self.overviewResetMiniBtn, 30)
                 setControl(self.miniTrackerButton, 30)
-
-                -- Save tables section
-                setSpacer(8)
-                setHeader(self.overviewTableBar)
-                setControl(self.autoLoadSeenCheck, 28)
-                setControl(self.combinedTablesCheck, 28)
-                setControlIfShown(self.syncSeenButton, 30)
 
                 -- Keybindings section (skip Dev Tools entirely)
                 setSpacer(0)
@@ -6640,54 +6687,7 @@ function UI:CreateSettingsTab(page)
     miniBtn:SetPoint("TOPLEFT", miniTitle, "BOTTOMLEFT", ACTIONS_LEFT, -6)
     self.miniTrackerButton = miniBtn
 
-    local tableDivider = createAlignedDivider(miniBtn, -6)
-    local tableTitle = createLabel(rightInset, L.LABEL_SAVE_TABLES, "GameFontNormal")
-    local tableBar = applyAlignedSectionHeader(tableTitle, tableDivider or miniBtn, -6)
-    applySectionCaption(tableBar, "Per character")
-
-    local helpBtn = createSmallIconButton(rightInset, 18, "Interface\\Buttons\\UI-HelpButton")
-    helpBtn:SetPoint("LEFT", tableTitle, "RIGHT", 6, 0)
-    helpBtn:SetScript("OnClick", function()
-        if StaticPopup_Show then
-            StaticPopup_Show("GOALS_SAVE_TABLE_HELP")
-        end
-    end)
-    helpBtn:SetScript("OnEnter", function(selfBtn)
-        GameTooltip:SetOwner(selfBtn, "ANCHOR_RIGHT")
-        GameTooltip:SetText("Table save help")
-        GameTooltip:Show()
-    end)
-    helpBtn:SetScript("OnLeave", function()
-        GameTooltip:Hide()
-    end)
-    self.saveTableHelpButton = helpBtn
-
-    local autoSeenCheck = CreateFrame("CheckButton", nil, rightInset, "UICheckButtonTemplate")
-    autoSeenCheck:SetPoint("TOPLEFT", tableTitle, "BOTTOMLEFT", ACTIONS_LEFT, -6)
-    setCheckText(autoSeenCheck, L.CHECK_AUTOLOAD_SEEN)
-    autoSeenCheck:SetScript("OnClick", function(selfBtn)
-        Goals.db.settings.tableAutoLoadSeen = selfBtn:GetChecked() and true or false
-    end)
-    self.autoLoadSeenCheck = autoSeenCheck
-
-    local combinedCheck = CreateFrame("CheckButton", nil, rightInset, "UICheckButtonTemplate")
-    combinedCheck:SetPoint("TOPLEFT", autoSeenCheck, "BOTTOMLEFT", 0, -6)
-    setCheckText(combinedCheck, L.CHECK_COMBINED_TABLES)
-    combinedCheck:SetScript("OnClick", function(selfBtn)
-        Goals.db.settings.tableCombined = selfBtn:GetChecked() and true or false
-        Goals:NotifyDataChanged()
-    end)
-    self.combinedTablesCheck = combinedCheck
-
-    local syncSeenBtn = createActionButton(L.BUTTON_SYNC_SEEN, function()
-        if Goals and Goals.MergeSeenPlayersIntoCurrent then
-            Goals:MergeSeenPlayersIntoCurrent()
-        end
-    end)
-    syncSeenBtn:SetPoint("TOPLEFT", combinedCheck, "BOTTOMLEFT", 0, -8)
-    self.syncSeenButton = syncSeenBtn
-
-    local editDivider = createAlignedDivider(syncSeenBtn, -6)
+    local editDivider = createAlignedDivider(miniBtn, -6)
     local editTitle = createLabel(rightInset, "Local Editing", "GameFontNormal")
     local editBar = applyAlignedSectionHeader(editTitle, editDivider or syncSeenBtn, -6)
     applySectionCaption(editBar, "Admin tools")
@@ -8817,18 +8817,19 @@ function UI:UpdateRosterList()
             row.playerName = nil
         end
     end
+    local overviewSettings = Goals.GetOverviewSettings and Goals:GetOverviewSettings() or (Goals.db and Goals.db.settings) or {}
     if self.presentCheck then
-        self.presentCheck:SetChecked(Goals.db.settings.showPresentOnly and true or false)
+        self.presentCheck:SetChecked(overviewSettings.showPresentOnly and true or false)
     end
     if self.disablePointGainCheck then
-        self.disablePointGainCheck:SetChecked(Goals.db.settings.disablePointGain and true or false)
+        self.disablePointGainCheck:SetChecked(overviewSettings.disablePointGain and true or false)
         local canToggle = hasPointGainAccess()
         setShown(self.disablePointGainCheck, canToggle)
         if self.disablePointGainStatus then
             if canToggle then
                 self.disablePointGainStatus:Hide()
             else
-                local enabled = not Goals.db.settings.disablePointGain
+                local enabled = not overviewSettings.disablePointGain
                 if enabled then
                     self.disablePointGainStatus:SetText("Point tracking: enabled")
                     self.disablePointGainStatus:SetTextColor(0.2, 1, 0.2)
@@ -11959,12 +11960,7 @@ function UI:Refresh()
             self.sudoDevButton:SetText(L.BUTTON_SUDO_DEV_ENABLE)
         end
     end
-    if self.autoLoadSeenCheck then
-        self.autoLoadSeenCheck:SetChecked(Goals.db.settings.tableAutoLoadSeen and true or false)
-    end
-    if self.combinedTablesCheck then
-        self.combinedTablesCheck:SetChecked(Goals.db.settings.tableCombined and true or false)
-    end
+    local overviewSettings = Goals.GetOverviewSettings and Goals:GetOverviewSettings() or (Goals.db and Goals.db.settings) or {}
     if self.resetMountsCheck then
         self.resetMountsCheck:SetChecked(Goals.db.settings.resetMounts and true or false)
     end
@@ -12136,7 +12132,8 @@ function UI:CreateMinimapButton()
         local versionText = Goals and Goals.GetDisplayVersion and Goals:GetDisplayVersion() or "2"
         GameTooltip:SetText("Goals v" .. versionText)
         local playerName = Goals and Goals.GetPlayerName and Goals:GetPlayerName() or ""
-        local entry = Goals and Goals.db and Goals.db.players and Goals.db.players[playerName] or nil
+        local players = Goals.GetOverviewPlayers and Goals:GetOverviewPlayers() or (Goals.db and Goals.db.players) or {}
+        local entry = players[playerName]
         local points = entry and entry.points or 0
         if playerName ~= "" then
             GameTooltip:AddLine(string.format("%s has %d points", colorizeName(playerName), points), 1, 1, 1)
@@ -12161,7 +12158,7 @@ function UI:CreateMinimapButton()
     if not setIconTexture(iconPath) then
         icon:SetTexture("Interface\\Icons\\achievement_bg_killflagcarriers_grabflag_capit")
     end
-    icon:SetSize(16, 16)
+    icon:SetSize(18, 18)
     icon:ClearAllPoints()
     icon:SetPoint("CENTER", button, "CENTER", 0, 0)
     icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
@@ -12425,7 +12422,8 @@ function UI:UpdateMiniTracker()
         row:ClearAllPoints()
         row:SetPoint("TOPLEFT", self.miniTracker, "TOPLEFT", 0, rowY)
         row:SetPoint("RIGHT", self.miniTracker, "RIGHT", 0, 0)
-        local entry = Goals.db.players and Goals.db.players[name] or nil
+        local players = Goals.GetOverviewPlayers and Goals:GetOverviewPlayers() or (Goals.db and Goals.db.players) or {}
+        local entry = players[name]
         local points = entry and entry.points or 0
         local r, g, b = Goals:GetClassColor(entry and entry.class or nil)
         row.nameText:SetText(name)

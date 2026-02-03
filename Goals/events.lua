@@ -320,9 +320,7 @@ end
 
 function Events:HandleGroupUpdate()
     Goals:EnsureGroupMembers()
-    if Goals.MergeSeenPlayersForGroup then
-        Goals:MergeSeenPlayersForGroup()
-    end
+    -- Auto-load seen players removed (account-bound overview).
     if Goals.DamageTracker and Goals.DamageTracker.HandleGroupUpdate then
         Goals.DamageTracker:HandleGroupUpdate()
     end

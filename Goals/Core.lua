@@ -166,11 +166,116 @@ function Goals:GetClassColor(class)
     return color.r, color.g, color.b
 end
 
-function Goals:GetPlayerClass(name)
-    if not self.db or not self.db.players then
-        return nil
+function Goals:GetOverviewPlayers()
+    if self.dbRoot then
+        if type(self.dbRoot.players) ~= "table" then
+            self.dbRoot.players = {}
+        end
+        return self.dbRoot.players
     end
-    local entry = self.db.players[self:NormalizeName(name)]
+    if self.db then
+        if type(self.db.players) ~= "table" then
+            self.db.players = {}
+        end
+        return self.db.players
+    end
+    return {}
+end
+
+function Goals:GetOverviewSettings()
+    if self.dbRoot then
+        if type(self.dbRoot.overviewSettings) ~= "table" then
+            self.dbRoot.overviewSettings = {}
+        end
+        local settings = self.dbRoot.overviewSettings
+        if self.CopyDefaults then
+            self:CopyDefaults(settings, {
+                showPresentOnly = false,
+                sortMode = "POINTS",
+                disablePointGain = false,
+            })
+        else
+            if settings.showPresentOnly == nil then settings.showPresentOnly = false end
+            if settings.sortMode == nil then settings.sortMode = "POINTS" end
+            if settings.disablePointGain == nil then settings.disablePointGain = false end
+        end
+        return settings
+    end
+    return self.db and self.db.settings or {}
+end
+
+function Goals:MergeLegacyOverviewTables()
+    if not self.dbRoot or self.dbRoot.overviewMigrated then
+        return false
+    end
+    local merged = {}
+    local function applyPlayers(source)
+        if type(source) ~= "table" then
+            return
+        end
+        for name, data in pairs(source) do
+            local key = self:NormalizeName(name)
+            if key ~= "" and key ~= "Unknown" then
+                merged[key] = {
+                    points = (data and data.points) or 0,
+                    class = (data and data.class) or "UNKNOWN",
+                }
+            end
+        end
+    end
+    applyPlayers(self.dbRoot.players)
+    local tables = {}
+    for _, tableData in pairs(self.dbRoot.tables or {}) do
+        table.insert(tables, tableData)
+    end
+    table.sort(tables, function(a, b)
+        return (a.lastUpdated or 0) < (b.lastUpdated or 0)
+    end)
+    local latestSettings = nil
+    for _, tableData in ipairs(tables) do
+        applyPlayers(tableData.players)
+        if type(tableData.settings) == "table" then
+            latestSettings = tableData.settings
+        end
+    end
+    self.dbRoot.players = merged
+    local settingsSource = latestSettings or self.dbRoot.settings
+    if type(settingsSource) == "table" then
+        local overviewSettings = self:GetOverviewSettings()
+        if settingsSource.showPresentOnly ~= nil then
+            overviewSettings.showPresentOnly = settingsSource.showPresentOnly
+        end
+        if settingsSource.sortMode ~= nil then
+            overviewSettings.sortMode = settingsSource.sortMode
+        end
+        if settingsSource.disablePointGain ~= nil then
+            overviewSettings.disablePointGain = settingsSource.disablePointGain
+        end
+    end
+    self.dbRoot.overviewMigrated = true
+    self.dbRoot.overviewMigrationPending = false
+    self.dbRoot.overviewMigrationPrompted = true
+    self.dbRoot.overviewLastUpdated = time()
+    self:NotifyDataChanged()
+    return true
+end
+
+function Goals:MaybePromptOverviewMigration()
+    if not self.dbRoot or self.dbRoot.overviewMigrated then
+        return
+    end
+    if not self.dbRoot.overviewMigrationPending or self.dbRoot.overviewMigrationPrompted then
+        return
+    end
+    if self.UI and self.UI.ShowOverviewMigrationPrompt then
+        self.dbRoot.overviewMigrationPrompted = true
+        self.UI:ShowOverviewMigrationPrompt()
+    end
+end
+
+function Goals:GetPlayerClass(name)
+    local players = self:GetOverviewPlayers()
+    local entry = players[self:NormalizeName(name)]
     return entry and entry.class
 end
 
@@ -657,16 +762,15 @@ end
 
 function Goals:EnsurePlayer(name, class)
     local key = self:NormalizeName(name)
+    local players = self:GetOverviewPlayers()
     if key == "" or key == "Unknown" then
-        if self.db and self.db.players then
-            self.db.players[key] = nil
-        end
+        players[key] = nil
         return nil
     end
-    local entry = self.db.players[key]
+    local entry = players[key]
     if type(entry) ~= "table" then
         entry = { points = 0, class = class or "UNKNOWN" }
-        self.db.players[key] = entry
+        players[key] = entry
     end
     if class and class ~= "" then
         entry.class = class
@@ -681,7 +785,12 @@ function Goals:SetRaidSetting(key, value, skipSync)
     if not self.db or not self.db.settings then
         return
     end
-    self.db.settings[key] = value
+    if key == "disablePointGain" then
+        local overviewSettings = self:GetOverviewSettings()
+        overviewSettings.disablePointGain = value and true or false
+    else
+        self.db.settings[key] = value
+    end
     self:NotifyDataChanged()
     if self:CanSync() and not skipSync and self.Comm then
         self.Comm:SendSetting(key, value)
@@ -710,7 +819,8 @@ function Goals:AdjustPoints(name, delta, reason, skipSync, skipUndo)
     if not entry or not delta or delta == 0 then
         return
     end
-    if delta > 0 and self.db and self.db.settings and self.db.settings.disablePointGain then
+    local overviewSettings = self:GetOverviewSettings()
+    if delta > 0 and overviewSettings.disablePointGain then
         return
     end
     if not skipUndo then
@@ -731,7 +841,8 @@ function Goals:AwardPresentPoints(delta, reason)
     if amount == 0 then
         return
     end
-    if self.db and self.db.settings and self.db.settings.disablePointGain then
+    local overviewSettings = self:GetOverviewSettings()
+    if overviewSettings.disablePointGain then
         return
     end
     local present = self:GetPresenceMap()
@@ -764,15 +875,13 @@ function Goals:SetPoints(name, points, reason, skipSync, skipHistory, skipUndo)
 end
 
 function Goals:RemovePlayer(name)
-    if not self.db or not self.db.players then
-        return
-    end
+    local players = self:GetOverviewPlayers()
     local key = self:NormalizeName(name)
     if key == "" then
         return
     end
-    if self.db.players[key] then
-        self.db.players[key] = nil
+    if players[key] then
+        players[key] = nil
         self.undo[key] = nil
         self:NotifyDataChanged()
     end
@@ -786,7 +895,8 @@ function Goals:AwardBossKill(encounterName, members, skipSync)
     if not skipSync and not self:IsSyncMaster() then
         return
     end
-    if self.db and self.db.settings and self.db.settings.disablePointGain then
+    local overviewSettings = self:GetOverviewSettings()
+    if overviewSettings.disablePointGain then
         return
     end
     local present = self:GetPresenceMap()
@@ -1047,7 +1157,8 @@ function Goals:HandleLootAssignment(playerName, itemLink, skipSync, forceRecord)
             shouldReset = false
         end
     end
-    if self.db and self.db.settings and self.db.settings.disablePointGain then
+    local overviewSettings = self:GetOverviewSettings()
+    if overviewSettings.disablePointGain then
         if not isToken then
             shouldReset = false
         end
@@ -1056,7 +1167,8 @@ function Goals:HandleLootAssignment(playerName, itemLink, skipSync, forceRecord)
     if forceRecord or shouldTrack then
         local before = nil
         if resetApplied then
-            local entry = self.db and self.db.players and self.db.players[self:NormalizeName(playerName)] or nil
+            local players = self:GetOverviewPlayers()
+            local entry = players[self:NormalizeName(playerName)]
             before = entry and entry.points or 0
         end
         self:RecordLootAssignment(playerName, itemLink, resetApplied, before)
@@ -1089,7 +1201,8 @@ function Goals:HandleManualLootReset(playerName, itemLink, skipSync)
     if self:ShouldSkipLootAssignment(playerName, itemLink) then
         return false
     end
-    local entry = self.db and self.db.players and self.db.players[playerName] or nil
+    local players = self:GetOverviewPlayers()
+    local entry = players[playerName]
     local before = entry and entry.points or 0
     self:RecordLootAssignment(playerName, itemLink, true, before)
     self:RemoveFoundLootByLink(itemLink)
@@ -1301,10 +1414,8 @@ function Goals:ClearFoundLoot()
 end
 
 function Goals:ClearAllPointsLocal()
-    if not self.db or not self.db.players then
-        return
-    end
-    for _, entry in pairs(self.db.players) do
+    local players = self:GetOverviewPlayers()
+    for _, entry in pairs(players) do
         if type(entry) == "table" then
             entry.points = 0
         end
@@ -1314,10 +1425,10 @@ function Goals:ClearAllPointsLocal()
 end
 
 function Goals:ClearPlayersLocal()
-    if not self.db then
+    if not self.dbRoot then
         return
     end
-    self.db.players = {}
+    self.dbRoot.players = {}
     self.undo = {}
     self:NotifyDataChanged()
 end
@@ -1493,7 +1604,8 @@ function Goals:ApplyLootReset(playerName, itemLink)
     if self:ShouldSkipLootAssignment(playerName, itemLink) then
         return
     end
-    local entry = self.db and self.db.players and self.db.players[self:NormalizeName(playerName)] or nil
+    local players = self:GetOverviewPlayers()
+    local entry = players[self:NormalizeName(playerName)]
     local before = entry and entry.points or 0
     self:RecordLootAssignment(playerName, itemLink, true, before)
     self:RemoveFoundLootByLink(itemLink)
@@ -1567,6 +1679,9 @@ end
 function Goals:NotifyDataChanged()
     if self.db then
         self.db.lastUpdated = time()
+    end
+    if self.dbRoot then
+        self.dbRoot.overviewLastUpdated = time()
     end
     if self.UI and self.UI.Refresh then
         self.UI:Refresh()
@@ -4374,80 +4489,41 @@ function Goals:GetSeenPlayersSnapshot()
     if not self.dbRoot or not self.dbRoot.tables then
         return snapshot
     end
+    local tables = {}
     for _, tableData in pairs(self.dbRoot.tables) do
+        table.insert(tables, tableData)
+    end
+    table.sort(tables, function(a, b)
+        return (a.lastUpdated or 0) < (b.lastUpdated or 0)
+    end)
+    for _, tableData in ipairs(tables) do
         local updated = tableData.lastUpdated or 0
         for playerName, data in pairs(tableData.players or {}) do
-            local existing = snapshot[playerName]
-            if not existing or (existing.updated or 0) < updated then
-                snapshot[playerName] = {
-                    points = data.points or 0,
-                    class = data.class,
-                    updated = updated,
-                }
-            end
+            snapshot[playerName] = {
+                points = data.points or 0,
+                class = data.class,
+                updated = updated,
+            }
         end
     end
     return snapshot
 end
 
 function Goals:MergeSeenPlayersIntoCurrent()
-    if not self.db or not self.db.players then
-        return
-    end
+    local players = self:GetOverviewPlayers()
     local snapshot = self:GetSeenPlayersSnapshot()
     for name, data in pairs(snapshot) do
-        self.db.players[name] = { points = data.points or 0, class = data.class or "UNKNOWN" }
+        players[name] = { points = data.points or 0, class = data.class or "UNKNOWN" }
     end
     self:NotifyDataChanged()
 end
 
 function Goals:MergeSeenPlayersForGroup()
-    if not self.db or not self.db.players then
-        return
-    end
-    if not (self.db.settings and self.db.settings.tableAutoLoadSeen) then
-        return
-    end
-    local members = self.GetGroupMembers and self:GetGroupMembers() or {}
-    if #members == 0 then
-        return
-    end
-    local snapshot = self:GetSeenPlayersSnapshot()
-    local changed = false
-    for _, info in ipairs(members) do
-        local name = self:NormalizeName(info.name)
-        if name ~= "" and not self.db.players[name] then
-            local seen = snapshot[name]
-            if seen then
-                self.db.players[name] = { points = seen.points or 0, class = seen.class or info.class or "UNKNOWN" }
-                changed = true
-            end
-        end
-    end
-    if changed then
-        self:NotifyDataChanged()
-    end
+    return
 end
 
 function Goals:GetCombinedPlayers()
-    local combined = {}
-    if not self.dbRoot or not self.dbRoot.tables then
-        return combined
-    end
-    for _, tableData in pairs(self.dbRoot.tables) do
-        for name, data in pairs(tableData.players or {}) do
-            local entry = combined[name]
-            if not entry then
-                entry = { points = 0, class = data.class }
-                combined[name] = entry
-            end
-            entry.points = (entry.points or 0) + (data.points or 0)
-            if not entry.class and data.class then
-                entry.class = data.class
-            end
-        end
-    end
-    return combined
+    return self:GetOverviewPlayers()
 end
 
 function Goals:ToggleUI()
@@ -4597,6 +4673,9 @@ function Goals:Init()
     end
     if self.UI and self.UI.Init then
         self.UI:Init()
+    end
+    if self.MaybePromptOverviewMigration then
+        self:MaybePromptOverviewMigration()
     end
     self:UpdateSyncStatus()
     if self.StartAutoSyncPush then
