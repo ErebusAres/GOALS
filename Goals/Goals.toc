@@ -13,7 +13,7 @@ armorTokens.lua
 gemsAndEnchants.lua
 wishlistBanner.lua
 wishlistBuildData.lua
-wishlistBuildCustom.lua
+CustomBuilds/Loader.lua
 wishlistBuilds.lua
 Core.lua
 loc.lua

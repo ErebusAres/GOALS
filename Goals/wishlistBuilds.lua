@@ -141,6 +141,20 @@ local function ensureBuildsPopulated()
             end
         end
     end
+    if Goals.CustomBuildFiles then
+        for _, fileData in ipairs(Goals.CustomBuildFiles) do
+            if type(fileData) == "table" then
+                local buildList = fileData.builds or fileData
+                if type(buildList) == "table" then
+                    for _, build in ipairs(buildList) do
+                        if not (build and build.disabled) then
+                            table.insert(merged, build)
+                        end
+                    end
+                end
+            end
+        end
+    end
     Goals.WishlistBuildLibrary.builds = merged
 end
 
