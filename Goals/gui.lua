@@ -40,6 +40,8 @@ local OPTIONS_PANEL_WIDTH = 240
 local OPTIONS_CONTROL_WIDTH = 196
 
 local wishlistHasWowhead
+local wishlistWowtbcSource
+local wishlistHasBistooltip
 local wishlistHasLoon
 local wishlistSpecKey
 local stripTextureTags
@@ -5382,6 +5384,8 @@ function UI:CreateWishlistTab(page)
             return icon
         end
         row.iconLoon = createIcon()
+        row.iconBistooltip = createIcon()
+        row.iconWowtbc = createIcon()
         row.iconWowhead = createIcon()
         row.iconClass = createIcon()
         row.iconSpec = createIcon()
@@ -6347,6 +6351,8 @@ function UI:CreateWishlistTab(page)
             return icon
         end
         row.iconLoon = createIcon()
+        row.iconBistooltip = createIcon()
+        row.iconWowtbc = createIcon()
         row.iconWowhead = createIcon()
         row.iconClass = createIcon()
         row.iconSpec = createIcon()
@@ -9948,6 +9954,23 @@ function UI:UpdateWishlistManagerList()
                 else
                     row.iconLoon:Hide()
                 end
+                local bistooltipTexture = Goals.IconTextures and Goals.IconTextures.bistooltip or nil
+                if bistooltipTexture and wishlistHasBistooltip(meta) then
+                    row.iconBistooltip.tex:SetTexture(bistooltipTexture)
+                    row.iconBistooltip.tex:SetTexCoord(0, 1, 0, 1)
+                    placeIcon(row.iconBistooltip, "BiS-Tooltip")
+                else
+                    row.iconBistooltip:Hide()
+                end
+                local wowtbcKey, wowtbcTooltip = wishlistWowtbcSource(meta)
+                local wowtbcTexture = wowtbcKey and Goals.IconTextures and Goals.IconTextures[wowtbcKey] or nil
+                if wowtbcTexture then
+                    row.iconWowtbc.tex:SetTexture(wowtbcTexture)
+                    row.iconWowtbc.tex:SetTexCoord(0, 1, 0, 1)
+                    placeIcon(row.iconWowtbc, wowtbcTooltip or "wowtbc.gg")
+                else
+                    row.iconWowtbc:Hide()
+                end
                 local wowheadTexture = Goals.IconTextures and Goals.IconTextures.wowhead or nil
                 if wowheadTexture and wishlistHasWowhead(meta) then
                     row.iconWowhead.tex:SetTexture(wowheadTexture)
@@ -9982,6 +10005,8 @@ function UI:UpdateWishlistManagerList()
                 end
             else
                 row.iconLoon:Hide()
+                row.iconBistooltip:Hide()
+                row.iconWowtbc:Hide()
                 row.iconWowhead:Hide()
                 row.iconClass:Hide()
                 row.iconSpec:Hide()
@@ -10000,6 +10025,8 @@ function UI:UpdateWishlistManagerList()
             row:Hide()
             row.listId = nil
             if row.iconLoon then row.iconLoon:Hide() end
+            if row.iconBistooltip then row.iconBistooltip:Hide() end
+            if row.iconWowtbc then row.iconWowtbc:Hide() end
             if row.iconWowhead then row.iconWowhead:Hide() end
             if row.iconClass then row.iconClass:Hide() end
             if row.iconSpec then row.iconSpec:Hide() end
@@ -10644,6 +10671,66 @@ wishlistHasWowhead = function(build)
     return false
 end
 
+wishlistHasBistooltip = function(build)
+    if not build then
+        return false
+    end
+    if type(build.tags) == "table" then
+        for _, tag in ipairs(build.tags) do
+            local value = tostring(tag or ""):lower()
+            if value == "bistooltip" or value == "bis-tooltip" then
+                return true
+            end
+        end
+    end
+    if type(build.sources) == "table" then
+        for _, source in ipairs(build.sources) do
+            local value = tostring(source or ""):lower()
+            if value:find("bistooltip", 1, true) then
+                return true
+            end
+        end
+    end
+    return false
+end
+
+wishlistWowtbcSource = function(build)
+    if not build then
+        return nil, nil
+    end
+    local function normalize(value)
+        if value:find("wowtbc-gg-wotlk", 1, true) then
+            return "wowtbc-gg-wotlk", "wowtbc.gg WotLK"
+        end
+        if value:find("wowtbc-gg-tbc", 1, true) then
+            return "wowtbc-gg-tbc", "wowtbc.gg TBC"
+        end
+        if value:find("wowtbc-gg-classic", 1, true) then
+            return "wowtbc-gg-classic", "wowtbc.gg Classic"
+        end
+        return nil, nil
+    end
+    if type(build.tags) == "table" then
+        for _, tag in ipairs(build.tags) do
+            local value = tostring(tag or ""):lower()
+            local key, tooltip = normalize(value)
+            if key then
+                return key, tooltip
+            end
+        end
+    end
+    if type(build.sources) == "table" then
+        for _, source in ipairs(build.sources) do
+            local value = tostring(source or ""):lower()
+            local key, tooltip = normalize(value)
+            if key then
+                return key, tooltip
+            end
+        end
+    end
+    return nil, nil
+end
+
 wishlistHasLoon = function(build)
     if not build then
         return false
@@ -10814,6 +10901,23 @@ function UI:UpdateWishlistBuildList()
             else
                 row.iconLoon:Hide()
             end
+            local bistooltipTexture = Goals.IconTextures and Goals.IconTextures.bistooltip or nil
+            if bistooltipTexture and wishlistHasBistooltip(build) then
+                row.iconBistooltip.tex:SetTexture(bistooltipTexture)
+                row.iconBistooltip.tex:SetTexCoord(0, 1, 0, 1)
+                placeIcon(row.iconBistooltip, "BiS-Tooltip")
+            else
+                row.iconBistooltip:Hide()
+            end
+            local wowtbcKey, wowtbcTooltip = wishlistWowtbcSource(build)
+            local wowtbcTexture = wowtbcKey and Goals.IconTextures and Goals.IconTextures[wowtbcKey] or nil
+            if wowtbcTexture then
+                row.iconWowtbc.tex:SetTexture(wowtbcTexture)
+                row.iconWowtbc.tex:SetTexCoord(0, 1, 0, 1)
+                placeIcon(row.iconWowtbc, wowtbcTooltip or "wowtbc.gg")
+            else
+                row.iconWowtbc:Hide()
+            end
             local wowheadTexture = Goals.IconTextures and Goals.IconTextures.wowhead or nil
             if wowheadTexture and wishlistHasWowhead(build) then
                 row.iconWowhead.tex:SetTexture(wowheadTexture)
@@ -10882,6 +10986,8 @@ function UI:UpdateWishlistBuildList()
             row:Hide()
             row.build = nil
             if row.iconLoon then row.iconLoon:Hide() end
+            if row.iconBistooltip then row.iconBistooltip:Hide() end
+            if row.iconWowtbc then row.iconWowtbc:Hide() end
             if row.iconWowhead then row.iconWowhead:Hide() end
             if row.iconClass then row.iconClass:Hide() end
             if row.iconSpec then row.iconSpec:Hide() end
