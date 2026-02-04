@@ -1,5 +1,5 @@
 -- Auto-generated from wishlistBuildData.lua
-return {
+local Goals = _G.Goals or {}\r\n_G.Goals = Goals\r\nGoals.WishlistBuildData = Goals.WishlistBuildData or { builds = {} }\r\n\r\nlocal builds = {
     {
                 id = "DRUID_FERAL_DPS_CLASSIC_PRE",
                 name = "Druid Feral (DPS) - CLASSIC_PRE",
@@ -1104,3 +1104,4 @@ return {
                 notes = "Icecrown Citadel normal-mode (T10) progression list from wowtbc.gg; item IDs via wowtbc.gg.",
             },
 }
+
