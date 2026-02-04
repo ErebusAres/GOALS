@@ -31,6 +31,7 @@ DRUID
   ❌ WOTLK_T9 | export: (not available, links to classic not WotLK)
   ✅ WOTLK_T10_ALLIANCE | export: "Alliance" {"buffs":[],"classId":11,"genderId":1,"level":80,"phase":6,"raceId":4,"shapeshiftForm":0,"slots":{"1":{"item":51290,"enchant":59970,"gems":{"0":41285,"1":40113}},"2":{"item":50724,"gems":{"0":40113}},"3":{"item":51292,"enchant":59937,"gems":{"0":40113}},"4":{"item":52019},"5":{"item":51294,"enchant":60692,"gems":{"0":40113,"1":40155}},"6":{"item":50613,"gems":{"0":40113,"1":40113,"2":40113}},"7":{"item":50694,"enchant":55631,"gems":{"0":40113,"1":40133,"2":40155}},"8":{"item":50699,"enchant":55016,"gems":{"0":40133,"1":40113}},"9":{"item":54582,"enchant":60767,"gems":{"0":40113}},"10":{"item":51291,"enchant":54999,"gems":{"0":40113}},"11":{"item":50664,"gems":{"0":40113}},"12":{"item":50398,"gems":{"0":40155}},"13":{"item":50365},"14":{"item":50348},"15":{"item":54583,"enchant":55642,"gems":{"0":40155}},"16":{"item":50734,"enchant":60714,"gems":{"0":40113}},"17":{"item":50719},"18":{"item":50457}},"talentHash":"5102203115331303213325311031--205003012_001nhe11wm021nhc31rfz","version":1}
   ✅ WOTLK_T10_HORDE | export: "Horde" {"buffs":[],"classId":11,"genderId":1,"level":80,"phase":6,"raceId":6,"shapeshiftForm":0,"slots":{"1":{"item":51290,"enchant":59970,"gems":{"0":41285,"1":40113}},"2":{"item":50724,"gems":{"0":40113}},"3":{"item":51292,"enchant":59937,"gems":{"0":40113}},"4":{"item":52019},"5":{"item":51294,"enchant":60692,"gems":{"0":40113,"1":40153}},"6":{"item":50613,"gems":{"0":40113,"1":40113,"2":40113}},"7":{"item":50694,"enchant":55631,"gems":{"0":40113,"1":40133,"2":40153}},"8":{"item":50699,"enchant":55016,"gems":{"0":40133,"1":40113}},"9":{"item":54582,"enchant":60767,"gems":{"0":40155}},"10":{"item":51291,"enchant":54999,"gems":{"0":40113}},"11":{"item":50664,"gems":{"0":40113}},"12":{"item":50398,"gems":{"0":40153}},"13":{"item":50365},"14":{"item":50348},"15":{"item":54583,"enchant":55642,"gems":{"0":40113}},"16":{"item":50734,"enchant":60714,"gems":{"0":40113}},"17":{"item":50719},"18":{"item":50457}},"talentHash":"5102203115331303213305311231--205003012_001nhe11wm021nhc31rfz","version":1}
+  ✅ TBC_T6 | export: PREEXISTING
 - Feral (DPS)
   ✅ WOTLK_PRE | export: {"buffs":[],"classId":11,"genderId":0,"level":80,"phase":6,"raceId":6,"shapeshiftForm":0,"slots":{"1":{"item":48194,"enchant":59954,"gems":{"0":41398,"1":40148}},"2":{"item":45945,"gems":{"0":40117}},"3":{"item":48197,"enchant":59934,"gems":{"0":40148}},"5":{"item":48196,"enchant":60692,"gems":{"0":40117,"1":40148}},"6":{"item":47299,"gems":{"0":40147,"1":40117}},"7":{"item":49899,"enchant":60582,"gems":{"0":40117,"1":40147,"2":49110}},"8":{"item":49895,"enchant":55016,"gems":{"0":40117,"1":40117}},"9":{"item":47582,"enchant":44575,"gems":{"0":40117}},"10":{"item":48193,"enchant":54999,"gems":{"0":40148}},"11":{"item":46048,"gems":{"0":40112}},"12":{"item":47730},"13":{"item":45931},"14":{"item":47303},"15":{"item":46032,"enchant":55002,"gems":{"0":40117,"1":40148}},"16":{"item":47329,"enchant":59621,"gems":{"0":40147}},"18":{"item":47668}},"talentHash":"-503202132322012053120030310511-205503012_00cm6711xjf21ngz31rg141stk51rfz","version":1}
   ✅ WOTLK_T7 | export: {"buffs":[],"classId":11,"genderId":1,"level":80,"phase":6,"raceId":4,"shapeshiftForm":0,"slots":{"1":{"item":40473,"enchant":59954,"gems":{"0":41398,"1":39996}},"2":{"item":44664,"gems":{"0":39996}},"3":{"item":40494,"enchant":59934,"gems":{"0":39996}},"5":{"item":40539,"enchant":60692,"gems":{"0":39996}},"6":{"item":40205,"gems":{"0":39996}},"7":{"item":44011,"enchant":60582,"gems":{"0":39996,"1":42702}},"8":{"item":40243,"enchant":55016,"gems":{"0":40014}},"9":{"item":39765,"enchant":44575,"gems":{"0":39996}},"10":{"item":40541,"enchant":54999},"11":{"item":40474},"12":{"item":40717},"13":{"item":42987},"14":{"item":40256},"15":{"item":40403,"enchant":55002},"16":{"item":40388,"enchant":59621},"18":{"item":39757}},"talentHash":"-503202132322010053120230310511-205503012_001ngz11nh221xjf31rfz41stk51rg1","version":1}
@@ -39,6 +40,7 @@ DRUID
   ✅ WOTLK_T9_HORDE | export: "Horde" {"buffs":[],"classId":11,"genderId":0,"level":80,"phase":6,"raceId":6,"shapeshiftForm":0,"slots":{"1":{"item":48201,"enchant":59954,"gems":{"0":41398,"1":40142}},"2":{"item":47433,"gems":{"0":40117}},"3":{"item":48198,"enchant":59934,"gems":{"0":40142}},"5":{"item":48199,"enchant":60692,"gems":{"0":40117,"1":40142}},"6":{"item":47460,"gems":{"0":40142,"1":40117,"2":40117}},"7":{"item":45536,"enchant":60582,"gems":{"0":40142,"1":40117,"2":49110}},"8":{"item":47445,"enchant":55016,"gems":{"0":40142,"1":40117}},"9":{"item":47474,"enchant":44575,"gems":{"0":40117,"1":40117}},"10":{"item":48202,"enchant":54999,"gems":{"0":40142}},"11":{"item":47443,"gems":{"0":40117}},"12":{"item":45608,"gems":{"0":40117}},"13":{"item":45931},"14":{"item":47464},"15":{"item":47546,"enchant":55002,"gems":{"0":40117}},"16":{"item":47463,"enchant":59621,"gems":{"0":40118,"1":40118}},"18":{"item":47668}},"talentHash":"-543202132322010053120030310511-203503012_00cm6711xjf21ngz31rg141stk51rfz","version":1}
   ✅ WOTLK_T10_10_MAN | export: "10-Man" {"buffs":[],"classId":11,"genderId":0,"level":80,"phase":6,"raceId":6,"shapeshiftForm":0,"slots":{"1":{"item":51143,"enchant":59954,"gems":{"0":41398,"1":40117}},"2":{"item":51822,"gems":{"0":40162}},"3":{"item":51830,"enchant":59934,"gems":{"0":40117,"1":40117}},"5":{"item":51141,"enchant":60692,"gems":{"0":40117,"1":40162}},"6":{"item":50995,"gems":{"0":40162,"1":40117,"2":40117}},"7":{"item":51142,"enchant":60582,"gems":{"0":40117,"1":40162}},"8":{"item":47445,"enchant":55016,"gems":{"0":40125,"1":40117}},"9":{"item":47474,"enchant":44575,"gems":{"0":49110,"1":40117}},"10":{"item":51144,"enchant":54999,"gems":{"0":40117}},"11":{"item":50402,"gems":{"0":40125}},"12":{"item":51900,"gems":{"0":40117}},"13":{"item":47464},"14":{"item":50343},"15":{"item":47546,"enchant":55002,"gems":{"0":40117}},"16":{"item":51945,"enchant":42974,"gems":{"0":40117,"1":40117,"2":40117}},"18":{"item":50456}},"talentHash":"-523202132322012053120030310511-203503012_00cm6711xjf21ngz31rg141stk51rfz","version":1}
   ✅ WOTLK_T10_25_MAN | export: "25-Man" {"buffs":[],"classId":11,"genderId":0,"level":80,"phase":6,"raceId":6,"shapeshiftForm":0,"slots":{"1":{"item":51296,"enchant":59954,"gems":{"0":41398,"1":40117}},"2":{"item":50633,"gems":{"0":40117}},"3":{"item":51299,"enchant":59934,"gems":{"0":40117}},"5":{"item":51298,"enchant":60692,"gems":{"0":40117,"1":40125}},"6":{"item":50707,"gems":{"0":40117,"1":40117,"2":40118}},"7":{"item":51297,"enchant":60582,"gems":{"0":40112,"1":40125}},"8":{"item":50607,"enchant":55016,"gems":{"0":40125,"1":40148}},"9":{"item":54580,"enchant":44575,"gems":{"0":40117}},"10":{"item":50675,"enchant":54999,"gems":{"0":40125,"1":40117}},"11":{"item":54576,"gems":{"0":40148}},"12":{"item":50604,"gems":{"0":40148}},"13":{"item":54590},"14":{"item":50363},"15":{"item":50653,"enchant":55002,"gems":{"0":40125}},"16":{"item":50735,"enchant":59621,"gems":{"0":40112,"1":49110,"2":40148}},"18":{"item":50456}},"talentHash":"-523202132322012053120030310511-203503012_00cm6711xjf21ngz31rg141stk51rfz","version":1}
+  ✅ TBC_T6 | export: PREEXISTING
 - Feral (Tank)
   ✅ WOTLK_PRE | export: {"buffs":[],"classId":11,"genderId":1,"level":80,"phase":6,"raceId":4,"shapeshiftForm":0,"slots":{"1":{"item":48211,"enchant":67839,"gems":{"0":41380,"1":40119}},"2":{"item":47116},"3":{"item":48208,"enchant":62384,"gems":{"0":40119}},"5":{"item":47599,"enchant":50909,"gems":{"0":40119,"1":40119,"2":40119}},"6":{"item":46095,"gems":{"0":40119,"1":40119,"2":40119}},"7":{"item":49899,"enchant":60581,"gems":{"0":40119,"1":40119,"2":40119}},"8":{"item":49895,"enchant":55016,"gems":{"0":40119,"1":40119}},"9":{"item":51370,"enchant":62256},"10":{"item":48212,"enchant":63770,"gems":{"0":40119}},"11":{"item":47731},"12":{"item":45471,"gems":{"0":40119}},"13":{"item":47080},"14":{"item":49118},"15":{"item":45496,"enchant":47672,"gems":{"0":40130}},"16":{"item":42391,"enchant":64579,"gems":{"0":40119,"1":40119}},"18":{"item":45509}},"talentHash":"-503232132322010353120300313511-20350001_001ngv11ngt21zpv31rg241rfz51rg1","version":1}
   ✅ WOTLK_T7 | export: {"buffs":[],"classId":11,"genderId":1,"level":80,"phase":6,"raceId":4,"shapeshiftForm":0,"slots":{"1":{"item":40329,"enchant":67839,"gems":{"0":41339,"1":40008}},"2":{"item":40387},"3":{"item":40494,"enchant":62384,"gems":{"0":40008}},"5":{"item":40471,"enchant":60692,"gems":{"0":42702,"1":40088}},"6":{"item":43591,"gems":{"0":40008,"1":40008,"2":40008}},"7":{"item":44011,"enchant":60581,"gems":{"0":40008,"1":40008}},"8":{"item":40243,"enchant":55016,"gems":{"0":40008}},"9":{"item":40186,"enchant":62256},"10":{"item":40472,"enchant":63770,"gems":{"0":40008}},"11":{"item":40370},"12":{"item":37784},"13":{"item":44253},"14":{"item":37220},"15":{"item":40252,"enchant":47672},"16":{"item":40280,"enchant":27984},"18":{"item":38365}},"talentHash":"-503232132322010353120300313511-20350001_001zpv11ngv21ngx31rg241rg651rfz","version":1}
@@ -128,6 +130,7 @@ PALADIN
   ✅ WOTLK_T10_HAVOC_S_CALL_2_SET | export: {"buffs":[],"classId":2,"genderId":1,"level":80,"phase":6,"raceId":10,"shapeshiftForm":0,"slots":{"1":{"item":50640,"enchant":67839,"gems":{"0":41380,"1":40141}},"2":{"item":50682,"gems":{"0":40119}},"3":{"item":50660,"enchant":62384,"gems":{"0":40119,"1":40119}},"5":{"item":51265,"enchant":47900,"gems":{"0":40141,"1":40119}},"6":{"item":50991,"gems":{"0":40141,"1":40119,"2":40119}},"7":{"item":49904,"enchant":60581,"gems":{"0":40119,"1":40119,"2":40119}},"8":{"item":54579,"enchant":55016,"gems":{"0":40119,"1":40119}},"9":{"item":51901,"enchant":62256,"gems":{"0":40119}},"10":{"item":51267,"enchant":63770,"gems":{"0":40119}},"11":{"item":50622,"gems":{"0":40119}},"12":{"item":50642,"gems":{"0":40119}},"13":{"item":50364},"14":{"item":47451},"15":{"item":50718,"enchant":55002,"gems":{"0":40119}},"16":{"item":50737,"enchant":59619,"gems":{"0":40119}},"17":{"item":50729,"enchant":34009,"gems":{"0":40119}},"18":{"item":47661}},"talentHash":"-05005135200132311333312321-521022012003_001q3011nmh21xqq31rjv41rk3","version":1}
   ✅ WOTLK_T10_GUTBUSTER_2_SET | export: {"buffs":[],"classId":2,"genderId":1,"level":80,"phase":6,"raceId":10,"shapeshiftForm":0,"slots":{"1":{"item":50640,"enchant":67839,"gems":{"0":41380,"1":40141}},"2":{"item":50682,"gems":{"0":40119}},"3":{"item":50660,"enchant":62384,"gems":{"0":40119,"1":40119}},"5":{"item":51265,"enchant":47900,"gems":{"0":40141,"1":40119}},"6":{"item":50991,"gems":{"0":40141,"1":40119,"2":40119}},"7":{"item":49904,"enchant":60581,"gems":{"0":40119,"1":40119,"2":40119}},"8":{"item":54579,"enchant":55016,"gems":{"0":40119,"1":40119}},"9":{"item":51901,"enchant":62256,"gems":{"0":40119}},"10":{"item":51267,"enchant":63770,"gems":{"0":40119}},"11":{"item":50622,"gems":{"0":40119}},"12":{"item":50642,"gems":{"0":40119}},"13":{"item":50364},"14":{"item":47451},"15":{"item":50718,"enchant":55002,"gems":{"0":40119}},"16":{"item":51893,"enchant":64579,"gems":{"0":40119}},"17":{"item":50729,"enchant":34009,"gems":{"0":40119}},"18":{"item":47661}},"talentHash":"-05005135200132311333312321-521022012003_001q3011nmh21xqq31rjv41rk3","version":1}
   ✅ WOTLK_T10_BVB_4_SET | export: {"buffs":[],"classId":2,"genderId":1,"level":80,"phase":6,"raceId":10,"shapeshiftForm":0,"slots":{"1":{"item":51266,"enchant":67839,"gems":{"0":41380,"1":40129}},"2":{"item":50682,"gems":{"0":40119}},"3":{"item":50660,"enchant":62384,"gems":{"0":40166,"1":40119}},"5":{"item":51265,"enchant":47900,"gems":{"0":40129,"1":40119}},"6":{"item":50991,"gems":{"0":40129,"1":40119,"2":40119}},"7":{"item":51268,"enchant":60581,"gems":{"0":40166,"1":40119}},"8":{"item":54579,"enchant":55016,"gems":{"0":40166,"1":40119}},"9":{"item":51901,"enchant":62256,"gems":{"0":40119}},"10":{"item":51267,"enchant":63770,"gems":{"0":40119}},"11":{"item":50622,"gems":{"0":40119}},"12":{"item":50642,"gems":{"0":40119}},"13":{"item":50364},"14":{"item":47451},"15":{"item":50718,"enchant":55002,"gems":{"0":40119}},"16":{"item":50672,"enchant":59619,"gems":{"0":40119}},"17":{"item":50729,"enchant":34009,"gems":{"0":40119}},"18":{"item":47661}},"talentHash":"-05005135200132311333312321-521022012003_001q3011nmh21xqq31rjv41rk3","version":1}
+  ✅ TBC_T6 | export: PREEXISTING
 - Retribution
   ✅ WOTLK_PRE | export: {"buffs":[],"classId":2,"genderId":0,"level":80,"phase":6,"raceId":10,"shapeshiftForm":0,"slots":{"1":{"item":48624,"enchant":59954,"gems":{"0":41398,"1":40142}},"2":{"item":46040,"gems":{"0":40111}},"3":{"item":47697,"enchant":59934,"gems":{"0":40142}},"5":{"item":47590,"enchant":60692,"gems":{"0":40111,"1":40111,"2":40111}},"6":{"item":46095,"gems":{"0":40111,"1":40111,"2":45862}},"7":{"item":49903,"enchant":60582,"gems":{"0":40111,"1":40111,"2":40111}},"8":{"item":49895,"enchant":55016,"gems":{"0":40111,"1":40111}},"9":{"item":47577,"enchant":44575,"gems":{"0":40111}},"10":{"item":48625,"enchant":54999,"gems":{"0":40142}},"11":{"item":45534,"gems":{"0":40111}},"12":{"item":47729},"13":{"item":42987},"14":{"item":47303},"15":{"item":47320,"enchant":55002},"16":{"item":47285,"enchant":59621,"gems":{"0":49110}},"18":{"item":47661}},"talentHash":"050501-05-05232051203331302133231331_001q3011nma2cbgc31rjv41rk351rjh","version":1}
   ✅ WOTLK_T7_4_PIECE_SET | export: {"buffs":[],"classId":2,"genderId":1,"level":80,"phase":6,"raceId":10,"shapeshiftForm":0,"slots":{"1":{"item":40576,"enchant":59954,"gems":{"0":41398,"1":40037}},"2":{"item":44664,"gems":{"0":42142}},"3":{"item":40578,"enchant":59934,"gems":{"0":42702}},"5":{"item":40574,"enchant":60692,"gems":{"0":42142,"1":39996}},"6":{"item":40260,"gems":{"0":39996}},"7":{"item":40577,"enchant":60582,"gems":{"0":42142,"1":40038}},"8":{"item":40591,"enchant":55016},"9":{"item":40186,"enchant":44575},"10":{"item":40541,"enchant":54999},"11":{"item":40075},"12":{"item":40474},"13":{"item":42987},"14":{"item":40431},"15":{"item":40403,"enchant":55002},"16":{"item":40384,"enchant":59621},"18":{"item":42852}},"talentHash":"05-550001-05232051203331302133231331_001q3011nma21nmg","version":1}
@@ -150,12 +153,14 @@ PRIEST
   - WOTLK_T8 | export:
   - WOTLK_T9 | export:
   - WOTLK_T10 | export:
+  ✅ TBC_T6 | export: PREEXISTING
 - Holy
   - WOTLK_PRE | export:
   - WOTLK_T7 | export:
   - WOTLK_T8 | export:
   - WOTLK_T9 | export:
   - WOTLK_T10 | export:
+  ✅ TBC_T6 | export: PREEXISTING
 - Shadow
   - WOTLK_PRE | export:
   - WOTLK_T7 | export:
@@ -163,6 +168,7 @@ PRIEST
   - WOTLK_T9 | export:
   - WOTLK_T10 | export:
 
+  ✅ TBC_T6 | export: PREEXISTING
 ROGUE
 - Assassination
   - WOTLK_PRE | export:
@@ -170,12 +176,14 @@ ROGUE
   - WOTLK_T8 | export:
   - WOTLK_T9 | export:
   - WOTLK_T10 | export:
+  ✅ TBC_T6 | export: PREEXISTING
 - Combat
   - WOTLK_PRE | export:
   - WOTLK_T7 | export:
   - WOTLK_T8 | export:
   - WOTLK_T9 | export:
   - WOTLK_T10 | export:
+  ✅ TBC_T6 | export: PREEXISTING
 - Subtlety
   - WOTLK_PRE | export:
   - WOTLK_T7 | export:
@@ -183,6 +191,7 @@ ROGUE
   - WOTLK_T9 | export:
   - WOTLK_T10 | export:
 
+  ✅ TBC_T6 | export: PREEXISTING
 SHAMAN
 - Elemental
   ✅ WOTLK_PRE | export: {"buffs":[],"classId":7,"genderId":1,"level":80,"phase":6,"raceId":8,"shapeshiftForm":0,"slots":{"1":{"item":48333,"enchant":59970,"gems":{"0":41285,"1":40155}},"2":{"item":45133,"gems":{"0":40155}},"3":{"item":48331,"enchant":59937,"gems":{"0":40113}},"5":{"item":48335,"enchant":60692,"gems":{"0":40113,"1":40134}},"6":{"item":47286,"gems":{"0":40113,"1":40113}},"7":{"item":49891,"enchant":55634,"gems":{"0":40113,"1":40155,"2":40134}},"8":{"item":49896,"enchant":55016,"gems":{"0":40155,"1":40155}},"9":{"item":47586,"enchant":60767,"gems":{"0":40113}},"10":{"item":48334,"enchant":54999,"gems":{"0":40155}},"11":{"item":45495,"gems":{"0":40113}},"12":{"item":46046,"gems":{"0":40155}},"13":{"item":47316},"14":{"item":45518},"15":{"item":45242,"enchant":47898,"gems":{"0":40155}},"16":{"item":46035,"enchant":60714,"gems":{"0":40155}},"17":{"item":47287,"enchant":60653},"18":{"item":47666}},"talentHash":"0533001523213351322301351-005050031_001p4x11xsg21p4v31rpf41wnm51rpb","version":1}
@@ -196,6 +205,7 @@ SHAMAN
   - WOTLK_T8 | export:
   - WOTLK_T9 | export:
   - WOTLK_T10 | export:
+  ✅ TBC_T6 | export: PREEXISTING
 - Restoration
   - WOTLK_PRE | export:
   - WOTLK_T7 | export:
@@ -215,12 +225,14 @@ WARLOCK
   ✅ WOTLK_T9_HORDE | export: {"buffs":[],"classId":9,"genderId":0,"level":80,"phase":6,"raceId":2,"shapeshiftForm":0,"slots":{"1":{"item":47796,"enchant":59970,"gems":{"0":41285,"1":40133}},"2":{"item":47468,"gems":{"0":40155}},"3":{"item":47793,"enchant":59937,"gems":{"0":40155}},"5":{"item":47462,"enchant":60692,"gems":{"0":40133,"1":40153,"2":40113}},"6":{"item":47419,"enchant":54793,"gems":{"0":40133,"1":40113,"2":40113}},"7":{"item":47795,"enchant":55631,"gems":{"0":40113,"1":40155}},"8":{"item":47454,"enchant":55016,"gems":{"0":40133,"1":40113}},"9":{"item":47485,"enchant":60767,"gems":{"0":40113}},"10":{"item":47797,"enchant":54999,"gems":{"0":40113}},"11":{"item":47489,"gems":{"0":40155}},"12":{"item":45495,"gems":{"0":40113}},"13":{"item":45518},"14":{"item":45466},"15":{"item":47551,"enchant":55642,"gems":{"0":40113}},"16":{"item":47422,"enchant":60714,"gems":{"0":40113}},"17":{"item":48032,"gems":{"0":40155}},"18":{"item":45294,"gems":{"0":40155}}},"talentHash":"2350022001023510253500331151--55001005_00259311xtr21xt631rqe41rpp51rqv","version":1}
   ✅ WOTLK_T10_ALLIANCE | export: {"buffs":[],"classId":9,"genderId":0,"level":80,"phase":6,"raceId":7,"shapeshiftForm":0,"slots":{"1":{"item":51231,"enchant":59970,"gems":{"0":41285,"1":40133}},"2":{"item":50724,"gems":{"0":40113}},"3":{"item":51234,"enchant":59937,"gems":{"0":40155}},"5":{"item":51233,"enchant":33990,"gems":{"0":40113,"1":40155}},"6":{"item":50613,"gems":{"0":40133,"1":40113,"2":40113}},"7":{"item":50694,"enchant":56039,"gems":{"0":40113,"1":40133,"2":40155}},"8":{"item":50699,"enchant":55016,"gems":{"0":40133,"1":40113}},"9":{"item":54582,"enchant":60767,"gems":{"0":40113}},"10":{"item":51230,"enchant":54999,"gems":{"0":40113}},"11":{"item":50714,"gems":{"0":40113}},"12":{"item":50398,"gems":{"0":40155}},"13":{"item":50348},"14":{"item":50365},"15":{"item":54583,"enchant":55642,"gems":{"0":40113}},"16":{"item":50732,"enchant":60714,"gems":{"0":40113}},"17":{"item":50719},"18":{"item":50684,"gems":{"0":40155}}},"talentHash":"2350022001023510253500331151--55001005_00259311xtr21xt631rqe41rpp51rqv","version":1}
   ✅ WOTLK_T10_HORDE | export: {"buffs":[],"classId":9,"genderId":0,"level":80,"phase":6,"raceId":2,"shapeshiftForm":0,"slots":{"1":{"item":51231,"enchant":59970,"gems":{"0":41285,"1":40133}},"2":{"item":50658,"gems":{"0":40155}},"3":{"item":51234,"enchant":59937,"gems":{"0":40155}},"5":{"item":51233,"enchant":33990,"gems":{"0":40113,"1":40155}},"6":{"item":50613,"gems":{"0":40133,"1":40113,"2":40113}},"7":{"item":50694,"enchant":56039,"gems":{"0":40113,"1":40133,"2":40155}},"8":{"item":50699,"enchant":55016,"gems":{"0":40133,"1":40113}},"9":{"item":54582,"enchant":60767,"gems":{"0":40113}},"10":{"item":51230,"enchant":54999,"gems":{"0":40113}},"11":{"item":50664,"gems":{"0":40113}},"12":{"item":50398,"gems":{"0":40155}},"13":{"item":50348},"14":{"item":50365},"15":{"item":54583,"enchant":55642,"gems":{"0":40113}},"16":{"item":50732,"enchant":60714,"gems":{"0":40113}},"17":{"item":50719},"18":{"item":50684,"gems":{"0":40155}}},"talentHash":"2350022001023510253500331151--55001005_00259311xtr21xt631rqe41rpp51rqv","version":1}
+  ✅ TBC_T6 | export: PREEXISTING
 - Demonology
   - WOTLK_PRE | export:
   - WOTLK_T7 | export:
   - WOTLK_T8 | export:
   - WOTLK_T9 | export:
   - WOTLK_T10 | export:
+  ✅ TBC_T6 | export: PREEXISTING
 - Destruction
   - WOTLK_PRE | export:
   - WOTLK_T7 | export:
@@ -228,6 +240,8 @@ WARLOCK
   - WOTLK_T9 | export:
   - WOTLK_T10 | export:
 
+  ✅ TBC_T6 | export: PREEXISTING
+  ✅ WOTLK_P6 | export: PREEXISTING
 WARRIOR
 - Arms
   - WOTLK_PRE | export:
@@ -235,15 +249,20 @@ WARRIOR
   - WOTLK_T8 | export:
   - WOTLK_T9 | export:
   - WOTLK_T10 | export:
+  ✅ TBC_T6 | export: PREEXISTING
 - Fury
   - WOTLK_PRE | export:
   - WOTLK_T7 | export:
   - WOTLK_T8 | export:
   - WOTLK_T9 | export:
   - WOTLK_T10 | export:
+  ✅ TBC_T6 | export: PREEXISTING
 - Protection
   - WOTLK_PRE | export:
   - WOTLK_T7 | export:
   - WOTLK_T8 | export:
   - WOTLK_T9 | export:
   - WOTLK_T10 | export:
+  ✅ TBC_T6 | export: PREEXISTING
+  - WOTLK_T10 | export:
+
