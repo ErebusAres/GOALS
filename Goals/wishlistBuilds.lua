@@ -126,17 +126,6 @@ Goals.WishlistBuildLibrary = Goals.WishlistBuildLibrary or {
 }
 
 local function ensureBuildsPopulated()
-    Goals.WishlistBuildData = Goals.WishlistBuildData or { builds = {} }
-    Goals.BuildFileData = Goals.BuildFileData or {}
-    if #Goals.WishlistBuildData.builds == 0 then
-        for _, buildList in pairs(Goals.BuildFileData) do
-            if type(buildList) == "table" then
-                for _, build in ipairs(buildList) do
-                    table.insert(Goals.WishlistBuildData.builds, build)
-                end
-            end
-        end
-    end
     local merged = {}
     if Goals.WishlistBuildData and Goals.WishlistBuildData.builds then
         for _, build in ipairs(Goals.WishlistBuildData.builds) do
@@ -149,20 +138,6 @@ local function ensureBuildsPopulated()
         for _, build in ipairs(Goals.WishlistBuildCustomData.builds) do
             if not (build and build.disabled) then
                 table.insert(merged, build)
-            end
-        end
-    end
-    if Goals.CustomBuildFiles then
-        for _, fileData in ipairs(Goals.CustomBuildFiles) do
-            if type(fileData) == "table" then
-                local buildList = fileData.builds or fileData
-                if type(buildList) == "table" then
-                    for _, build in ipairs(buildList) do
-                        if not (build and build.disabled) then
-                            table.insert(merged, build)
-                        end
-                    end
-                end
             end
         end
     end
