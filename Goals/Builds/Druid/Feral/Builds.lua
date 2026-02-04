@@ -1,5 +1,9 @@
 -- Auto-generated from wishlistBuildData.lua
-local Goals = _G.Goals or {}\r\n_G.Goals = Goals\r\nGoals.WishlistBuildData = Goals.WishlistBuildData or { builds = {} }\r\n\r\nlocal builds = {
+local Goals = _G.Goals or {}
+_G.Goals = Goals
+Goals.WishlistBuildData = Goals.WishlistBuildData or { builds = {} }
+
+local builds = {
     {
                 id = "DRUID_FERAL_DPS_CLASSIC_PRE",
                 name = "Druid Feral (DPS) - CLASSIC_PRE",
@@ -1104,4 +1108,7 @@ local Goals = _G.Goals or {}\r\n_G.Goals = Goals\r\nGoals.WishlistBuildData = Go
                 notes = "Icecrown Citadel normal-mode (T10) progression list from wowtbc.gg; item IDs via wowtbc.gg.",
             },
 }
+for _, build in ipairs(builds) do
+    table.insert(Goals.WishlistBuildData.builds, build)
+end
 
