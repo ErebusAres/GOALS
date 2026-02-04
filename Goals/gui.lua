@@ -2444,11 +2444,41 @@ local function ensureBuildPreviewTooltip()
 
     local buildName = createLabel(content, "", "GameFontHighlightSmall")
     buildName:SetPoint("TOPLEFT", content, "TOPLEFT", 6, -4)
-    buildName:SetPoint("TOPRIGHT", content, "TOPRIGHT", -6, -4)
     buildName:SetJustifyH("LEFT")
     buildName:SetWordWrap(true)
     styleOptionsControlLabel(buildName)
     tip.buildNameText = buildName
+
+    local refresh = CreateFrame("Button", nil, tip, "UIPanelButtonTemplate")
+    refresh:SetText("Refresh")
+    refresh:SetSize(64, 18)
+    refresh:SetPoint("TOPRIGHT", tip, "TOPRIGHT", -30, -6)
+    refresh:SetScript("OnClick", function()
+        if UI and UI.RefreshBuildPreviewItems then
+            UI:RefreshBuildPreviewItems()
+        end
+    end)
+    tip.refreshButton = refresh
+
+    local notesHeader = createLabel(content, "---- Notes ----", "GameFontNormalSmall")
+    notesHeader:SetJustifyH("LEFT")
+    notesHeader:SetWordWrap(false)
+    tip.notesHeader = notesHeader
+
+    local notesText = createLabel(content, "", "GameFontHighlightSmall")
+    notesText:SetJustifyH("LEFT")
+    notesText:SetWordWrap(true)
+    tip.notesText = notesText
+
+    local sourcesLabel = createLabel(content, "Sources:", "GameFontNormalSmall")
+    sourcesLabel:SetJustifyH("LEFT")
+    sourcesLabel:SetWordWrap(false)
+    tip.sourcesLabel = sourcesLabel
+
+    local sourcesFrame = CreateFrame("Frame", nil, content)
+    sourcesFrame:SetHeight(16)
+    tip.sourcesFrame = sourcesFrame
+    tip.sourceIcons = {}
 
     UI.buildPreviewTooltip = tip
     return tip
@@ -10771,6 +10801,19 @@ end
             if value:find("wowtbc-gg-classic", 1, true) then
                 return "wowtbc-gg-classic", "wowtbc.gg Classic"
             end
+            if value:find("wowtbc.gg", 1, true) then
+                local tier = tostring(build.tier or ""):upper()
+                if tier:find("WOTLK", 1, true) then
+                    return "wowtbc-gg-wotlk", "wowtbc.gg WotLK"
+                end
+                if tier:find("TBC", 1, true) then
+                    return "wowtbc-gg-tbc", "wowtbc.gg TBC"
+                end
+                if tier:find("CLASSIC", 1, true) then
+                    return "wowtbc-gg-classic", "wowtbc.gg Classic"
+                end
+                return "wowtbc-gg-wotlk", "wowtbc.gg"
+            end
             if value:find("custom-wotlk", 1, true) then
                 return "custom-wotlk", "Custom WotLK"
             end
@@ -11095,6 +11138,20 @@ function UI:UpdateWishlistBuildList()
     end
 end
 
+function UI:RefreshBuildPreviewItems()
+    local entries = self.previewBuildEntries or {}
+    if Goals and Goals.CacheItemById then
+        for _, entry in ipairs(entries) do
+            if entry and entry.itemId then
+                Goals:CacheItemById(entry.itemId)
+            end
+        end
+    end
+    if self.UpdateBuildPreviewTooltip then
+        self:UpdateBuildPreviewTooltip()
+    end
+end
+
 function UI:UpdateBuildPreviewTooltip()
     local frame = ensureBuildPreviewTooltip()
     if not frame or not frame.rows then
@@ -11106,15 +11163,28 @@ function UI:UpdateBuildPreviewTooltip()
     end
     if frame.buildNameText then
         frame.buildNameText:SetText(stripTextureTags((self.selectedWishlistBuild and self.selectedWishlistBuild.name) or "Build"))
+        frame.buildNameText:ClearAllPoints()
+        frame.buildNameText:SetPoint("TOPLEFT", frame.content, "TOPLEFT", 6, -4)
+        if frame.refreshButton then
+            frame.buildNameText:SetPoint("TOPRIGHT", frame.refreshButton, "TOPLEFT", -6, -2)
+        else
+            frame.buildNameText:SetPoint("TOPRIGHT", frame.content, "TOPRIGHT", -6, -4)
+        end
     end
 
     local content = frame.content
     local rowCount = #entries
     local headerHeight = 24
     local nameHeight = 16
-    local padBottom = 18
-    local neededHeight = headerHeight + nameHeight + (rowCount * frame.rowHeight) + padBottom
-    frame:SetHeight(neededHeight)
+    local padBottom = 14
+    local notesHeaderHeight = 14
+    local notesGap = 6
+    local notesTextGap = 4
+    local sourcesGap = 6
+    local sourcesLabelHeight = 14
+    local sourcesIconHeight = 16
+    local notesTextHeight = 14
+    local sourcesIconCount = 0
     frame:ClearAllPoints()
     frame:SetPoint("TOPLEFT", UI.frame, "TOPRIGHT", 10, -30)
 
@@ -11191,6 +11261,114 @@ function UI:UpdateBuildPreviewTooltip()
         row.icon:SetTexture(nil)
         row.icon:Hide()
     end
+
+    local notesText = frame.notesText
+    local notesHeader = frame.notesHeader
+    local sourcesLabel = frame.sourcesLabel
+    local sourcesFrame = frame.sourcesFrame
+    local build = self.selectedWishlistBuild
+
+    if notesHeader then
+        local notesTop = -24 - (rowCount * frame.rowHeight) - notesGap
+        notesHeader:ClearAllPoints()
+        notesHeader:SetPoint("TOPLEFT", content, "TOPLEFT", 6, notesTop)
+        notesHeader:Show()
+    end
+    if notesText then
+        notesText:ClearAllPoints()
+        notesText:SetPoint("TOPLEFT", notesHeader, "BOTTOMLEFT", 0, -notesTextGap)
+        notesText:SetPoint("TOPRIGHT", content, "TOPRIGHT", -6, 0)
+        notesText:SetText(stripTextureTags(build and build.notes or "") ~= "" and stripTextureTags(build.notes) or "None.")
+        notesTextHeight = (notesText.GetStringHeight and notesText:GetStringHeight() or 14)
+        notesText:Show()
+    end
+
+    if sourcesLabel and sourcesFrame then
+        local sourcesTop = -24 - (rowCount * frame.rowHeight) - notesGap - notesHeaderHeight - notesTextGap - notesTextHeight - sourcesGap
+        sourcesLabel:ClearAllPoints()
+        sourcesLabel:SetPoint("TOPLEFT", content, "TOPLEFT", 6, sourcesTop)
+        sourcesLabel:Show()
+        sourcesFrame:ClearAllPoints()
+        sourcesFrame:SetPoint("TOPLEFT", sourcesLabel, "BOTTOMLEFT", 0, -4)
+        sourcesFrame:Show()
+
+        local iconEntries = {}
+        if build then
+            local wowtbcKey, wowtbcTooltip = wishlistWowtbcSource(build)
+            if wowtbcKey then
+                iconEntries[#iconEntries + 1] = { key = wowtbcKey, tooltip = wowtbcTooltip or "wowtbc.gg" }
+            end
+            if wishlistHasWowhead(build) then
+                iconEntries[#iconEntries + 1] = { key = "wowhead", tooltip = "Wowhead" }
+            end
+            if wishlistHasLoon(build) then
+                iconEntries[#iconEntries + 1] = { key = "loonbis", tooltip = "LoonBiS" }
+            end
+            if wishlistHasBistooltip(build) then
+                iconEntries[#iconEntries + 1] = { key = "bistooltip", tooltip = "BiS-Tooltip" }
+            end
+            local customSources = wishlistCustomSources(build)
+            if customSources["custom-classic"] then
+                iconEntries[#iconEntries + 1] = { key = "custom-classic", tooltip = "Custom Classic" }
+            end
+            if customSources["custom-tbc"] then
+                iconEntries[#iconEntries + 1] = { key = "custom-tbc", tooltip = "Custom TBC" }
+            end
+            if customSources["custom-wotlk"] then
+                iconEntries[#iconEntries + 1] = { key = "custom-wotlk", tooltip = "Custom WotLK" }
+            end
+        end
+        if #iconEntries == 0 then
+            iconEntries[#iconEntries + 1] = { key = "unknown-source", tooltip = "Unknown source" }
+        end
+
+        local iconX = 0
+        for i = 1, math.max(#iconEntries, #frame.sourceIcons) do
+            local icon = frame.sourceIcons[i]
+            if not icon then
+                icon = CreateFrame("Frame", nil, sourcesFrame)
+                icon:SetSize(16, 16)
+                icon.tex = icon:CreateTexture(nil, "ARTWORK")
+                icon.tex:SetAllPoints(icon)
+                icon:SetScript("OnEnter", function(selfFrame)
+                    if selfFrame.tooltipText then
+                        GameTooltip:SetOwner(selfFrame, "ANCHOR_RIGHT")
+                        GameTooltip:SetText(selfFrame.tooltipText)
+                        GameTooltip:Show()
+                    end
+                end)
+                icon:SetScript("OnLeave", function()
+                    GameTooltip:Hide()
+                end)
+                frame.sourceIcons[i] = icon
+            end
+            local entry = iconEntries[i]
+            if entry and entry.key == "unknown-source" then
+                icon:SetPoint("LEFT", sourcesFrame, "LEFT", iconX, 0)
+                icon.tex:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
+                icon.tex:SetTexCoord(0, 1, 0, 1)
+                icon.tooltipText = entry.tooltip
+                icon:Show()
+                iconX = iconX + 18
+                sourcesIconCount = sourcesIconCount + 1
+            elseif entry and Goals.IconTextures and Goals.IconTextures[entry.key] then
+                icon:SetPoint("LEFT", sourcesFrame, "LEFT", iconX, 0)
+                icon.tex:SetTexture(Goals.IconTextures[entry.key])
+                icon.tex:SetTexCoord(0, 1, 0, 1)
+                icon.tooltipText = entry.tooltip
+                icon:Show()
+                iconX = iconX + 18
+                sourcesIconCount = sourcesIconCount + 1
+            else
+                icon:Hide()
+                icon.tooltipText = nil
+            end
+        end
+    end
+
+    local sourcesHeight = sourcesIconCount > 0 and sourcesIconHeight or 0
+    local neededHeight = headerHeight + nameHeight + (rowCount * frame.rowHeight) + notesGap + notesHeaderHeight + notesTextGap + notesTextHeight + sourcesGap + sourcesLabelHeight + (sourcesHeight > 0 and (4 + sourcesHeight) or 0) + padBottom
+    frame:SetHeight(neededHeight)
     frame:Show()
 end
 
