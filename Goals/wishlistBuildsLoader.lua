@@ -1,5 +1,5 @@
 -- Goals: wishlist builds loader
--- Loads per-spec build tables from Goals/Builds.
+-- Initializes shared build metadata and icon mappings.
 local addonName = ...
 local Goals = _G.Goals or {}
 _G.Goals = Goals
@@ -147,64 +147,6 @@ local ICONS = {
     DESTRUCTION = specIconTagSpell("WARLOCK_DESTRUCTION", 16),
 }
 
-local function loadBuildFile(relPath, builds)
-    local filename = string.format("Interface\\AddOns\\%s\\%s", addonName, relPath)
-    if not loadfile then
-        return
-    end
-    local func = loadfile(filename)
-    if not func then
-        return
-    end
-    if setfenv then
-        setfenv(func, _G)
-    end
-    local ok, result = pcall(func)
-    if ok and type(result) == "table" then
-        for _, build in ipairs(result) do
-            table.insert(builds, build)
-        end
-    end
-end
-
-local builds = {}
-local buildFiles = {
-    "Builds/DeathKnight/Blood/Builds.lua",
-    "Builds/DeathKnight/Frost/Builds.lua",
-    "Builds/DeathKnight/Unholy/Builds.lua",
-    "Builds/Druid/Balance/Builds.lua",
-    "Builds/Druid/Feral/Builds.lua",
-    "Builds/Druid/Restoration/Builds.lua",
-    "Builds/Hunter/BeastMastery/Builds.lua",
-    "Builds/Hunter/Marksmanship/Builds.lua",
-    "Builds/Hunter/Survival/Builds.lua",
-    "Builds/Mage/Arcane/Builds.lua",
-    "Builds/Mage/Fire/Builds.lua",
-    "Builds/Mage/Frost/Builds.lua",
-    "Builds/Paladin/Holy/Builds.lua",
-    "Builds/Paladin/Protection/Builds.lua",
-    "Builds/Paladin/Retribution/Builds.lua",
-    "Builds/Priest/Discipline/Builds.lua",
-    "Builds/Priest/Holy/Builds.lua",
-    "Builds/Priest/Shadow/Builds.lua",
-    "Builds/Rogue/Assassination/Builds.lua",
-    "Builds/Rogue/Combat/Builds.lua",
-    "Builds/Rogue/Subtlety/Builds.lua",
-    "Builds/Shaman/Elemental/Builds.lua",
-    "Builds/Shaman/Enhancement/Builds.lua",
-    "Builds/Shaman/Restoration/Builds.lua",
-    "Builds/Warlock/Affliction/Builds.lua",
-    "Builds/Warlock/Demonology/Builds.lua",
-    "Builds/Warlock/Destruction/Builds.lua",
-    "Builds/Warrior/Arms/Builds.lua",
-    "Builds/Warrior/Fury/Builds.lua",
-    "Builds/Warrior/Protection/Builds.lua",
-}
-
-for _, relPath in ipairs(buildFiles) do
-    loadBuildFile(relPath, builds)
-end
-
-Goals.WishlistBuildData = {
-    builds = builds
+Goals.WishlistBuildData = Goals.WishlistBuildData or {
+    builds = {}
 }
