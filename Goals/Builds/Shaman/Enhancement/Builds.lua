@@ -1,5 +1,8 @@
 -- Auto-generated from wishlistBuildData.lua
-return {
+local Goals = _G.Goals or {}
+_G.Goals = Goals
+Goals.BuildFileData = Goals.BuildFileData or {}
+Goals.BuildFileData["Builds/Shaman/Enhancement/Builds.lua"] = {
     {
                 id = "SHAMAN_ENHANCEMENT_CLASSIC_PRE",
                 name = "Shaman Enhancement - CLASSIC_PRE",
@@ -494,3 +497,4 @@ return {
                 notes = "Phase data \"t6\" sourced from LoonBiS (TBC addon).",
             },
 }
+

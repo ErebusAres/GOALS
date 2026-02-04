@@ -1,5 +1,8 @@
 -- Auto-generated from wishlistBuildData.lua
-return {
+local Goals = _G.Goals or {}
+_G.Goals = Goals
+Goals.BuildFileData = Goals.BuildFileData or {}
+Goals.BuildFileData["Builds/Paladin/Holy/Builds.lua"] = {
     {
                 id = "PALADIN_HOLY_CLASSIC_PRE",
                 name = "Paladin Holy - CLASSIC_PRE",
@@ -464,3 +467,4 @@ return {
                 notes = "Icecrown Citadel normal-mode (T10) progression list from wowtbc.gg; item IDs via wowtbc.gg.",
             },
 }
+

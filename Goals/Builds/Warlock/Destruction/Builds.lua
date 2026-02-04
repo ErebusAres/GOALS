@@ -1,5 +1,8 @@
 -- Auto-generated from wishlistBuildData.lua
-return {
+local Goals = _G.Goals or {}
+_G.Goals = Goals
+Goals.BuildFileData = Goals.BuildFileData or {}
+Goals.BuildFileData["Builds/Warlock/Destruction/Builds.lua"] = {
     {
                 id = "WARLOCK_DESTRUCTION_TBC_T6_LOONBIS",
                 name = "T6 Warlock Destruction - LoonBiS TBC",
@@ -809,3 +812,4 @@ return {
                     RELIC = { itemId = 50033, enchantId = 0, gemIds = {40155}, notes = "", source = "wowtbc.gg" },
             },
 }
+

@@ -1,5 +1,8 @@
 -- Auto-generated from wishlistBuildData.lua
-return {
+local Goals = _G.Goals or {}
+_G.Goals = Goals
+Goals.BuildFileData = Goals.BuildFileData or {}
+Goals.BuildFileData["Builds/Shaman/Restoration/Builds.lua"] = {
     {
                 id = "SHAMAN_RESTORATION_CLASSIC_PRE",
                 name = "Shaman Restoration - CLASSIC_PRE",
@@ -470,3 +473,4 @@ return {
                 notes = "Icecrown Citadel normal-mode (T10) progression list from wowtbc.gg; item IDs via wowtbc.gg.",
             },
 }
+

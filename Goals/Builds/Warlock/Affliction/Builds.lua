@@ -1,5 +1,8 @@
 -- Auto-generated from wishlistBuildData.lua
-return {
+local Goals = _G.Goals or {}
+_G.Goals = Goals
+Goals.BuildFileData = Goals.BuildFileData or {}
+Goals.BuildFileData["Builds/Warlock/Affliction/Builds.lua"] = {
     {
                 id = "WARLOCK_AFFLICTION_CLASSIC_PRE",
                 name = "PRE-T1 Warlock Affliction - WoWTBC.GG",
@@ -699,3 +702,4 @@ return {
                     RELIC = { itemId = 50033, enchantId = 0, gemIds = {40155}, notes = "", source = "wowtbc.gg" },
             },
 }
+

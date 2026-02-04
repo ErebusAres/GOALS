@@ -1,5 +1,8 @@
 -- Auto-generated from wishlistBuildData.lua
-return {
+local Goals = _G.Goals or {}
+_G.Goals = Goals
+Goals.BuildFileData = Goals.BuildFileData or {}
+Goals.BuildFileData["Builds/Rogue/Assassination/Builds.lua"] = {
     {
                 id = "ROGUE_ASSASSINATION_CLASSIC_PRE",
                 name = "Rogue Assassination - CLASSIC_PRE",
@@ -443,3 +446,4 @@ return {
                 notes = "Icecrown Citadel normal-mode (T10) progression list from wowtbc.gg; item IDs via wowtbc.gg.",
             },
 }
+

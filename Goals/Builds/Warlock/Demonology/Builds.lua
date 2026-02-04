@@ -1,5 +1,8 @@
 -- Auto-generated from wishlistBuildData.lua
-return {
+local Goals = _G.Goals or {}
+_G.Goals = Goals
+Goals.BuildFileData = Goals.BuildFileData or {}
+Goals.BuildFileData["Builds/Warlock/Demonology/Builds.lua"] = {
     {
                 id = "WARLOCK_DEMONOLOGY_CLASSIC_PRE",
                 name = "PRE-T1 Warlock Demonology - WoWTBC.GG",
@@ -698,3 +701,4 @@ return {
                     RELIC = { itemId = 50472, enchantId = 0, gemIds = {40153}, notes = "", source = "wowtbc.gg" },
             },
 }
+

@@ -1,5 +1,8 @@
 -- Auto-generated from wishlistBuildData.lua
-return {
+local Goals = _G.Goals or {}
+_G.Goals = Goals
+Goals.BuildFileData = Goals.BuildFileData or {}
+Goals.BuildFileData["Builds/Paladin/Protection/Builds.lua"] = {
     {
                 id = "PALADIN_PROTECTION_TBC_T6_LOONBIS",
                 name = "T6 Paladin Protection - Wowhead TBC",
@@ -483,3 +486,4 @@ return {
                 notes = "Icecrown Citadel normal-mode (T10) progression list from wowtbc.gg; item IDs via wowtbc.gg.",
             },
 }
+

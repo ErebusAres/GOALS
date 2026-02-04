@@ -126,6 +126,17 @@ Goals.WishlistBuildLibrary = Goals.WishlistBuildLibrary or {
 }
 
 local function ensureBuildsPopulated()
+    Goals.WishlistBuildData = Goals.WishlistBuildData or { builds = {} }
+    Goals.BuildFileData = Goals.BuildFileData or {}
+    if #Goals.WishlistBuildData.builds == 0 then
+        for _, buildList in pairs(Goals.BuildFileData) do
+            if type(buildList) == "table" then
+                for _, build in ipairs(buildList) do
+                    table.insert(Goals.WishlistBuildData.builds, build)
+                end
+            end
+        end
+    end
     local merged = {}
     if Goals.WishlistBuildData and Goals.WishlistBuildData.builds then
         for _, build in ipairs(Goals.WishlistBuildData.builds) do

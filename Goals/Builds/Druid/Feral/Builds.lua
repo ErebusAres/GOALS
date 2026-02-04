@@ -1112,3 +1112,4 @@ for _, build in ipairs(builds) do
     table.insert(Goals.WishlistBuildData.builds, build)
 end
 
+

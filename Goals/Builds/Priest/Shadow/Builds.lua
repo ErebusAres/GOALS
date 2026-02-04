@@ -1,5 +1,8 @@
 -- Auto-generated from wishlistBuildData.lua
-return {
+local Goals = _G.Goals or {}
+_G.Goals = Goals
+Goals.BuildFileData = Goals.BuildFileData or {}
+Goals.BuildFileData["Builds/Priest/Shadow/Builds.lua"] = {
     {
                 id = "PRIEST_SHADOW_TBC_T6_LOONBIS",
                 name = "T6 Priest Shadow - Wowhead TBC",
@@ -489,3 +492,4 @@ return {
                 notes = "Icecrown Citadel normal-mode (T10) progression list from wowtbc.gg; item IDs via wowtbc.gg.",
             },
 }
+

@@ -1,5 +1,8 @@
 -- Auto-generated from wishlistBuildData.lua
-return {
+local Goals = _G.Goals or {}
+_G.Goals = Goals
+Goals.BuildFileData = Goals.BuildFileData or {}
+Goals.BuildFileData["Builds/DeathKnight/Frost/Builds.lua"] = {
     {
                 id = "DEATHKNIGHT_FROST_WOTLK_PRE_LOONBIS",
                 name = "PRE Deathknight Frost - LoonBiS WotLK",
@@ -437,3 +440,4 @@ return {
                 notes = "Icecrown Citadel normal-mode (T10) progression list from wowtbc.gg; item IDs via wowtbc.gg.",
             },
 }
+

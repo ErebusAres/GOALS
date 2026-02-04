@@ -1,5 +1,8 @@
 -- Auto-generated from wishlistBuildData.lua
-return {
+local Goals = _G.Goals or {}
+_G.Goals = Goals
+Goals.BuildFileData = Goals.BuildFileData or {}
+Goals.BuildFileData["Builds/Mage/Fire/Builds.lua"] = {
     {
                 id = "MAGE_FIRE_CLASSIC_PRE",
                 name = "Mage Fire - CLASSIC_PRE",
@@ -567,3 +570,4 @@ return {
                 notes = "Icecrown Citadel normal-mode (T10) progression list from wowtbc.gg; item IDs via wowtbc.gg.",
             },
 }
+

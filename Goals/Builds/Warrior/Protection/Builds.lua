@@ -1,5 +1,8 @@
 -- Auto-generated from wishlistBuildData.lua
-return {
+local Goals = _G.Goals or {}
+_G.Goals = Goals
+Goals.BuildFileData = Goals.BuildFileData or {}
+Goals.BuildFileData["Builds/Warrior/Protection/Builds.lua"] = {
     {
                 id = "WARRIOR_PROTECTION_CLASSIC_PRE",
                 name = "Warrior Protection - CLASSIC_PRE",
@@ -478,3 +481,5 @@ return {
                 notes = "Icecrown Citadel normal-mode (T10) progression list from wowtbc.gg; item IDs via wowtbc.gg.",
             },
 }
+
+

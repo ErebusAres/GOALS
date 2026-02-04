@@ -1,5 +1,8 @@
 -- Auto-generated from wishlistBuildData.lua
-return {
+local Goals = _G.Goals or {}
+_G.Goals = Goals
+Goals.BuildFileData = Goals.BuildFileData or {}
+Goals.BuildFileData["Builds/Priest/Discipline/Builds.lua"] = {
     {
                 id = "PRIEST_DISCIPLINE_CLASSIC_PRE",
                 name = "Priest Discipline - CLASSIC_PRE",
@@ -449,3 +452,4 @@ return {
                 notes = "Icecrown Citadel normal-mode (T10) progression list from wowtbc.gg; item IDs via wowtbc.gg.",
             },
 }
+

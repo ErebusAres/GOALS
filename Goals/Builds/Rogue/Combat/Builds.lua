@@ -1,5 +1,8 @@
 -- Auto-generated from wishlistBuildData.lua
-return {
+local Goals = _G.Goals or {}
+_G.Goals = Goals
+Goals.BuildFileData = Goals.BuildFileData or {}
+Goals.BuildFileData["Builds/Rogue/Combat/Builds.lua"] = {
     {
                 id = "ROGUE_COMBAT_TBC_T6_LOONBIS",
                 name = "T6 Rogue Combat - LoonBiS TBC",
@@ -495,3 +498,4 @@ return {
                 notes = "Icecrown Citadel normal-mode (T10) progression list from wowtbc.gg; item IDs via wowtbc.gg.",
             },
 }
+
