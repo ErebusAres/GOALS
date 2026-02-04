@@ -1369,7 +1369,6 @@ Goals.WishlistBuildData = {
             level = 70,
             tags = {"bis"},
             itemsBySlot = {
-                -- y = 31867, b = 24056, r = 24030
                 HEAD = { itemId = 31040, enchantId = 29191, gemIds = {34220, 31867}, notes = "", source = "wowhead" },
                 NECK = { itemId = 30015, enchantId = 0, gemIds = {}, notes = "", source = "wowhead" },
                 SHOULDER = { itemId = 31049, enchantId = 28909, gemIds = {24056, 31867}, notes = "", source = "wowhead" },
@@ -11768,7 +11767,6 @@ Goals.WishlistBuildData = {
             level = 70,
             tags = {"bis"},
             itemsBySlot = {
-                -- m = 34220, r = 24030, y = 31867, b = 24056
                 HEAD = { itemId = 31051, enchantId = 29191, gemIds = {34220, 31867}, notes = "", source = "wowhead" },
                 NECK = { itemId = 32349, enchantId = 0, gemIds = {}, notes = "", source = "wowhead" },
                 SHOULDER = { itemId = 31054, enchantId = 28886, gemIds = {24056, 31867}, notes = "", source = "wowhead" },
@@ -13290,8 +13288,6 @@ Goals.WishlistBuildData = {
             sources = {"wowtbc-gg-tbc", "wotlkdb"},
             notes = "Phase data 't5' sourced from wowtbc.gg; item, gem, and enchant IDs resolved via WotLKDB.",
         },
-        {
-            -- m=34220 r=24030 y=31867 b=24056
         {
             id = "WARLOCK_DESTRUCTION_TBC_T6_WOWHEAD",
             name = "T6 Warlock Destruction - Wowhead Phase 3",
