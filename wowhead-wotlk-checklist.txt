@@ -356,19 +356,19 @@ WARRIOR
 
 DEATHKNIGHT
 - Blood
-  - WOTLK_PRE7 | url: https://www.wowhead.com/wotlk/guide/classes/death-knight/blood/tank-bis-gear-pre-raid-pve
+  - WOTLK_PRE7 | url: https://www.wowhead.com/wotlk/guide/classes/death-knight/blood/tank-bis-gear-pre-raid-pve-p4
   - WOTLK_T7 | url: https://www.wowhead.com/wotlk/guide/classes/death-knight/blood/tank-bis-gear-pve-phase-1
   - WOTLK_T8 | url: https://www.wowhead.com/wotlk/guide/classes/death-knight/blood/tank-bis-gear-pve-phase-2
   - WOTLK_T9 | url: https://www.wowhead.com/wotlk/guide/classes/death-knight/blood/tank-bis-gear-pve-phase-3
   - WOTLK_T10 | url: https://www.wowhead.com/wotlk/guide/classes/death-knight/blood/tank-bis-gear-pve-phase-4
 - Frost
-  - WOTLK_PRE7 | url: https://www.wowhead.com/wotlk/guide/classes/death-knight/frost/dps-bis-gear-pre-raid-pve
+  - WOTLK_PRE7 | url: https://www.wowhead.com/wotlk/guide/classes/death-knight/frost/dps-bis-gear-pre-raid-pve-p4
   - WOTLK_T7 | url: https://www.wowhead.com/wotlk/guide/classes/death-knight/frost/dps-bis-gear-pve-phase-1
   - WOTLK_T8 | url: https://www.wowhead.com/wotlk/guide/classes/death-knight/frost/dps-bis-gear-pve-phase-2
   - WOTLK_T9 | url: https://www.wowhead.com/wotlk/guide/classes/death-knight/frost/dps-bis-gear-pve-phase-3
   - WOTLK_T10 | url: https://www.wowhead.com/wotlk/guide/classes/death-knight/frost/dps-bis-gear-pve-phase-4
 - Unholy
-  - WOTLK_PRE7 | url: https://www.wowhead.com/wotlk/guide/classes/death-knight/unholy/dps-bis-gear-pre-raid-pve
+  - WOTLK_PRE7 | url: https://www.wowhead.com/wotlk/guide/classes/death-knight/unholy/dps-bis-gear-pre-raid-pve-p4
   - WOTLK_T7 | url: https://www.wowhead.com/wotlk/guide/classes/death-knight/unholy/dps-bis-gear-pve-phase-1
   - WOTLK_T8 | url: https://www.wowhead.com/wotlk/guide/classes/death-knight/unholy/dps-bis-gear-pve-phase-2
   - WOTLK_T9 | url: https://www.wowhead.com/wotlk/guide/classes/death-knight/unholy/dps-bis-gear-pve-phase-3
@@ -376,25 +376,25 @@ DEATHKNIGHT
 
 DRUID
 - Balance
-  - WOTLK_PRE7 | url: https://www.wowhead.com/wotlk/guide/classes/druid/balance/dps-bis-gear-pre-raid-pve
+  - WOTLK_PRE7 | url: https://www.wowhead.com/wotlk/guide/classes/druid/balance/dps-bis-gear-pre-raid-pve-p4
   - WOTLK_T7 | url: https://www.wowhead.com/wotlk/guide/classes/druid/balance/dps-bis-gear-pve-phase-1
   - WOTLK_T8 | url: https://www.wowhead.com/wotlk/guide/classes/druid/balance/dps-bis-gear-pve-phase-2
   - WOTLK_T9 | url: https://www.wowhead.com/wotlk/guide/classes/druid/balance/dps-bis-gear-pve-phase-3
   - WOTLK_T10 | url: https://www.wowhead.com/wotlk/guide/classes/druid/balance/dps-bis-gear-pve-phase-4
 - Feral DPS
-  - WOTLK_PRE7 | url: https://www.wowhead.com/wotlk/guide/classes/druid/feral/dps-bis-gear-pre-raid-pve
+  - WOTLK_PRE7 | url: https://www.wowhead.com/wotlk/guide/classes/druid/feral/dps-bis-gear-pre-raid-pve-p4
   - WOTLK_T7 | url: https://www.wowhead.com/wotlk/guide/classes/druid/feral/dps-bis-gear-pve-phase-1
   - WOTLK_T8 | url: https://www.wowhead.com/wotlk/guide/classes/druid/feral/dps-bis-gear-pve-phase-2
   - WOTLK_T9 | url: https://www.wowhead.com/wotlk/guide/classes/druid/feral/dps-bis-gear-pve-phase-3
   - WOTLK_T10 | url: https://www.wowhead.com/wotlk/guide/classes/druid/feral/dps-bis-gear-pve-phase-4
 - Feral Tank
-  - WOTLK_PRE7 | url: https://www.wowhead.com/wotlk/guide/classes/druid/feral/tank-bis-gear-pre-raid-pve
+  - WOTLK_PRE7 | url: https://www.wowhead.com/wotlk/guide/classes/druid/feral/tank-bis-gear-pre-raid-pve-p4
   - WOTLK_T7 | url: https://www.wowhead.com/wotlk/guide/classes/druid/feral/tank-bis-gear-pve-phase-1
   - WOTLK_T8 | url: https://www.wowhead.com/wotlk/guide/classes/druid/feral/tank-bis-gear-pve-phase-2
   - WOTLK_T9 | url: https://www.wowhead.com/wotlk/guide/classes/druid/feral/tank-bis-gear-pve-phase-3
   - WOTLK_T10 | url: https://www.wowhead.com/wotlk/guide/classes/druid/feral/tank-bis-gear-pve-phase-4
 - Restoration
-  - WOTLK_PRE7 | url: https://www.wowhead.com/wotlk/guide/classes/druid/restoration/healer-bis-gear-pre-raid-pve
+  - WOTLK_PRE7 | url: https://www.wowhead.com/wotlk/guide/classes/druid/restoration/healer-bis-gear-pre-raid-pve-p4
   - WOTLK_T7 | url: https://www.wowhead.com/wotlk/guide/classes/druid/restoration/healer-bis-gear-pve-phase-1
   - WOTLK_T8 | url: https://www.wowhead.com/wotlk/guide/classes/druid/restoration/healer-bis-gear-pve-phase-2
   - WOTLK_T9 | url: https://www.wowhead.com/wotlk/guide/classes/druid/restoration/healer-bis-gear-pve-phase-3
@@ -402,19 +402,19 @@ DRUID
 
 HUNTER
 - Beast Mastery
-  - WOTLK_PRE7 | url: https://www.wowhead.com/wotlk/guide/classes/hunter/beast-mastery/dps-bis-gear-pre-raid-pve
+  - WOTLK_PRE7 | url: https://www.wowhead.com/wotlk/guide/classes/hunter/beast-mastery/dps-bis-gear-pre-raid-pve-p4
   - WOTLK_T7 | url: https://www.wowhead.com/wotlk/guide/classes/hunter/beast-mastery/dps-bis-gear-pve-phase-1
   - WOTLK_T8 | url: https://www.wowhead.com/wotlk/guide/classes/hunter/beast-mastery/dps-bis-gear-pve-phase-2
   - WOTLK_T9 | url: https://www.wowhead.com/wotlk/guide/classes/hunter/beast-mastery/dps-bis-gear-pve-phase-3
   - WOTLK_T10 | url: https://www.wowhead.com/wotlk/guide/classes/hunter/beast-mastery/dps-bis-gear-pve-phase-4
 - Marksmanship
-  - WOTLK_PRE7 | url: https://www.wowhead.com/wotlk/guide/classes/hunter/marksmanship/dps-bis-gear-pre-raid-pve
+  - WOTLK_PRE7 | url: https://www.wowhead.com/wotlk/guide/classes/hunter/marksmanship/dps-bis-gear-pre-raid-pve-p4
   - WOTLK_T7 | url: https://www.wowhead.com/wotlk/guide/classes/hunter/marksmanship/dps-bis-gear-pve-phase-1
   - WOTLK_T8 | url: https://www.wowhead.com/wotlk/guide/classes/hunter/marksmanship/dps-bis-gear-pve-phase-2
   - WOTLK_T9 | url: https://www.wowhead.com/wotlk/guide/classes/hunter/marksmanship/dps-bis-gear-pve-phase-3
   - WOTLK_T10 | url: https://www.wowhead.com/wotlk/guide/classes/hunter/marksmanship/dps-bis-gear-pve-phase-4
 - Survival
-  - WOTLK_PRE7 | url: https://www.wowhead.com/wotlk/guide/classes/hunter/survival/dps-bis-gear-pre-raid-pve
+  - WOTLK_PRE7 | url: https://www.wowhead.com/wotlk/guide/classes/hunter/survival/dps-bis-gear-pre-raid-pve-p4
   - WOTLK_T7 | url: https://www.wowhead.com/wotlk/guide/classes/hunter/survival/dps-bis-gear-pve-phase-1
   - WOTLK_T8 | url: https://www.wowhead.com/wotlk/guide/classes/hunter/survival/dps-bis-gear-pve-phase-2
   - WOTLK_T9 | url: https://www.wowhead.com/wotlk/guide/classes/hunter/survival/dps-bis-gear-pve-phase-3
@@ -422,19 +422,19 @@ HUNTER
 
 MAGE
 - Arcane
-  - WOTLK_PRE7 | url: https://www.wowhead.com/wotlk/guide/classes/mage/arcane/dps-bis-gear-pre-raid-pve
+  - WOTLK_PRE7 | url: https://www.wowhead.com/wotlk/guide/classes/mage/arcane/dps-bis-gear-pre-raid-pve-p4
   - WOTLK_T7 | url: https://www.wowhead.com/wotlk/guide/classes/mage/arcane/dps-bis-gear-pve-phase-1
   - WOTLK_T8 | url: https://www.wowhead.com/wotlk/guide/classes/mage/arcane/dps-bis-gear-pve-phase-2
   - WOTLK_T9 | url: https://www.wowhead.com/wotlk/guide/classes/mage/arcane/dps-bis-gear-pve-phase-3
   - WOTLK_T10 | url: https://www.wowhead.com/wotlk/guide/classes/mage/arcane/dps-bis-gear-pve-phase-4
 - Fire
-  - WOTLK_PRE7 | url: https://www.wowhead.com/wotlk/guide/classes/mage/fire/dps-bis-gear-pre-raid-pve
+  - WOTLK_PRE7 | url: https://www.wowhead.com/wotlk/guide/classes/mage/fire/dps-bis-gear-pre-raid-pve-p4
   - WOTLK_T7 | url: https://www.wowhead.com/wotlk/guide/classes/mage/fire/dps-bis-gear-pve-phase-1
   - WOTLK_T8 | url: https://www.wowhead.com/wotlk/guide/classes/mage/fire/dps-bis-gear-pve-phase-2
   - WOTLK_T9 | url: https://www.wowhead.com/wotlk/guide/classes/mage/fire/dps-bis-gear-pve-phase-3
   - WOTLK_T10 | url: https://www.wowhead.com/wotlk/guide/classes/mage/fire/dps-bis-gear-pve-phase-4
 - Frost
-  - WOTLK_PRE7 | url: https://www.wowhead.com/wotlk/guide/classes/mage/frost/dps-bis-gear-pre-raid-pve
+  - WOTLK_PRE7 | url: https://www.wowhead.com/wotlk/guide/classes/mage/frost/dps-bis-gear-pre-raid-pve-p4
   - WOTLK_T7 | url: https://www.wowhead.com/wotlk/guide/classes/mage/frost/dps-bis-gear-pve-phase-1
   - WOTLK_T8 | url: https://www.wowhead.com/wotlk/guide/classes/mage/frost/dps-bis-gear-pve-phase-2
   - WOTLK_T9 | url: https://www.wowhead.com/wotlk/guide/classes/mage/frost/dps-bis-gear-pve-phase-3
@@ -442,19 +442,19 @@ MAGE
 
 PALADIN
 - Holy
-  - WOTLK_PRE7 | url: https://www.wowhead.com/wotlk/guide/classes/paladin/holy/healer-bis-gear-pre-raid-pve
+  - WOTLK_PRE7 | url: https://www.wowhead.com/wotlk/guide/classes/paladin/holy/healer-bis-gear-pre-raid-pve-p4
   - WOTLK_T7 | url: https://www.wowhead.com/wotlk/guide/classes/paladin/holy/healer-bis-gear-pve-phase-1
   - WOTLK_T8 | url: https://www.wowhead.com/wotlk/guide/classes/paladin/holy/healer-bis-gear-pve-phase-2
   - WOTLK_T9 | url: https://www.wowhead.com/wotlk/guide/classes/paladin/holy/healer-bis-gear-pve-phase-3
   - WOTLK_T10 | url: https://www.wowhead.com/wotlk/guide/classes/paladin/holy/healer-bis-gear-pve-phase-4
 - Protection
-  - WOTLK_PRE7 | url: https://www.wowhead.com/wotlk/guide/classes/paladin/protection/tank-bis-gear-pre-raid-pve
+  - WOTLK_PRE7 | url: https://www.wowhead.com/wotlk/guide/classes/paladin/protection/tank-bis-gear-pre-raid-pve-p4
   - WOTLK_T7 | url: https://www.wowhead.com/wotlk/guide/classes/paladin/protection/tank-bis-gear-pve-phase-1
   - WOTLK_T8 | url: https://www.wowhead.com/wotlk/guide/classes/paladin/protection/tank-bis-gear-pve-phase-2
   - WOTLK_T9 | url: https://www.wowhead.com/wotlk/guide/classes/paladin/protection/tank-bis-gear-pve-phase-3
   - WOTLK_T10 | url: https://www.wowhead.com/wotlk/guide/classes/paladin/protection/tank-bis-gear-pve-phase-4
 - Retribution
-  - WOTLK_PRE7 | url: https://www.wowhead.com/wotlk/guide/classes/paladin/retribution/dps-bis-gear-pre-raid-pve
+  - WOTLK_PRE7 | url: https://www.wowhead.com/wotlk/guide/classes/paladin/retribution/dps-bis-gear-pre-raid-pve-p4
   - WOTLK_T7 | url: https://www.wowhead.com/wotlk/guide/classes/paladin/retribution/dps-bis-gear-pve-phase-1
   - WOTLK_T8 | url: https://www.wowhead.com/wotlk/guide/classes/paladin/retribution/dps-bis-gear-pve-phase-2
   - WOTLK_T9 | url: https://www.wowhead.com/wotlk/guide/classes/paladin/retribution/dps-bis-gear-pve-phase-3
@@ -462,19 +462,19 @@ PALADIN
 
 PRIEST
 - Discipline
-  - WOTLK_PRE7 | url: https://www.wowhead.com/wotlk/guide/classes/priest/discipline/healer-bis-gear-pre-raid-pve
+  - WOTLK_PRE7 | url: https://www.wowhead.com/wotlk/guide/classes/priest/discipline/healer-bis-gear-pre-raid-pve-p4
   - WOTLK_T7 | url: https://www.wowhead.com/wotlk/guide/classes/priest/discipline/healer-bis-gear-pve-phase-1
   - WOTLK_T8 | url: https://www.wowhead.com/wotlk/guide/classes/priest/discipline/healer-bis-gear-pve-phase-2
   - WOTLK_T9 | url: https://www.wowhead.com/wotlk/guide/classes/priest/discipline/healer-bis-gear-pve-phase-3
   - WOTLK_T10 | url: https://www.wowhead.com/wotlk/guide/classes/priest/discipline/healer-bis-gear-pve-phase-4
 - Holy
-  - WOTLK_PRE7 | url: https://www.wowhead.com/wotlk/guide/classes/priest/holy/healer-bis-gear-pre-raid-pve
+  - WOTLK_PRE7 | url: https://www.wowhead.com/wotlk/guide/classes/priest/holy/healer-bis-gear-pre-raid-pve-p4
   - WOTLK_T7 | url: https://www.wowhead.com/wotlk/guide/classes/priest/holy/healer-bis-gear-pve-phase-1
   - WOTLK_T8 | url: https://www.wowhead.com/wotlk/guide/classes/priest/holy/healer-bis-gear-pve-phase-2
   - WOTLK_T9 | url: https://www.wowhead.com/wotlk/guide/classes/priest/holy/healer-bis-gear-pve-phase-3
   - WOTLK_T10 | url: https://www.wowhead.com/wotlk/guide/classes/priest/holy/healer-bis-gear-pve-phase-4
 - Shadow
-  - WOTLK_PRE7 | url: https://www.wowhead.com/wotlk/guide/classes/priest/shadow/dps-bis-gear-pre-raid-pve
+  - WOTLK_PRE7 | url: https://www.wowhead.com/wotlk/guide/classes/priest/shadow/dps-bis-gear-pre-raid-pve-p4
   - WOTLK_T7 | url: https://www.wowhead.com/wotlk/guide/classes/priest/shadow/dps-bis-gear-pve-phase-1
   - WOTLK_T8 | url: https://www.wowhead.com/wotlk/guide/classes/priest/shadow/dps-bis-gear-pve-phase-2
   - WOTLK_T9 | url: https://www.wowhead.com/wotlk/guide/classes/priest/shadow/dps-bis-gear-pve-phase-3
@@ -482,19 +482,19 @@ PRIEST
 
 ROGUE
 - Assassination
-  - WOTLK_PRE7 | url: https://www.wowhead.com/wotlk/guide/classes/rogue/assassination/dps-bis-gear-pre-raid-pve
+  - WOTLK_PRE7 | url: https://www.wowhead.com/wotlk/guide/classes/rogue/assassination/dps-bis-gear-pre-raid-pve-p4
   - WOTLK_T7 | url: https://www.wowhead.com/wotlk/guide/classes/rogue/assassination/dps-bis-gear-pve-phase-1
   - WOTLK_T8 | url: https://www.wowhead.com/wotlk/guide/classes/rogue/assassination/dps-bis-gear-pve-phase-2
   - WOTLK_T9 | url: https://www.wowhead.com/wotlk/guide/classes/rogue/assassination/dps-bis-gear-pve-phase-3
   - WOTLK_T10 | url: https://www.wowhead.com/wotlk/guide/classes/rogue/assassination/dps-bis-gear-pve-phase-4
 - Combat
-  - WOTLK_PRE7 | url: https://www.wowhead.com/wotlk/guide/classes/rogue/combat/dps-bis-gear-pre-raid-pve
+  - WOTLK_PRE7 | url: https://www.wowhead.com/wotlk/guide/classes/rogue/combat/dps-bis-gear-pre-raid-pve-p4
   - WOTLK_T7 | url: https://www.wowhead.com/wotlk/guide/classes/rogue/combat/dps-bis-gear-pve-phase-1
   - WOTLK_T8 | url: https://www.wowhead.com/wotlk/guide/classes/rogue/combat/dps-bis-gear-pve-phase-2
   - WOTLK_T9 | url: https://www.wowhead.com/wotlk/guide/classes/rogue/combat/dps-bis-gear-pve-phase-3
   - WOTLK_T10 | url: https://www.wowhead.com/wotlk/guide/classes/rogue/combat/dps-bis-gear-pve-phase-4
 - Subtlety
-  - WOTLK_PRE7 | url: https://www.wowhead.com/wotlk/guide/classes/rogue/subtlety/dps-bis-gear-pre-raid-pve
+  - WOTLK_PRE7 | url: https://www.wowhead.com/wotlk/guide/classes/rogue/subtlety/dps-bis-gear-pre-raid-pve-p4
   - WOTLK_T7 | url: https://www.wowhead.com/wotlk/guide/classes/rogue/subtlety/dps-bis-gear-pve-phase-1
   - WOTLK_T8 | url: https://www.wowhead.com/wotlk/guide/classes/rogue/subtlety/dps-bis-gear-pve-phase-2
   - WOTLK_T9 | url: https://www.wowhead.com/wotlk/guide/classes/rogue/subtlety/dps-bis-gear-pve-phase-3
@@ -502,19 +502,19 @@ ROGUE
 
 SHAMAN
 - Elemental
-  - WOTLK_PRE7 | url: https://www.wowhead.com/wotlk/guide/classes/shaman/elemental/dps-bis-gear-pre-raid-pve
+  - WOTLK_PRE7 | url: https://www.wowhead.com/wotlk/guide/classes/shaman/elemental/dps-bis-gear-pre-raid-pve-p4
   - WOTLK_T7 | url: https://www.wowhead.com/wotlk/guide/classes/shaman/elemental/dps-bis-gear-pve-phase-1
   - WOTLK_T8 | url: https://www.wowhead.com/wotlk/guide/classes/shaman/elemental/dps-bis-gear-pve-phase-2
   - WOTLK_T9 | url: https://www.wowhead.com/wotlk/guide/classes/shaman/elemental/dps-bis-gear-pve-phase-3
   - WOTLK_T10 | url: https://www.wowhead.com/wotlk/guide/classes/shaman/elemental/dps-bis-gear-pve-phase-4
 - Enhancement
-  - WOTLK_PRE7 | url: https://www.wowhead.com/wotlk/guide/classes/shaman/enhancement/dps-bis-gear-pre-raid-pve
+  - WOTLK_PRE7 | url: https://www.wowhead.com/wotlk/guide/classes/shaman/enhancement/dps-bis-gear-pre-raid-pve-p4
   - WOTLK_T7 | url: https://www.wowhead.com/wotlk/guide/classes/shaman/enhancement/dps-bis-gear-pve-phase-1
   - WOTLK_T8 | url: https://www.wowhead.com/wotlk/guide/classes/shaman/enhancement/dps-bis-gear-pve-phase-2
   - WOTLK_T9 | url: https://www.wowhead.com/wotlk/guide/classes/shaman/enhancement/dps-bis-gear-pve-phase-3
   - WOTLK_T10 | url: https://www.wowhead.com/wotlk/guide/classes/shaman/enhancement/dps-bis-gear-pve-phase-4
 - Restoration
-  - WOTLK_PRE7 | url: https://www.wowhead.com/wotlk/guide/classes/shaman/restoration/healer-bis-gear-pre-raid-pve
+  - WOTLK_PRE7 | url: https://www.wowhead.com/wotlk/guide/classes/shaman/restoration/healer-bis-gear-pre-raid-pve-p4
   - WOTLK_T7 | url: https://www.wowhead.com/wotlk/guide/classes/shaman/restoration/healer-bis-gear-pve-phase-1
   - WOTLK_T8 | url: https://www.wowhead.com/wotlk/guide/classes/shaman/restoration/healer-bis-gear-pve-phase-2
   - WOTLK_T9 | url: https://www.wowhead.com/wotlk/guide/classes/shaman/restoration/healer-bis-gear-pve-phase-3
@@ -522,19 +522,19 @@ SHAMAN
 
 WARLOCK
 - Affliction
-  - WOTLK_PRE7 | url: https://www.wowhead.com/wotlk/guide/classes/warlock/affliction/dps-bis-gear-pre-raid-pve
+  - WOTLK_PRE7 | url: https://www.wowhead.com/wotlk/guide/classes/warlock/affliction/dps-bis-gear-pre-raid-pve-p4
   - WOTLK_T7 | url: https://www.wowhead.com/wotlk/guide/classes/warlock/affliction/dps-bis-gear-pve-phase-1
   - WOTLK_T8 | url: https://www.wowhead.com/wotlk/guide/classes/warlock/affliction/dps-bis-gear-pve-phase-2
   - WOTLK_T9 | url: https://www.wowhead.com/wotlk/guide/classes/warlock/affliction/dps-bis-gear-pve-phase-3
   - WOTLK_T10 | url: https://www.wowhead.com/wotlk/guide/classes/warlock/affliction/dps-bis-gear-pve-phase-4
 - Demonology
-  - WOTLK_PRE7 | url: https://www.wowhead.com/wotlk/guide/classes/warlock/demonology/dps-bis-gear-pre-raid-pve
+  - WOTLK_PRE7 | url: https://www.wowhead.com/wotlk/guide/classes/warlock/demonology/dps-bis-gear-pre-raid-pve-p4
   - WOTLK_T7 | url: https://www.wowhead.com/wotlk/guide/classes/warlock/demonology/dps-bis-gear-pve-phase-1
   - WOTLK_T8 | url: https://www.wowhead.com/wotlk/guide/classes/warlock/demonology/dps-bis-gear-pve-phase-2
   - WOTLK_T9 | url: https://www.wowhead.com/wotlk/guide/classes/warlock/demonology/dps-bis-gear-pve-phase-3
   - WOTLK_T10 | url: https://www.wowhead.com/wotlk/guide/classes/warlock/demonology/dps-bis-gear-pve-phase-4
 - Destruction
-  - WOTLK_PRE7 | url: https://www.wowhead.com/wotlk/guide/classes/warlock/destruction/dps-bis-gear-pre-raid-pve
+  - WOTLK_PRE7 | url: https://www.wowhead.com/wotlk/guide/classes/warlock/destruction/dps-bis-gear-pre-raid-pve-p4
   - WOTLK_T7 | url: https://www.wowhead.com/wotlk/guide/classes/warlock/destruction/dps-bis-gear-pve-phase-1
   - WOTLK_T8 | url: https://www.wowhead.com/wotlk/guide/classes/warlock/destruction/dps-bis-gear-pve-phase-2
   - WOTLK_T9 | url: https://www.wowhead.com/wotlk/guide/classes/warlock/destruction/dps-bis-gear-pve-phase-3
@@ -542,19 +542,19 @@ WARLOCK
 
 WARRIOR
 - Arms
-  - WOTLK_PRE7 | url: https://www.wowhead.com/wotlk/guide/classes/warrior/arms/dps-bis-gear-pre-raid-pve
+  - WOTLK_PRE7 | url: https://www.wowhead.com/wotlk/guide/classes/warrior/arms/dps-bis-gear-pre-raid-pve-p4
   - WOTLK_T7 | url: https://www.wowhead.com/wotlk/guide/classes/warrior/arms/dps-bis-gear-pve-phase-1
   - WOTLK_T8 | url: https://www.wowhead.com/wotlk/guide/classes/warrior/arms/dps-bis-gear-pve-phase-2
   - WOTLK_T9 | url: https://www.wowhead.com/wotlk/guide/classes/warrior/arms/dps-bis-gear-pve-phase-3
   - WOTLK_T10 | url: https://www.wowhead.com/wotlk/guide/classes/warrior/arms/dps-bis-gear-pve-phase-4
 - Fury
-  - WOTLK_PRE7 | url: https://www.wowhead.com/wotlk/guide/classes/warrior/fury/dps-bis-gear-pre-raid-pve
+  - WOTLK_PRE7 | url: https://www.wowhead.com/wotlk/guide/classes/warrior/fury/dps-bis-gear-pre-raid-pve-p4
   - WOTLK_T7 | url: https://www.wowhead.com/wotlk/guide/classes/warrior/fury/dps-bis-gear-pve-phase-1
   - WOTLK_T8 | url: https://www.wowhead.com/wotlk/guide/classes/warrior/fury/dps-bis-gear-pve-phase-2
   - WOTLK_T9 | url: https://www.wowhead.com/wotlk/guide/classes/warrior/fury/dps-bis-gear-pve-phase-3
   - WOTLK_T10 | url: https://www.wowhead.com/wotlk/guide/classes/warrior/fury/dps-bis-gear-pve-phase-4
 - Protection
-  - WOTLK_PRE7 | url: https://www.wowhead.com/wotlk/guide/classes/warrior/protection/tank-bis-gear-pre-raid-pve
+  - WOTLK_PRE7 | url: https://www.wowhead.com/wotlk/guide/classes/warrior/protection/tank-bis-gear-pre-raid-pve-p4
   - WOTLK_T7 | url: https://www.wowhead.com/wotlk/guide/classes/warrior/protection/tank-bis-gear-pve-phase-1
   - WOTLK_T8 | url: https://www.wowhead.com/wotlk/guide/classes/warrior/protection/tank-bis-gear-pve-phase-2
   - WOTLK_T9 | url: https://www.wowhead.com/wotlk/guide/classes/warrior/protection/tank-bis-gear-pve-phase-3
