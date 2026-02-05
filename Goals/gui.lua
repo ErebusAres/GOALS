@@ -11547,9 +11547,13 @@ function UI:UpdateBuildPreviewTooltip()
     frame:ClearAllPoints()
     frame:SetPoint("TOPLEFT", UI.frame, "TOPRIGHT", 10, -30)
 
+    frame.itemRows = frame.itemRows or {}
+    frame.noteRows = frame.noteRows or {}
+    frame.textRows = frame.textRows or {}
+
     local function ensureRow(idx)
-        if frame.rows[idx] then
-            return frame.rows[idx]
+        if frame.itemRows[idx] then
+            return frame.itemRows[idx]
         end
         local row = CreateFrame("Button", nil, content)
         row:SetHeight(frame.rowHeight)
@@ -11587,13 +11591,13 @@ function UI:UpdateBuildPreviewTooltip()
         row:SetScript("OnLeave", function()
             GameTooltip:Hide()
         end)
-        frame.rows[idx] = row
+        frame.itemRows[idx] = row
         return row
     end
 
     local function ensureNoteRow(idx)
-        if frame.rows[idx] then
-            return frame.rows[idx]
+        if frame.noteRows[idx] then
+            return frame.noteRows[idx]
         end
         local row = CreateFrame("Frame", nil, content)
         row:SetHeight(frame.rowHeight)
@@ -11612,13 +11616,13 @@ function UI:UpdateBuildPreviewTooltip()
         note:SetPoint("TOPRIGHT", row, "TOPRIGHT", -12, -2)
         note:SetTextColor(0.8, 0.8, 0.8)
         row.note = note
-        frame.rows[idx] = row
+        frame.noteRows[idx] = row
         return row
     end
 
     local function ensureTextRow(idx, fontObject)
-        if frame.rows[idx] then
-            return frame.rows[idx]
+        if frame.textRows[idx] then
+            return frame.textRows[idx]
         end
         local row = CreateFrame("Frame", nil, content)
         row:SetHeight(frame.rowHeight)
@@ -11636,7 +11640,7 @@ function UI:UpdateBuildPreviewTooltip()
         text:SetPoint("TOPLEFT", row, "TOPLEFT", 0, 0)
         text:SetPoint("TOPRIGHT", row, "TOPRIGHT", 0, 0)
         row.text = text
-        frame.rows[idx] = row
+        frame.textRows[idx] = row
         return row
     end
 
@@ -11653,12 +11657,14 @@ function UI:UpdateBuildPreviewTooltip()
     local listStartY = -6
     local yOffset = listStartY
     local rowIndex = 1
+    local noteRowIndex = 1
+    local textRowIndex = 1
 
     local function addTextRow(text, font)
         if not text or text == "" then
             return
         end
-        local row = ensureTextRow(rowIndex, font)
+        local row = ensureTextRow(textRowIndex, font)
         row:Show()
         row:ClearAllPoints()
         row:SetPoint("TOPLEFT", content, "TOPLEFT", 6, yOffset)
@@ -11670,19 +11676,17 @@ function UI:UpdateBuildPreviewTooltip()
         end
         row:SetHeight(h)
         yOffset = yOffset - h
-        rowIndex = rowIndex + 1
+        textRowIndex = textRowIndex + 1
     end
     local function addHeaderRow(text)
         if not text or text == "" then
             return
         end
-        local row = frame.rows[rowIndex]
-        if not row then
-            row = CreateFrame("Frame", nil, content)
+        local row = ensureTextRow(textRowIndex, "GameFontNormalSmall")
+        if not row.headerFrame then
             local label, heading = createOptionsHeader(row, text, 0)
             row.headerLabel = label
             row.headerFrame = heading
-            frame.rows[rowIndex] = row
         end
         row:Show()
         row:ClearAllPoints()
@@ -11700,7 +11704,7 @@ function UI:UpdateBuildPreviewTooltip()
         local h = OPTIONS_HEADER_HEIGHT or 18
         row:SetHeight(h)
         yOffset = yOffset - h
-        rowIndex = rowIndex + 1
+        textRowIndex = textRowIndex + 1
     end
 
     local buildName = stripTextureTags((build and build.name) or "Build")
@@ -11775,7 +11779,7 @@ function UI:UpdateBuildPreviewTooltip()
         rowIndex = rowIndex + 1
 
         if noteText ~= "" then
-            local noteRow = ensureNoteRow(rowIndex)
+            local noteRow = ensureNoteRow(noteRowIndex)
             noteRow:Show()
             noteRow:ClearAllPoints()
             noteRow:SetPoint("TOPLEFT", content, "TOPLEFT", 6, yOffset)
@@ -11785,6 +11789,7 @@ function UI:UpdateBuildPreviewTooltip()
                 noteRow.note:SetWidth(math.max(40, rowWidth - 24))
             end
             noteRow.note:SetText(noteText)
+            noteRow.note:Show()
             local noteHeight = (noteRow.note.GetStringHeight and noteRow.note:GetStringHeight() or 0)
             if noteHeight < 12 then
                 noteHeight = 12
@@ -11825,11 +11830,11 @@ function UI:UpdateBuildPreviewTooltip()
             end
 
             yOffset = yOffset - noteRow:GetHeight()
-            rowIndex = rowIndex + 1
+            noteRowIndex = noteRowIndex + 1
         end
     end
-    for i = rowIndex, #frame.rows do
-        local row = frame.rows[i]
+    for i = rowIndex, #frame.itemRows do
+        local row = frame.itemRows[i]
         row:Hide()
         row.itemId = nil
         if row.label then row.label:SetText("") end
@@ -11841,13 +11846,29 @@ function UI:UpdateBuildPreviewTooltip()
             row.icon:SetTexture(nil)
             row.icon:Hide()
         end
+    end
+    for i = noteRowIndex, #frame.noteRows do
+        local row = frame.noteRows[i]
+        row:Hide()
         if row.note then
             row.note:SetText("")
             row.note:Hide()
         end
+        if row.noteTip then
+            row.noteTip.itemId = nil
+            row.noteTip:Hide()
+        end
+    end
+    for i = textRowIndex, #frame.textRows do
+        local row = frame.textRows[i]
+        row:Hide()
         if row.text then
             row.text:SetText("")
         end
+        if row.bar then row.bar:Hide() end
+        if row.headerFrame then row.headerFrame:Hide() end
+        if row.lineLeft then row.lineLeft:Hide() end
+        if row.lineRight then row.lineRight:Hide() end
     end
 
     if needsRefresh then
@@ -11885,7 +11906,7 @@ function UI:UpdateBuildPreviewTooltip()
     local notesBody = stripTextureTags(build and build.notes or "")
     if notesBody ~= "" then
         addHeaderRow("Notes")
-        local row = ensureTextRow(rowIndex, "GameFontHighlightSmall")
+        local row = ensureTextRow(textRowIndex, "GameFontHighlightSmall")
         row:Show()
         row:ClearAllPoints()
         row:SetPoint("TOPLEFT", content, "TOPLEFT", 6, yOffset)
@@ -11909,7 +11930,7 @@ function UI:UpdateBuildPreviewTooltip()
         end
         row:SetHeight(h)
         yOffset = yOffset - h
-        rowIndex = rowIndex + 1
+        textRowIndex = textRowIndex + 1
     end
 
     local sourcesRow = nil
@@ -11917,16 +11938,24 @@ function UI:UpdateBuildPreviewTooltip()
         if sourcesHeaderFrame then sourcesHeaderFrame:Hide() end
         if sourcesLabel then sourcesLabel:Hide() end
         addHeaderRow("Sources")
-        sourcesRow = ensureNoteRow(rowIndex)
+        sourcesRow = ensureNoteRow(noteRowIndex)
         sourcesRow:Show()
         sourcesRow:ClearAllPoints()
         sourcesRow:SetPoint("TOPLEFT", content, "TOPLEFT", 6, yOffset)
         sourcesRow:SetPoint("RIGHT", content, "RIGHT", -6, 0)
+        if sourcesRow.note then
+            sourcesRow.note:SetText("")
+            sourcesRow.note:Hide()
+        end
+        if sourcesRow.noteTip then
+            sourcesRow.noteTip.itemId = nil
+            sourcesRow.noteTip:Hide()
+        end
         sourcesFrame:ClearAllPoints()
         sourcesFrame:SetPoint("LEFT", sourcesRow, "LEFT", 0, 0)
         sourcesFrame:SetPoint("TOP", sourcesRow, "TOP", 0, -2)
         sourcesFrame:Show()
-        rowIndex = rowIndex + 1
+        noteRowIndex = noteRowIndex + 1
 
         local iconEntries = {}
         if build then
