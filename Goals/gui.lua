@@ -666,6 +666,20 @@ local function resolveNoteItemIds(noteText)
     return replaced
 end
 
+local function extractNoteItemIds(noteText)
+    local ids = {}
+    if not noteText or noteText == "" then
+        return ids
+    end
+    for idText in tostring(noteText):gmatch("%f[%d](%d%d%d%d%d?)%f[%D]") do
+        local id = tonumber(idText)
+        if id and id >= 1000 and id <= 99999 then
+            ids[#ids + 1] = id
+        end
+    end
+    return ids
+end
+
 local function createFooterBar(ui, page, key, suffix)
     if not ui or not page then
         return nil
@@ -11516,70 +11530,19 @@ function UI:UpdateBuildPreviewTooltip()
     if frame.buildNameText then
         frame.buildNameText:Hide()
     end
-    if not frame.buildNameWrap then
-        local wrap = CreateFrame("Frame", nil, frame.content)
-        wrap.text = wrap:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-        wrap.text:SetJustifyH("LEFT")
-        wrap.text:SetJustifyV("TOP")
-        wrap.text:SetWordWrap(true)
-        if wrap.text.SetNonSpaceWrap then
-            wrap.text:SetNonSpaceWrap(true)
-        end
-        if wrap.text.SetMaxLines then
-            wrap.text:SetMaxLines(0)
-        end
-        wrap.text:SetPoint("TOPLEFT", wrap, "TOPLEFT", 0, 0)
-        wrap.text:SetPoint("TOPRIGHT", wrap, "TOPRIGHT", 0, 0)
-        frame.buildNameWrap = wrap
+    if frame.buildMetaText then
+        frame.buildMetaText:Hide()
     end
-    local wrap = frame.buildNameWrap
-    wrap:ClearAllPoints()
-    wrap:SetPoint("TOPLEFT", frame.content, "TOPLEFT", 6, -4)
-    if frame.refreshButton then
-        wrap:SetPoint("TOPRIGHT", frame.refreshButton, "TOPLEFT", -6, -2)
-    else
-        wrap:SetPoint("TOPRIGHT", frame.content, "TOPRIGHT", -6, -4)
+    if frame.buildTierText then
+        frame.buildTierText:Hide()
     end
-    local rawName = stripTextureTags((self.selectedWishlistBuild and self.selectedWishlistBuild.name) or "Build")
-    wrap.text:SetText(rawName)
-    local contentWidth = frame.content and frame.content.GetWidth and frame.content:GetWidth() or nil
-    if (not contentWidth) or contentWidth <= 0 then
-        contentWidth = frame.GetWidth and frame:GetWidth() or nil
-    end
-    if (not contentWidth) or contentWidth <= 0 then
-        contentWidth = OPTIONS_PANEL_WIDTH
-    end
-    local nameWidth = contentWidth - 12
-    if frame.refreshButton and frame.refreshButton.GetWidth then
-        nameWidth = nameWidth - (frame.refreshButton:GetWidth() + 6)
-    end
-    if nameWidth < 100 then
-        nameWidth = 180
-    end
-    wrap:SetWidth(nameWidth)
-    if wrap.text.SetWidth then
-        wrap.text:SetWidth(nameWidth)
-    end
-    nameHeight = (wrap.text.GetStringHeight and wrap.text:GetStringHeight() or 16)
-    if nameHeight < 32 then
-        nameHeight = 32
-    end
-    wrap:SetHeight(nameHeight)
-    wrap:Show()
     local content = frame.content
     local rowCount = #entries
     local headerHeight = 24
-    local nameHeight = 16
-    local metaHeight = 0
-    local tierHeight = 0
     local padBottom = 14
-    local notesHeaderHeight = 14
     local notesGap = 6
-    local notesTextGap = 4
     local sourcesGap = 6
-    local sourcesLabelHeight = 14
     local sourcesIconHeight = 16
-    local notesTextHeight = 14
     local sourcesIconCount = 0
     frame:ClearAllPoints()
     frame:SetPoint("TOPLEFT", UI.frame, "TOPRIGHT", 10, -30)
@@ -11628,62 +11591,57 @@ function UI:UpdateBuildPreviewTooltip()
         return row
     end
 
-    local needsRefresh = false
-    local build = self.selectedWishlistBuild
-    if frame.buildMetaText then
-        local metaText = ""
-        if build and build.class and build.spec then
-            local className = (LOCALIZED_CLASS_NAMES_MALE and LOCALIZED_CLASS_NAMES_MALE[build.class]) or build.class
-            metaText = string.format("%s, %s", tostring(build.spec), tostring(className))
-        elseif build and build.spec then
-            metaText = tostring(build.spec)
-        elseif build and build.class then
-            local className = (LOCALIZED_CLASS_NAMES_MALE and LOCALIZED_CLASS_NAMES_MALE[build.class]) or build.class
-            metaText = tostring(className)
+    local function ensureNoteRow(idx)
+        if frame.rows[idx] then
+            return frame.rows[idx]
         end
-        frame.buildMetaText:SetText(metaText)
-        frame.buildMetaText:ClearAllPoints()
-        local nameAnchor = frame.buildNameWrap or frame.buildNameText
-        frame.buildMetaText:SetPoint("TOPLEFT", nameAnchor, "BOTTOMLEFT", 0, -2)
-        frame.buildMetaText:SetPoint("TOPRIGHT", frame.content, "TOPRIGHT", -6, 0)
-        if metaText ~= "" then
-            metaHeight = (frame.buildMetaText.GetStringHeight and frame.buildMetaText:GetStringHeight() or 14)
-            frame.buildMetaText:Show()
-        else
-            metaHeight = 0
-            frame.buildMetaText:Hide()
+        local row = CreateFrame("Frame", nil, content)
+        row:SetHeight(frame.rowHeight)
+        row:SetPoint("TOPLEFT", content, "TOPLEFT", 6, -24 - (idx - 1) * frame.rowHeight)
+        row:SetPoint("RIGHT", content, "RIGHT", -6, 0)
+        local note = createLabel(row, "", "GameFontHighlightSmall")
+        note:SetJustifyH("CENTER")
+        note:SetWordWrap(true)
+        if note.SetNonSpaceWrap then
+            note:SetNonSpaceWrap(true)
         end
+        if note.SetMaxLines then
+            note:SetMaxLines(0)
+        end
+        note:SetPoint("TOPLEFT", row, "TOPLEFT", 12, -2)
+        note:SetPoint("TOPRIGHT", row, "TOPRIGHT", -12, -2)
+        note:SetTextColor(0.8, 0.8, 0.8)
+        row.note = note
+        frame.rows[idx] = row
+        return row
     end
 
-    if frame.buildTierText then
-        local expansion = build and getExpansionBadge(build.tier) or nil
-        local tierBadge = build and getTierBadge(build.tier) or nil
-        local expansionText = ""
-        if expansion == "WLK" then
-            expansionText = "WotLK"
-        elseif expansion == "TBC" then
-            expansionText = "TBC"
-        elseif expansion == "CLS" then
-            expansionText = "Classic"
+    local function ensureTextRow(idx, fontObject)
+        if frame.rows[idx] then
+            return frame.rows[idx]
         end
-        local tierText = tierBadge or ""
-        local combined = expansionText
-        if tierText ~= "" then
-            combined = (combined ~= "" and (combined .. " " .. tierText)) or tierText
+        local row = CreateFrame("Frame", nil, content)
+        row:SetHeight(frame.rowHeight)
+        row:SetPoint("TOPLEFT", content, "TOPLEFT", 6, -24 - (idx - 1) * frame.rowHeight)
+        row:SetPoint("RIGHT", content, "RIGHT", -6, 0)
+        local text = createLabel(row, "", fontObject or "GameFontHighlightSmall")
+        text:SetJustifyH("LEFT")
+        text:SetWordWrap(true)
+        if text.SetNonSpaceWrap then
+            text:SetNonSpaceWrap(true)
         end
-        frame.buildTierText:SetText(combined)
-        frame.buildTierText:ClearAllPoints()
-        local tierAnchor = (frame.buildMetaText and frame.buildMetaText:IsShown() and frame.buildMetaText) or (frame.buildNameWrap or frame.buildNameText)
-        frame.buildTierText:SetPoint("TOPLEFT", tierAnchor, "BOTTOMLEFT", 0, -2)
-        frame.buildTierText:SetPoint("TOPRIGHT", frame.content, "TOPRIGHT", -6, 0)
-        if combined ~= "" then
-            tierHeight = (frame.buildTierText.GetStringHeight and frame.buildTierText:GetStringHeight() or 14)
-            frame.buildTierText:Show()
-        else
-            tierHeight = 0
-            frame.buildTierText:Hide()
+        if text.SetMaxLines then
+            text:SetMaxLines(0)
         end
+        text:SetPoint("TOPLEFT", row, "TOPLEFT", 0, 0)
+        text:SetPoint("TOPRIGHT", row, "TOPRIGHT", 0, 0)
+        row.text = text
+        frame.rows[idx] = row
+        return row
     end
+
+    local needsRefresh = false
+    local build = self.selectedWishlistBuild
 
     if frame.buildTierTooltipFrame then
         frame.buildTierTooltipFrame:Hide()
@@ -11692,23 +11650,100 @@ function UI:UpdateBuildPreviewTooltip()
     if frame.expansionBadge then frame.expansionBadge:Hide() end
     if frame.tierBadge then frame.tierBadge:Hide() end
 
-    local listStartY = -24 - nameHeight - metaHeight - tierHeight - 8
-    if itemsHeaderFrame then
-        itemsHeaderFrame:Hide()
+    local listStartY = -6
+    local yOffset = listStartY
+    local rowIndex = 1
+
+    local function addTextRow(text, font)
+        if not text or text == "" then
+            return
+        end
+        local row = ensureTextRow(rowIndex, font)
+        row:Show()
+        row:ClearAllPoints()
+        row:SetPoint("TOPLEFT", content, "TOPLEFT", 6, yOffset)
+        row:SetPoint("RIGHT", content, "RIGHT", -6, 0)
+        row.text:SetText(text)
+        local h = (row.text.GetStringHeight and row.text:GetStringHeight() or frame.rowHeight)
+        if h < 16 then
+            h = 16
+        end
+        row:SetHeight(h)
+        yOffset = yOffset - h
+        rowIndex = rowIndex + 1
     end
-    if frame.itemsHeader then
-        frame.itemsHeader:Hide()
-    end
-    if frame.itemsHeaderBar then
-        frame.itemsHeaderBar:Hide()
+    local function addHeaderRow(text)
+        if not text or text == "" then
+            return
+        end
+        local row = frame.rows[rowIndex]
+        if not row then
+            row = CreateFrame("Frame", nil, content)
+            local label, heading = createOptionsHeader(row, text, 0)
+            row.headerLabel = label
+            row.headerFrame = heading
+            frame.rows[rowIndex] = row
+        end
+        row:Show()
+        row:ClearAllPoints()
+        row:SetPoint("TOPLEFT", content, "TOPLEFT", 0, yOffset)
+        row:SetPoint("RIGHT", content, "RIGHT", 0, 0)
+        if row.headerLabel then
+            row.headerLabel:SetText(text)
+        end
+        if row.headerFrame then
+            row.headerFrame:ClearAllPoints()
+            row.headerFrame:SetPoint("TOPLEFT", row, "TOPLEFT", 0, 0)
+            row.headerFrame:SetPoint("TOPRIGHT", row, "TOPRIGHT", 0, 0)
+            row.headerFrame:Show()
+        end
+        local h = OPTIONS_HEADER_HEIGHT or 18
+        row:SetHeight(h)
+        yOffset = yOffset - h
+        rowIndex = rowIndex + 1
     end
 
-    local yOffset = listStartY
+    local buildName = stripTextureTags((build and build.name) or "Build")
+    addTextRow(buildName, "GameFontHighlight")
+    local metaText = ""
+    if build and build.class and build.spec then
+        local className = (LOCALIZED_CLASS_NAMES_MALE and LOCALIZED_CLASS_NAMES_MALE[build.class]) or build.class
+        metaText = string.format("%s, %s", tostring(build.spec), tostring(className))
+    elseif build and build.spec then
+        metaText = tostring(build.spec)
+    elseif build and build.class then
+        local className = (LOCALIZED_CLASS_NAMES_MALE and LOCALIZED_CLASS_NAMES_MALE[build.class]) or build.class
+        metaText = tostring(className)
+    end
+    addTextRow(metaText, "GameFontHighlightSmall")
+    local expansion = build and getExpansionBadge(build.tier) or nil
+    local tierBadge = build and getTierBadge(build.tier) or nil
+    local expansionText = ""
+    if expansion == "WLK" then
+        expansionText = "WotLK"
+    elseif expansion == "TBC" then
+        expansionText = "TBC"
+    elseif expansion == "CLS" then
+        expansionText = "Classic"
+    end
+    local tierText = tierBadge or ""
+    local combined = expansionText
+    if tierText ~= "" then
+        combined = (combined ~= "" and (combined .. " " .. tierText)) or tierText
+    end
+    addTextRow(combined, "GameFontHighlightSmall")
+    addHeaderRow("Items")
     for i = 1, rowCount do
-        local row = ensureRow(i)
         local entry = entries[i]
+
+        local row = ensureRow(rowIndex)
         row:Show()
         row.itemId = entry.itemId
+        row:SetHeight(frame.rowHeight)
+        row:ClearAllPoints()
+        row:SetPoint("TOPLEFT", content, "TOPLEFT", 6, yOffset)
+        row:SetPoint("RIGHT", content, "RIGHT", -6, 0)
+
         local cached = Goals.CacheItemById and Goals:CacheItemById(entry.itemId) or nil
         local label = cached and cached.name or ("Item " .. tostring(entry.itemId))
         local slotLabel = entry.slotKey or ""
@@ -11732,45 +11767,86 @@ function UI:UpdateBuildPreviewTooltip()
             row.icon:Hide()
         end
 
-        local noteText = stripTextureTags(entry.notes or "")
-        noteText = resolveNoteItemIds(noteText)
-        local rowHeight = frame.rowHeight
-        if row.note then
-            row.note:Hide()
+        local rawNoteText = stripTextureTags(entry.notes or "")
+        local noteIds = extractNoteItemIds(rawNoteText)
+        local noteText = resolveNoteItemIds(rawNoteText)
+
+        yOffset = yOffset - frame.rowHeight
+        rowIndex = rowIndex + 1
+
+        if noteText ~= "" then
+            local noteRow = ensureNoteRow(rowIndex)
+            noteRow:Show()
+            noteRow:ClearAllPoints()
+            noteRow:SetPoint("TOPLEFT", content, "TOPLEFT", 6, yOffset)
+            noteRow:SetPoint("RIGHT", content, "RIGHT", -6, 0)
+            local rowWidth = noteRow.GetWidth and noteRow:GetWidth() or nil
+            if rowWidth and noteRow.note.SetWidth then
+                noteRow.note:SetWidth(math.max(40, rowWidth - 24))
+            end
+            noteRow.note:SetText(noteText)
+            local noteHeight = (noteRow.note.GetStringHeight and noteRow.note:GetStringHeight() or 0)
+            if noteHeight < 12 then
+                noteHeight = 12
+            end
+            noteRow:SetHeight(noteHeight + 6)
+
+            if not noteRow.noteTip then
+                local tip = CreateFrame("Frame", nil, noteRow)
+                tip:EnableMouse(true)
+                tip:SetScript("OnEnter", function(selfTip)
+                    if not selfTip.itemId then
+                        return
+                    end
+                    GameTooltip:ClearAllPoints()
+                    GameTooltip:SetOwner(frame, "ANCHOR_NONE")
+                    GameTooltip:SetPoint("TOPLEFT", frame, "TOPRIGHT", 8, -8)
+                    GameTooltip:SetFrameStrata("FULLSCREEN_DIALOG")
+                    if GameTooltip.SetFrameLevel and frame.GetFrameLevel then
+                        GameTooltip:SetFrameLevel(frame:GetFrameLevel() + 20)
+                    end
+                    GameTooltip:SetHyperlink("item:" .. tostring(selfTip.itemId))
+                    GameTooltip:Show()
+                end)
+                tip:SetScript("OnLeave", function()
+                    GameTooltip:Hide()
+                end)
+                noteRow.noteTip = tip
+            end
+            if #noteIds > 0 then
+                noteRow.noteTip.itemId = noteIds[1]
+                noteRow.noteTip:ClearAllPoints()
+                noteRow.noteTip:SetPoint("TOPLEFT", noteRow.note, "TOPLEFT", 0, 0)
+                noteRow.noteTip:SetPoint("BOTTOMRIGHT", noteRow.note, "BOTTOMRIGHT", 0, 0)
+                noteRow.noteTip:Show()
+            elseif noteRow.noteTip then
+                noteRow.noteTip.itemId = nil
+                noteRow.noteTip:Hide()
+            end
+
+            yOffset = yOffset - noteRow:GetHeight()
+            rowIndex = rowIndex + 1
         end
-            if noteText ~= "" then
-                if not row.note then
-                    row.note = createLabel(row, "", "GameFontHighlightSmall")
-                    row.note:SetJustifyH("CENTER")
-                    row.note:SetWordWrap(true)
-                    row.note:SetPoint("TOPLEFT", row, "LEFT", 0, -6)
-                    row.note:SetPoint("TOPRIGHT", row, "RIGHT", 0, -6)
-                    row.note:SetTextColor(0.8, 0.8, 0.8)
-                    row.note:SetWordWrap(true)
-                end
-            row.note:SetText(noteText)
-            row.note:Show()
-            local noteHeight = (row.note.GetStringHeight and row.note:GetStringHeight() or 0)
-            rowHeight = rowHeight + noteHeight + 2
-        end
-        row:SetHeight(rowHeight)
-        row:ClearAllPoints()
-        row:SetPoint("TOPLEFT", content, "TOPLEFT", 6, yOffset)
-        row:SetPoint("RIGHT", content, "RIGHT", -6, 0)
-        yOffset = yOffset - rowHeight
     end
-    for i = rowCount + 1, #frame.rows do
+    for i = rowIndex, #frame.rows do
         local row = frame.rows[i]
         row:Hide()
         row.itemId = nil
-        row.label:SetText("")
-        row.value:SetText("")
-        row.value:SetTextColor(1, 1, 1)
-        row.icon:SetTexture(nil)
-        row.icon:Hide()
+        if row.label then row.label:SetText("") end
+        if row.value then
+            row.value:SetText("")
+            row.value:SetTextColor(1, 1, 1)
+        end
+        if row.icon then
+            row.icon:SetTexture(nil)
+            row.icon:Hide()
+        end
         if row.note then
             row.note:SetText("")
             row.note:Hide()
+        end
+        if row.text then
+            row.text:SetText("")
         end
     end
 
@@ -11801,46 +11877,56 @@ function UI:UpdateBuildPreviewTooltip()
     local sourcesHeaderFrame = frame.sourcesHeaderFrame
     local sourcesFrame = frame.sourcesFrame
     if notesHeaderFrame then
-        local notesTop = yOffset - notesGap
-        notesHeaderFrame:ClearAllPoints()
-        notesHeaderFrame:SetPoint("TOPLEFT", content, "TOPLEFT", 0, notesTop)
-        notesHeaderFrame:SetPoint("TOPRIGHT", content, "TOPRIGHT", 0, notesTop)
-        notesHeaderFrame:Show()
+        notesHeaderFrame:Hide()
     end
     if notesText then
-        notesText:ClearAllPoints()
-        local notesAnchor = notesHeaderFrame or notesHeader
-        notesText:SetPoint("TOPLEFT", notesAnchor, "BOTTOMLEFT", 6, -notesTextGap)
-        notesText:SetPoint("TOPRIGHT", content, "TOPRIGHT", -6, 0)
-        local contentWidth = content and content.GetWidth and content:GetWidth() or nil
-        if notesText.SetWidth and contentWidth and contentWidth > 0 then
-            notesText:SetWidth(contentWidth - 12)
+        notesText:Hide()
+    end
+    local notesBody = stripTextureTags(build and build.notes or "")
+    if notesBody ~= "" then
+        addHeaderRow("Notes")
+        local row = ensureTextRow(rowIndex, "GameFontHighlightSmall")
+        row:Show()
+        row:ClearAllPoints()
+        row:SetPoint("TOPLEFT", content, "TOPLEFT", 6, yOffset)
+        row:SetPoint("RIGHT", content, "RIGHT", -6, 0)
+        row.text:SetJustifyH("LEFT")
+        row.text:SetWordWrap(true)
+        if row.text.SetNonSpaceWrap then
+            row.text:SetNonSpaceWrap(true)
         end
-        notesText:SetText(stripTextureTags(build and build.notes or "") ~= "" and stripTextureTags(build.notes) or "None.")
-        notesTextHeight = (notesText.GetStringHeight and notesText:GetStringHeight() or 14)
-        notesText:Show()
+        if row.text.SetMaxLines then
+            row.text:SetMaxLines(0)
+        end
+        local contentWidth = content and content.GetWidth and content:GetWidth() or nil
+        if contentWidth and row.text.SetWidth then
+            row.text:SetWidth(contentWidth - 12)
+        end
+        row.text:SetText(notesBody)
+        local h = (row.text.GetStringHeight and row.text:GetStringHeight() or frame.rowHeight)
+        if h < 16 then
+            h = 16
+        end
+        row:SetHeight(h)
+        yOffset = yOffset - h
+        rowIndex = rowIndex + 1
     end
 
+    local sourcesRow = nil
     if (sourcesLabel or sourcesHeaderFrame) and sourcesFrame then
-        local sourcesTop = (yOffset - notesGap) - notesHeaderHeight - notesTextGap - notesTextHeight - sourcesGap
-        if sourcesHeaderFrame then
-            sourcesHeaderFrame:ClearAllPoints()
-            sourcesHeaderFrame:SetPoint("TOPLEFT", content, "TOPLEFT", 0, sourcesTop)
-            sourcesHeaderFrame:SetPoint("TOPRIGHT", content, "TOPRIGHT", 0, sourcesTop)
-            sourcesHeaderFrame:Show()
-        else
-            sourcesLabel:ClearAllPoints()
-            sourcesLabel:SetPoint("TOPLEFT", content, "TOPLEFT", 6, sourcesTop)
-            sourcesLabel:Show()
-        end
+        if sourcesHeaderFrame then sourcesHeaderFrame:Hide() end
+        if sourcesLabel then sourcesLabel:Hide() end
+        addHeaderRow("Sources")
+        sourcesRow = ensureNoteRow(rowIndex)
+        sourcesRow:Show()
+        sourcesRow:ClearAllPoints()
+        sourcesRow:SetPoint("TOPLEFT", content, "TOPLEFT", 6, yOffset)
+        sourcesRow:SetPoint("RIGHT", content, "RIGHT", -6, 0)
         sourcesFrame:ClearAllPoints()
-        local sourcesAnchor = sourcesHeaderFrame or sourcesLabel
-        sourcesFrame:SetPoint("TOPLEFT", sourcesAnchor, "BOTTOMLEFT", 6, -4)
-        local contentWidth = content and content.GetWidth and content:GetWidth() or nil
-        if sourcesFrame.SetWidth and contentWidth and contentWidth > 0 then
-            sourcesFrame:SetWidth(contentWidth - 12)
-        end
+        sourcesFrame:SetPoint("LEFT", sourcesRow, "LEFT", 0, 0)
+        sourcesFrame:SetPoint("TOP", sourcesRow, "TOP", 0, -2)
         sourcesFrame:Show()
+        rowIndex = rowIndex + 1
 
         local iconEntries = {}
         if build then
@@ -11937,9 +12023,15 @@ function UI:UpdateBuildPreviewTooltip()
                 sourcesFrame:SetWidth(math.max(16, (sourcesIconCount * 18)))
             end
             sourcesFrame:Show()
+            if sourcesRow then
+                sourcesRow:SetHeight(sourcesIconHeight + 6)
+            end
         else
             sourcesFrame:Hide()
         end
+    end
+    if sourcesRow then
+        yOffset = yOffset - sourcesRow:GetHeight()
     end
 
     local sourcesHeight = sourcesIconCount > 0 and sourcesIconHeight or 0
@@ -11947,10 +12039,8 @@ function UI:UpdateBuildPreviewTooltip()
     if rowsHeight < 0 then
         rowsHeight = 0
     end
-    local metaPad = (tierHeight > 0 and (tierHeight + 4)) or 0
-    local itemsPad = 0
     local sourcesPad = sourcesHeight > 0 and 18 or 0
-    local neededHeight = headerHeight + nameHeight + metaHeight + metaPad + itemsPad + rowsHeight + notesGap + notesHeaderHeight + notesTextGap + notesTextHeight + sourcesGap + sourcesLabelHeight + (sourcesHeight > 0 and (8 + sourcesHeight) or 0) + padBottom + sourcesPad
+    local neededHeight = headerHeight + rowsHeight + padBottom + sourcesPad - 10
     frame:SetHeight(neededHeight)
     frame:Show()
 end

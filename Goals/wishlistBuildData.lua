@@ -4116,7 +4116,7 @@ Goals.WishlistBuildData = {
                 LEGS = { itemId = 30900, enchantId = 29535, gemIds = {24027, 24058, 24054}, notes = "", source = "wowhead" },
                 FEET = { itemId = 32366, enchantId = 27951, gemIds ={24027, 24058}, notes = "", source = "wowhead" },
                 RING1 = { itemId = 30834, enchantId = 27927, gemIds = {}, notes = "", source ="wowhead" },
-                RING2 = { itemId = 32526, enchantId =27927, gemIds= {}, notes ="Use 'Band of the Ranger-General' instead for +HR", source ="wowhead" },
+                RING2 = { itemId = 32526, enchantId =27927, gemIds= {}, notes ="Use 29997 instead for +HR", source ="wowhead" },
                 TRINKET1 ={ itemId=29383, enchantId=0, gemIds={}, notes="", source="wowhead" },
                 TRINKET2 ={ itemId=28830, enchantId=0, gemIds={}, notes="", source="wowhead" },
                 MAINHAND ={ itemId=32332, enchantId=27984, gemIds={}, notes="", source="wowhead" },
