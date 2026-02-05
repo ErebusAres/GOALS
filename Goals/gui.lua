@@ -411,6 +411,261 @@ local function wishlistCustomSources(build)
     return has
 end
 
+local function getExpansionBadge(tierId)
+    local value = tostring(tierId or ""):upper()
+    if value:find("WOTLK", 1, true) then
+        return "WLK"
+    end
+    if value:find("TBC", 1, true) then
+        return "TBC"
+    end
+    if value:find("CLASSIC", 1, true) then
+        return "CLS"
+    end
+    return nil
+end
+
+local function getTierBadge(tierId)
+    local value = tostring(tierId or ""):upper()
+    if value:find("RS", 1, true) then
+        return "RS"
+    end
+    local pr = value:match("PR(%d+)")
+    if pr then
+        return "PR" .. pr
+    end
+    local tnum = value:match("T(%d+)")
+    if tnum then
+        return "T" .. tnum
+    end
+    local pnum = value:match("_P(%d+)")
+    if pnum then
+        return "PR" .. pnum
+    end
+    if value:find("PRE", 1, true) then
+        local expansion = getExpansionBadge(value)
+        if expansion == "CLS" then
+            return "PR1"
+        elseif expansion == "TBC" then
+            return "PR4"
+        elseif expansion == "WLK" then
+            return "PR7"
+        end
+        return "PR"
+    end
+    return nil
+end
+
+local function getExpansionTooltip(tierId)
+    local value = tostring(tierId or ""):upper()
+    if value:find("WOTLK", 1, true) then
+        return "Wrath of the Lich King"
+    end
+    if value:find("TBC", 1, true) then
+        return "The Burning Crusade"
+    end
+    if value:find("CLASSIC", 1, true) then
+        return "World of Warcraft (Classic)"
+    end
+    return nil
+end
+
+local function getTierTooltip(tierId)
+    local value = tostring(tierId or ""):upper()
+    if value == "WOTLK_RS" then
+        return "Ruby Sanctum"
+    end
+    local pr = value:match("PR(%d+)")
+    if pr then
+        return "Pre-Tier " .. pr
+    end
+    local tnum = value:match("T(%d+)")
+    if tnum then
+        return "Tier " .. tnum
+    end
+    return nil
+end
+
+local function getTierBadgeColor(tierId)
+    local value = tostring(tierId or ""):upper()
+    if value == "WOTLK_RS" then
+        return 0.8, 0.2, 0.2
+    end
+    local expansion = getExpansionBadge(value)
+    local tierNum = nil
+    local pr = value:match("PR(%d+)")
+    if pr then
+        tierNum = 0
+    end
+    local tnum = value:match("T(%d+)")
+    if tnum then
+        tierNum = tonumber(tnum)
+    end
+    if value:find("T25", 1, true) then
+        tierNum = 2.5
+    end
+    if not tierNum then
+        tierNum = 0
+    end
+    local function lerp(a, b, t)
+        return a + (b - a) * t
+    end
+    if expansion == "CLS" then
+        -- Dark brown -> light tan
+        local maxTier = 3
+        local t = math.max(0, math.min(1, tierNum / maxTier))
+        return lerp(0.22, 0.85, t), lerp(0.12, 0.72, t), lerp(0.05, 0.45, t)
+    elseif expansion == "TBC" then
+        -- Dark green -> bright lime
+        local maxTier = 6
+        local t = math.max(0, math.min(1, tierNum / maxTier))
+        return lerp(0.08, 0.55, t), lerp(0.25, 0.95, t), lerp(0.08, 0.35, t)
+    elseif expansion == "WLK" then
+        -- Deep blue -> icy blue
+        local maxTier = 10
+        local t = math.max(0, math.min(1, tierNum / maxTier))
+        return lerp(0.08, 0.55, t), lerp(0.18, 0.75, t), lerp(0.35, 1.0, t)
+    end
+    return 0.2, 0.2, 0.2
+end
+
+local function applyBadgeStyle(badge, text, r, g, b)
+    if not badge or not badge.text then
+        return
+    end
+    if badge.SetAlpha then
+        badge:SetAlpha(1)
+    end
+    badge.text:SetText(text or "")
+    local width = (badge.text.GetStringWidth and badge.text:GetStringWidth() or 0) + 12
+    if badge.SetWidth then
+        badge:SetWidth(width)
+    end
+    if badge.bg then
+        badge.bg:SetTexture(r or 0.2, g or 0.2, b or 0.2, 0.7)
+    end
+    if badge.text.SetTextColor then
+        badge.text:SetTextColor(1, 1, 1, 1)
+    end
+    badge:Show()
+end
+
+local function badgeColorCode(r, g, b)
+    local function toByte(v)
+        v = v or 0
+        if v < 0 then v = 0 end
+        if v > 1 then v = 1 end
+        return math.floor(v * 255 + 0.5)
+    end
+    return string.format("|cff%02x%02x%02x", toByte(r), toByte(g), toByte(b))
+end
+
+local function buildBadgeText(expansionBadge, tierBadge)
+    local parts = {}
+    if expansionBadge then
+        local code = badgeColorCode(0.3, 0.3, 0.3)
+        if expansionBadge == "WLK" then
+            code = badgeColorCode(0.2, 0.45, 0.8)
+        elseif expansionBadge == "TBC" then
+            code = badgeColorCode(0.25, 0.6, 0.35)
+        elseif expansionBadge == "CLS" then
+            code = badgeColorCode(0.7, 0.5, 0.2)
+        end
+        parts[#parts + 1] = string.format("%s[%s]|r", code, expansionBadge)
+    end
+    if tierBadge then
+        local code = badgeColorCode(0.2, 0.2, 0.2)
+        parts[#parts + 1] = string.format("%s[%s]|r", code, tierBadge)
+    end
+    if #parts == 0 then
+        return ""
+    end
+    return "  " .. table.concat(parts, " ")
+end
+
+local function createBadge(parent)
+    local badge = CreateFrame("Frame", nil, parent)
+    badge:SetHeight(14)
+    if badge.SetFrameLevel and parent and parent.GetFrameLevel then
+        badge:SetFrameLevel(parent:GetFrameLevel() + 2)
+    end
+    if badge.SetFrameStrata and parent and parent.GetFrameStrata then
+        badge:SetFrameStrata(parent:GetFrameStrata())
+    end
+    local bg = badge:CreateTexture(nil, "BACKGROUND")
+    bg:SetAllPoints(badge)
+    badge.bg = bg
+    local text = badge:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    text:SetDrawLayer("OVERLAY")
+    text:SetPoint("CENTER", badge, "CENTER", 0, 0)
+    text:SetJustifyH("CENTER")
+    badge.text = text
+    badge:Hide()
+    return badge
+end
+
+local function wrapTextToWidth(text, maxWidth, fontString)
+    if not text or text == "" or not maxWidth or maxWidth <= 0 or not fontString or not fontString.GetStringWidth then
+        return text or ""
+    end
+    local words = {}
+    for w in tostring(text):gmatch("%S+") do
+        words[#words + 1] = w
+    end
+    if #words == 0 then
+        return text
+    end
+    local lines = {}
+    local line = ""
+    for _, w in ipairs(words) do
+        local candidate = (line == "" and w) or (line .. " " .. w)
+        fontString:SetText(candidate)
+        if fontString:GetStringWidth() > maxWidth and line ~= "" then
+            lines[#lines + 1] = line
+            line = w
+        else
+            line = candidate
+        end
+    end
+    if line ~= "" then
+        lines[#lines + 1] = line
+    end
+    return table.concat(lines, "\n")
+end
+
+local function colorizeItemName(name, quality)
+    if not name or name == "" or not quality or not ITEM_QUALITY_COLORS or not ITEM_QUALITY_COLORS[quality] then
+        return name
+    end
+    local color = ITEM_QUALITY_COLORS[quality]
+    local r = math.floor((color.r or 1) * 255 + 0.5)
+    local g = math.floor((color.g or 1) * 255 + 0.5)
+    local b = math.floor((color.b or 1) * 255 + 0.5)
+    return string.format("|cff%02x%02x%02x%s|r", r, g, b, name)
+end
+
+local function resolveNoteItemIds(noteText)
+    if not noteText or noteText == "" then
+        return ""
+    end
+    local function replaceId(idText)
+        local id = tonumber(idText)
+        if not id or id < 1000 or id > 99999 then
+            return idText
+        end
+        if Goals and Goals.CacheItemById then
+            local cached = Goals:CacheItemById(id)
+            if cached and cached.name and cached.name ~= "" then
+                return colorizeItemName(cached.name, cached.quality)
+            end
+        end
+        return idText
+    end
+    -- Replace standalone 4-5 digit sequences
+    local replaced = noteText:gsub("%f[%d](%d%d%d%d%d?)%f[%D]", replaceId)
+    return replaced
+end
+
 local function createFooterBar(ui, page, key, suffix)
     if not ui or not page then
         return nil
@@ -2409,7 +2664,7 @@ local function ensureBuildPreviewTooltip()
     end
     local tip = CreateFrame("Frame", "GoalsBuildPreviewTooltip", UIParent, "GoalsFrameTemplate")
     applyFrameTheme(tip)
-    tip:SetFrameStrata("TOOLTIP")
+    tip:SetFrameStrata("HIGH")
     tip:SetClampedToScreen(true)
     tip:SetWidth(OPTIONS_PANEL_WIDTH + 12)
     tip:Hide()
@@ -2446,8 +2701,25 @@ local function ensureBuildPreviewTooltip()
     buildName:SetPoint("TOPLEFT", content, "TOPLEFT", 6, -4)
     buildName:SetJustifyH("LEFT")
     buildName:SetWordWrap(true)
-    styleOptionsControlLabel(buildName)
+    if buildName.SetNonSpaceWrap then
+        buildName:SetNonSpaceWrap(true)
+    end
     tip.buildNameText = buildName
+
+    local buildMeta = createLabel(content, "", "GameFontHighlightSmall")
+    buildMeta:SetJustifyH("LEFT")
+    buildMeta:SetWordWrap(true)
+    tip.buildMetaText = buildMeta
+
+    local buildTierText = createLabel(content, "", "GameFontHighlightSmall")
+    buildTierText:SetJustifyH("LEFT")
+    buildTierText:SetWordWrap(true)
+    tip.buildTierText = buildTierText
+
+    local expansionBadge = createBadge(content)
+    local tierBadge = createBadge(content)
+    tip.expansionBadge = expansionBadge
+    tip.tierBadge = tierBadge
 
     local refresh = CreateFrame("Button", nil, tip, "UIPanelButtonTemplate")
     refresh:SetText("Refresh")
@@ -2458,22 +2730,32 @@ local function ensureBuildPreviewTooltip()
             UI:RefreshBuildPreviewItems()
         end
     end)
+    refresh:Hide()
+    refresh:SetAlpha(0)
+    refresh:EnableMouse(false)
     tip.refreshButton = refresh
 
-    local notesHeader = createLabel(content, "---- Notes ----", "GameFontNormalSmall")
-    notesHeader:SetJustifyH("LEFT")
-    notesHeader:SetWordWrap(false)
-    tip.notesHeader = notesHeader
+    local notesHeaderLabel, notesHeaderFrame = createOptionsHeader(content, "Notes", 0)
+    tip.notesHeader = notesHeaderLabel
+    tip.notesHeaderFrame = notesHeaderFrame
 
     local notesText = createLabel(content, "", "GameFontHighlightSmall")
     notesText:SetJustifyH("LEFT")
     notesText:SetWordWrap(true)
+    if notesText.SetJustifyV then
+        notesText:SetJustifyV("TOP")
+    end
+    if notesText.SetNonSpaceWrap then
+        notesText:SetNonSpaceWrap(true)
+    end
+    if notesText.SetMaxLines then
+        notesText:SetMaxLines(0)
+    end
     tip.notesText = notesText
 
-    local sourcesLabel = createLabel(content, "Sources:", "GameFontNormalSmall")
-    sourcesLabel:SetJustifyH("LEFT")
-    sourcesLabel:SetWordWrap(false)
-    tip.sourcesLabel = sourcesLabel
+    local sourcesHeaderLabel, sourcesHeaderFrame = createOptionsHeader(content, "Sources", 0)
+    tip.sourcesLabel = sourcesHeaderLabel
+    tip.sourcesHeaderFrame = sourcesHeaderFrame
 
     local sourcesFrame = CreateFrame("Frame", nil, content)
     sourcesFrame:SetHeight(16)
@@ -2492,13 +2774,13 @@ local function buildPreviewEntries(build)
     if type(build.itemsBySlot) == "table" then
         for slotKey, entry in pairs(build.itemsBySlot) do
             if entry and entry.itemId then
-                entries[#entries + 1] = {slotKey = slotKey, itemId = entry.itemId}
+                entries[#entries + 1] = {slotKey = slotKey, itemId = entry.itemId, notes = entry.notes}
             end
         end
     elseif type(build.items) == "table" then
         for _, entry in ipairs(build.items) do
             if entry and entry.slotKey and entry.itemId then
-                entries[#entries + 1] = {slotKey = entry.slotKey, itemId = entry.itemId}
+                entries[#entries + 1] = {slotKey = entry.slotKey, itemId = entry.itemId, notes = entry.notes}
             end
         end
     elseif build.wishlist and Goals.DeserializeWishlist then
@@ -2506,7 +2788,7 @@ local function buildPreviewEntries(build)
         if data and data.items then
             for slotKey, entry in pairs(data.items) do
                 if entry and entry.itemId then
-                    entries[#entries + 1] = {slotKey = slotKey, itemId = entry.itemId}
+                    entries[#entries + 1] = {slotKey = slotKey, itemId = entry.itemId, notes = entry.notes}
                 end
             end
         end
@@ -2541,6 +2823,8 @@ end
 hideBuildPreviewTooltip = function()
     if UI and UI.buildPreviewTooltip then
         UI.buildPreviewTooltip:Hide()
+        UI.buildPreviewTooltip.pendingPreviewRefresh = nil
+        UI.buildPreviewTooltip.previewRefreshAttempts = nil
     end
     if UI then
         UI.previewBuildEntries = nil
@@ -4272,6 +4556,20 @@ function UI:CreateLootTab(page)
 
     for _, row in ipairs(self.lootHistoryRows) do
         row:EnableMouse(true)
+        row.badgeExpansion = createBadge(row)
+        row.badgeTier = createBadge(row)
+        if row.badgeExpansion.SetFrameStrata then
+            row.badgeExpansion:SetFrameStrata("DIALOG")
+        end
+        if row.badgeTier.SetFrameStrata then
+            row.badgeTier:SetFrameStrata("DIALOG")
+        end
+        if row.badgeExpansion.SetFrameLevel then
+            row.badgeExpansion:SetFrameLevel(row:GetFrameLevel() + 10)
+        end
+        if row.badgeTier.SetFrameLevel then
+            row.badgeTier:SetFrameLevel(row:GetFrameLevel() + 10)
+        end
         local selected = row:CreateTexture(nil, "ARTWORK")
         selected:SetTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight")
         selected:SetBlendMode("ADD")
@@ -6424,6 +6722,16 @@ function UI:CreateWishlistTab(page)
         selected:SetBlendMode("ADD")
         selected:Hide()
         row.selected = selected
+        row:SetScript("OnEnter", function(selfRow)
+            if selfRow.build then
+                GameTooltip:SetOwner(selfRow, "ANCHOR_RIGHT")
+                GameTooltip:SetText(selfRow.build.name or "Build")
+                GameTooltip:Show()
+            end
+        end)
+        row:SetScript("OnLeave", function()
+            GameTooltip:Hide()
+        end)
         row:SetScript("OnClick", function(selfRow)
             if selfRow.build then
                 if UI.selectedWishlistBuild == selfRow.build then
@@ -11090,33 +11398,75 @@ function UI:UpdateWishlistBuildList()
             else
                 row.iconSpec:Hide()
             end
+            local function placeTextBadgeLeft(key, text, r, g, b, tooltipText)
+                if not text or text == "" then
+                    return
+                end
+                local frameKey = "badgeFrame" .. key
+                if not row[frameKey] then
+                    local badge = CreateFrame("Frame", nil, row)
+                    badge.bg = badge:CreateTexture(nil, "BACKGROUND")
+                    badge.bg:SetAllPoints(badge)
+                    badge.text = badge:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+                    badge.text:SetPoint("CENTER", badge, "CENTER", 0, 0)
+                    badge.text:SetJustifyH("CENTER")
+                    badge:EnableMouse(true)
+                    badge:SetScript("OnEnter", function(selfBadge)
+                        if selfBadge.tooltipText then
+                            GameTooltip:SetOwner(selfBadge, "ANCHOR_RIGHT")
+                            GameTooltip:SetText(selfBadge.tooltipText)
+                            GameTooltip:Show()
+                        end
+                    end)
+                    badge:SetScript("OnLeave", function()
+                        GameTooltip:Hide()
+                    end)
+                    row[frameKey] = badge
+                end
+                local badge = row[frameKey]
+                badge.text:SetText(text)
+                badge.text:SetTextColor(1, 1, 1, 1)
+                local w = (badge.text.GetStringWidth and badge.text:GetStringWidth() or 18) + 10
+                local h = 14
+                badge.bg:SetColorTexture(r or 0.2, g or 0.2, b or 0.2, 0.7)
+                badge:SetSize(w, h)
+                badge:ClearAllPoints()
+                badge:SetPoint("LEFT", row, "LEFT", iconX, 0)
+                badge.tooltipText = tooltipText
+                badge:Show()
+                iconX = iconX + w + 4
+            end
+            local expansionBadge = getExpansionBadge(build.tier)
+            if expansionBadge then
+                if expansionBadge == "WLK" then
+                    placeTextBadgeLeft("Expansion", expansionBadge, 0.2, 0.45, 0.8, getExpansionTooltip(build.tier))
+                elseif expansionBadge == "TBC" then
+                    placeTextBadgeLeft("Expansion", expansionBadge, 0.25, 0.6, 0.35, getExpansionTooltip(build.tier))
+                elseif expansionBadge == "CLS" then
+                    placeTextBadgeLeft("Expansion", expansionBadge, 0.7, 0.5, 0.2, getExpansionTooltip(build.tier))
+                else
+                    placeTextBadgeLeft("Expansion", expansionBadge, 0.3, 0.3, 0.3, getExpansionTooltip(build.tier))
+                end
+            elseif row.badgeExpansion then
+                row.badgeExpansion:Hide()
+            end
+            local tierBadge = getTierBadge(build.tier)
+            if tierBadge then
+                local tr, tg, tb = getTierBadgeColor(build.tier)
+                placeTextBadgeLeft("Tier", tierBadge, tr, tg, tb, getTierTooltip(build.tier))
+            elseif row.badgeTier then
+                row.badgeTier:Hide()
+            end
+            if not expansionBadge and row.badgeFrameExpansion then
+                row.badgeFrameExpansion:Hide()
+            end
+            if not tierBadge and row.badgeFrameTier then
+                row.badgeFrameTier:Hide()
+            end
             row.text:ClearAllPoints()
             row.text:SetPoint("LEFT", row, "LEFT", iconX + 2, 0)
             row.text:SetPoint("RIGHT", row, "RIGHT", -4, 0)
-            local tierLabel = build.tier
-            local library = Goals.GetWishlistBuildLibrary and Goals:GetWishlistBuildLibrary() or {}
-            for _, tier in ipairs(library.tiers or {}) do
-                if tier.id == build.tier then
-                    tierLabel = tier.label or build.tier
-                    break
-                end
-            end
-            local meta = {}
-            if build.class then
-                table.insert(meta, build.class)
-            end
-            if build.spec then
-                table.insert(meta, build.spec)
-            end
-            if tierLabel then
-                table.insert(meta, tierLabel)
-            end
-            local metaText = table.concat(meta, " / ")
-            if metaText ~= "" then
-                row.text:SetText(string.format("%s (%s)", build.name or "Build", metaText))
-            else
-                row.text:SetText(build.name or "Build")
-            end
+            row.text:SetText(build.name or "Build")
             if self.selectedWishlistBuild == build then
                 row.selected:Show()
             else
@@ -11134,6 +11484,8 @@ function UI:UpdateWishlistBuildList()
             if row.iconWowhead then row.iconWowhead:Hide() end
             if row.iconClass then row.iconClass:Hide() end
             if row.iconSpec then row.iconSpec:Hide() end
+            if row.badgeExpansion then row.badgeExpansion:Hide() end
+            if row.badgeTier then row.badgeTier:Hide() end
         end
     end
 end
@@ -11162,20 +11514,64 @@ function UI:UpdateBuildPreviewTooltip()
         frame.TitleText:SetText("Build Preview")
     end
     if frame.buildNameText then
-        frame.buildNameText:SetText(stripTextureTags((self.selectedWishlistBuild and self.selectedWishlistBuild.name) or "Build"))
-        frame.buildNameText:ClearAllPoints()
-        frame.buildNameText:SetPoint("TOPLEFT", frame.content, "TOPLEFT", 6, -4)
-        if frame.refreshButton then
-            frame.buildNameText:SetPoint("TOPRIGHT", frame.refreshButton, "TOPLEFT", -6, -2)
-        else
-            frame.buildNameText:SetPoint("TOPRIGHT", frame.content, "TOPRIGHT", -6, -4)
-        end
+        frame.buildNameText:Hide()
     end
-
+    if not frame.buildNameWrap then
+        local wrap = CreateFrame("Frame", nil, frame.content)
+        wrap.text = wrap:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+        wrap.text:SetJustifyH("LEFT")
+        wrap.text:SetJustifyV("TOP")
+        wrap.text:SetWordWrap(true)
+        if wrap.text.SetNonSpaceWrap then
+            wrap.text:SetNonSpaceWrap(true)
+        end
+        if wrap.text.SetMaxLines then
+            wrap.text:SetMaxLines(0)
+        end
+        wrap.text:SetPoint("TOPLEFT", wrap, "TOPLEFT", 0, 0)
+        wrap.text:SetPoint("TOPRIGHT", wrap, "TOPRIGHT", 0, 0)
+        frame.buildNameWrap = wrap
+    end
+    local wrap = frame.buildNameWrap
+    wrap:ClearAllPoints()
+    wrap:SetPoint("TOPLEFT", frame.content, "TOPLEFT", 6, -4)
+    if frame.refreshButton then
+        wrap:SetPoint("TOPRIGHT", frame.refreshButton, "TOPLEFT", -6, -2)
+    else
+        wrap:SetPoint("TOPRIGHT", frame.content, "TOPRIGHT", -6, -4)
+    end
+    local rawName = stripTextureTags((self.selectedWishlistBuild and self.selectedWishlistBuild.name) or "Build")
+    wrap.text:SetText(rawName)
+    local contentWidth = frame.content and frame.content.GetWidth and frame.content:GetWidth() or nil
+    if (not contentWidth) or contentWidth <= 0 then
+        contentWidth = frame.GetWidth and frame:GetWidth() or nil
+    end
+    if (not contentWidth) or contentWidth <= 0 then
+        contentWidth = OPTIONS_PANEL_WIDTH
+    end
+    local nameWidth = contentWidth - 12
+    if frame.refreshButton and frame.refreshButton.GetWidth then
+        nameWidth = nameWidth - (frame.refreshButton:GetWidth() + 6)
+    end
+    if nameWidth < 100 then
+        nameWidth = 180
+    end
+    wrap:SetWidth(nameWidth)
+    if wrap.text.SetWidth then
+        wrap.text:SetWidth(nameWidth)
+    end
+    nameHeight = (wrap.text.GetStringHeight and wrap.text:GetStringHeight() or 16)
+    if nameHeight < 32 then
+        nameHeight = 32
+    end
+    wrap:SetHeight(nameHeight)
+    wrap:Show()
     local content = frame.content
     local rowCount = #entries
     local headerHeight = 24
     local nameHeight = 16
+    local metaHeight = 0
+    local tierHeight = 0
     local padBottom = 14
     local notesHeaderHeight = 14
     local notesGap = 6
@@ -11214,7 +11610,13 @@ function UI:UpdateBuildPreviewTooltip()
         row.value = value
         row:SetScript("OnEnter", function(selfRow)
             if selfRow.itemId then
-                GameTooltip:SetOwner(selfRow, "ANCHOR_RIGHT")
+                GameTooltip:ClearAllPoints()
+                GameTooltip:SetOwner(frame, "ANCHOR_NONE")
+                GameTooltip:SetPoint("TOPLEFT", frame, "TOPRIGHT", 8, -8)
+                GameTooltip:SetFrameStrata("FULLSCREEN_DIALOG")
+                if GameTooltip.SetFrameLevel and frame.GetFrameLevel then
+                    GameTooltip:SetFrameLevel(frame:GetFrameLevel() + 20)
+                end
                 GameTooltip:SetHyperlink("item:" .. tostring(selfRow.itemId))
                 GameTooltip:Show()
             end
@@ -11226,6 +11628,82 @@ function UI:UpdateBuildPreviewTooltip()
         return row
     end
 
+    local needsRefresh = false
+    local build = self.selectedWishlistBuild
+    if frame.buildMetaText then
+        local metaText = ""
+        if build and build.class and build.spec then
+            local className = (LOCALIZED_CLASS_NAMES_MALE and LOCALIZED_CLASS_NAMES_MALE[build.class]) or build.class
+            metaText = string.format("%s, %s", tostring(build.spec), tostring(className))
+        elseif build and build.spec then
+            metaText = tostring(build.spec)
+        elseif build and build.class then
+            local className = (LOCALIZED_CLASS_NAMES_MALE and LOCALIZED_CLASS_NAMES_MALE[build.class]) or build.class
+            metaText = tostring(className)
+        end
+        frame.buildMetaText:SetText(metaText)
+        frame.buildMetaText:ClearAllPoints()
+        local nameAnchor = frame.buildNameWrap or frame.buildNameText
+        frame.buildMetaText:SetPoint("TOPLEFT", nameAnchor, "BOTTOMLEFT", 0, -2)
+        frame.buildMetaText:SetPoint("TOPRIGHT", frame.content, "TOPRIGHT", -6, 0)
+        if metaText ~= "" then
+            metaHeight = (frame.buildMetaText.GetStringHeight and frame.buildMetaText:GetStringHeight() or 14)
+            frame.buildMetaText:Show()
+        else
+            metaHeight = 0
+            frame.buildMetaText:Hide()
+        end
+    end
+
+    if frame.buildTierText then
+        local expansion = build and getExpansionBadge(build.tier) or nil
+        local tierBadge = build and getTierBadge(build.tier) or nil
+        local expansionText = ""
+        if expansion == "WLK" then
+            expansionText = "WotLK"
+        elseif expansion == "TBC" then
+            expansionText = "TBC"
+        elseif expansion == "CLS" then
+            expansionText = "Classic"
+        end
+        local tierText = tierBadge or ""
+        local combined = expansionText
+        if tierText ~= "" then
+            combined = (combined ~= "" and (combined .. " " .. tierText)) or tierText
+        end
+        frame.buildTierText:SetText(combined)
+        frame.buildTierText:ClearAllPoints()
+        local tierAnchor = (frame.buildMetaText and frame.buildMetaText:IsShown() and frame.buildMetaText) or (frame.buildNameWrap or frame.buildNameText)
+        frame.buildTierText:SetPoint("TOPLEFT", tierAnchor, "BOTTOMLEFT", 0, -2)
+        frame.buildTierText:SetPoint("TOPRIGHT", frame.content, "TOPRIGHT", -6, 0)
+        if combined ~= "" then
+            tierHeight = (frame.buildTierText.GetStringHeight and frame.buildTierText:GetStringHeight() or 14)
+            frame.buildTierText:Show()
+        else
+            tierHeight = 0
+            frame.buildTierText:Hide()
+        end
+    end
+
+    if frame.buildTierTooltipFrame then
+        frame.buildTierTooltipFrame:Hide()
+    end
+
+    if frame.expansionBadge then frame.expansionBadge:Hide() end
+    if frame.tierBadge then frame.tierBadge:Hide() end
+
+    local listStartY = -24 - nameHeight - metaHeight - tierHeight - 8
+    if itemsHeaderFrame then
+        itemsHeaderFrame:Hide()
+    end
+    if frame.itemsHeader then
+        frame.itemsHeader:Hide()
+    end
+    if frame.itemsHeaderBar then
+        frame.itemsHeaderBar:Hide()
+    end
+
+    local yOffset = listStartY
     for i = 1, rowCount do
         local row = ensureRow(i)
         local entry = entries[i]
@@ -11236,6 +11714,9 @@ function UI:UpdateBuildPreviewTooltip()
         local slotLabel = entry.slotKey or ""
         row.label:SetText(slotLabel .. ":")
         row.value:SetText(label)
+        if not (cached and cached.name and cached.name ~= "") then
+            needsRefresh = true
+        end
         if cached and cached.quality and ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[cached.quality] then
             local color = ITEM_QUALITY_COLORS[cached.quality]
             row.value:SetTextColor(color.r, color.g, color.b)
@@ -11250,6 +11731,33 @@ function UI:UpdateBuildPreviewTooltip()
             row.icon:SetTexture(nil)
             row.icon:Hide()
         end
+
+        local noteText = stripTextureTags(entry.notes or "")
+        noteText = resolveNoteItemIds(noteText)
+        local rowHeight = frame.rowHeight
+        if row.note then
+            row.note:Hide()
+        end
+            if noteText ~= "" then
+                if not row.note then
+                    row.note = createLabel(row, "", "GameFontHighlightSmall")
+                    row.note:SetJustifyH("CENTER")
+                    row.note:SetWordWrap(true)
+                    row.note:SetPoint("TOPLEFT", row, "LEFT", 0, -6)
+                    row.note:SetPoint("TOPRIGHT", row, "RIGHT", 0, -6)
+                    row.note:SetTextColor(0.8, 0.8, 0.8)
+                    row.note:SetWordWrap(true)
+                end
+            row.note:SetText(noteText)
+            row.note:Show()
+            local noteHeight = (row.note.GetStringHeight and row.note:GetStringHeight() or 0)
+            rowHeight = rowHeight + noteHeight + 2
+        end
+        row:SetHeight(rowHeight)
+        row:ClearAllPoints()
+        row:SetPoint("TOPLEFT", content, "TOPLEFT", 6, yOffset)
+        row:SetPoint("RIGHT", content, "RIGHT", -6, 0)
+        yOffset = yOffset - rowHeight
     end
     for i = rowCount + 1, #frame.rows do
         local row = frame.rows[i]
@@ -11260,36 +11768,78 @@ function UI:UpdateBuildPreviewTooltip()
         row.value:SetTextColor(1, 1, 1)
         row.icon:SetTexture(nil)
         row.icon:Hide()
+        if row.note then
+            row.note:SetText("")
+            row.note:Hide()
+        end
+    end
+
+    if needsRefresh then
+        frame.previewRefreshAttempts = (frame.previewRefreshAttempts or 0) + 1
+        if frame.previewRefreshAttempts <= 6 and not frame.pendingPreviewRefresh then
+            frame.pendingPreviewRefresh = true
+            if Goals and Goals.Delay then
+                Goals:Delay(0.4, function()
+                    frame.pendingPreviewRefresh = nil
+                    if frame:IsShown() and UI and UI.RefreshBuildPreviewItems then
+                        UI:RefreshBuildPreviewItems()
+                    end
+                end)
+            else
+                frame.pendingPreviewRefresh = nil
+            end
+        end
+    else
+        frame.previewRefreshAttempts = nil
+        frame.pendingPreviewRefresh = nil
     end
 
     local notesText = frame.notesText
     local notesHeader = frame.notesHeader
+    local notesHeaderFrame = frame.notesHeaderFrame
     local sourcesLabel = frame.sourcesLabel
+    local sourcesHeaderFrame = frame.sourcesHeaderFrame
     local sourcesFrame = frame.sourcesFrame
-    local build = self.selectedWishlistBuild
-
-    if notesHeader then
-        local notesTop = -24 - (rowCount * frame.rowHeight) - notesGap
-        notesHeader:ClearAllPoints()
-        notesHeader:SetPoint("TOPLEFT", content, "TOPLEFT", 6, notesTop)
-        notesHeader:Show()
+    if notesHeaderFrame then
+        local notesTop = yOffset - notesGap
+        notesHeaderFrame:ClearAllPoints()
+        notesHeaderFrame:SetPoint("TOPLEFT", content, "TOPLEFT", 0, notesTop)
+        notesHeaderFrame:SetPoint("TOPRIGHT", content, "TOPRIGHT", 0, notesTop)
+        notesHeaderFrame:Show()
     end
     if notesText then
         notesText:ClearAllPoints()
-        notesText:SetPoint("TOPLEFT", notesHeader, "BOTTOMLEFT", 0, -notesTextGap)
+        local notesAnchor = notesHeaderFrame or notesHeader
+        notesText:SetPoint("TOPLEFT", notesAnchor, "BOTTOMLEFT", 6, -notesTextGap)
         notesText:SetPoint("TOPRIGHT", content, "TOPRIGHT", -6, 0)
+        local contentWidth = content and content.GetWidth and content:GetWidth() or nil
+        if notesText.SetWidth and contentWidth and contentWidth > 0 then
+            notesText:SetWidth(contentWidth - 12)
+        end
         notesText:SetText(stripTextureTags(build and build.notes or "") ~= "" and stripTextureTags(build.notes) or "None.")
         notesTextHeight = (notesText.GetStringHeight and notesText:GetStringHeight() or 14)
         notesText:Show()
     end
 
-    if sourcesLabel and sourcesFrame then
-        local sourcesTop = -24 - (rowCount * frame.rowHeight) - notesGap - notesHeaderHeight - notesTextGap - notesTextHeight - sourcesGap
-        sourcesLabel:ClearAllPoints()
-        sourcesLabel:SetPoint("TOPLEFT", content, "TOPLEFT", 6, sourcesTop)
-        sourcesLabel:Show()
+    if (sourcesLabel or sourcesHeaderFrame) and sourcesFrame then
+        local sourcesTop = (yOffset - notesGap) - notesHeaderHeight - notesTextGap - notesTextHeight - sourcesGap
+        if sourcesHeaderFrame then
+            sourcesHeaderFrame:ClearAllPoints()
+            sourcesHeaderFrame:SetPoint("TOPLEFT", content, "TOPLEFT", 0, sourcesTop)
+            sourcesHeaderFrame:SetPoint("TOPRIGHT", content, "TOPRIGHT", 0, sourcesTop)
+            sourcesHeaderFrame:Show()
+        else
+            sourcesLabel:ClearAllPoints()
+            sourcesLabel:SetPoint("TOPLEFT", content, "TOPLEFT", 6, sourcesTop)
+            sourcesLabel:Show()
+        end
         sourcesFrame:ClearAllPoints()
-        sourcesFrame:SetPoint("TOPLEFT", sourcesLabel, "BOTTOMLEFT", 0, -4)
+        local sourcesAnchor = sourcesHeaderFrame or sourcesLabel
+        sourcesFrame:SetPoint("TOPLEFT", sourcesAnchor, "BOTTOMLEFT", 6, -4)
+        local contentWidth = content and content.GetWidth and content:GetWidth() or nil
+        if sourcesFrame.SetWidth and contentWidth and contentWidth > 0 then
+            sourcesFrame:SetWidth(contentWidth - 12)
+        end
         sourcesFrame:Show()
 
         local iconEntries = {}
@@ -11332,7 +11882,13 @@ function UI:UpdateBuildPreviewTooltip()
                 icon.tex:SetAllPoints(icon)
                 icon:SetScript("OnEnter", function(selfFrame)
                     if selfFrame.tooltipText then
-                        GameTooltip:SetOwner(selfFrame, "ANCHOR_RIGHT")
+                        GameTooltip:ClearAllPoints()
+                        GameTooltip:SetOwner(frame, "ANCHOR_NONE")
+                        GameTooltip:SetPoint("TOPLEFT", frame, "TOPRIGHT", 8, -8)
+                        GameTooltip:SetFrameStrata("FULLSCREEN_DIALOG")
+                        if GameTooltip.SetFrameLevel and frame.GetFrameLevel then
+                            GameTooltip:SetFrameLevel(frame:GetFrameLevel() + 20)
+                        end
                         GameTooltip:SetText(selfFrame.tooltipText)
                         GameTooltip:Show()
                     end
@@ -11344,6 +11900,7 @@ function UI:UpdateBuildPreviewTooltip()
             end
             local entry = iconEntries[i]
             if entry and entry.key == "unknown-source" then
+                icon:ClearAllPoints()
                 icon:SetPoint("LEFT", sourcesFrame, "LEFT", iconX, 0)
                 icon.tex:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
                 icon.tex:SetTexCoord(0, 1, 0, 1)
@@ -11352,10 +11909,20 @@ function UI:UpdateBuildPreviewTooltip()
                 iconX = iconX + 18
                 sourcesIconCount = sourcesIconCount + 1
             elseif entry and Goals.IconTextures and Goals.IconTextures[entry.key] then
+                icon:ClearAllPoints()
                 icon:SetPoint("LEFT", sourcesFrame, "LEFT", iconX, 0)
                 icon.tex:SetTexture(Goals.IconTextures[entry.key])
                 icon.tex:SetTexCoord(0, 1, 0, 1)
                 icon.tooltipText = entry.tooltip
+                icon:Show()
+                iconX = iconX + 18
+                sourcesIconCount = sourcesIconCount + 1
+            elseif entry then
+                icon:ClearAllPoints()
+                icon:SetPoint("LEFT", sourcesFrame, "LEFT", iconX, 0)
+                icon.tex:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
+                icon.tex:SetTexCoord(0, 1, 0, 1)
+                icon.tooltipText = entry.tooltip or "Unknown source"
                 icon:Show()
                 iconX = iconX + 18
                 sourcesIconCount = sourcesIconCount + 1
@@ -11364,10 +11931,26 @@ function UI:UpdateBuildPreviewTooltip()
                 icon.tooltipText = nil
             end
         end
+        if sourcesIconCount > 0 then
+            sourcesFrame:SetHeight(sourcesIconHeight)
+            if sourcesFrame.SetWidth then
+                sourcesFrame:SetWidth(math.max(16, (sourcesIconCount * 18)))
+            end
+            sourcesFrame:Show()
+        else
+            sourcesFrame:Hide()
+        end
     end
 
     local sourcesHeight = sourcesIconCount > 0 and sourcesIconHeight or 0
-    local neededHeight = headerHeight + nameHeight + (rowCount * frame.rowHeight) + notesGap + notesHeaderHeight + notesTextGap + notesTextHeight + sourcesGap + sourcesLabelHeight + (sourcesHeight > 0 and (4 + sourcesHeight) or 0) + padBottom
+    local rowsHeight = listStartY - yOffset
+    if rowsHeight < 0 then
+        rowsHeight = 0
+    end
+    local metaPad = (tierHeight > 0 and (tierHeight + 4)) or 0
+    local itemsPad = 0
+    local sourcesPad = sourcesHeight > 0 and 18 or 0
+    local neededHeight = headerHeight + nameHeight + metaHeight + metaPad + itemsPad + rowsHeight + notesGap + notesHeaderHeight + notesTextGap + notesTextHeight + sourcesGap + sourcesLabelHeight + (sourcesHeight > 0 and (8 + sourcesHeight) or 0) + padBottom + sourcesPad
     frame:SetHeight(neededHeight)
     frame:Show()
 end

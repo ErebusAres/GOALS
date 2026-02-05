@@ -107,20 +107,21 @@ Goals.WishlistBuildLibrary = Goals.WishlistBuildLibrary or {
         },
     },
     tiers = {
-        { id = "CLASSIC_PRE", label = "Classic Pre-Raid", minLevel = 60, maxLevel = 60, expansion = "Classic" },
-        { id = "CLASSIC_T1", label = "Classic Tier 1", minLevel = 60, maxLevel = 60, expansion = "Classic" },
-        { id = "CLASSIC_T2", label = "Classic Tier 2", minLevel = 60, maxLevel = 60, expansion = "Classic" },
-        { id = "CLASSIC_T25", label = "Classic Tier 2.5", minLevel = 60, maxLevel = 60, expansion = "Classic" },
-        { id = "CLASSIC_T3", label = "Classic Tier 3", minLevel = 60, maxLevel = 60, expansion = "Classic" },
-        { id = "TBC_PRE", label = "TBC Pre-Raid", minLevel = 70, maxLevel = 70, expansion = "TBC" },
-        { id = "TBC_T4", label = "TBC Tier 4", minLevel = 70, maxLevel = 70, expansion = "TBC" },
-        { id = "TBC_T5", label = "TBC Tier 5", minLevel = 70, maxLevel = 70, expansion = "TBC" },
-        { id = "TBC_T6", label = "TBC Tier 6", minLevel = 70, maxLevel = 70, expansion = "TBC" },
-        { id = "WOTLK_PRE", label = "WotLK Pre-Raid", minLevel = 80, maxLevel = 80, expansion = "WotLK" },
-        { id = "WOTLK_T7", label = "WotLK Tier 7", minLevel = 80, maxLevel = 80, expansion = "WotLK" },
-        { id = "WOTLK_T8", label = "WotLK Tier 8", minLevel = 80, maxLevel = 80, expansion = "WotLK" },
-        { id = "WOTLK_T9", label = "WotLK Tier 9", minLevel = 80, maxLevel = 80, expansion = "WotLK" },
-        { id = "WOTLK_T10", label = "WotLK Tier 10", minLevel = 80, maxLevel = 80, expansion = "WotLK" },
+        { id = "CLASSIC_PR1", label = "Classic PR1", minLevel = 60, maxLevel = 60, expansion = "Classic" },
+        { id = "CLASSIC_T1", label = "Classic T1", minLevel = 60, maxLevel = 60, expansion = "Classic" },
+        { id = "CLASSIC_T2", label = "Classic T2", minLevel = 60, maxLevel = 60, expansion = "Classic" },
+        { id = "CLASSIC_T25", label = "Classic T2.5", minLevel = 60, maxLevel = 60, expansion = "Classic" },
+        { id = "CLASSIC_T3", label = "Classic T3", minLevel = 60, maxLevel = 60, expansion = "Classic" },
+        { id = "TBC_PR4", label = "TBC PR4", minLevel = 70, maxLevel = 70, expansion = "TBC" },
+        { id = "TBC_T4", label = "TBC T4", minLevel = 70, maxLevel = 70, expansion = "TBC" },
+        { id = "TBC_T5", label = "TBC T5", minLevel = 70, maxLevel = 70, expansion = "TBC" },
+        { id = "TBC_T6", label = "TBC T6", minLevel = 70, maxLevel = 70, expansion = "TBC" },
+        { id = "WOTLK_PR7", label = "WotLK PR7", minLevel = 80, maxLevel = 80, expansion = "WotLK" },
+        { id = "WOTLK_T7", label = "WotLK T7", minLevel = 80, maxLevel = 80, expansion = "WotLK" },
+        { id = "WOTLK_T8", label = "WotLK T8", minLevel = 80, maxLevel = 80, expansion = "WotLK" },
+        { id = "WOTLK_T9", label = "WotLK T9", minLevel = 80, maxLevel = 80, expansion = "WotLK" },
+        { id = "WOTLK_T10", label = "WotLK T10", minLevel = 80, maxLevel = 80, expansion = "WotLK" },
+        { id = "WOTLK_RS", label = "WotLK RS", minLevel = 80, maxLevel = 80, expansion = "WotLK" },
     },
     builds = {},
 }
@@ -191,10 +192,48 @@ function Goals:GetWishlistBuildFilterOptions()
         table.sort(list)
         return list
     end
+    local function sortedTierKeys(set)
+        local list = {}
+        for key in pairs(set) do
+            table.insert(list, key)
+        end
+        local function tierKey(tierId)
+            local value = tostring(tierId or ""):upper()
+            local expansion = 4
+            if value:find("^CLASSIC_", 1, false) then
+                expansion = 1
+            elseif value:find("^TBC_", 1, false) then
+                expansion = 2
+            elseif value:find("^WOTLK_", 1, false) then
+                expansion = 3
+            end
+            if value == "WOTLK_RS" then
+                return expansion, 3, 99
+            end
+            local pr = value:match("PR(%d+)")
+            if pr then
+                return expansion, 1, tonumber(pr) or 0
+            end
+            local t = value:match("T(%d+)")
+            if t then
+                return expansion, 2, tonumber(t) or 0
+            end
+            return expansion, 9, 0
+        end
+        table.sort(list, function(a, b)
+            local ea, ka, na = tierKey(a)
+            local eb, kb, nb = tierKey(b)
+            if ea ~= eb then return ea < eb end
+            if ka ~= kb then return ka < kb end
+            if na ~= nb then return na < nb end
+            return tostring(a) < tostring(b)
+        end)
+        return list
+    end
     return {
         classes = sortedKeys(classSet),
         specs = sortedKeys(specSet),
-        tiers = sortedKeys(tierSet),
+        tiers = sortedTierKeys(tierSet),
         tags = sortedKeys(tagSet),
     }
 end

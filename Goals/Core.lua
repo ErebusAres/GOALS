@@ -2142,9 +2142,6 @@ function Goals:CacheItemById(itemId)
     if cached and cached.name then
         return cached
     end
-    if self.pendingWishlistInfo[itemId] then
-        return nil
-    end
     local itemName, itemLink, quality, itemLevel, _, itemType, itemSubType, _, equipSlot, texture = GetItemInfo(itemId)
     if itemName then
         cached = {
@@ -2315,8 +2312,13 @@ function Goals:ProcessPendingWishlistInfo()
             updated = true
         end
     end
-    if updated and self.UI and self.UI.UpdateWishlistUI then
-        self.UI:UpdateWishlistUI()
+    if updated and self.UI then
+        if self.UI.UpdateWishlistUI then
+            self.UI:UpdateWishlistUI()
+        end
+        if self.UI.UpdateBuildPreviewTooltip and self.UI.buildPreviewTooltip and self.UI.buildPreviewTooltip.IsShown and self.UI.buildPreviewTooltip:IsShown() then
+            self.UI:UpdateBuildPreviewTooltip()
+        end
     end
 end
 

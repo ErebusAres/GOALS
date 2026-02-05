@@ -74,8 +74,9 @@ Goals.WishlistBuildCustomData = {
             level = 80,
             tags = {"custom"},
             sources = {"custom-classic", "custom-tbc", "custom-wotlk"},
+            disabled = true, -- Remove this line to enable this build.
             itemsBySlot = {
-                HEAD = { itemId = 40416, enchantId = 50368, gemIds = {41285}, notes = "Icon preview build", source = "custom" },
+                HEAD = { itemId = 40416, enchantId = 50368, gemIds = {41285}, notes = "Icon preview build 30123", source = "custom" },
             },
             notes = "Preview build to verify custom source icons render in-game.",
         },

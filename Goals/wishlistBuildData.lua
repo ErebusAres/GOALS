@@ -151,10 +151,10 @@ Goals.WishlistBuildData = {
     builds = {
         {
             id = "DEATHKNIGHT_BLOOD_DPS_WOTLK_PRE_LOONBIS",
-            name = "PRE Deathknight Blood (DPS) - LoonBiS WotLK",
+            name = "Deathknight Blood (DPS) - LoonBiS",
             class = "DEATHKNIGHT",
             spec = "Blood (DPS)",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -180,7 +180,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "DEATHKNIGHT_BLOOD_DPS_WOTLK_T7_LOONBIS",
-            name = "T7 Deathknight Blood (DPS) - LoonBiS WotLK",
+            name = "Deathknight Blood (DPS) - LoonBiS",
             class = "DEATHKNIGHT",
             spec = "Blood (DPS)",
             tier = "WOTLK_T7",
@@ -209,7 +209,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "DEATHKNIGHT_BLOOD_DPS_WOTLK_T8_LOONBIS",
-            name = "T8 Deathknight Blood (DPS) - LoonBiS WotLK",
+            name = "Deathknight Blood (DPS) - LoonBiS",
             class = "DEATHKNIGHT",
             spec = "Blood (DPS)",
             tier = "WOTLK_T8",
@@ -239,7 +239,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "DEATHKNIGHT_BLOOD_DPS_WOTLK_T10_BISTOOLTIP",
-            name = "T10 Deathknight Blood (DPS) - BiS-Tooltip WotLK",
+            name = "Deathknight Blood (DPS) - BiS-Tooltip",
             class = "DEATHKNIGHT",
             spec = "Blood (DPS)",
             tier = "WOTLK_T10",
@@ -269,7 +269,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "DEATHKNIGHT_BLOOD_DPS_WOTLK_RS_BISTOOLTIP",
-            name = "RS Deathknight Blood (DPS) - BiS-Tooltip WotLK",
+            name = "RS Deathknight Blood (DPS) - BiS-Tooltip",
             class = "DEATHKNIGHT",
             spec = "Blood (DPS)",
             tier = "WOTLK_RS",
@@ -299,10 +299,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "DEATHKNIGHT_BLOOD_TANK_WOTLK_PRE_LOONBIS",
-            name = "PRE Deathknight Blood (Tank) - LoonBiS WotLK",
+            name = "Deathknight Blood (Tank) - LoonBiS",
             class = "DEATHKNIGHT",
             spec = "Blood (Tank)",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -328,7 +328,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "DEATHKNIGHT_BLOOD_TANK_WOTLK_T7_LOONBIS",
-            name = "T7 Deathknight Blood (Tank) - LoonBiS WotLK",
+            name = "Deathknight Blood (Tank) - LoonBiS",
             class = "DEATHKNIGHT",
             spec = "Blood (Tank)",
             tier = "WOTLK_T7",
@@ -357,7 +357,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "DEATHKNIGHT_BLOOD_TANK_WOTLK_T8_LOONBIS",
-            name = "T8 Deathknight Blood (Tank) - LoonBiS WotLK",
+            name = "Deathknight Blood (Tank) - LoonBiS",
             class = "DEATHKNIGHT",
             spec = "Blood (Tank)",
             tier = "WOTLK_T8",
@@ -387,10 +387,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "DEATHKNIGHT_BLOOD_TANK_WOTLK_PRE_BISTOOLTIP",
-            name = "PRE Deathknight Blood (Tank) - BiS-Tooltip WotLK",
+            name = "Deathknight Blood (Tank) - BiS-Tooltip",
             class = "DEATHKNIGHT",
             spec = "Blood (Tank)",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -418,7 +418,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "DEATHKNIGHT_BLOOD_TANK_WOTLK_T9_BISTOOLTIP",
-            name = "T9 Deathknight Blood (Tank) - BiS-Tooltip WotLK",
+            name = "Deathknight Blood (Tank) - BiS-Tooltip",
             class = "DEATHKNIGHT",
             spec = "Blood (Tank)",
             tier = "WOTLK_T9",
@@ -449,7 +449,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "DEATHKNIGHT_BLOOD_TANK_WOTLK_T10_BISTOOLTIP",
-            name = "T10 Deathknight Blood (Tank) - BiS-Tooltip WotLK",
+            name = "Deathknight Blood (Tank) - BiS-Tooltip",
             class = "DEATHKNIGHT",
             spec = "Blood (Tank)",
             tier = "WOTLK_T10",
@@ -480,7 +480,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "DEATHKNIGHT_BLOOD_TANK_WOTLK_RS_BISTOOLTIP",
-            name = "RS Deathknight Blood (Tank) - BiS-Tooltip WotLK",
+            name = "RS Deathknight Blood (Tank) - BiS-Tooltip",
             class = "DEATHKNIGHT",
             spec = "Blood (Tank)",
             tier = "WOTLK_RS",
@@ -511,10 +511,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "DEATHKNIGHT_FROST_WOTLK_PRE_LOONBIS",
-            name = "PRE Deathknight Frost - LoonBiS WotLK",
+            name = "Deathknight Frost - LoonBiS",
             class = "DEATHKNIGHT",
             spec = "Frost",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -540,7 +540,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "DEATHKNIGHT_FROST_WOTLK_T7_LOONBIS",
-            name = "T7 Deathknight Frost - LoonBiS WotLK",
+            name = "Deathknight Frost - LoonBiS",
             class = "DEATHKNIGHT",
             spec = "Frost",
             tier = "WOTLK_T7",
@@ -568,7 +568,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "DEATHKNIGHT_FROST_WOTLK_T8_LOONBIS",
-            name = "T8 Deathknight Frost - LoonBiS WotLK",
+            name = "Deathknight Frost - LoonBiS",
             class = "DEATHKNIGHT",
             spec = "Frost",
             tier = "WOTLK_T8",
@@ -597,10 +597,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "DEATHKNIGHT_FROST_WOTLK_PRE_BISTOOLTIP",
-            name = "PRE Deathknight Frost - BiS-Tooltip WotLK",
+            name = "Deathknight Frost - BiS-Tooltip",
             class = "DEATHKNIGHT",
             spec = "Frost",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -628,7 +628,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "DEATHKNIGHT_FROST_WOTLK_T9_BISTOOLTIP",
-            name = "T9 Deathknight Frost - BiS-Tooltip WotLK",
+            name = "Deathknight Frost - BiS-Tooltip",
             class = "DEATHKNIGHT",
             spec = "Frost",
             tier = "WOTLK_T9",
@@ -659,7 +659,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "DEATHKNIGHT_FROST_WOTLK_T10_BISTOOLTIP",
-            name = "T10 Deathknight Frost - BiS-Tooltip WotLK",
+            name = "Deathknight Frost - BiS-Tooltip",
             class = "DEATHKNIGHT",
             spec = "Frost",
             tier = "WOTLK_T10",
@@ -690,7 +690,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "DEATHKNIGHT_FROST_WOTLK_RS_BISTOOLTIP",
-            name = "RS Deathknight Frost - BiS-Tooltip WotLK",
+            name = "RS Deathknight Frost - BiS-Tooltip",
             class = "DEATHKNIGHT",
             spec = "Frost",
             tier = "WOTLK_RS",
@@ -721,10 +721,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "DEATHKNIGHT_UNHOLY_WOTLK_PRE_LOONBIS",
-            name = "PRE Deathknight Unholy - LoonBiS WotLK",
+            name = "Deathknight Unholy - LoonBiS",
             class = "DEATHKNIGHT",
             spec = "Unholy",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -751,7 +751,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "DEATHKNIGHT_UNHOLY_WOTLK_T7_LOONBIS",
-            name = "T7 Deathknight Unholy - LoonBiS WotLK",
+            name = "Deathknight Unholy - LoonBiS",
             class = "DEATHKNIGHT",
             spec = "Unholy",
             tier = "WOTLK_T7",
@@ -781,7 +781,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "DEATHKNIGHT_UNHOLY_WOTLK_T8_LOONBIS",
-            name = "T8 Deathknight Unholy - LoonBiS WotLK",
+            name = "Deathknight Unholy - LoonBiS",
             class = "DEATHKNIGHT",
             spec = "Unholy",
             tier = "WOTLK_T8",
@@ -812,10 +812,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "DEATHKNIGHT_UNHOLY_WOTLK_PRE_BISTOOLTIP",
-            name = "PRE Deathknight Unholy - BiS-Tooltip WotLK",
+            name = "Deathknight Unholy - BiS-Tooltip",
             class = "DEATHKNIGHT",
             spec = "Unholy",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -843,7 +843,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "DEATHKNIGHT_UNHOLY_WOTLK_T9_BISTOOLTIP",
-            name = "T9 Deathknight Unholy - BiS-Tooltip WotLK",
+            name = "Deathknight Unholy - BiS-Tooltip",
             class = "DEATHKNIGHT",
             spec = "Unholy",
             tier = "WOTLK_T9",
@@ -874,7 +874,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "DEATHKNIGHT_UNHOLY_WOTLK_T10_BISTOOLTIP",
-            name = "T10 Deathknight Unholy - BiS-Tooltip WotLK",
+            name = "Deathknight Unholy - BiS-Tooltip",
             class = "DEATHKNIGHT",
             spec = "Unholy",
             tier = "WOTLK_T10",
@@ -905,7 +905,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "DEATHKNIGHT_UNHOLY_WOTLK_RS_BISTOOLTIP",
-            name = "RS Deathknight Unholy - BiS-Tooltip WotLK",
+            name = "RS Deathknight Unholy - BiS-Tooltip",
             class = "DEATHKNIGHT",
             spec = "Unholy",
             tier = "WOTLK_RS",
@@ -936,7 +936,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "DRUID_BALANCE_TBC_T6_WOWHEAD",
-            name = "T6 Druid Balance - Wowhead",
+            name = "Druid Balance - Wowhead",
             class = "DRUID",
             spec = "Balance",
             tier = "TBC_T6",
@@ -965,7 +965,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "DRUID_BALANCE_TBC_T6_LOONBIS",
-            name = "T6 Druid Balance - LoonBiS TBC",
+            name = "Druid Balance - LoonBiS",
             class = "DRUID",
             spec = "Balance",
             tier = "TBC_T6",
@@ -995,10 +995,10 @@ Goals.WishlistBuildData = {
         },
         {
             id = "DRUID_BALANCE_WOTLK_PRE_LOONBIS",
-            name = "PRE Druid Balance - LoonBiS WotLK",
+            name = "Druid Balance - LoonBiS",
             class = "DRUID",
             spec = "Balance",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -1025,7 +1025,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "DRUID_BALANCE_WOTLK_T7_LOONBIS",
-            name = "T7 Druid Balance - LoonBiS WotLK",
+            name = "Druid Balance - LoonBiS",
             class = "DRUID",
             spec = "Balance",
             tier = "WOTLK_T7",
@@ -1055,7 +1055,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "DRUID_BALANCE_WOTLK_T8_LOONBIS",
-            name = "T8 Druid Balance - LoonBiS WotLK",
+            name = "Druid Balance - LoonBiS",
             class = "DRUID",
             spec = "Balance",
             tier = "WOTLK_T8",
@@ -1086,10 +1086,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "DRUID_BALANCE_WOTLK_PRE_BISTOOLTIP",
-            name = "PRE Druid Balance - BiS-Tooltip WotLK",
+            name = "Druid Balance - BiS-Tooltip",
             class = "DRUID",
             spec = "Balance",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -1117,7 +1117,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "DRUID_BALANCE_WOTLK_T9_BISTOOLTIP",
-            name = "T9 Druid Balance - BiS-Tooltip WotLK",
+            name = "Druid Balance - BiS-Tooltip",
             class = "DRUID",
             spec = "Balance",
             tier = "WOTLK_T9",
@@ -1148,7 +1148,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "DRUID_BALANCE_WOTLK_T10_BISTOOLTIP",
-            name = "T10 Druid Balance - BiS-Tooltip WotLK",
+            name = "Druid Balance - BiS-Tooltip",
             class = "DRUID",
             spec = "Balance",
             tier = "WOTLK_T10",
@@ -1179,7 +1179,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "DRUID_BALANCE_WOTLK_RS_BISTOOLTIP",
-            name = "RS Druid Balance - BiS-Tooltip WotLK",
+            name = "RS Druid Balance - BiS-Tooltip",
             class = "DRUID",
             spec = "Balance",
             tier = "WOTLK_RS",
@@ -1210,7 +1210,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "DRUID_FERAL_DPS_TBC_T6_WOWHEAD",
-            name = "T6 Druid Feral (DPS) - Wowhead",
+            name = "Druid Feral (DPS) - Wowhead",
             class = "DRUID",
             spec = "Feral (DPS)",
             tier = "TBC_T6",
@@ -1239,7 +1239,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "DRUID_FERAL_DPS_TBC_T6_LOONBIS",
-            name = "T6 Druid Feral (DPS) - LoonBiS TBC",
+            name = "Druid Feral (DPS) - LoonBiS",
             class = "DRUID",
             spec = "Feral (DPS)",
             tier = "TBC_T6",
@@ -1268,10 +1268,10 @@ Goals.WishlistBuildData = {
         },
         {
             id = "DRUID_FERAL_DPS_WOTLK_PRE_LOONBIS",
-            name = "PRE Druid Feral (DPS) - LoonBiS WotLK",
+            name = "Druid Feral (DPS) - LoonBiS",
             class = "DRUID",
             spec = "Feral (DPS)",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -1297,7 +1297,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "DRUID_FERAL_DPS_WOTLK_T7_LOONBIS",
-            name = "T7 Druid Feral (DPS) - LoonBiS WotLK",
+            name = "Druid Feral (DPS) - LoonBiS",
             class = "DRUID",
             spec = "Feral (DPS)",
             tier = "WOTLK_T7",
@@ -1326,7 +1326,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "DRUID_FERAL_DPS_WOTLK_T8_LOONBIS",
-            name = "T8 Druid Feral (DPS) - LoonBiS WotLK",
+            name = "Druid Feral (DPS) - LoonBiS",
             class = "DRUID",
             spec = "Feral (DPS)",
             tier = "WOTLK_T8",
@@ -1356,10 +1356,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "DRUID_FERAL_DPS_WOTLK_PRE_BISTOOLTIP",
-            name = "PRE Druid Feral (DPS) - BiS-Tooltip WotLK",
+            name = "Druid Feral (DPS) - BiS-Tooltip",
             class = "DRUID",
             spec = "Feral (DPS)",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -1386,7 +1386,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "DRUID_FERAL_DPS_WOTLK_T9_BISTOOLTIP",
-            name = "T9 Druid Feral (DPS) - BiS-Tooltip WotLK",
+            name = "Druid Feral (DPS) - BiS-Tooltip",
             class = "DRUID",
             spec = "Feral (DPS)",
             tier = "WOTLK_T9",
@@ -1416,7 +1416,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "DRUID_FERAL_DPS_WOTLK_T10_BISTOOLTIP",
-            name = "T10 Druid Feral (DPS) - BiS-Tooltip WotLK",
+            name = "Druid Feral (DPS) - BiS-Tooltip",
             class = "DRUID",
             spec = "Feral (DPS)",
             tier = "WOTLK_T10",
@@ -1446,7 +1446,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "DRUID_FERAL_DPS_WOTLK_RS_BISTOOLTIP",
-            name = "RS Druid Feral (DPS) - BiS-Tooltip WotLK",
+            name = "RS Druid Feral (DPS) - BiS-Tooltip",
             class = "DRUID",
             spec = "Feral (DPS)",
             tier = "WOTLK_RS",
@@ -1476,7 +1476,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "DRUID_FERAL_TANK_TBC_T6_LOONBIS",
-            name = "T6 Druid Feral (Tank) - LoonBiS TBC",
+            name = "Druid Feral (Tank) - LoonBiS",
             class = "DRUID",
             spec = "Feral (Tank)",
             tier = "TBC_T6",
@@ -1502,10 +1502,10 @@ Goals.WishlistBuildData = {
         },
         {
             id = "DRUID_FERAL_TANK_WOTLK_PRE_LOONBIS",
-            name = "PRE Druid Feral (Tank) - LoonBiS WotLK",
+            name = "Druid Feral (Tank) - LoonBiS",
             class = "DRUID",
             spec = "Feral (Tank)",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -1522,7 +1522,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "DRUID_FERAL_TANK_WOTLK_T7_LOONBIS",
-            name = "T7 Druid Feral (Tank) - LoonBiS WotLK",
+            name = "Druid Feral (Tank) - LoonBiS",
             class = "DRUID",
             spec = "Feral (Tank)",
             tier = "WOTLK_T7",
@@ -1547,7 +1547,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "DRUID_FERAL_TANK_WOTLK_T8_LOONBIS",
-            name = "T8 Druid Feral (Tank) - LoonBiS WotLK",
+            name = "Druid Feral (Tank) - LoonBiS",
             class = "DRUID",
             spec = "Feral (Tank)",
             tier = "WOTLK_T8",
@@ -1577,10 +1577,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "DRUID_FERAL_TANK_WOTLK_PRE_BISTOOLTIP",
-            name = "PRE Druid Feral (Tank) - BiS-Tooltip WotLK",
+            name = "Druid Feral (Tank) - BiS-Tooltip",
             class = "DRUID",
             spec = "Feral (Tank)",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -1607,7 +1607,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "DRUID_FERAL_TANK_WOTLK_T9_BISTOOLTIP",
-            name = "T9 Druid Feral (Tank) - BiS-Tooltip WotLK",
+            name = "Druid Feral (Tank) - BiS-Tooltip",
             class = "DRUID",
             spec = "Feral (Tank)",
             tier = "WOTLK_T9",
@@ -1637,7 +1637,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "DRUID_FERAL_TANK_WOTLK_T10_BISTOOLTIP",
-            name = "T10 Druid Feral (Tank) - BiS-Tooltip WotLK",
+            name = "Druid Feral (Tank) - BiS-Tooltip",
             class = "DRUID",
             spec = "Feral (Tank)",
             tier = "WOTLK_T10",
@@ -1667,7 +1667,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "DRUID_FERAL_TANK_WOTLK_RS_BISTOOLTIP",
-            name = "RS Druid Feral (Tank) - BiS-Tooltip WotLK",
+            name = "RS Druid Feral (Tank) - BiS-Tooltip",
             class = "DRUID",
             spec = "Feral (Tank)",
             tier = "WOTLK_RS",
@@ -1697,7 +1697,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "DRUID_RESTORATION_TBC_T6_LOONBIS",
-            name = "T6 Druid Restoration - LoonBiS TBC",
+            name = "Druid Restoration - LoonBiS",
             class = "DRUID",
             spec = "Restoration",
             tier = "TBC_T6",
@@ -1727,10 +1727,10 @@ Goals.WishlistBuildData = {
         },
         {
             id = "DRUID_RESTORATION_WOTLK_PRE_LOONBIS",
-            name = "PRE Druid Restoration - LoonBiS WotLK",
+            name = "Druid Restoration - LoonBiS",
             class = "DRUID",
             spec = "Restoration",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -1757,7 +1757,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "DRUID_RESTORATION_WOTLK_T7_LOONBIS",
-            name = "T7 Druid Restoration - LoonBiS WotLK",
+            name = "Druid Restoration - LoonBiS",
             class = "DRUID",
             spec = "Restoration",
             tier = "WOTLK_T7",
@@ -1787,7 +1787,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "DRUID_RESTORATION_WOTLK_T8_LOONBIS",
-            name = "T8 Druid Restoration - LoonBiS WotLK",
+            name = "Druid Restoration - LoonBiS",
             class = "DRUID",
             spec = "Restoration",
             tier = "WOTLK_T8",
@@ -1818,10 +1818,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "DRUID_RESTORATION_WOTLK_PRE_BISTOOLTIP",
-            name = "PRE Druid Restoration - BiS-Tooltip WotLK",
+            name = "Druid Restoration - BiS-Tooltip",
             class = "DRUID",
             spec = "Restoration",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -1849,7 +1849,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "DRUID_RESTORATION_WOTLK_T9_BISTOOLTIP",
-            name = "T9 Druid Restoration - BiS-Tooltip WotLK",
+            name = "Druid Restoration - BiS-Tooltip",
             class = "DRUID",
             spec = "Restoration",
             tier = "WOTLK_T9",
@@ -1880,7 +1880,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "DRUID_RESTORATION_WOTLK_T10_BISTOOLTIP",
-            name = "T10 Druid Restoration - BiS-Tooltip WotLK",
+            name = "Druid Restoration - BiS-Tooltip",
             class = "DRUID",
             spec = "Restoration",
             tier = "WOTLK_T10",
@@ -1911,7 +1911,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "DRUID_RESTORATION_WOTLK_RS_BISTOOLTIP",
-            name = "RS Druid Restoration - BiS-Tooltip WotLK",
+            name = "RS Druid Restoration - BiS-Tooltip",
             class = "DRUID",
             spec = "Restoration",
             tier = "WOTLK_RS",
@@ -1942,7 +1942,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "HUNTER_BEAST_MASTERY_TBC_T6_LOONBIS",
-            name = "T6 Hunter Beast Mastery - LoonBiS TBC",
+            name = "Hunter Beast Mastery - LoonBiS",
             class = "HUNTER",
             spec = "Beast Mastery",
             tier = "TBC_T6",
@@ -1971,10 +1971,10 @@ Goals.WishlistBuildData = {
         },
         {
             id = "HUNTER_BEAST_MASTERY_WOTLK_PRE_LOONBIS",
-            name = "PRE Hunter Beast Mastery - LoonBiS WotLK",
+            name = "Hunter Beast Mastery - LoonBiS",
             class = "HUNTER",
             spec = "Beast Mastery",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -2000,7 +2000,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "HUNTER_BEAST_MASTERY_WOTLK_T7_LOONBIS",
-            name = "T7 Hunter Beast Mastery - LoonBiS WotLK",
+            name = "Hunter Beast Mastery - LoonBiS",
             class = "HUNTER",
             spec = "Beast Mastery",
             tier = "WOTLK_T7",
@@ -2029,7 +2029,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "HUNTER_BEAST_MASTERY_WOTLK_T8_LOONBIS",
-            name = "T8 Hunter Beast Mastery - LoonBiS WotLK",
+            name = "Hunter Beast Mastery - LoonBiS",
             class = "HUNTER",
             spec = "Beast Mastery",
             tier = "WOTLK_T8",
@@ -2059,10 +2059,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "HUNTER_BEAST_MASTERY_WOTLK_PRE_BISTOOLTIP",
-            name = "PRE Hunter Beast Mastery - BiS-Tooltip WotLK",
+            name = "Hunter Beast Mastery - BiS-Tooltip",
             class = "HUNTER",
             spec = "Beast Mastery",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -2090,7 +2090,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "HUNTER_BEAST_MASTERY_WOTLK_T9_BISTOOLTIP",
-            name = "T9 Hunter Beast Mastery - BiS-Tooltip WotLK",
+            name = "Hunter Beast Mastery - BiS-Tooltip",
             class = "HUNTER",
             spec = "Beast Mastery",
             tier = "WOTLK_T9",
@@ -2121,7 +2121,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "HUNTER_BEAST_MASTERY_WOTLK_T10_BISTOOLTIP",
-            name = "T10 Hunter Beast Mastery - BiS-Tooltip WotLK",
+            name = "Hunter Beast Mastery - BiS-Tooltip",
             class = "HUNTER",
             spec = "Beast Mastery",
             tier = "WOTLK_T10",
@@ -2152,7 +2152,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "HUNTER_BEAST_MASTERY_WOTLK_RS_BISTOOLTIP",
-            name = "RS Hunter Beast Mastery - BiS-Tooltip WotLK",
+            name = "RS Hunter Beast Mastery - BiS-Tooltip",
             class = "HUNTER",
             spec = "Beast Mastery",
             tier = "WOTLK_RS",
@@ -2183,7 +2183,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "HUNTER_MARKSMANSHIP_TBC_T6_LOONBIS",
-            name = "T6 Hunter Marksmanship - LoonBiS TBC",
+            name = "Hunter Marksmanship - LoonBiS",
             class = "HUNTER",
             spec = "Marksmanship",
             tier = "TBC_T6",
@@ -2212,10 +2212,10 @@ Goals.WishlistBuildData = {
         },
         {
             id = "HUNTER_MARKSMANSHIP_WOTLK_PRE_LOONBIS",
-            name = "PRE Hunter Marksmanship - LoonBiS WotLK",
+            name = "Hunter Marksmanship - LoonBiS",
             class = "HUNTER",
             spec = "Marksmanship",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -2241,7 +2241,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "HUNTER_MARKSMANSHIP_WOTLK_T7_LOONBIS",
-            name = "T7 Hunter Marksmanship - LoonBiS WotLK",
+            name = "Hunter Marksmanship - LoonBiS",
             class = "HUNTER",
             spec = "Marksmanship",
             tier = "WOTLK_T7",
@@ -2270,7 +2270,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "HUNTER_MARKSMANSHIP_WOTLK_T8_LOONBIS",
-            name = "T8 Hunter Marksmanship - LoonBiS WotLK",
+            name = "Hunter Marksmanship - LoonBiS",
             class = "HUNTER",
             spec = "Marksmanship",
             tier = "WOTLK_T8",
@@ -2300,10 +2300,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "HUNTER_MARKSMANSHIP_WOTLK_PRE_BISTOOLTIP",
-            name = "PRE Hunter Marksmanship - BiS-Tooltip WotLK",
+            name = "Hunter Marksmanship - BiS-Tooltip",
             class = "HUNTER",
             spec = "Marksmanship",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -2331,7 +2331,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "HUNTER_MARKSMANSHIP_WOTLK_T9_BISTOOLTIP",
-            name = "T9 Hunter Marksmanship - BiS-Tooltip WotLK",
+            name = "Hunter Marksmanship - BiS-Tooltip",
             class = "HUNTER",
             spec = "Marksmanship",
             tier = "WOTLK_T9",
@@ -2362,7 +2362,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "HUNTER_MARKSMANSHIP_WOTLK_T10_BISTOOLTIP",
-            name = "T10 Hunter Marksmanship - BiS-Tooltip WotLK",
+            name = "Hunter Marksmanship - BiS-Tooltip",
             class = "HUNTER",
             spec = "Marksmanship",
             tier = "WOTLK_T10",
@@ -2393,7 +2393,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "HUNTER_MARKSMANSHIP_WOTLK_RS_BISTOOLTIP",
-            name = "RS Hunter Marksmanship - BiS-Tooltip WotLK",
+            name = "RS Hunter Marksmanship - BiS-Tooltip",
             class = "HUNTER",
             spec = "Marksmanship",
             tier = "WOTLK_RS",
@@ -2424,7 +2424,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "HUNTER_SURVIVAL_TBC_T6_LOONBIS",
-            name = "T6 Hunter Survival - LoonBiS TBC",
+            name = "Hunter Survival - LoonBiS",
             class = "HUNTER",
             spec = "Survival",
             tier = "TBC_T6",
@@ -2453,10 +2453,10 @@ Goals.WishlistBuildData = {
         },
         {
             id = "HUNTER_SURVIVAL_WOTLK_PRE_LOONBIS",
-            name = "PRE Hunter Survival - LoonBiS WotLK",
+            name = "Hunter Survival - LoonBiS",
             class = "HUNTER",
             spec = "Survival",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -2482,7 +2482,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "HUNTER_SURVIVAL_WOTLK_T7_LOONBIS",
-            name = "T7 Hunter Survival - LoonBiS WotLK",
+            name = "Hunter Survival - LoonBiS",
             class = "HUNTER",
             spec = "Survival",
             tier = "WOTLK_T7",
@@ -2511,7 +2511,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "HUNTER_SURVIVAL_WOTLK_T8_LOONBIS",
-            name = "T8 Hunter Survival - LoonBiS WotLK",
+            name = "Hunter Survival - LoonBiS",
             class = "HUNTER",
             spec = "Survival",
             tier = "WOTLK_T8",
@@ -2541,10 +2541,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "HUNTER_SURVIVAL_WOTLK_PRE_BISTOOLTIP",
-            name = "PRE Hunter Survival - BiS-Tooltip WotLK",
+            name = "Hunter Survival - BiS-Tooltip",
             class = "HUNTER",
             spec = "Survival",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -2572,7 +2572,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "HUNTER_SURVIVAL_WOTLK_T9_BISTOOLTIP",
-            name = "T9 Hunter Survival - BiS-Tooltip WotLK",
+            name = "Hunter Survival - BiS-Tooltip",
             class = "HUNTER",
             spec = "Survival",
             tier = "WOTLK_T9",
@@ -2603,7 +2603,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "HUNTER_SURVIVAL_WOTLK_T10_BISTOOLTIP",
-            name = "T10 Hunter Survival - BiS-Tooltip WotLK",
+            name = "Hunter Survival - BiS-Tooltip",
             class = "HUNTER",
             spec = "Survival",
             tier = "WOTLK_T10",
@@ -2634,7 +2634,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "HUNTER_SURVIVAL_WOTLK_RS_BISTOOLTIP",
-            name = "RS Hunter Survival - BiS-Tooltip WotLK",
+            name = "RS Hunter Survival - BiS-Tooltip",
             class = "HUNTER",
             spec = "Survival",
             tier = "WOTLK_RS",
@@ -2665,7 +2665,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "MAGE_ARCANE_TBC_T6_LOONBIS",
-            name = "T6 Mage Arcane - LoonBiS TBC",
+            name = "Mage Arcane - LoonBiS",
             class = "MAGE",
             spec = "Arcane",
             tier = "TBC_T6",
@@ -2695,10 +2695,10 @@ Goals.WishlistBuildData = {
         },
         {
             id = "MAGE_ARCANE_WOTLK_PRE_LOONBIS",
-            name = "PRE Mage Arcane - LoonBiS WotLK",
+            name = "Mage Arcane - LoonBiS",
             class = "MAGE",
             spec = "Arcane",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -2724,7 +2724,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "MAGE_ARCANE_WOTLK_T7_LOONBIS",
-            name = "T7 Mage Arcane - LoonBiS WotLK",
+            name = "Mage Arcane - LoonBiS",
             class = "MAGE",
             spec = "Arcane",
             tier = "WOTLK_T7",
@@ -2754,7 +2754,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "MAGE_ARCANE_WOTLK_T8_LOONBIS",
-            name = "T8 Mage Arcane - LoonBiS WotLK",
+            name = "Mage Arcane - LoonBiS",
             class = "MAGE",
             spec = "Arcane",
             tier = "WOTLK_T8",
@@ -2784,10 +2784,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "MAGE_ARCANE_WOTLK_PRE_BISTOOLTIP",
-            name = "PRE Mage Arcane - BiS-Tooltip WotLK",
+            name = "Mage Arcane - BiS-Tooltip",
             class = "MAGE",
             spec = "Arcane",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -2814,7 +2814,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "MAGE_ARCANE_WOTLK_T9_BISTOOLTIP",
-            name = "T9 Mage Arcane - BiS-Tooltip WotLK",
+            name = "Mage Arcane - BiS-Tooltip",
             class = "MAGE",
             spec = "Arcane",
             tier = "WOTLK_T9",
@@ -2844,7 +2844,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "MAGE_ARCANE_WOTLK_T10_BISTOOLTIP",
-            name = "T10 Mage Arcane - BiS-Tooltip WotLK",
+            name = "Mage Arcane - BiS-Tooltip",
             class = "MAGE",
             spec = "Arcane",
             tier = "WOTLK_T10",
@@ -2874,7 +2874,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "MAGE_ARCANE_WOTLK_RS_BISTOOLTIP",
-            name = "RS Mage Arcane - BiS-Tooltip WotLK",
+            name = "RS Mage Arcane - BiS-Tooltip",
             class = "MAGE",
             spec = "Arcane",
             tier = "WOTLK_RS",
@@ -2904,7 +2904,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "MAGE_FIRE_TBC_T6_LOONBIS",
-            name = "T6 Mage Fire - LoonBiS TBC",
+            name = "Mage Fire - LoonBiS",
             class = "MAGE",
             spec = "Fire",
             tier = "TBC_T6",
@@ -2933,10 +2933,10 @@ Goals.WishlistBuildData = {
         },
         {
             id = "MAGE_FIRE_WOTLK_PRE_LOONBIS",
-            name = "PRE Mage Fire - LoonBiS WotLK",
+            name = "Mage Fire - LoonBiS",
             class = "MAGE",
             spec = "Fire",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -2963,7 +2963,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "MAGE_FIRE_WOTLK_T7_LOONBIS",
-            name = "T7 Mage Fire - LoonBiS WotLK",
+            name = "Mage Fire - LoonBiS",
             class = "MAGE",
             spec = "Fire",
             tier = "WOTLK_T7",
@@ -2993,7 +2993,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "MAGE_FIRE_WOTLK_T8_LOONBIS",
-            name = "T8 Mage Fire - LoonBiS WotLK",
+            name = "Mage Fire - LoonBiS",
             class = "MAGE",
             spec = "Fire",
             tier = "WOTLK_T8",
@@ -3024,10 +3024,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "MAGE_FIRE_WOTLK_PRE_BISTOOLTIP",
-            name = "PRE Mage Fire - BiS-Tooltip WotLK",
+            name = "Mage Fire - BiS-Tooltip",
             class = "MAGE",
             spec = "Fire",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -3054,7 +3054,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "MAGE_FIRE_WOTLK_T9_BISTOOLTIP",
-            name = "T9 Mage Fire - BiS-Tooltip WotLK",
+            name = "Mage Fire - BiS-Tooltip",
             class = "MAGE",
             spec = "Fire",
             tier = "WOTLK_T9",
@@ -3084,7 +3084,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "MAGE_FIRE_WOTLK_T10_BISTOOLTIP",
-            name = "T10 Mage Fire - BiS-Tooltip WotLK",
+            name = "Mage Fire - BiS-Tooltip",
             class = "MAGE",
             spec = "Fire",
             tier = "WOTLK_T10",
@@ -3114,7 +3114,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "MAGE_FIRE_WOTLK_RS_BISTOOLTIP",
-            name = "RS Mage Fire - BiS-Tooltip WotLK",
+            name = "RS Mage Fire - BiS-Tooltip",
             class = "MAGE",
             spec = "Fire",
             tier = "WOTLK_RS",
@@ -3144,10 +3144,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "MAGE_FIRE_FFB_WOTLK_PRE_BISTOOLTIP",
-            name = "PRE Mage Fire (FFB) - BiS-Tooltip WotLK",
+            name = "Mage Fire (FFB) - BiS-Tooltip",
             class = "MAGE",
             spec = "Fire (FFB)",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -3175,7 +3175,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "MAGE_FIRE_FFB_WOTLK_T9_BISTOOLTIP",
-            name = "T9 Mage Fire (FFB) - BiS-Tooltip WotLK",
+            name = "Mage Fire (FFB) - BiS-Tooltip",
             class = "MAGE",
             spec = "Fire (FFB)",
             tier = "WOTLK_T9",
@@ -3206,7 +3206,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "MAGE_FIRE_FFB_WOTLK_T10_BISTOOLTIP",
-            name = "T10 Mage Fire (FFB) - BiS-Tooltip WotLK",
+            name = "Mage Fire (FFB) - BiS-Tooltip",
             class = "MAGE",
             spec = "Fire (FFB)",
             tier = "WOTLK_T10",
@@ -3237,7 +3237,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "MAGE_FIRE_FFB_WOTLK_RS_BISTOOLTIP",
-            name = "RS Mage Fire (FFB) - BiS-Tooltip WotLK",
+            name = "RS Mage Fire (FFB) - BiS-Tooltip",
             class = "MAGE",
             spec = "Fire (FFB)",
             tier = "WOTLK_RS",
@@ -3269,7 +3269,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "MAGE_FROST_TBC_T6_LOONBIS",
-            name = "T6 Mage Frost - LoonBiS TBC",
+            name = "Mage Frost - LoonBiS",
             class = "MAGE",
             spec = "Frost",
             tier = "TBC_T6",
@@ -3298,10 +3298,10 @@ Goals.WishlistBuildData = {
         },
         {
             id = "MAGE_FROST_WOTLK_PRE_LOONBIS",
-            name = "PRE Mage Frost - LoonBiS WotLK",
+            name = "Mage Frost - LoonBiS",
             class = "MAGE",
             spec = "Frost",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -3328,7 +3328,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "MAGE_FROST_WOTLK_T7_LOONBIS",
-            name = "T7 Mage Frost - LoonBiS WotLK",
+            name = "Mage Frost - LoonBiS",
             class = "MAGE",
             spec = "Frost",
             tier = "WOTLK_T7",
@@ -3358,7 +3358,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "MAGE_FROST_WOTLK_T8_LOONBIS",
-            name = "T8 Mage Frost - LoonBiS WotLK",
+            name = "Mage Frost - LoonBiS",
             class = "MAGE",
             spec = "Frost",
             tier = "WOTLK_T8",
@@ -3388,10 +3388,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "MAGE_FROST_WOTLK_PRE_BISTOOLTIP",
-            name = "PRE Mage Frost - BiS-Tooltip WotLK",
+            name = "Mage Frost - BiS-Tooltip",
             class = "MAGE",
             spec = "Frost",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -3418,7 +3418,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "MAGE_FROST_WOTLK_T9_BISTOOLTIP",
-            name = "T9 Mage Frost - BiS-Tooltip WotLK",
+            name = "Mage Frost - BiS-Tooltip",
             class = "MAGE",
             spec = "Frost",
             tier = "WOTLK_T9",
@@ -3448,7 +3448,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "MAGE_FROST_WOTLK_T10_BISTOOLTIP",
-            name = "T10 Mage Frost - BiS-Tooltip WotLK",
+            name = "Mage Frost - BiS-Tooltip",
             class = "MAGE",
             spec = "Frost",
             tier = "WOTLK_T10",
@@ -3478,7 +3478,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "MAGE_FROST_WOTLK_RS_BISTOOLTIP",
-            name = "RS Mage Frost - BiS-Tooltip WotLK",
+            name = "RS Mage Frost - BiS-Tooltip",
             class = "MAGE",
             spec = "Frost",
             tier = "WOTLK_RS",
@@ -3511,7 +3511,7 @@ Goals.WishlistBuildData = {
             name = "Paladin Holy - TBC_PRE",
             class = "PALADIN",
             spec = "Holy",
-            tier = "TBC_PRE",
+            tier = "TBC_PR4",
             level = 70,
             tags = {"progression"},
             itemsBySlot = {
@@ -3539,7 +3539,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "PALADIN_HOLY_TBC_T6_LOONBIS",
-            name = "T6 Paladin Holy - LoonBiS TBC",
+            name = "Paladin Holy - LoonBiS",
             class = "PALADIN",
             spec = "Holy",
             tier = "TBC_T6",
@@ -3569,7 +3569,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "PALADIN_PROTECTION_TBC_T6_LOONBIS",
-            name = "T6 Paladin Protection - LoonBiS TBC",
+            name = "Paladin Protection - LoonBiS",
             class = "PALADIN",
             spec = "Protection",
             tier = "TBC_T6",
@@ -3599,7 +3599,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "PALADIN_RETRIBUTION_TBC_T6_LOONBIS",
-            name = "T6 Paladin Retribution - LoonBiS TBC",
+            name = "Paladin Retribution - LoonBiS",
             class = "PALADIN",
             spec = "Retribution",
             tier = "TBC_T6",
@@ -3628,10 +3628,10 @@ Goals.WishlistBuildData = {
         },
         {
             id = "PALADIN_HOLY_WOTLK_PRE_LOONBIS",
-            name = "PRE Paladin Holy - LoonBiS WotLK",
+            name = "Paladin Holy - LoonBiS",
             class = "PALADIN",
             spec = "Holy",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -3657,7 +3657,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "PALADIN_HOLY_WOTLK_T7_LOONBIS",
-            name = "T7 Paladin Holy - LoonBiS WotLK",
+            name = "Paladin Holy - LoonBiS",
             class = "PALADIN",
             spec = "Holy",
             tier = "WOTLK_T7",
@@ -3686,7 +3686,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "PALADIN_HOLY_WOTLK_T8_LOONBIS",
-            name = "T8 Paladin Holy - LoonBiS WotLK",
+            name = "Paladin Holy - LoonBiS",
             class = "PALADIN",
             spec = "Holy",
             tier = "WOTLK_T8",
@@ -3715,10 +3715,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "PALADIN_HOLY_WOTLK_PRE_BISTOOLTIP",
-            name = "PRE Paladin Holy - BiS-Tooltip WotLK",
+            name = "Paladin Holy - BiS-Tooltip",
             class = "PALADIN",
             spec = "Holy",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -3746,7 +3746,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "PALADIN_HOLY_WOTLK_T9_BISTOOLTIP",
-            name = "T9 Paladin Holy - BiS-Tooltip WotLK",
+            name = "Paladin Holy - BiS-Tooltip",
             class = "PALADIN",
             spec = "Holy",
             tier = "WOTLK_T9",
@@ -3777,7 +3777,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "PALADIN_HOLY_WOTLK_T10_BISTOOLTIP",
-            name = "T10 Paladin Holy - BiS-Tooltip WotLK",
+            name = "Paladin Holy - BiS-Tooltip",
             class = "PALADIN",
             spec = "Holy",
             tier = "WOTLK_T10",
@@ -3808,7 +3808,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "PALADIN_HOLY_WOTLK_RS_BISTOOLTIP",
-            name = "RS Paladin Holy - BiS-Tooltip WotLK",
+            name = "RS Paladin Holy - BiS-Tooltip",
             class = "PALADIN",
             spec = "Holy",
             tier = "WOTLK_RS",
@@ -3842,7 +3842,7 @@ Goals.WishlistBuildData = {
             name = "Paladin Protection - TBC_PRE",
             class = "PALADIN",
             spec = "Protection",
-            tier = "TBC_PRE",
+            tier = "TBC_PR4",
             level = 70,
             tags = {"progression"},
             itemsBySlot = {
@@ -3869,7 +3869,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "PALADIN_PROTECTION_TBC_T6_WOWHEAD",
-            name = "T6 Paladin Protection - LoonBiS TBC",
+            name = "Paladin Protection - LoonBiS",
             class = "PALADIN",
             spec = "Protection",
             tier = "TBC_T6",
@@ -3899,10 +3899,10 @@ Goals.WishlistBuildData = {
         },
         {
             id = "PALADIN_PROTECTION_WOTLK_PRE_LOONBIS",
-            name = "PRE Paladin Protection - LoonBiS WotLK",
+            name = "Paladin Protection - LoonBiS",
             class = "PALADIN",
             spec = "Protection",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -3922,7 +3922,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "PALADIN_PROTECTION_WOTLK_T7_LOONBIS",
-            name = "T7 Paladin Protection - LoonBiS WotLK",
+            name = "Paladin Protection - LoonBiS",
             class = "PALADIN",
             spec = "Protection",
             tier = "WOTLK_T7",
@@ -3946,7 +3946,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "PALADIN_PROTECTION_WOTLK_T8_LOONBIS",
-            name = "T8 Paladin Protection - LoonBiS WotLK",
+            name = "Paladin Protection - LoonBiS",
             class = "PALADIN",
             spec = "Protection",
             tier = "WOTLK_T8",
@@ -3974,10 +3974,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "PALADIN_PROTECTION_WOTLK_PRE_BISTOOLTIP",
-            name = "PRE Paladin Protection - BiS-Tooltip WotLK",
+            name = "Paladin Protection - BiS-Tooltip",
             class = "PALADIN",
             spec = "Protection",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -4005,7 +4005,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "PALADIN_PROTECTION_WOTLK_T9_BISTOOLTIP",
-            name = "T9 Paladin Protection - BiS-Tooltip WotLK",
+            name = "Paladin Protection - BiS-Tooltip",
             class = "PALADIN",
             spec = "Protection",
             tier = "WOTLK_T9",
@@ -4036,7 +4036,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "PALADIN_PROTECTION_WOTLK_T10_BISTOOLTIP",
-            name = "T10 Paladin Protection - BiS-Tooltip WotLK",
+            name = "Paladin Protection - BiS-Tooltip",
             class = "PALADIN",
             spec = "Protection",
             tier = "WOTLK_T10",
@@ -4067,7 +4067,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "PALADIN_PROTECTION_WOTLK_RS_BISTOOLTIP",
-            name = "RS Paladin Protection - BiS-Tooltip WotLK",
+            name = "RS Paladin Protection - BiS-Tooltip",
             class = "PALADIN",
             spec = "Protection",
             tier = "WOTLK_RS",
@@ -4098,7 +4098,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "PALADIN_RETRIBUTION_TBC_T6",
-            name = "T6 Paladin Retribution - Wowhead TBC",
+            name = "Paladin Retribution - Wowhead",
             class = "PALADIN",
             spec = "Retribution",
             tier = "TBC_T6",
@@ -4127,10 +4127,10 @@ Goals.WishlistBuildData = {
         },
         {
             id = "PALADIN_RETRIBUTION_WOTLK_PRE_LOONBIS",
-            name = "PRE Paladin Retribution - LoonBiS WotLK",
+            name = "Paladin Retribution - LoonBiS",
             class = "PALADIN",
             spec = "Retribution",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -4156,7 +4156,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "PALADIN_RETRIBUTION_WOTLK_T7_LOONBIS",
-            name = "T7 Paladin Retribution - LoonBiS WotLK",
+            name = "Paladin Retribution - LoonBiS",
             class = "PALADIN",
             spec = "Retribution",
             tier = "WOTLK_T7",
@@ -4185,7 +4185,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "PALADIN_RETRIBUTION_WOTLK_T8_LOONBIS",
-            name = "T8 Paladin Retribution - LoonBiS WotLK",
+            name = "Paladin Retribution - LoonBiS",
             class = "PALADIN",
             spec = "Retribution",
             tier = "WOTLK_T8",
@@ -4214,10 +4214,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "PALADIN_RETRIBUTION_WOTLK_PRE_BISTOOLTIP",
-            name = "PRE Paladin Retribution - BiS-Tooltip WotLK",
+            name = "Paladin Retribution - BiS-Tooltip",
             class = "PALADIN",
             spec = "Retribution",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -4244,7 +4244,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "PALADIN_RETRIBUTION_WOTLK_T9_BISTOOLTIP",
-            name = "T9 Paladin Retribution - BiS-Tooltip WotLK",
+            name = "Paladin Retribution - BiS-Tooltip",
             class = "PALADIN",
             spec = "Retribution",
             tier = "WOTLK_T9",
@@ -4274,7 +4274,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "PALADIN_RETRIBUTION_WOTLK_T10_BISTOOLTIP",
-            name = "T10 Paladin Retribution - BiS-Tooltip WotLK",
+            name = "Paladin Retribution - BiS-Tooltip",
             class = "PALADIN",
             spec = "Retribution",
             tier = "WOTLK_T10",
@@ -4304,7 +4304,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "PALADIN_RETRIBUTION_WOTLK_RS_BISTOOLTIP",
-            name = "RS Paladin Retribution - BiS-Tooltip WotLK",
+            name = "RS Paladin Retribution - BiS-Tooltip",
             class = "PALADIN",
             spec = "Retribution",
             tier = "WOTLK_RS",
@@ -4334,7 +4334,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "PRIEST_DISCIPLINE_TBC_T6_WOWHEAD",
-            name = "T6 Priest Discipline - LoonBiS TBC",
+            name = "Priest Discipline - LoonBiS",
             class = "PRIEST",
             spec = "Discipline",
             tier = "TBC_T6",
@@ -4364,7 +4364,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "PRIEST_HOLY_TBC_T6_LOONBIS",
-            name = "T6 Priest Holy - LoonBiS TBC",
+            name = "Priest Holy - LoonBiS",
             class = "PRIEST",
             spec = "Holy",
             tier = "TBC_T6",
@@ -4393,7 +4393,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "PRIEST_SHADOW_TBC_T6_LOONBIS",
-            name = "T6 Priest Shadow - LoonBiS TBC",
+            name = "Priest Shadow - LoonBiS",
             class = "PRIEST",
             spec = "Shadow",
             tier = "TBC_T6",
@@ -4421,10 +4421,10 @@ Goals.WishlistBuildData = {
         },
         {
             id = "PRIEST_DISCIPLINE_WOTLK_PRE_LOONBIS",
-            name = "PRE Priest Discipline - LoonBiS WotLK",
+            name = "Priest Discipline - LoonBiS",
             class = "PRIEST",
             spec = "Discipline",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -4451,7 +4451,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "PRIEST_DISCIPLINE_WOTLK_T7_LOONBIS",
-            name = "T7 Priest Discipline - LoonBiS WotLK",
+            name = "Priest Discipline - LoonBiS",
             class = "PRIEST",
             spec = "Discipline",
             tier = "WOTLK_T7",
@@ -4480,7 +4480,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "PRIEST_DISCIPLINE_WOTLK_T8_LOONBIS",
-            name = "T8 Priest Discipline - LoonBiS WotLK",
+            name = "Priest Discipline - LoonBiS",
             class = "PRIEST",
             spec = "Discipline",
             tier = "WOTLK_T8",
@@ -4511,10 +4511,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "PRIEST_DISCIPLINE_WOTLK_PRE_BISTOOLTIP",
-            name = "PRE Priest Discipline - BiS-Tooltip WotLK",
+            name = "Priest Discipline - BiS-Tooltip",
             class = "PRIEST",
             spec = "Discipline",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -4541,7 +4541,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "PRIEST_DISCIPLINE_WOTLK_T9_BISTOOLTIP",
-            name = "T9 Priest Discipline - BiS-Tooltip WotLK",
+            name = "Priest Discipline - BiS-Tooltip",
             class = "PRIEST",
             spec = "Discipline",
             tier = "WOTLK_T9",
@@ -4571,7 +4571,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "PRIEST_DISCIPLINE_WOTLK_T10_BISTOOLTIP",
-            name = "T10 Priest Discipline - BiS-Tooltip WotLK",
+            name = "Priest Discipline - BiS-Tooltip",
             class = "PRIEST",
             spec = "Discipline",
             tier = "WOTLK_T10",
@@ -4601,7 +4601,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "PRIEST_DISCIPLINE_WOTLK_RS_BISTOOLTIP",
-            name = "RS Priest Discipline - BiS-Tooltip WotLK",
+            name = "RS Priest Discipline - BiS-Tooltip",
             class = "PRIEST",
             spec = "Discipline",
             tier = "WOTLK_RS",
@@ -4634,7 +4634,7 @@ Goals.WishlistBuildData = {
             name = "Priest Holy - TBC_PRE",
             class = "PRIEST",
             spec = "Holy",
-            tier = "TBC_PRE",
+            tier = "TBC_PR4",
             level = 70,
             tags = {"progression"},
             itemsBySlot = {
@@ -4660,7 +4660,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "PRIEST_HOLY_TBC_T6_WOWHEAD",
-            name = "T6 Priest Holy - LoonBiS TBC",
+            name = "Priest Holy - LoonBiS",
             class = "PRIEST",
             spec = "Holy",
             tier = "TBC_T6",
@@ -4690,10 +4690,10 @@ Goals.WishlistBuildData = {
         },
         {
             id = "PRIEST_HOLY_WOTLK_PRE_LOONBIS",
-            name = "PRE Priest Holy - LoonBiS WotLK",
+            name = "Priest Holy - LoonBiS",
             class = "PRIEST",
             spec = "Holy",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -4720,7 +4720,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "PRIEST_HOLY_WOTLK_T7_LOONBIS",
-            name = "T7 Priest Holy - LoonBiS WotLK",
+            name = "Priest Holy - LoonBiS",
             class = "PRIEST",
             spec = "Holy",
             tier = "WOTLK_T7",
@@ -4749,7 +4749,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "PRIEST_HOLY_WOTLK_T8_LOONBIS",
-            name = "T8 Priest Holy - LoonBiS WotLK",
+            name = "Priest Holy - LoonBiS",
             class = "PRIEST",
             spec = "Holy",
             tier = "WOTLK_T8",
@@ -4780,10 +4780,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "PRIEST_HOLY_WOTLK_PRE_BISTOOLTIP",
-            name = "PRE Priest Holy - BiS-Tooltip WotLK",
+            name = "Priest Holy - BiS-Tooltip",
             class = "PRIEST",
             spec = "Holy",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -4810,7 +4810,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "PRIEST_HOLY_WOTLK_T9_BISTOOLTIP",
-            name = "T9 Priest Holy - BiS-Tooltip WotLK",
+            name = "Priest Holy - BiS-Tooltip",
             class = "PRIEST",
             spec = "Holy",
             tier = "WOTLK_T9",
@@ -4840,7 +4840,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "PRIEST_HOLY_WOTLK_T10_BISTOOLTIP",
-            name = "T10 Priest Holy - BiS-Tooltip WotLK",
+            name = "Priest Holy - BiS-Tooltip",
             class = "PRIEST",
             spec = "Holy",
             tier = "WOTLK_T10",
@@ -4870,7 +4870,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "PRIEST_HOLY_WOTLK_RS_BISTOOLTIP",
-            name = "RS Priest Holy - BiS-Tooltip WotLK",
+            name = "RS Priest Holy - BiS-Tooltip",
             class = "PRIEST",
             spec = "Holy",
             tier = "WOTLK_RS",
@@ -4903,7 +4903,7 @@ Goals.WishlistBuildData = {
             name = "Priest Shadow - TBC_PRE",
             class = "PRIEST",
             spec = "Shadow",
-            tier = "TBC_PRE",
+            tier = "TBC_PR4",
             level = 70,
             tags = {"progression"},
             itemsBySlot = {
@@ -4930,7 +4930,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "PRIEST_SHADOW_TBC_T6_WOWHEAD",
-            name = "T6 Priest Shadow - LoonBiS TBC",
+            name = "Priest Shadow - LoonBiS",
             class = "PRIEST",
             spec = "Shadow",
             tier = "TBC_T6",
@@ -4959,10 +4959,10 @@ Goals.WishlistBuildData = {
         },
         {
             id = "PRIEST_SHADOW_WOTLK_PRE_LOONBIS",
-            name = "PRE Priest Shadow - LoonBiS WotLK",
+            name = "Priest Shadow - LoonBiS",
             class = "PRIEST",
             spec = "Shadow",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -4987,7 +4987,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "PRIEST_SHADOW_WOTLK_T7_LOONBIS",
-            name = "T7 Priest Shadow - LoonBiS WotLK",
+            name = "Priest Shadow - LoonBiS",
             class = "PRIEST",
             spec = "Shadow",
             tier = "WOTLK_T7",
@@ -5017,7 +5017,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "PRIEST_SHADOW_WOTLK_T8_LOONBIS",
-            name = "T8 Priest Shadow - LoonBiS WotLK",
+            name = "Priest Shadow - LoonBiS",
             class = "PRIEST",
             spec = "Shadow",
             tier = "WOTLK_T8",
@@ -5048,10 +5048,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "PRIEST_SHADOW_WOTLK_PRE_BISTOOLTIP",
-            name = "PRE Priest Shadow - BiS-Tooltip WotLK",
+            name = "Priest Shadow - BiS-Tooltip",
             class = "PRIEST",
             spec = "Shadow",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -5078,7 +5078,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "PRIEST_SHADOW_WOTLK_T9_BISTOOLTIP",
-            name = "T9 Priest Shadow - BiS-Tooltip WotLK",
+            name = "Priest Shadow - BiS-Tooltip",
             class = "PRIEST",
             spec = "Shadow",
             tier = "WOTLK_T9",
@@ -5108,7 +5108,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "PRIEST_SHADOW_WOTLK_T10_BISTOOLTIP",
-            name = "T10 Priest Shadow - BiS-Tooltip WotLK",
+            name = "Priest Shadow - BiS-Tooltip",
             class = "PRIEST",
             spec = "Shadow",
             tier = "WOTLK_T10",
@@ -5138,7 +5138,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "PRIEST_SHADOW_WOTLK_RS_BISTOOLTIP",
-            name = "RS Priest Shadow - BiS-Tooltip WotLK",
+            name = "RS Priest Shadow - BiS-Tooltip",
             class = "PRIEST",
             spec = "Shadow",
             tier = "WOTLK_RS",
@@ -5168,7 +5168,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "ROGUE_ASSASSINATION_TBC_T6_WOWHEAD",
-            name = "T6 Rogue Assassination - LoonBiS TBC",
+            name = "Rogue Assassination - LoonBiS",
             class = "ROGUE",
             spec = "Assassination",
             tier = "TBC_T6",
@@ -5198,7 +5198,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "ROGUE_COMBAT_TBC_T6_LOONBIS",
-            name = "T6 Rogue Combat - LoonBiS TBC",
+            name = "Rogue Combat - LoonBiS",
             class = "ROGUE",
             spec = "Combat",
             tier = "TBC_T6",
@@ -5228,10 +5228,10 @@ Goals.WishlistBuildData = {
         },
         {
             id = "ROGUE_ASSASSINATION_WOTLK_PRE_LOONBIS",
-            name = "PRE Rogue Assassination - LoonBiS WotLK",
+            name = "Rogue Assassination - LoonBiS",
             class = "ROGUE",
             spec = "Assassination",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -5257,7 +5257,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "ROGUE_ASSASSINATION_WOTLK_T7_LOONBIS",
-            name = "T7 Rogue Assassination - LoonBiS WotLK",
+            name = "Rogue Assassination - LoonBiS",
             class = "ROGUE",
             spec = "Assassination",
             tier = "WOTLK_T7",
@@ -5285,7 +5285,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "ROGUE_ASSASSINATION_WOTLK_T8_LOONBIS",
-            name = "T8 Rogue Assassination - LoonBiS WotLK",
+            name = "Rogue Assassination - LoonBiS",
             class = "ROGUE",
             spec = "Assassination",
             tier = "WOTLK_T8",
@@ -5315,10 +5315,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "ROGUE_ASSASSINATION_WOTLK_PRE_BISTOOLTIP",
-            name = "PRE Rogue Assassination - BiS-Tooltip WotLK",
+            name = "Rogue Assassination - BiS-Tooltip",
             class = "ROGUE",
             spec = "Assassination",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -5345,7 +5345,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "ROGUE_ASSASSINATION_WOTLK_T9_BISTOOLTIP",
-            name = "T9 Rogue Assassination - BiS-Tooltip WotLK",
+            name = "Rogue Assassination - BiS-Tooltip",
             class = "ROGUE",
             spec = "Assassination",
             tier = "WOTLK_T9",
@@ -5375,7 +5375,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "ROGUE_ASSASSINATION_WOTLK_T10_BISTOOLTIP",
-            name = "T10 Rogue Assassination - BiS-Tooltip WotLK",
+            name = "Rogue Assassination - BiS-Tooltip",
             class = "ROGUE",
             spec = "Assassination",
             tier = "WOTLK_T10",
@@ -5405,7 +5405,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "ROGUE_ASSASSINATION_WOTLK_RS_BISTOOLTIP",
-            name = "RS Rogue Assassination - BiS-Tooltip WotLK",
+            name = "RS Rogue Assassination - BiS-Tooltip",
             class = "ROGUE",
             spec = "Assassination",
             tier = "WOTLK_RS",
@@ -5438,7 +5438,7 @@ Goals.WishlistBuildData = {
             name = "Rogue Combat - TBC_PRE",
             class = "ROGUE",
             spec = "Combat",
-            tier = "TBC_PRE",
+            tier = "TBC_PR4",
             level = 70,
             tags = {"progression"},
             itemsBySlot = {
@@ -5466,7 +5466,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "ROGUE_COMBAT_TBC_T6_WOWHEAD",
-            name = "T6 Rogue Combat - LoonBiS TBC",
+            name = "Rogue Combat - LoonBiS",
             class = "ROGUE",
             spec = "Combat",
             tier = "TBC_T6",
@@ -5496,10 +5496,10 @@ Goals.WishlistBuildData = {
         },
         {
             id = "ROGUE_COMBAT_WOTLK_PRE_LOONBIS",
-            name = "PRE Rogue Combat - LoonBiS WotLK",
+            name = "Rogue Combat - LoonBiS",
             class = "ROGUE",
             spec = "Combat",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -5525,7 +5525,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "ROGUE_COMBAT_WOTLK_T7_LOONBIS",
-            name = "T7 Rogue Combat - LoonBiS WotLK",
+            name = "Rogue Combat - LoonBiS",
             class = "ROGUE",
             spec = "Combat",
             tier = "WOTLK_T7",
@@ -5554,7 +5554,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "ROGUE_COMBAT_WOTLK_T8_LOONBIS",
-            name = "T8 Rogue Combat - LoonBiS WotLK",
+            name = "Rogue Combat - LoonBiS",
             class = "ROGUE",
             spec = "Combat",
             tier = "WOTLK_T8",
@@ -5585,10 +5585,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "ROGUE_COMBAT_WOTLK_PRE_BISTOOLTIP",
-            name = "PRE Rogue Combat - BiS-Tooltip WotLK",
+            name = "Rogue Combat - BiS-Tooltip",
             class = "ROGUE",
             spec = "Combat",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -5615,7 +5615,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "ROGUE_COMBAT_WOTLK_T9_BISTOOLTIP",
-            name = "T9 Rogue Combat - BiS-Tooltip WotLK",
+            name = "Rogue Combat - BiS-Tooltip",
             class = "ROGUE",
             spec = "Combat",
             tier = "WOTLK_T9",
@@ -5645,7 +5645,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "ROGUE_COMBAT_WOTLK_T10_BISTOOLTIP",
-            name = "T10 Rogue Combat - BiS-Tooltip WotLK",
+            name = "Rogue Combat - BiS-Tooltip",
             class = "ROGUE",
             spec = "Combat",
             tier = "WOTLK_T10",
@@ -5675,7 +5675,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "ROGUE_COMBAT_WOTLK_RS_BISTOOLTIP",
-            name = "RS Rogue Combat - BiS-Tooltip WotLK",
+            name = "RS Rogue Combat - BiS-Tooltip",
             class = "ROGUE",
             spec = "Combat",
             tier = "WOTLK_RS",
@@ -5705,7 +5705,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "ROGUE_SUBTLETY_TBC_T6_WOWHEAD",
-            name = "T6 Rogue Subtlety - LoonBiS TBC",
+            name = "Rogue Subtlety - LoonBiS",
             class = "ROGUE",
             spec = "Subtlety",
             tier = "TBC_T6",
@@ -5735,10 +5735,10 @@ Goals.WishlistBuildData = {
         },
         {
             id = "ROGUE_SUBTLETY_WOTLK_PRE_LOONBIS",
-            name = "PRE Rogue Subtlety - LoonBiS WotLK",
+            name = "Rogue Subtlety - LoonBiS",
             class = "ROGUE",
             spec = "Subtlety",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -5764,7 +5764,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "ROGUE_SUBTLETY_WOTLK_T7_LOONBIS",
-            name = "T7 Rogue Subtlety - LoonBiS WotLK",
+            name = "Rogue Subtlety - LoonBiS",
             class = "ROGUE",
             spec = "Subtlety",
             tier = "WOTLK_T7",
@@ -5793,7 +5793,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "ROGUE_SUBTLETY_WOTLK_T8_LOONBIS",
-            name = "T8 Rogue Subtlety - LoonBiS WotLK",
+            name = "Rogue Subtlety - LoonBiS",
             class = "ROGUE",
             spec = "Subtlety",
             tier = "WOTLK_T8",
@@ -5824,7 +5824,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "SHAMAN_ELEMENTAL_TBC_T6",
-            name = "T6 Shaman Elemental - Wowhead TBC",
+            name = "Shaman Elemental - Wowhead",
             class = "SHAMAN",
             spec = "Elemental",
             tier = "TBC_T6",
@@ -5853,10 +5853,10 @@ Goals.WishlistBuildData = {
         },
         {
             id = "SHAMAN_ELEMENTAL_WOTLK_PRE_LOONBIS",
-            name = "PRE Shaman Elemental - LoonBiS WotLK",
+            name = "Shaman Elemental - LoonBiS",
             class = "SHAMAN",
             spec = "Elemental",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -5883,7 +5883,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "SHAMAN_ELEMENTAL_WOTLK_T7_LOONBIS",
-            name = "T7 Shaman Elemental - LoonBiS WotLK",
+            name = "Shaman Elemental - LoonBiS",
             class = "SHAMAN",
             spec = "Elemental",
             tier = "WOTLK_T7",
@@ -5913,7 +5913,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "SHAMAN_ELEMENTAL_WOTLK_T8_LOONBIS",
-            name = "T8 Shaman Elemental - LoonBiS WotLK",
+            name = "Shaman Elemental - LoonBiS",
             class = "SHAMAN",
             spec = "Elemental",
             tier = "WOTLK_T8",
@@ -5944,10 +5944,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "SHAMAN_ELEMENTAL_WOTLK_PRE_BISTOOLTIP",
-            name = "PRE Shaman Elemental - BiS-Tooltip WotLK",
+            name = "Shaman Elemental - BiS-Tooltip",
             class = "SHAMAN",
             spec = "Elemental",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -5975,7 +5975,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "SHAMAN_ELEMENTAL_WOTLK_T9_BISTOOLTIP",
-            name = "T9 Shaman Elemental - BiS-Tooltip WotLK",
+            name = "Shaman Elemental - BiS-Tooltip",
             class = "SHAMAN",
             spec = "Elemental",
             tier = "WOTLK_T9",
@@ -6006,7 +6006,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "SHAMAN_ELEMENTAL_WOTLK_T10_BISTOOLTIP",
-            name = "T10 Shaman Elemental - BiS-Tooltip WotLK",
+            name = "Shaman Elemental - BiS-Tooltip",
             class = "SHAMAN",
             spec = "Elemental",
             tier = "WOTLK_T10",
@@ -6037,7 +6037,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "SHAMAN_ELEMENTAL_WOTLK_RS_BISTOOLTIP",
-            name = "RS Shaman Elemental - BiS-Tooltip WotLK",
+            name = "RS Shaman Elemental - BiS-Tooltip",
             class = "SHAMAN",
             spec = "Elemental",
             tier = "WOTLK_RS",
@@ -6071,7 +6071,7 @@ Goals.WishlistBuildData = {
             name = "Shaman Enhancement - TBC_PRE",
             class = "SHAMAN",
             spec = "Enhancement",
-            tier = "TBC_PRE",
+            tier = "TBC_PR4",
             level = 70,
             tags = {"progression"},
             itemsBySlot = {
@@ -6097,7 +6097,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "SHAMAN_ENHANCEMENT_TBC_T6_WOWHEAD",
-            name = "T6 Shaman Enhancement - LoonBiS TBC",
+            name = "Shaman Enhancement - LoonBiS",
             class = "SHAMAN",
             spec = "Enhancement",
             tier = "TBC_T6",
@@ -6127,10 +6127,10 @@ Goals.WishlistBuildData = {
         },
         {
             id = "SHAMAN_ENHANCEMENT_WOTLK_PRE_LOONBIS",
-            name = "PRE Shaman Enhancement - LoonBiS WotLK",
+            name = "Shaman Enhancement - LoonBiS",
             class = "SHAMAN",
             spec = "Enhancement",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -6157,7 +6157,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "SHAMAN_ENHANCEMENT_WOTLK_T7_LOONBIS",
-            name = "T7 Shaman Enhancement - LoonBiS WotLK",
+            name = "Shaman Enhancement - LoonBiS",
             class = "SHAMAN",
             spec = "Enhancement",
             tier = "WOTLK_T7",
@@ -6187,7 +6187,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "SHAMAN_ENHANCEMENT_WOTLK_T8_LOONBIS",
-            name = "T8 Shaman Enhancement - LoonBiS WotLK",
+            name = "Shaman Enhancement - LoonBiS",
             class = "SHAMAN",
             spec = "Enhancement",
             tier = "WOTLK_T8",
@@ -6217,10 +6217,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "SHAMAN_ENHANCEMENT_WOTLK_PRE_BISTOOLTIP",
-            name = "PRE Shaman Enhancement - BiS-Tooltip WotLK",
+            name = "Shaman Enhancement - BiS-Tooltip",
             class = "SHAMAN",
             spec = "Enhancement",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -6248,7 +6248,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "SHAMAN_ENHANCEMENT_WOTLK_T9_BISTOOLTIP",
-            name = "T9 Shaman Enhancement - BiS-Tooltip WotLK",
+            name = "Shaman Enhancement - BiS-Tooltip",
             class = "SHAMAN",
             spec = "Enhancement",
             tier = "WOTLK_T9",
@@ -6279,7 +6279,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "SHAMAN_ENHANCEMENT_WOTLK_T10_BISTOOLTIP",
-            name = "T10 Shaman Enhancement - BiS-Tooltip WotLK",
+            name = "Shaman Enhancement - BiS-Tooltip",
             class = "SHAMAN",
             spec = "Enhancement",
             tier = "WOTLK_T10",
@@ -6310,7 +6310,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "SHAMAN_ENHANCEMENT_WOTLK_RS_BISTOOLTIP",
-            name = "RS Shaman Enhancement - BiS-Tooltip WotLK",
+            name = "RS Shaman Enhancement - BiS-Tooltip",
             class = "SHAMAN",
             spec = "Enhancement",
             tier = "WOTLK_RS",
@@ -6344,7 +6344,7 @@ Goals.WishlistBuildData = {
             name = "Shaman Restoration - TBC_PRE",
             class = "SHAMAN",
             spec = "Restoration",
-            tier = "TBC_PRE",
+            tier = "TBC_PR4",
             level = 70,
             tags = {"progression"},
             itemsBySlot = {
@@ -6372,7 +6372,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "SHAMAN_RESTORATION_TBC_T6_LOONBIS",
-            name = "T6 Shaman Restoration - LoonBiS TBC",
+            name = "Shaman Restoration - LoonBiS",
             class = "SHAMAN",
             spec = "Restoration",
             tier = "TBC_T6",
@@ -6402,7 +6402,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "SHAMAN_ELEMENTAL_TBC_T6_LOONBIS",
-            name = "T6 Shaman Elemental - LoonBiS TBC",
+            name = "Shaman Elemental - LoonBiS",
             class = "SHAMAN",
             spec = "Elemental",
             tier = "TBC_T6",
@@ -6431,7 +6431,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "SHAMAN_ENHANCEMENT_TBC_T6_LOONBIS",
-            name = "T6 Shaman Enhancement - LoonBiS TBC",
+            name = "Shaman Enhancement - LoonBiS",
             class = "SHAMAN",
             spec = "Enhancement",
             tier = "TBC_T6",
@@ -6460,10 +6460,10 @@ Goals.WishlistBuildData = {
         },
         {
             id = "SHAMAN_RESTORATION_WOTLK_PRE_LOONBIS",
-            name = "PRE Shaman Restoration - LoonBiS WotLK",
+            name = "Shaman Restoration - LoonBiS",
             class = "SHAMAN",
             spec = "Restoration",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -6490,7 +6490,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "SHAMAN_RESTORATION_WOTLK_T7_LOONBIS",
-            name = "T7 Shaman Restoration - LoonBiS WotLK",
+            name = "Shaman Restoration - LoonBiS",
             class = "SHAMAN",
             spec = "Restoration",
             tier = "WOTLK_T7",
@@ -6520,7 +6520,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "SHAMAN_RESTORATION_WOTLK_T8_LOONBIS",
-            name = "T8 Shaman Restoration - LoonBiS WotLK",
+            name = "Shaman Restoration - LoonBiS",
             class = "SHAMAN",
             spec = "Restoration",
             tier = "WOTLK_T8",
@@ -6551,10 +6551,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "SHAMAN_RESTORATION_WOTLK_PRE_BISTOOLTIP",
-            name = "PRE Shaman Restoration - BiS-Tooltip WotLK",
+            name = "Shaman Restoration - BiS-Tooltip",
             class = "SHAMAN",
             spec = "Restoration",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -6582,7 +6582,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "SHAMAN_RESTORATION_WOTLK_T9_BISTOOLTIP",
-            name = "T9 Shaman Restoration - BiS-Tooltip WotLK",
+            name = "Shaman Restoration - BiS-Tooltip",
             class = "SHAMAN",
             spec = "Restoration",
             tier = "WOTLK_T9",
@@ -6613,7 +6613,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "SHAMAN_RESTORATION_WOTLK_T10_BISTOOLTIP",
-            name = "T10 Shaman Restoration - BiS-Tooltip WotLK",
+            name = "Shaman Restoration - BiS-Tooltip",
             class = "SHAMAN",
             spec = "Restoration",
             tier = "WOTLK_T10",
@@ -6644,7 +6644,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "SHAMAN_RESTORATION_WOTLK_RS_BISTOOLTIP",
-            name = "RS Shaman Restoration - BiS-Tooltip WotLK",
+            name = "RS Shaman Restoration - BiS-Tooltip",
             class = "SHAMAN",
             spec = "Restoration",
             tier = "WOTLK_RS",
@@ -6678,7 +6678,7 @@ Goals.WishlistBuildData = {
             name = "PRE-T1 Warlock Affliction - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Affliction",
-            tier = "CLASSIC_PRE",
+            tier = "CLASSIC_PR1",
             level = 60,
             tags = {"progression"},
             itemsBySlot = {
@@ -6705,7 +6705,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_AFFLICTION_CLASSIC_T1",
-            name = "T1 Warlock Affliction - WoWTBC.GG",
+            name = "Warlock Affliction - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Affliction",
             tier = "CLASSIC_T1",
@@ -6735,7 +6735,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_AFFLICTION_CLASSIC_T2",
-            name = "T2 Warlock Affliction - WoWTBC.GG",
+            name = "Warlock Affliction - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Affliction",
             tier = "CLASSIC_T2",
@@ -6794,7 +6794,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_AFFLICTION_CLASSIC_T3",
-            name = "T3 Warlock Affliction - WoWTBC.GG",
+            name = "Warlock Affliction - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Affliction",
             tier = "CLASSIC_T3",
@@ -6827,7 +6827,7 @@ Goals.WishlistBuildData = {
             name = "TBC_PRE Warlock Affliction - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Affliction",
-            tier = "TBC_PRE",
+            tier = "TBC_PR4",
             level = 70,
             tags = {"progression"},
             itemsBySlot = {
@@ -6855,7 +6855,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_AFFLICTION_TBC_T4",
-            name = "T4 Warlock Affliction - WoWTBC.GG",
+            name = "Warlock Affliction - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Affliction",
             tier = "TBC_T4",
@@ -6885,7 +6885,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_AFFLICTION_TBC_T5",
-            name = "T5 Warlock Affliction - WoWTBC.GG",
+            name = "Warlock Affliction - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Affliction",
             tier = "TBC_T5",
@@ -6915,7 +6915,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_AFFLICTION_TBC_T6_WOWHEAD",
-            name = "T6 Warlock Affliction - WoWHead",
+            name = "Warlock Affliction - WoWHead",
             class = "WARLOCK",
             spec = "Affliction",
             tier = "TBC_T6",
@@ -6944,7 +6944,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_AFFLICTION_TBC_T6_LOONBIS",
-            name = "T6 Warlock Affliction - LoonBiS TBC",
+            name = "Warlock Affliction - LoonBiS",
             class = "WARLOCK",
             spec = "Affliction",
             tier = "TBC_T6",
@@ -6974,7 +6974,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_AFFLICTION_TBC_T6",
-            name = "T6 Warlock Affliction - WoWTBC.GG",
+            name = "Warlock Affliction - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Affliction",
             tier = "TBC_T6",
@@ -7003,7 +7003,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_AFFLICTION_TBC_T6_SWP",
-            name = "T6 Warlock Affliction - TBC Sunwell (BiS)",
+            name = "Warlock Affliction - TBC Sunwell (BiS)",
             class = "WARLOCK",
             spec = "Affliction",
             tier = "TBC_T6",
@@ -7032,10 +7032,10 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_AFFLICTION_WOTLK_PRE_LOONBIS",
-            name = "PRE PRE-T7 Warlock Affliction - WoWTBC.GG - LoonBiS WotLK",
+            name = "PRE-T7 Warlock Affliction - WoWTBC.GG - LoonBiS",
             class = "WARLOCK",
             spec = "Affliction",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -7062,7 +7062,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_AFFLICTION_WOTLK_T7_LOONBIS",
-            name = "T7 PRE-T7 Warlock Affliction - WoWTBC.GG - LoonBiS WotLK",
+            name = "PRE-T7 Warlock Affliction - WoWTBC.GG - LoonBiS",
             class = "WARLOCK",
             spec = "Affliction",
             tier = "WOTLK_T7",
@@ -7092,7 +7092,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_AFFLICTION_WOTLK_T8_LOONBIS",
-            name = "T8 PRE-T7 Warlock Affliction - WoWTBC.GG - LoonBiS WotLK",
+            name = "PRE-T7 Warlock Affliction - WoWTBC.GG - LoonBiS",
             class = "WARLOCK",
             spec = "Affliction",
             tier = "WOTLK_T8",
@@ -7123,10 +7123,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "WARLOCK_AFFLICTION_WOTLK_PRE_BISTOOLTIP",
-            name = "PRE PRE-T7 Warlock Affliction - WoWTBC.GG - BiS-Tooltip WotLK",
+            name = "PRE-T7 Warlock Affliction - WoWTBC.GG - BiS-Tooltip",
             class = "WARLOCK",
             spec = "Affliction",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -7153,7 +7153,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "WARLOCK_AFFLICTION_WOTLK_T9_BISTOOLTIP",
-            name = "T9 PRE-T7 Warlock Affliction - WoWTBC.GG - BiS-Tooltip WotLK",
+            name = "PRE-T7 Warlock Affliction - WoWTBC.GG - BiS-Tooltip",
             class = "WARLOCK",
             spec = "Affliction",
             tier = "WOTLK_T9",
@@ -7183,7 +7183,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "WARLOCK_AFFLICTION_WOTLK_T10_BISTOOLTIP",
-            name = "T10 PRE-T7 Warlock Affliction - WoWTBC.GG - BiS-Tooltip WotLK",
+            name = "PRE-T7 Warlock Affliction - WoWTBC.GG - BiS-Tooltip",
             class = "WARLOCK",
             spec = "Affliction",
             tier = "WOTLK_T10",
@@ -7213,7 +7213,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "WARLOCK_AFFLICTION_WOTLK_RS_BISTOOLTIP",
-            name = "RS PRE-T7 Warlock Affliction - WoWTBC.GG - BiS-Tooltip WotLK",
+            name = "RS PRE-T7 Warlock Affliction - WoWTBC.GG - BiS-Tooltip",
             class = "WARLOCK",
             spec = "Affliction",
             tier = "WOTLK_RS",
@@ -7246,7 +7246,7 @@ Goals.WishlistBuildData = {
             name = "PRE-T7 Warlock Affliction - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Affliction",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -7273,7 +7273,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_AFFLICTION_WOTLK_T7",
-            name = "T7 Warlock Affliction - WoWTBC.GG",
+            name = "Warlock Affliction - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Affliction",
             tier = "WOTLK_T7",
@@ -7303,7 +7303,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_AFFLICTION_WOTLK_T8",
-            name = "T8 Warlock Affliction - WoWTBC.GG",
+            name = "Warlock Affliction - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Affliction",
             tier = "WOTLK_T8",
@@ -7333,7 +7333,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_AFFLICTION_WOTLK_T9",
-            name = "T9 Warlock Affliction - WoWTBC.GG",
+            name = "Warlock Affliction - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Affliction",
             tier = "WOTLK_T9",
@@ -7364,7 +7364,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_AFFLICTION_WOTLK_T10",
-            name = "T10 Warlock Affliction - WoWTBC.GG",
+            name = "Warlock Affliction - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Affliction",
             tier = "WOTLK_T10",
@@ -7427,7 +7427,7 @@ Goals.WishlistBuildData = {
             name = "PRE-T1 Warlock Demonology - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Demonology",
-            tier = "CLASSIC_PRE",
+            tier = "CLASSIC_PR1",
             level = 60,
             tags = {"progression"},
             itemsBySlot = {
@@ -7454,7 +7454,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_DEMONOLOGY_CLASSIC_T1",
-            name = "T1 Warlock Demonology - WoWTBC.GG",
+            name = "Warlock Demonology - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Demonology",
             tier = "CLASSIC_T1",
@@ -7484,7 +7484,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_DEMONOLOGY_CLASSIC_T2",
-            name = "T2 Warlock Demonology - WoWTBC.GG",
+            name = "Warlock Demonology - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Demonology",
             tier = "CLASSIC_T2",
@@ -7543,7 +7543,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_DEMONOLOGY_CLASSIC_T3",
-            name = "T3 Warlock Demonology - WoWTBC.GG",
+            name = "Warlock Demonology - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Demonology",
             tier = "CLASSIC_T3",
@@ -7576,7 +7576,7 @@ Goals.WishlistBuildData = {
             name = "PRE-T4 Warlock Demonology - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Demonology",
-            tier = "TBC_PRE",
+            tier = "TBC_PR4",
             level = 70,
             tags = {"progression"},
             itemsBySlot = {
@@ -7604,7 +7604,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_DEMONOLOGY_TBC_T4",
-            name = "T4 Warlock Demonology - WoWTBC.GG",
+            name = "Warlock Demonology - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Demonology",
             tier = "TBC_T4",
@@ -7634,7 +7634,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_DEMONOLOGY_TBC_T5",
-            name = "T5 Warlock Demonology - WoWTBC.GG",
+            name = "Warlock Demonology - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Demonology",
             tier = "TBC_T5",
@@ -7664,7 +7664,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_DEMONOLOGY_TBC_T6_WOWHEAD",
-            name = "T6 Warlock Demonology - LoonBiS TBC",
+            name = "Warlock Demonology - LoonBiS",
             class = "WARLOCK",
             spec = "Demonology",
             tier = "TBC_T6",
@@ -7694,7 +7694,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "WARLOCK_DEMONOLOGY_TBC_T6_LOONBIS",
-            name = "T6 Warlock Demonology - LoonBiS TBC",
+            name = "Warlock Demonology - LoonBiS",
             class = "WARLOCK",
             spec = "Demonology",
             tier = "TBC_T6",
@@ -7725,7 +7725,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_DESTRUCTION_TBC_T6_LOONBIS",
-            name = "T6 Warlock Destruction - LoonBiS TBC",
+            name = "Warlock Destruction - LoonBiS",
             class = "WARLOCK",
             spec = "Destruction",
             tier = "TBC_T6",
@@ -7755,7 +7755,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_DEMONOLOGY_TBC_T6",
-            name = "T6 Warlock Demonology - WoWTBC.GG",
+            name = "Warlock Demonology - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Demonology",
             tier = "TBC_T6",
@@ -7813,10 +7813,10 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_DEMONOLOGY_WOTLK_PRE_LOONBIS",
-            name = "PRE PRE-T7 Warlock Demonology - WoWTBC.GG - LoonBiS WotLK",
+            name = "PRE-T7 Warlock Demonology - WoWTBC.GG - LoonBiS",
             class = "WARLOCK",
             spec = "Demonology",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -7843,7 +7843,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_DEMONOLOGY_WOTLK_T7_LOONBIS",
-            name = "T7 PRE-T7 Warlock Demonology - WoWTBC.GG - LoonBiS WotLK",
+            name = "PRE-T7 Warlock Demonology - WoWTBC.GG - LoonBiS",
             class = "WARLOCK",
             spec = "Demonology",
             tier = "WOTLK_T7",
@@ -7873,7 +7873,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_DEMONOLOGY_WOTLK_T8_LOONBIS",
-            name = "T8 PRE-T7 Warlock Demonology - WoWTBC.GG - LoonBiS WotLK",
+            name = "PRE-T7 Warlock Demonology - WoWTBC.GG - LoonBiS",
             class = "WARLOCK",
             spec = "Demonology",
             tier = "WOTLK_T8",
@@ -7904,10 +7904,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "WARLOCK_DEMONOLOGY_WOTLK_PRE_BISTOOLTIP",
-            name = "PRE PRE-T7 Warlock Demonology - WoWTBC.GG - BiS-Tooltip WotLK",
+            name = "PRE-T7 Warlock Demonology - WoWTBC.GG - BiS-Tooltip",
             class = "WARLOCK",
             spec = "Demonology",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -7934,7 +7934,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "WARLOCK_DEMONOLOGY_WOTLK_T9_BISTOOLTIP",
-            name = "T9 PRE-T7 Warlock Demonology - WoWTBC.GG - BiS-Tooltip WotLK",
+            name = "PRE-T7 Warlock Demonology - WoWTBC.GG - BiS-Tooltip",
             class = "WARLOCK",
             spec = "Demonology",
             tier = "WOTLK_T9",
@@ -7964,7 +7964,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "WARLOCK_DEMONOLOGY_WOTLK_T10_BISTOOLTIP",
-            name = "T10 PRE-T7 Warlock Demonology - WoWTBC.GG - BiS-Tooltip WotLK",
+            name = "PRE-T7 Warlock Demonology - WoWTBC.GG - BiS-Tooltip",
             class = "WARLOCK",
             spec = "Demonology",
             tier = "WOTLK_T10",
@@ -7994,7 +7994,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "WARLOCK_DEMONOLOGY_WOTLK_RS_BISTOOLTIP",
-            name = "RS PRE-T7 Warlock Demonology - WoWTBC.GG - BiS-Tooltip WotLK",
+            name = "RS PRE-T7 Warlock Demonology - WoWTBC.GG - BiS-Tooltip",
             class = "WARLOCK",
             spec = "Demonology",
             tier = "WOTLK_RS",
@@ -8027,7 +8027,7 @@ Goals.WishlistBuildData = {
             name = "PRE-T7 Warlock Demonology - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Demonology",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -8054,7 +8054,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_DEMONOLOGY_WOTLK_T7",
-            name = "T7 Warlock Demonology - WoWTBC.GG",
+            name = "Warlock Demonology - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Demonology",
             tier = "WOTLK_T7",
@@ -8084,7 +8084,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_DEMONOLOGY_WOTLK_T8",
-            name = "T8 Warlock Demonology - WoWTBC.GG",
+            name = "Warlock Demonology - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Demonology",
             tier = "WOTLK_T8",
@@ -8114,7 +8114,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_DEMONOLOGY_WOTLK_T9",
-            name = "T9 Warlock Demonology - WoWTBC.GG",
+            name = "Warlock Demonology - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Demonology",
             tier = "WOTLK_T9",
@@ -8145,7 +8145,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_DEMONOLOGY_WOTLK_T10",
-            name = "T10 Warlock Demonology - WoWTBC.GG",
+            name = "Warlock Demonology - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Demonology",
             tier = "WOTLK_T10",
@@ -8208,7 +8208,7 @@ Goals.WishlistBuildData = {
             name = "PRE-T1 Warlock Destruction - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Destruction",
-            tier = "CLASSIC_PRE",
+            tier = "CLASSIC_PR1",
             level = 60,
             tags = {"progression"},
             itemsBySlot = {
@@ -8235,7 +8235,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_DESTRUCTION_CLASSIC_T1",
-            name = "T1 Warlock Destruction - WoWTBC.GG",
+            name = "Warlock Destruction - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Destruction",
             tier = "CLASSIC_T1",
@@ -8265,7 +8265,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_DESTRUCTION_CLASSIC_T2",
-            name = "T2 Warlock Destruction - WoWTBC.GG",
+            name = "Warlock Destruction - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Destruction",
             tier = "CLASSIC_T2",
@@ -8324,7 +8324,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_DESTRUCTION_CLASSIC_T3",
-            name = "T3 Warlock Destruction - WoWTBC.GG",
+            name = "Warlock Destruction - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Destruction",
             tier = "CLASSIC_T3",
@@ -8357,7 +8357,7 @@ Goals.WishlistBuildData = {
             name = "PRE-T4 Warlock Destruction - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Destruction",
-            tier = "TBC_PRE",
+            tier = "TBC_PR4",
             level = 70,
             tags = {"progression"},
             itemsBySlot = {
@@ -8385,7 +8385,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_DESTRUCTION_TBC_T4",
-            name = "T4 Warlock Destruction - WoWTBC.GG",
+            name = "Warlock Destruction - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Destruction",
             tier = "TBC_T4",
@@ -8415,7 +8415,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_DESTRUCTION_TBC_T5",
-            name = "T5 Warlock Destruction - WoWTBC.GG",
+            name = "Warlock Destruction - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Destruction",
             tier = "TBC_T5",
@@ -8445,7 +8445,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_DESTRUCTION_TBC_T6_WOWHEAD",
-            name = "T6 Warlock Destruction - Wowhead Phase 3",
+            name = "Warlock Destruction - Wowhead Phase 3",
             class = "WARLOCK",
             spec = "Destruction",
             tier = "TBC_T6",
@@ -8474,7 +8474,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_DESTRUCTION_TBC_T6",
-            name = "T6 Warlock Destruction - WoWTBC.GG",
+            name = "Warlock Destruction - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Destruction",
             tier = "TBC_T6",
@@ -8503,7 +8503,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_DESTRUCTION_TBC_T6_SWP",
-            name = "T6 Warlock Destruction - Sunwell (BiS)",
+            name = "Warlock Destruction - Sunwell (BiS)",
             class = "WARLOCK",
             spec = "Destruction",
             tier = "TBC_T6",
@@ -8535,7 +8535,7 @@ Goals.WishlistBuildData = {
             name = "PRE-T7 Warlock Destruction - Wowhead",
             class = "WARLOCK",
             spec = "Destruction",
-            tier = "WOTLK_P6",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression", "wowhead"},
             itemsBySlot = {
@@ -8647,7 +8647,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "HUNTER_SURVIVAL_WOTLK_T7_WOWHEAD_TRAP_WEAVING",
-            name = "T7 Hunter Survival - Wowhead (Trap-Weaving)",
+            name = "Hunter Survival - Wowhead (Trap-Weaving)",
             class = "HUNTER",
             spec = "Survival",
             tier = "WOTLK_T7",
@@ -8677,7 +8677,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "HUNTER_SURVIVAL_WOTLK_T9_WOWHEAD_ALLIANCE_BIS",
-            name = "T9 Hunter Survival - Wowhead (Alliance BiS)",
+            name = "Hunter Survival - Wowhead (Alliance BiS)",
             class = "HUNTER",
             spec = "Survival",
             tier = "WOTLK_T9",
@@ -8707,7 +8707,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "MAGE_ARCANE_WOTLK_T7_WOWHEAD_CHEST_AS_OFF_SPEC",
-            name = "T7 Mage Arcane - Wowhead (Chest As Off-Spec)",
+            name = "Mage Arcane - Wowhead (Chest As Off-Spec)",
             class = "MAGE",
             spec = "Arcane",
             tier = "WOTLK_T7",
@@ -8738,7 +8738,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "MAGE_ARCANE_WOTLK_T7_WOWHEAD_HEAD_AS_OFF_SPEC",
-            name = "T7 Mage Arcane - Wowhead (Head As Off-Spec)",
+            name = "Mage Arcane - Wowhead (Head As Off-Spec)",
             class = "MAGE",
             spec = "Arcane",
             tier = "WOTLK_T7",
@@ -8769,7 +8769,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "MAGE_ARCANE_WOTLK_T9_WOWHEAD_ALLIANCE",
-            name = "T9 Mage Arcane - Wowhead (Alliance)",
+            name = "Mage Arcane - Wowhead (Alliance)",
             class = "MAGE",
             spec = "Arcane",
             tier = "WOTLK_T9",
@@ -8799,10 +8799,10 @@ Goals.WishlistBuildData = {
         },
         {
             id = "DEATHKNIGHT_BLOOD_TANK_WOTLK_PRE_WOWHEAD",
-            name = "PRE Death Knight Blood (Tank) - Wowhead",
+            name = "Death Knight Blood (Tank) - Wowhead",
             class = "DEATHKNIGHT",
             spec = "Blood (Tank)",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression", "wowhead"},
             itemsBySlot = {
@@ -8829,7 +8829,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "DEATHKNIGHT_BLOOD_TANK_WOTLK_T7_WOWHEAD",
-            name = "T7 Death Knight Blood (Tank) - Wowhead",
+            name = "Death Knight Blood (Tank) - Wowhead",
             class = "DEATHKNIGHT",
             spec = "Blood (Tank)",
             tier = "WOTLK_T7",
@@ -8860,7 +8860,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "DEATHKNIGHT_BLOOD_TANK_WOTLK_T8_WOWHEAD",
-            name = "T8 Death Knight Blood (Tank) - Wowhead",
+            name = "Death Knight Blood (Tank) - Wowhead",
             class = "DEATHKNIGHT",
             spec = "Blood (Tank)",
             tier = "WOTLK_T8",
@@ -8890,10 +8890,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "DEATHKNIGHT_BLOOD_TANK_WOTLK_T9_REALISTIC_WOWHEAD",
-            name = "T9 Death Knight Blood (Tank) - Wowhead",
+            name = "Death Knight Blood (Tank) - Wowhead",
             class = "DEATHKNIGHT",
             spec = "Blood (Tank)",
-            tier = "WOTLK_T9_REALISTIC",
+            tier = "WOTLK_T9",
             level = 80,
             tags = {"bis", "wowhead"},
             itemsBySlot = {
@@ -8920,10 +8920,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "DEATHKNIGHT_BLOOD_TANK_WOTLK_T9_TIER_WOWHEAD",
-            name = "T9 Death Knight Blood (Tank) - Wowhead",
+            name = "Death Knight Blood (Tank) - Wowhead",
             class = "DEATHKNIGHT",
             spec = "Blood (Tank)",
-            tier = "WOTLK_T9_TIER",
+            tier = "WOTLK_T9",
             level = 80,
             tags = {"bis", "wowhead"},
             itemsBySlot = {
@@ -8950,7 +8950,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "DEATHKNIGHT_BLOOD_TANK_WOTLK_T10_WOWHEAD",
-            name = "T10 Death Knight Blood (Tank) - Wowhead",
+            name = "Death Knight Blood (Tank) - Wowhead",
             class = "DEATHKNIGHT",
             spec = "Blood (Tank)",
             tier = "WOTLK_T10",
@@ -8980,10 +8980,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "DEATHKNIGHT_FROST_WOTLK_PRE_WOWHEAD",
-            name = "PRE Death Knight Frost - Wowhead",
+            name = "Death Knight Frost - Wowhead",
             class = "DEATHKNIGHT",
             spec = "Frost",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression", "wowhead"},
             itemsBySlot = {
@@ -9011,7 +9011,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "DEATHKNIGHT_FROST_WOTLK_T7_WOWHEAD",
-            name = "T7 Death Knight Frost - Wowhead",
+            name = "Death Knight Frost - Wowhead",
             class = "DEATHKNIGHT",
             spec = "Frost",
             tier = "WOTLK_T7",
@@ -9042,7 +9042,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "DEATHKNIGHT_FROST_WOTLK_T8_WOWHEAD",
-            name = "T8 Death Knight Frost - Wowhead",
+            name = "Death Knight Frost - Wowhead",
             class = "DEATHKNIGHT",
             spec = "Frost",
             tier = "WOTLK_T8",
@@ -9073,7 +9073,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "DEATHKNIGHT_FROST_WOTLK_T9_WOWHEAD",
-            name = "T9 Death Knight Frost - Wowhead",
+            name = "Death Knight Frost - Wowhead",
             class = "DEATHKNIGHT",
             spec = "Frost",
             tier = "WOTLK_T9",
@@ -9104,7 +9104,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "DEATHKNIGHT_FROST_WOTLK_T10_WOWHEAD",
-            name = "T10 Death Knight Frost - Wowhead",
+            name = "Death Knight Frost - Wowhead",
             class = "DEATHKNIGHT",
             spec = "Frost",
             tier = "WOTLK_T10",
@@ -9135,10 +9135,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "DEATHKNIGHT_UNHOLY_WOTLK_PRE_RUBY_SANCTUM_BIS_WOWHEAD",
-            name = "PRE Death Knight Unholy - Wowhead",
+            name = "Death Knight Unholy - Wowhead",
             class = "DEATHKNIGHT",
             spec = "Unholy",
-            tier = "WOTLK_PRE_RUBY_SANCTUM_BIS",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression", "wowhead"},
             itemsBySlot = {
@@ -9165,10 +9165,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "DEATHKNIGHT_UNHOLY_WOTLK_PRE_P4_BIS_WOWHEAD",
-            name = "PRE Death Knight Unholy - Wowhead",
+            name = "Death Knight Unholy - Wowhead",
             class = "DEATHKNIGHT",
             spec = "Unholy",
-            tier = "WOTLK_PRE_P4_BIS",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression", "wowhead"},
             itemsBySlot = {
@@ -9195,10 +9195,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "DEATHKNIGHT_UNHOLY_WOTLK_PRE_REALISTIC_WOWHEAD",
-            name = "PRE Death Knight Unholy - Wowhead",
+            name = "Death Knight Unholy - Wowhead",
             class = "DEATHKNIGHT",
             spec = "Unholy",
-            tier = "WOTLK_PRE_REALISTIC",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression", "wowhead"},
             itemsBySlot = {
@@ -9226,7 +9226,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "DEATHKNIGHT_UNHOLY_WOTLK_T7_WOWHEAD",
-            name = "T7 Death Knight Unholy - Wowhead",
+            name = "Death Knight Unholy - Wowhead",
             class = "DEATHKNIGHT",
             spec = "Unholy",
             tier = "WOTLK_T7",
@@ -9257,7 +9257,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "DEATHKNIGHT_UNHOLY_WOTLK_T8_WOWHEAD",
-            name = "T8 Death Knight Unholy - Wowhead",
+            name = "Death Knight Unholy - Wowhead",
             class = "DEATHKNIGHT",
             spec = "Unholy",
             tier = "WOTLK_T8",
@@ -9288,7 +9288,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "DEATHKNIGHT_UNHOLY_WOTLK_T9_WOWHEAD",
-            name = "T9 Death Knight Unholy - Wowhead",
+            name = "Death Knight Unholy - Wowhead",
             class = "DEATHKNIGHT",
             spec = "Unholy",
             tier = "WOTLK_T9",
@@ -9319,7 +9319,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "DEATHKNIGHT_UNHOLY_WOTLK_T10_WOWHEAD",
-            name = "T10 Death Knight Unholy - Wowhead",
+            name = "Death Knight Unholy - Wowhead",
             class = "DEATHKNIGHT",
             spec = "Unholy",
             tier = "WOTLK_T10",
@@ -9350,10 +9350,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "DRUID_BALANCE_WOTLK_PRE_WOWHEAD",
-            name = "PRE Druid Balance - Wowhead",
+            name = "Druid Balance - Wowhead",
             class = "DRUID",
             spec = "Balance",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression", "wowhead"},
             itemsBySlot = {
@@ -9381,10 +9381,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "DRUID_BALANCE_WOTLK_T7_ALLIANCE_DRAENEI_IN_PARTY_WOWHEAD",
-            name = "T7 Druid Balance - Wowhead",
+            name = "Druid Balance - Wowhead",
             class = "DRUID",
             spec = "Balance",
-            tier = "WOTLK_T7_ALLIANCE_DRAENEI_IN_PARTY",
+            tier = "WOTLK_T7",
             level = 80,
             tags = {"bis", "wowhead"},
             itemsBySlot = {
@@ -9412,10 +9412,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "DRUID_BALANCE_WOTLK_T7_HORDE_NO_DRAENEI_WOWHEAD",
-            name = "T7 Druid Balance - Wowhead",
+            name = "Druid Balance - Wowhead",
             class = "DRUID",
             spec = "Balance",
-            tier = "WOTLK_T7_HORDE_NO_DRAENEI",
+            tier = "WOTLK_T7",
             level = 80,
             tags = {"bis", "wowhead"},
             itemsBySlot = {
@@ -9443,10 +9443,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "DRUID_BALANCE_WOTLK_T8_ALLIANCE_WOWHEAD",
-            name = "T8 Druid Balance - Wowhead",
+            name = "Druid Balance - Wowhead",
             class = "DRUID",
             spec = "Balance",
-            tier = "WOTLK_T8_ALLIANCE",
+            tier = "WOTLK_T8",
             level = 80,
             tags = {"bis", "wowhead"},
             itemsBySlot = {
@@ -9474,10 +9474,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "DRUID_BALANCE_WOTLK_T8_HORDE_WOWHEAD",
-            name = "T8 Druid Balance - Wowhead",
+            name = "Druid Balance - Wowhead",
             class = "DRUID",
             spec = "Balance",
-            tier = "WOTLK_T8_HORDE",
+            tier = "WOTLK_T8",
             level = 80,
             tags = {"bis", "wowhead"},
             itemsBySlot = {
@@ -9505,10 +9505,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "DRUID_BALANCE_WOTLK_T10_ALLIANCE_WOWHEAD",
-            name = "T10 Druid Balance - Wowhead",
+            name = "Druid Balance - Wowhead",
             class = "DRUID",
             spec = "Balance",
-            tier = "WOTLK_T10_ALLIANCE",
+            tier = "WOTLK_T10",
             level = 80,
             tags = {"bis", "wowhead"},
             itemsBySlot = {
@@ -9536,10 +9536,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "DRUID_BALANCE_WOTLK_T10_HORDE_WOWHEAD",
-            name = "T10 Druid Balance - Wowhead",
+            name = "Druid Balance - Wowhead",
             class = "DRUID",
             spec = "Balance",
-            tier = "WOTLK_T10_HORDE",
+            tier = "WOTLK_T10",
             level = 80,
             tags = {"bis", "wowhead"},
             itemsBySlot = {
@@ -9567,10 +9567,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "DRUID_FERAL_DPS_WOTLK_PRE_WOWHEAD",
-            name = "PRE Druid Feral (DPS) - Wowhead",
+            name = "Druid Feral (DPS) - Wowhead",
             class = "DRUID",
             spec = "Feral (DPS)",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression", "wowhead"},
             itemsBySlot = {
@@ -9597,7 +9597,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "DRUID_FERAL_DPS_WOTLK_T7_WOWHEAD",
-            name = "T7 Druid Feral (DPS) - Wowhead",
+            name = "Druid Feral (DPS) - Wowhead",
             class = "DRUID",
             spec = "Feral (DPS)",
             tier = "WOTLK_T7",
@@ -9627,7 +9627,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "DRUID_FERAL_DPS_WOTLK_T8_WOWHEAD",
-            name = "T8 Druid Feral (DPS) - Wowhead",
+            name = "Druid Feral (DPS) - Wowhead",
             class = "DRUID",
             spec = "Feral (DPS)",
             tier = "WOTLK_T8",
@@ -9657,10 +9657,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "DRUID_FERAL_DPS_WOTLK_T9_ALLIANCE_WOWHEAD",
-            name = "T9 Druid Feral (DPS) - Wowhead",
+            name = "Druid Feral (DPS) - Wowhead",
             class = "DRUID",
             spec = "Feral (DPS)",
-            tier = "WOTLK_T9_ALLIANCE",
+            tier = "WOTLK_T9",
             level = 80,
             tags = {"bis", "wowhead"},
             itemsBySlot = {
@@ -9687,10 +9687,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "DRUID_FERAL_DPS_WOTLK_T9_HORDE_WOWHEAD",
-            name = "T9 Druid Feral (DPS) - Wowhead",
+            name = "Druid Feral (DPS) - Wowhead",
             class = "DRUID",
             spec = "Feral (DPS)",
-            tier = "WOTLK_T9_HORDE",
+            tier = "WOTLK_T9",
             level = 80,
             tags = {"bis", "wowhead"},
             itemsBySlot = {
@@ -9717,10 +9717,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "DRUID_FERAL_DPS_WOTLK_T10_10_MAN_WOWHEAD",
-            name = "T10 Druid Feral (DPS) - Wowhead",
+            name = "Druid Feral (DPS) - Wowhead",
             class = "DRUID",
             spec = "Feral (DPS)",
-            tier = "WOTLK_T10_10_MAN",
+            tier = "WOTLK_T10",
             level = 80,
             tags = {"bis", "wowhead"},
             itemsBySlot = {
@@ -9747,10 +9747,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "DRUID_FERAL_DPS_WOTLK_T10_25_MAN_WOWHEAD",
-            name = "T10 Druid Feral (DPS) - Wowhead",
+            name = "Druid Feral (DPS) - Wowhead",
             class = "DRUID",
             spec = "Feral (DPS)",
-            tier = "WOTLK_T10_25_MAN",
+            tier = "WOTLK_T10",
             level = 80,
             tags = {"bis", "wowhead"},
             itemsBySlot = {
@@ -9777,10 +9777,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "DRUID_FERAL_TANK_WOTLK_PRE_WOWHEAD",
-            name = "PRE Druid Feral (Tank) - Wowhead",
+            name = "Druid Feral (Tank) - Wowhead",
             class = "DRUID",
             spec = "Feral (Tank)",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression", "wowhead"},
             itemsBySlot = {
@@ -9807,7 +9807,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "DRUID_FERAL_TANK_WOTLK_T7_WOWHEAD",
-            name = "T7 Druid Feral (Tank) - Wowhead",
+            name = "Druid Feral (Tank) - Wowhead",
             class = "DRUID",
             spec = "Feral (Tank)",
             tier = "WOTLK_T7",
@@ -9837,7 +9837,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "DRUID_FERAL_TANK_WOTLK_T8_WOWHEAD",
-            name = "T8 Druid Feral (Tank) - Wowhead",
+            name = "Druid Feral (Tank) - Wowhead",
             class = "DRUID",
             spec = "Feral (Tank)",
             tier = "WOTLK_T8",
@@ -9867,10 +9867,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "DRUID_FERAL_TANK_WOTLK_T9_BALANCED_WOWHEAD",
-            name = "T9 Druid Feral (Tank) - Wowhead",
+            name = "Druid Feral (Tank) - Wowhead",
             class = "DRUID",
             spec = "Feral (Tank)",
-            tier = "WOTLK_T9_BALANCED",
+            tier = "WOTLK_T9",
             level = 80,
             tags = {"bis", "wowhead"},
             itemsBySlot = {
@@ -9897,10 +9897,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "DRUID_FERAL_TANK_WOTLK_T9_SURVIVAL_WOWHEAD",
-            name = "T9 Druid Feral (Tank) - Wowhead",
+            name = "Druid Feral (Tank) - Wowhead",
             class = "DRUID",
             spec = "Feral (Tank)",
-            tier = "WOTLK_T9_SURVIVAL",
+            tier = "WOTLK_T9",
             level = 80,
             tags = {"bis", "wowhead"},
             itemsBySlot = {
@@ -9927,10 +9927,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "DRUID_FERAL_TANK_WOTLK_T9_ANUB_ARAK_NATURE_RESISTANCE_WOWHEAD",
-            name = "T9 Druid Feral (Tank) - Wowhead",
+            name = "Druid Feral (Tank) - Wowhead",
             class = "DRUID",
             spec = "Feral (Tank)",
-            tier = "WOTLK_T9_ANUB_ARAK_NATURE_RESISTANCE",
+            tier = "WOTLK_T9",
             level = 80,
             tags = {"bis", "wowhead"},
             itemsBySlot = {
@@ -9957,10 +9957,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "DRUID_FERAL_TANK_WOTLK_T10_GENERAL_WOWHEAD",
-            name = "T10 Druid Feral (Tank) - Wowhead",
+            name = "Druid Feral (Tank) - Wowhead",
             class = "DRUID",
             spec = "Feral (Tank)",
-            tier = "WOTLK_T10_GENERAL",
+            tier = "WOTLK_T10",
             level = 80,
             tags = {"bis", "wowhead"},
             itemsBySlot = {
@@ -9987,10 +9987,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "DRUID_FERAL_TANK_WOTLK_T10_SINDRAGOSA_FROST_RESISTANCE_WOWHEAD",
-            name = "T10 Druid Feral (Tank) - Wowhead",
+            name = "Druid Feral (Tank) - Wowhead",
             class = "DRUID",
             spec = "Feral (Tank)",
-            tier = "WOTLK_T10_SINDRAGOSA_FROST_RESISTANCE",
+            tier = "WOTLK_T10",
             level = 80,
             tags = {"bis", "wowhead"},
             itemsBySlot = {
@@ -10017,10 +10017,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "DRUID_RESTORATION_WOTLK_PRE_WOWHEAD",
-            name = "PRE Druid Restoration - Wowhead",
+            name = "Druid Restoration - Wowhead",
             class = "DRUID",
             spec = "Restoration",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression", "wowhead"},
             itemsBySlot = {
@@ -10047,7 +10047,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "DRUID_RESTORATION_WOTLK_T7_WOWHEAD",
-            name = "T7 Druid Restoration - Wowhead",
+            name = "Druid Restoration - Wowhead",
             class = "DRUID",
             spec = "Restoration",
             tier = "WOTLK_T7",
@@ -10078,7 +10078,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "DRUID_RESTORATION_WOTLK_T8_WOWHEAD",
-            name = "T8 Druid Restoration - Wowhead",
+            name = "Druid Restoration - Wowhead",
             class = "DRUID",
             spec = "Restoration",
             tier = "WOTLK_T8",
@@ -10109,10 +10109,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "DRUID_RESTORATION_WOTLK_T9_REALISTIC_ALLIANCE_WOWHEAD",
-            name = "T9 Druid Restoration - Wowhead",
+            name = "Druid Restoration - Wowhead",
             class = "DRUID",
             spec = "Restoration",
-            tier = "WOTLK_T9_REALISTIC_ALLIANCE",
+            tier = "WOTLK_T9",
             level = 80,
             tags = {"bis", "wowhead"},
             itemsBySlot = {
@@ -10140,10 +10140,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "DRUID_RESTORATION_WOTLK_T9_REALISTIC_HORDE_WOWHEAD",
-            name = "T9 Druid Restoration - Wowhead",
+            name = "Druid Restoration - Wowhead",
             class = "DRUID",
             spec = "Restoration",
-            tier = "WOTLK_T9_REALISTIC_HORDE",
+            tier = "WOTLK_T9",
             level = 80,
             tags = {"bis", "wowhead"},
             itemsBySlot = {
@@ -10171,10 +10171,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "DRUID_RESTORATION_WOTLK_T9_PURE_BIS_ALLIANCE_WOWHEAD",
-            name = "T9 Druid Restoration - Wowhead",
+            name = "Druid Restoration - Wowhead",
             class = "DRUID",
             spec = "Restoration",
-            tier = "WOTLK_T9_PURE_BIS_ALLIANCE",
+            tier = "WOTLK_T9",
             level = 80,
             tags = {"bis", "wowhead"},
             itemsBySlot = {
@@ -10202,10 +10202,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "DRUID_RESTORATION_WOTLK_T9_PURE_BIS_HORDE_WOWHEAD",
-            name = "T9 Druid Restoration - Wowhead",
+            name = "Druid Restoration - Wowhead",
             class = "DRUID",
             spec = "Restoration",
-            tier = "WOTLK_T9_PURE_BIS_HORDE",
+            tier = "WOTLK_T9",
             level = 80,
             tags = {"bis", "wowhead"},
             itemsBySlot = {
@@ -10233,7 +10233,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "DRUID_RESTORATION_WOTLK_T10_WOWHEAD",
-            name = "T10 Druid Restoration - Wowhead",
+            name = "Druid Restoration - Wowhead",
             class = "DRUID",
             spec = "Restoration",
             tier = "WOTLK_T10",
@@ -10264,10 +10264,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "HUNTER_BEAST_MASTERY_WOTLK_PRE_WOWHEAD",
-            name = "PRE Hunter Beast Mastery - Wowhead",
+            name = "Hunter Beast Mastery - Wowhead",
             class = "HUNTER",
             spec = "Beast Mastery",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression", "wowhead"},
             itemsBySlot = {
@@ -10294,7 +10294,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "HUNTER_BEAST_MASTERY_WOTLK_T7_WOWHEAD",
-            name = "T7 Hunter Beast Mastery - Wowhead",
+            name = "Hunter Beast Mastery - Wowhead",
             class = "HUNTER",
             spec = "Beast Mastery",
             tier = "WOTLK_T7",
@@ -10324,7 +10324,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "HUNTER_BEAST_MASTERY_WOTLK_T8_WOWHEAD",
-            name = "T8 Hunter Beast Mastery - Wowhead",
+            name = "Hunter Beast Mastery - Wowhead",
             class = "HUNTER",
             spec = "Beast Mastery",
             tier = "WOTLK_T8",
@@ -10354,7 +10354,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "HUNTER_BEAST_MASTERY_WOTLK_T9_WOWHEAD",
-            name = "T9 Hunter Beast Mastery - Wowhead",
+            name = "Hunter Beast Mastery - Wowhead",
             class = "HUNTER",
             spec = "Beast Mastery",
             tier = "WOTLK_T9",
@@ -10384,7 +10384,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "HUNTER_BEAST_MASTERY_WOTLK_T10_WOWHEAD",
-            name = "T10 Hunter Beast Mastery - Wowhead",
+            name = "Hunter Beast Mastery - Wowhead",
             class = "HUNTER",
             spec = "Beast Mastery",
             tier = "WOTLK_T10",
@@ -10414,10 +10414,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "HUNTER_MARKSMANSHIP_WOTLK_PRE_WOWHEAD",
-            name = "PRE Hunter Marksmanship - Wowhead",
+            name = "Hunter Marksmanship - Wowhead",
             class = "HUNTER",
             spec = "Marksmanship",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression", "wowhead"},
             itemsBySlot = {
@@ -10444,7 +10444,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "HUNTER_MARKSMANSHIP_WOTLK_T7_WOWHEAD",
-            name = "T7 Hunter Marksmanship - Wowhead",
+            name = "Hunter Marksmanship - Wowhead",
             class = "HUNTER",
             spec = "Marksmanship",
             tier = "WOTLK_T7",
@@ -10474,7 +10474,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "HUNTER_MARKSMANSHIP_WOTLK_T8_WOWHEAD",
-            name = "T8 Hunter Marksmanship - Wowhead",
+            name = "Hunter Marksmanship - Wowhead",
             class = "HUNTER",
             spec = "Marksmanship",
             tier = "WOTLK_T8",
@@ -10504,7 +10504,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "HUNTER_MARKSMANSHIP_WOTLK_T9_WOWHEAD",
-            name = "T9 Hunter Marksmanship - Wowhead",
+            name = "Hunter Marksmanship - Wowhead",
             class = "HUNTER",
             spec = "Marksmanship",
             tier = "WOTLK_T9",
@@ -10534,7 +10534,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "HUNTER_MARKSMANSHIP_WOTLK_T10_WOWHEAD",
-            name = "T10 Hunter Marksmanship - Wowhead",
+            name = "Hunter Marksmanship - Wowhead",
             class = "HUNTER",
             spec = "Marksmanship",
             tier = "WOTLK_T10",
@@ -10564,10 +10564,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "HUNTER_SURVIVAL_WOTLK_PRE_WOWHEAD",
-            name = "PRE Hunter Survival - Wowhead",
+            name = "Hunter Survival - Wowhead",
             class = "HUNTER",
             spec = "Survival",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression", "wowhead"},
             itemsBySlot = {
@@ -10594,7 +10594,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "HUNTER_SURVIVAL_WOTLK_T7_WOWHEAD_NON_TRAP_WEAVING",
-            name = "T7 Hunter Survival - Wowhead (Non Trap-Weaving)",
+            name = "Hunter Survival - Wowhead (Non Trap-Weaving)",
             class = "HUNTER",
             spec = "Survival",
             tier = "WOTLK_T7",
@@ -10624,7 +10624,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "HUNTER_SURVIVAL_WOTLK_T8_WOWHEAD",
-            name = "T8 Hunter Survival - Wowhead",
+            name = "Hunter Survival - Wowhead",
             class = "HUNTER",
             spec = "Survival",
             tier = "WOTLK_T8",
@@ -10654,7 +10654,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "HUNTER_SURVIVAL_WOTLK_T9_WOWHEAD_HORDE_BIS",
-            name = "T9 Hunter Survival - Wowhead (Horde BiS)",
+            name = "Hunter Survival - Wowhead (Horde BiS)",
             class = "HUNTER",
             spec = "Survival",
             tier = "WOTLK_T9",
@@ -10684,7 +10684,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "HUNTER_SURVIVAL_WOTLK_T10_WOWHEAD",
-            name = "T10 Hunter Survival - Wowhead",
+            name = "Hunter Survival - Wowhead",
             class = "HUNTER",
             spec = "Survival",
             tier = "WOTLK_T10",
@@ -10714,10 +10714,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "MAGE_ARCANE_WOTLK_PRE_WOWHEAD",
-            name = "PRE Mage Arcane - Wowhead",
+            name = "Mage Arcane - Wowhead",
             class = "MAGE",
             spec = "Arcane",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression", "wowhead"},
             itemsBySlot = {
@@ -10745,7 +10745,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "MAGE_ARCANE_WOTLK_T7_WOWHEAD_GLOVES_AS_OFF_SPEC",
-            name = "T7 Mage Arcane - Wowhead (Gloves As Off-Spec)",
+            name = "Mage Arcane - Wowhead (Gloves As Off-Spec)",
             class = "MAGE",
             spec = "Arcane",
             tier = "WOTLK_T7",
@@ -10776,7 +10776,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "MAGE_ARCANE_WOTLK_T8_WOWHEAD",
-            name = "T8 Mage Arcane - Wowhead",
+            name = "Mage Arcane - Wowhead",
             class = "MAGE",
             spec = "Arcane",
             tier = "WOTLK_T8",
@@ -10807,7 +10807,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "MAGE_ARCANE_WOTLK_T9_WOWHEAD_HORDE",
-            name = "T9 Mage Arcane - Wowhead (Horde)",
+            name = "Mage Arcane - Wowhead (Horde)",
             class = "MAGE",
             spec = "Arcane",
             tier = "WOTLK_T9",
@@ -10838,7 +10838,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "MAGE_ARCANE_WOTLK_T10_WOWHEAD",
-            name = "T10 Mage Arcane - Wowhead",
+            name = "Mage Arcane - Wowhead",
             class = "MAGE",
             spec = "Arcane",
             tier = "WOTLK_T10",
@@ -10869,10 +10869,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "PALADIN_HOLY_WOTLK_PRE_WOWHEAD",
-            name = "PRE Paladin Holy - Wowhead",
+            name = "Paladin Holy - Wowhead",
             class = "PALADIN",
             spec = "Holy",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression", "wowhead"},
             itemsBySlot = {
@@ -10900,10 +10900,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "PALADIN_HOLY_WOTLK_T7_REALISTIC_WOWHEAD",
-            name = "T7 Paladin Holy - Wowhead",
+            name = "Paladin Holy - Wowhead",
             class = "PALADIN",
             spec = "Holy",
-            tier = "WOTLK_T7_REALISTIC",
+            tier = "WOTLK_T7",
             level = 80,
             tags = {"bis", "wowhead"},
             itemsBySlot = {
@@ -10931,10 +10931,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "PALADIN_HOLY_WOTLK_T7_CONTESTED_WOWHEAD",
-            name = "T7 Paladin Holy - Wowhead",
+            name = "Paladin Holy - Wowhead",
             class = "PALADIN",
             spec = "Holy",
-            tier = "WOTLK_T7_CONTESTED",
+            tier = "WOTLK_T7",
             level = 80,
             tags = {"bis", "wowhead"},
             itemsBySlot = {
@@ -10962,7 +10962,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "PALADIN_HOLY_WOTLK_T8_WOWHEAD",
-            name = "T8 Paladin Holy - Wowhead",
+            name = "Paladin Holy - Wowhead",
             class = "PALADIN",
             spec = "Holy",
             tier = "WOTLK_T8",
@@ -10993,10 +10993,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "PALADIN_HOLY_WOTLK_T9_TANK_HEALING_FOCUS_WOWHEAD",
-            name = "T9 Paladin Holy - Wowhead",
+            name = "Paladin Holy - Wowhead",
             class = "PALADIN",
             spec = "Holy",
-            tier = "WOTLK_T9_TANK_HEALING_FOCUS",
+            tier = "WOTLK_T9",
             level = 80,
             tags = {"bis", "wowhead"},
             itemsBySlot = {
@@ -11024,10 +11024,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "PALADIN_HOLY_WOTLK_T9_ILVL_BIS_WOWHEAD",
-            name = "T9 Paladin Holy - Wowhead",
+            name = "Paladin Holy - Wowhead",
             class = "PALADIN",
             spec = "Holy",
-            tier = "WOTLK_T9_ILVL_BIS",
+            tier = "WOTLK_T9",
             level = 80,
             tags = {"bis", "wowhead"},
             itemsBySlot = {
@@ -11055,10 +11055,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "PALADIN_HOLY_WOTLK_T10_REALISTIC_WOWHEAD",
-            name = "T10 Paladin Holy - Wowhead",
+            name = "Paladin Holy - Wowhead",
             class = "PALADIN",
             spec = "Holy",
-            tier = "WOTLK_T10_REALISTIC",
+            tier = "WOTLK_T10",
             level = 80,
             tags = {"bis", "wowhead"},
             itemsBySlot = {
@@ -11086,10 +11086,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "PALADIN_HOLY_WOTLK_T10_ABSOLUTE_BIS_WOWHEAD",
-            name = "T10 Paladin Holy - Wowhead",
+            name = "Paladin Holy - Wowhead",
             class = "PALADIN",
             spec = "Holy",
-            tier = "WOTLK_T10_ABSOLUTE_BIS",
+            tier = "WOTLK_T10",
             level = 80,
             tags = {"bis", "wowhead"},
             itemsBySlot = {
@@ -11117,10 +11117,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "PALADIN_PROTECTION_WOTLK_PRE_WOWHEAD",
-            name = "PRE Paladin Protection - Wowhead",
+            name = "Paladin Protection - Wowhead",
             class = "PALADIN",
             spec = "Protection",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression", "wowhead"},
             itemsBySlot = {
@@ -11148,7 +11148,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "PALADIN_PROTECTION_WOTLK_T7_WOWHEAD",
-            name = "T7 Paladin Protection - Wowhead",
+            name = "Paladin Protection - Wowhead",
             class = "PALADIN",
             spec = "Protection",
             tier = "WOTLK_T7",
@@ -11179,10 +11179,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "PALADIN_PROTECTION_WOTLK_T8_BALANCED_WOWHEAD",
-            name = "T8 Paladin Protection - Wowhead",
+            name = "Paladin Protection - Wowhead",
             class = "PALADIN",
             spec = "Protection",
-            tier = "WOTLK_T8_BALANCED",
+            tier = "WOTLK_T8",
             level = 80,
             tags = {"bis", "wowhead"},
             itemsBySlot = {
@@ -11210,10 +11210,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "PALADIN_PROTECTION_WOTLK_T8_EHP_SET_WOWHEAD",
-            name = "T8 Paladin Protection - Wowhead",
+            name = "Paladin Protection - Wowhead",
             class = "PALADIN",
             spec = "Protection",
-            tier = "WOTLK_T8_EHP_SET",
+            tier = "WOTLK_T8",
             level = 80,
             tags = {"bis", "wowhead"},
             itemsBySlot = {
@@ -11241,10 +11241,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "PALADIN_PROTECTION_WOTLK_T9_REALISTIC_WOWHEAD",
-            name = "T9 Paladin Protection - Wowhead",
+            name = "Paladin Protection - Wowhead",
             class = "PALADIN",
             spec = "Protection",
-            tier = "WOTLK_T9_REALISTIC",
+            tier = "WOTLK_T9",
             level = 80,
             tags = {"bis", "wowhead"},
             itemsBySlot = {
@@ -11272,10 +11272,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "PALADIN_PROTECTION_WOTLK_T9_HORDE_FULL_BIS_WOWHEAD",
-            name = "T9 Paladin Protection - Wowhead",
+            name = "Paladin Protection - Wowhead",
             class = "PALADIN",
             spec = "Protection",
-            tier = "WOTLK_T9_HORDE_FULL_BIS",
+            tier = "WOTLK_T9",
             level = 80,
             tags = {"bis", "wowhead"},
             itemsBySlot = {
@@ -11303,10 +11303,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "PALADIN_PROTECTION_WOTLK_T9_ALLIANCE_FULL_BIS_WOWHEAD",
-            name = "T9 Paladin Protection - Wowhead",
+            name = "Paladin Protection - Wowhead",
             class = "PALADIN",
             spec = "Protection",
-            tier = "WOTLK_T9_ALLIANCE_FULL_BIS",
+            tier = "WOTLK_T9",
             level = 80,
             tags = {"bis", "wowhead"},
             itemsBySlot = {
@@ -11334,10 +11334,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "PALADIN_PROTECTION_WOTLK_T10_HAVOC_S_CALL_2_SET_WOWHEAD",
-            name = "T10 Paladin Protection - Wowhead",
+            name = "Paladin Protection - Wowhead",
             class = "PALADIN",
             spec = "Protection",
-            tier = "WOTLK_T10_HAVOC_S_CALL_2_SET",
+            tier = "WOTLK_T10",
             level = 80,
             tags = {"bis", "wowhead"},
             itemsBySlot = {
@@ -11365,10 +11365,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "PALADIN_PROTECTION_WOTLK_T10_GUTBUSTER_2_SET_WOWHEAD",
-            name = "T10 Paladin Protection - Wowhead",
+            name = "Paladin Protection - Wowhead",
             class = "PALADIN",
             spec = "Protection",
-            tier = "WOTLK_T10_GUTBUSTER_2_SET",
+            tier = "WOTLK_T10",
             level = 80,
             tags = {"bis", "wowhead"},
             itemsBySlot = {
@@ -11396,10 +11396,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "PALADIN_PROTECTION_WOTLK_T10_BVB_4_SET_WOWHEAD",
-            name = "T10 Paladin Protection - Wowhead",
+            name = "Paladin Protection - Wowhead",
             class = "PALADIN",
             spec = "Protection",
-            tier = "WOTLK_T10_BVB_4_SET",
+            tier = "WOTLK_T10",
             level = 80,
             tags = {"bis", "wowhead"},
             itemsBySlot = {
@@ -11427,10 +11427,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "PALADIN_RETRIBUTION_WOTLK_PRE_WOWHEAD",
-            name = "PRE Paladin Retribution - Wowhead",
+            name = "Paladin Retribution - Wowhead",
             class = "PALADIN",
             spec = "Retribution",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression", "wowhead"},
             itemsBySlot = {
@@ -11457,10 +11457,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "PALADIN_RETRIBUTION_WOTLK_T7_4_PIECE_SET_WOWHEAD",
-            name = "T7 Paladin Retribution - Wowhead",
+            name = "Paladin Retribution - Wowhead",
             class = "PALADIN",
             spec = "Retribution",
-            tier = "WOTLK_T7_4_PIECE_SET",
+            tier = "WOTLK_T7",
             level = 80,
             tags = {"bis", "wowhead"},
             itemsBySlot = {
@@ -11487,10 +11487,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "PALADIN_RETRIBUTION_WOTLK_T7_2_PIECE_SET_WOWHEAD",
-            name = "T7 Paladin Retribution - Wowhead",
+            name = "Paladin Retribution - Wowhead",
             class = "PALADIN",
             spec = "Retribution",
-            tier = "WOTLK_T7_2_PIECE_SET",
+            tier = "WOTLK_T7",
             level = 80,
             tags = {"bis", "wowhead"},
             itemsBySlot = {
@@ -11517,10 +11517,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "PALADIN_RETRIBUTION_WOTLK_T8_NON_HARDMODE_HORDE_WOWHEAD",
-            name = "T8 Paladin Retribution - Wowhead",
+            name = "Paladin Retribution - Wowhead",
             class = "PALADIN",
             spec = "Retribution",
-            tier = "WOTLK_T8_NON_HARDMODE_HORDE",
+            tier = "WOTLK_T8",
             level = 80,
             tags = {"bis", "wowhead"},
             itemsBySlot = {
@@ -11547,10 +11547,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "PALADIN_RETRIBUTION_WOTLK_T8_NON_HARDMODE_ALLIANCE_WOWHEAD",
-            name = "T8 Paladin Retribution - Wowhead",
+            name = "Paladin Retribution - Wowhead",
             class = "PALADIN",
             spec = "Retribution",
-            tier = "WOTLK_T8_NON_HARDMODE_ALLIANCE",
+            tier = "WOTLK_T8",
             level = 80,
             tags = {"bis", "wowhead"},
             itemsBySlot = {
@@ -11577,10 +11577,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "PALADIN_RETRIBUTION_WOTLK_T8_FULL_BIS_HORDE_WOWHEAD",
-            name = "T8 Paladin Retribution - Wowhead",
+            name = "Paladin Retribution - Wowhead",
             class = "PALADIN",
             spec = "Retribution",
-            tier = "WOTLK_T8_FULL_BIS_HORDE",
+            tier = "WOTLK_T8",
             level = 80,
             tags = {"bis", "wowhead"},
             itemsBySlot = {
@@ -11607,10 +11607,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "PALADIN_RETRIBUTION_WOTLK_T8_FULL_BIS_ALLIANCE_WOWHEAD",
-            name = "T8 Paladin Retribution - Wowhead",
+            name = "Paladin Retribution - Wowhead",
             class = "PALADIN",
             spec = "Retribution",
-            tier = "WOTLK_T8_FULL_BIS_ALLIANCE",
+            tier = "WOTLK_T8",
             level = 80,
             tags = {"bis", "wowhead"},
             itemsBySlot = {
@@ -11637,10 +11637,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "PALADIN_RETRIBUTION_WOTLK_T9_FULL_BIS_HORDE_WOWHEAD",
-            name = "T9 Paladin Retribution - Wowhead",
+            name = "Paladin Retribution - Wowhead",
             class = "PALADIN",
             spec = "Retribution",
-            tier = "WOTLK_T9_FULL_BIS_HORDE",
+            tier = "WOTLK_T9",
             level = 80,
             tags = {"bis", "wowhead"},
             itemsBySlot = {
@@ -11667,10 +11667,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "PALADIN_RETRIBUTION_WOTLK_T9_FULL_BIS_ALLIANCE_WOWHEAD",
-            name = "T9 Paladin Retribution - Wowhead",
+            name = "Paladin Retribution - Wowhead",
             class = "PALADIN",
             spec = "Retribution",
-            tier = "WOTLK_T9_FULL_BIS_ALLIANCE",
+            tier = "WOTLK_T9",
             level = 80,
             tags = {"bis", "wowhead"},
             itemsBySlot = {
@@ -11697,10 +11697,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "PALADIN_RETRIBUTION_WOTLK_T9_INTERIM_SETUP_HORDE_WOWHEAD",
-            name = "T9 Paladin Retribution - Wowhead",
+            name = "Paladin Retribution - Wowhead",
             class = "PALADIN",
             spec = "Retribution",
-            tier = "WOTLK_T9_INTERIM_SETUP_HORDE",
+            tier = "WOTLK_T9",
             level = 80,
             tags = {"bis", "wowhead"},
             itemsBySlot = {
@@ -11727,10 +11727,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "PALADIN_RETRIBUTION_WOTLK_T9_INTERIM_SETUP_ALLIANCE_WOWHEAD",
-            name = "T9 Paladin Retribution - Wowhead",
+            name = "Paladin Retribution - Wowhead",
             class = "PALADIN",
             spec = "Retribution",
-            tier = "WOTLK_T9_INTERIM_SETUP_ALLIANCE",
+            tier = "WOTLK_T9",
             level = 80,
             tags = {"bis", "wowhead"},
             itemsBySlot = {
@@ -11757,10 +11757,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "PALADIN_RETRIBUTION_WOTLK_T10_FULL_BIS_HORDE_WOWHEAD",
-            name = "T10 Paladin Retribution - Wowhead",
+            name = "Paladin Retribution - Wowhead",
             class = "PALADIN",
             spec = "Retribution",
-            tier = "WOTLK_T10_FULL_BIS_HORDE",
+            tier = "WOTLK_T10",
             level = 80,
             tags = {"bis", "wowhead"},
             itemsBySlot = {
@@ -11787,10 +11787,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "PALADIN_RETRIBUTION_WOTLK_T10_FULL_BIS_ALLIANCE_WOWHEAD",
-            name = "T10 Paladin Retribution - Wowhead",
+            name = "Paladin Retribution - Wowhead",
             class = "PALADIN",
             spec = "Retribution",
-            tier = "WOTLK_T10_FULL_BIS_ALLIANCE",
+            tier = "WOTLK_T10",
             level = 80,
             tags = {"bis", "wowhead"},
             itemsBySlot = {
@@ -11817,10 +11817,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "PALADIN_RETRIBUTION_WOTLK_T10_LOWER_PRIORITY_SET_WOWHEAD",
-            name = "T10 Paladin Retribution - Wowhead",
+            name = "Paladin Retribution - Wowhead",
             class = "PALADIN",
             spec = "Retribution",
-            tier = "WOTLK_T10_LOWER_PRIORITY_SET",
+            tier = "WOTLK_T10",
             level = 80,
             tags = {"bis", "wowhead"},
             itemsBySlot = {
@@ -11847,10 +11847,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "SHAMAN_ELEMENTAL_WOTLK_PRE_WOWHEAD",
-            name = "PRE Shaman Elemental - Wowhead",
+            name = "Shaman Elemental - Wowhead",
             class = "SHAMAN",
             spec = "Elemental",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression", "wowhead"},
             itemsBySlot = {
@@ -11878,7 +11878,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "SHAMAN_ELEMENTAL_WOTLK_T7_WOWHEAD",
-            name = "T7 Shaman Elemental - Wowhead",
+            name = "Shaman Elemental - Wowhead",
             class = "SHAMAN",
             spec = "Elemental",
             tier = "WOTLK_T7",
@@ -11909,7 +11909,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "SHAMAN_ELEMENTAL_WOTLK_T8_WOWHEAD",
-            name = "T8 Shaman Elemental - Wowhead",
+            name = "Shaman Elemental - Wowhead",
             class = "SHAMAN",
             spec = "Elemental",
             tier = "WOTLK_T8",
@@ -11940,7 +11940,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "SHAMAN_ELEMENTAL_WOTLK_T9_WOWHEAD",
-            name = "T9 Shaman Elemental - Wowhead",
+            name = "Shaman Elemental - Wowhead",
             class = "SHAMAN",
             spec = "Elemental",
             tier = "WOTLK_T9",
@@ -11971,7 +11971,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "SHAMAN_ELEMENTAL_WOTLK_T10_WOWHEAD",
-            name = "T10 Shaman Elemental - Wowhead",
+            name = "Shaman Elemental - Wowhead",
             class = "SHAMAN",
             spec = "Elemental",
             tier = "WOTLK_T10",
@@ -12002,10 +12002,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "WARLOCK_AFFLICTION_WOTLK_PRE_ALLIANCE_WOWHEAD",
-            name = "PRE Warlock Affliction - Wowhead",
+            name = "Warlock Affliction - Wowhead",
             class = "WARLOCK",
             spec = "Affliction",
-            tier = "WOTLK_PRE_ALLIANCE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression", "wowhead"},
             itemsBySlot = {
@@ -12033,10 +12033,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "WARLOCK_AFFLICTION_WOTLK_PRE_HORDE_WOWHEAD",
-            name = "PRE Warlock Affliction - Wowhead",
+            name = "Warlock Affliction - Wowhead",
             class = "WARLOCK",
             spec = "Affliction",
-            tier = "WOTLK_PRE_HORDE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression", "wowhead"},
             itemsBySlot = {
@@ -12064,10 +12064,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "WARLOCK_AFFLICTION_WOTLK_T7_ALLIANCE_WOWHEAD",
-            name = "T7 Warlock Affliction - Wowhead",
+            name = "Warlock Affliction - Wowhead",
             class = "WARLOCK",
             spec = "Affliction",
-            tier = "WOTLK_T7_ALLIANCE",
+            tier = "WOTLK_T7",
             level = 80,
             tags = {"bis", "wowhead"},
             itemsBySlot = {
@@ -12095,10 +12095,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "WARLOCK_AFFLICTION_WOTLK_T7_HORDE_WOWHEAD",
-            name = "T7 Warlock Affliction - Wowhead",
+            name = "Warlock Affliction - Wowhead",
             class = "WARLOCK",
             spec = "Affliction",
-            tier = "WOTLK_T7_HORDE",
+            tier = "WOTLK_T7",
             level = 80,
             tags = {"bis", "wowhead"},
             itemsBySlot = {
@@ -12126,10 +12126,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "WARLOCK_AFFLICTION_WOTLK_T8_ALLIANCE_WOWHEAD",
-            name = "T8 Warlock Affliction - Wowhead",
+            name = "Warlock Affliction - Wowhead",
             class = "WARLOCK",
             spec = "Affliction",
-            tier = "WOTLK_T8_ALLIANCE",
+            tier = "WOTLK_T8",
             level = 80,
             tags = {"bis", "wowhead"},
             itemsBySlot = {
@@ -12157,10 +12157,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "WARLOCK_AFFLICTION_WOTLK_T8_HORDE_WOWHEAD",
-            name = "T8 Warlock Affliction - Wowhead",
+            name = "Warlock Affliction - Wowhead",
             class = "WARLOCK",
             spec = "Affliction",
-            tier = "WOTLK_T8_HORDE",
+            tier = "WOTLK_T8",
             level = 80,
             tags = {"bis", "wowhead"},
             itemsBySlot = {
@@ -12188,10 +12188,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "WARLOCK_AFFLICTION_WOTLK_T9_ALLIANCE_WOWHEAD",
-            name = "T9 Warlock Affliction - Wowhead",
+            name = "Warlock Affliction - Wowhead",
             class = "WARLOCK",
             spec = "Affliction",
-            tier = "WOTLK_T9_ALLIANCE",
+            tier = "WOTLK_T9",
             level = 80,
             tags = {"bis", "wowhead"},
             itemsBySlot = {
@@ -12219,10 +12219,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "WARLOCK_AFFLICTION_WOTLK_T9_HORDE_WOWHEAD",
-            name = "T9 Warlock Affliction - Wowhead",
+            name = "Warlock Affliction - Wowhead",
             class = "WARLOCK",
             spec = "Affliction",
-            tier = "WOTLK_T9_HORDE",
+            tier = "WOTLK_T9",
             level = 80,
             tags = {"bis", "wowhead"},
             itemsBySlot = {
@@ -12250,10 +12250,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "WARLOCK_AFFLICTION_WOTLK_T10_ALLIANCE_WOWHEAD",
-            name = "T10 Warlock Affliction - Wowhead",
+            name = "Warlock Affliction - Wowhead",
             class = "WARLOCK",
             spec = "Affliction",
-            tier = "WOTLK_T10_ALLIANCE",
+            tier = "WOTLK_T10",
             level = 80,
             tags = {"bis", "wowhead"},
             itemsBySlot = {
@@ -12281,10 +12281,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "WARLOCK_AFFLICTION_WOTLK_T10_HORDE_WOWHEAD",
-            name = "T10 Warlock Affliction - Wowhead",
+            name = "Warlock Affliction - Wowhead",
             class = "WARLOCK",
             spec = "Affliction",
-            tier = "WOTLK_T10_HORDE",
+            tier = "WOTLK_T10",
             level = 80,
             tags = {"bis", "wowhead"},
             itemsBySlot = {
@@ -12311,10 +12311,10 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_DESTRUCTION_WOTLK_PRE_LOONBIS",
-            name = "PRE PRE-T7 Warlock Destruction - WoWTBC.GG - LoonBiS WotLK",
+            name = "PRE-T7 Warlock Destruction - WoWTBC.GG - LoonBiS",
             class = "WARLOCK",
             spec = "Destruction",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -12341,7 +12341,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_DESTRUCTION_WOTLK_T7_LOONBIS",
-            name = "T7 PRE-T7 Warlock Destruction - WoWTBC.GG - LoonBiS WotLK",
+            name = "PRE-T7 Warlock Destruction - WoWTBC.GG - LoonBiS",
             class = "WARLOCK",
             spec = "Destruction",
             tier = "WOTLK_T7",
@@ -12371,7 +12371,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_DESTRUCTION_WOTLK_T8_LOONBIS",
-            name = "T8 PRE-T7 Warlock Destruction - WoWTBC.GG - LoonBiS WotLK",
+            name = "PRE-T7 Warlock Destruction - WoWTBC.GG - LoonBiS",
             class = "WARLOCK",
             spec = "Destruction",
             tier = "WOTLK_T8",
@@ -12402,10 +12402,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "WARLOCK_DESTRUCTION_WOTLK_PRE_BISTOOLTIP",
-            name = "PRE PRE-T7 Warlock Destruction - WoWTBC.GG - BiS-Tooltip WotLK",
+            name = "PRE-T7 Warlock Destruction - WoWTBC.GG - BiS-Tooltip",
             class = "WARLOCK",
             spec = "Destruction",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -12432,7 +12432,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "WARLOCK_DESTRUCTION_WOTLK_T9_BISTOOLTIP",
-            name = "T9 PRE-T7 Warlock Destruction - WoWTBC.GG - BiS-Tooltip WotLK",
+            name = "PRE-T7 Warlock Destruction - WoWTBC.GG - BiS-Tooltip",
             class = "WARLOCK",
             spec = "Destruction",
             tier = "WOTLK_T9",
@@ -12462,7 +12462,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "WARLOCK_DESTRUCTION_WOTLK_T10_BISTOOLTIP",
-            name = "T10 PRE-T7 Warlock Destruction - WoWTBC.GG - BiS-Tooltip WotLK",
+            name = "PRE-T7 Warlock Destruction - WoWTBC.GG - BiS-Tooltip",
             class = "WARLOCK",
             spec = "Destruction",
             tier = "WOTLK_T10",
@@ -12492,7 +12492,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "WARLOCK_DESTRUCTION_WOTLK_RS_BISTOOLTIP",
-            name = "RS PRE-T7 Warlock Destruction - WoWTBC.GG - BiS-Tooltip WotLK",
+            name = "RS PRE-T7 Warlock Destruction - WoWTBC.GG - BiS-Tooltip",
             class = "WARLOCK",
             spec = "Destruction",
             tier = "WOTLK_RS",
@@ -12525,7 +12525,7 @@ Goals.WishlistBuildData = {
             name = "PRE-T7 Warlock Destruction - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Destruction",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -12552,7 +12552,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_DESTRUCTION_WOTLK_T7",
-            name = "T7 Warlock Destruction - WoWTBC.GG",
+            name = "Warlock Destruction - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Destruction",
             tier = "WOTLK_T7",
@@ -12582,7 +12582,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_DESTRUCTION_WOTLK_T8",
-            name = "T8 Warlock Destruction - WoWTBC.GG",
+            name = "Warlock Destruction - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Destruction",
             tier = "WOTLK_T8",
@@ -12612,7 +12612,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_DESTRUCTION_WOTLK_T9",
-            name = "T9 Warlock Destruction - WoWTBC.GG",
+            name = "Warlock Destruction - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Destruction",
             tier = "WOTLK_T9",
@@ -12643,7 +12643,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARLOCK_DESTRUCTION_WOTLK_T10",
-            name = "T10 Warlock Destruction - WoWTBC.GG",
+            name = "Warlock Destruction - WoWTBC.GG",
             class = "WARLOCK",
             spec = "Destruction",
             tier = "WOTLK_T10",
@@ -12703,7 +12703,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARRIOR_ARMS_TBC_T6_WOWHEAD",
-            name = "T6 Warrior Arms - LoonBiS TBC",
+            name = "Warrior Arms - LoonBiS",
             class = "WARRIOR",
             spec = "Arms",
             tier = "TBC_T6",
@@ -12733,10 +12733,10 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARRIOR_ARMS_WOTLK_PRE_LOONBIS",
-            name = "PRE Warrior Arms - LoonBiS WotLK",
+            name = "Warrior Arms - LoonBiS",
             class = "WARRIOR",
             spec = "Arms",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -12762,7 +12762,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARRIOR_ARMS_WOTLK_T7_LOONBIS",
-            name = "T7 Warrior Arms - LoonBiS WotLK",
+            name = "Warrior Arms - LoonBiS",
             class = "WARRIOR",
             spec = "Arms",
             tier = "WOTLK_T7",
@@ -12791,7 +12791,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARRIOR_ARMS_WOTLK_T8_LOONBIS",
-            name = "T8 Warrior Arms - LoonBiS WotLK",
+            name = "Warrior Arms - LoonBiS",
             class = "WARRIOR",
             spec = "Arms",
             tier = "WOTLK_T8",
@@ -12821,10 +12821,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "WARRIOR_ARMS_WOTLK_PRE_BISTOOLTIP",
-            name = "PRE Warrior Arms - BiS-Tooltip WotLK",
+            name = "Warrior Arms - BiS-Tooltip",
             class = "WARRIOR",
             spec = "Arms",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -12850,7 +12850,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "WARRIOR_ARMS_WOTLK_T9_BISTOOLTIP",
-            name = "T9 Warrior Arms - BiS-Tooltip WotLK",
+            name = "Warrior Arms - BiS-Tooltip",
             class = "WARRIOR",
             spec = "Arms",
             tier = "WOTLK_T9",
@@ -12879,7 +12879,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "WARRIOR_ARMS_WOTLK_T10_BISTOOLTIP",
-            name = "T10 Warrior Arms - BiS-Tooltip WotLK",
+            name = "Warrior Arms - BiS-Tooltip",
             class = "WARRIOR",
             spec = "Arms",
             tier = "WOTLK_T10",
@@ -12908,7 +12908,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "WARRIOR_ARMS_WOTLK_RS_BISTOOLTIP",
-            name = "RS Warrior Arms - BiS-Tooltip WotLK",
+            name = "RS Warrior Arms - BiS-Tooltip",
             class = "WARRIOR",
             spec = "Arms",
             tier = "WOTLK_RS",
@@ -12940,7 +12940,7 @@ Goals.WishlistBuildData = {
             name = "Warrior Fury - TBC_PRE",
             class = "WARRIOR",
             spec = "Fury",
-            tier = "TBC_PRE",
+            tier = "TBC_PR4",
             level = 70,
             tags = {"progression"},
             itemsBySlot = {
@@ -12961,7 +12961,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "WARRIOR_FURY_TBC_T6_LOONBIS",
-            name = "T6 Warrior Fury - LoonBiS TBC",
+            name = "Warrior Fury - LoonBiS",
             class = "WARRIOR",
             spec = "Fury",
             tier = "TBC_T6",
@@ -12998,7 +12998,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARRIOR_FURY_TBC_T6_WOWHEAD",
-            name = "T6 Warrior Fury - LoonBiS TBC",
+            name = "Warrior Fury - LoonBiS",
             class = "WARRIOR",
             spec = "Fury",
             tier = "TBC_T6",
@@ -13028,10 +13028,10 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARRIOR_FURY_WOTLK_PRE_LOONBIS",
-            name = "PRE Warrior Fury - LoonBiS WotLK",
+            name = "Warrior Fury - LoonBiS",
             class = "WARRIOR",
             spec = "Fury",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -13056,7 +13056,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARRIOR_FURY_WOTLK_T7_LOONBIS",
-            name = "T7 Warrior Fury - LoonBiS WotLK",
+            name = "Warrior Fury - LoonBiS",
             class = "WARRIOR",
             spec = "Fury",
             tier = "WOTLK_T7",
@@ -13085,7 +13085,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARRIOR_FURY_WOTLK_T8_LOONBIS",
-            name = "T8 Warrior Fury - LoonBiS WotLK",
+            name = "Warrior Fury - LoonBiS",
             class = "WARRIOR",
             spec = "Fury",
             tier = "WOTLK_T8",
@@ -13115,10 +13115,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "WARRIOR_FURY_WOTLK_PRE_BISTOOLTIP",
-            name = "PRE Warrior Fury - BiS-Tooltip WotLK",
+            name = "Warrior Fury - BiS-Tooltip",
             class = "WARRIOR",
             spec = "Fury",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -13145,7 +13145,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "WARRIOR_FURY_WOTLK_T9_BISTOOLTIP",
-            name = "T9 Warrior Fury - BiS-Tooltip WotLK",
+            name = "Warrior Fury - BiS-Tooltip",
             class = "WARRIOR",
             spec = "Fury",
             tier = "WOTLK_T9",
@@ -13175,7 +13175,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "WARRIOR_FURY_WOTLK_T10_BISTOOLTIP",
-            name = "T10 Warrior Fury - BiS-Tooltip WotLK",
+            name = "Warrior Fury - BiS-Tooltip",
             class = "WARRIOR",
             spec = "Fury",
             tier = "WOTLK_T10",
@@ -13205,7 +13205,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "WARRIOR_FURY_WOTLK_RS_BISTOOLTIP",
-            name = "RS Warrior Fury - BiS-Tooltip WotLK",
+            name = "RS Warrior Fury - BiS-Tooltip",
             class = "WARRIOR",
             spec = "Fury",
             tier = "WOTLK_RS",
@@ -13235,7 +13235,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "WARRIOR_PROTECTION_TBC_T6_LOONBIS",
-            name = "T6 Warrior Protection - LoonBiS TBC",
+            name = "Warrior Protection - LoonBiS",
             class = "WARRIOR",
             spec = "Protection",
             tier = "TBC_T6",
@@ -13267,7 +13267,7 @@ Goals.WishlistBuildData = {
             name = "Warrior Protection - TBC_PRE",
             class = "WARRIOR",
             spec = "Protection",
-            tier = "TBC_PRE",
+            tier = "TBC_PR4",
             level = 70,
             tags = {"progression"},
             itemsBySlot = {
@@ -13295,7 +13295,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARRIOR_PROTECTION_TBC_T6_WOWHEAD",
-            name = "T6 Warrior Protection - LoonBiS TBC",
+            name = "Warrior Protection - LoonBiS",
             class = "WARRIOR",
             spec = "Protection",
             tier = "TBC_T6",
@@ -13319,10 +13319,10 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARRIOR_PROTECTION_WOTLK_PRE_LOONBIS",
-            name = "PRE Warrior Protection - LoonBiS WotLK",
+            name = "Warrior Protection - LoonBiS",
             class = "WARRIOR",
             spec = "Protection",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -13346,7 +13346,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARRIOR_PROTECTION_WOTLK_T7_LOONBIS",
-            name = "T7 Warrior Protection - LoonBiS WotLK",
+            name = "Warrior Protection - LoonBiS",
             class = "WARRIOR",
             spec = "Protection",
             tier = "WOTLK_T7",
@@ -13370,7 +13370,7 @@ Goals.WishlistBuildData = {
         },
         {
             id = "WARRIOR_PROTECTION_WOTLK_T8_LOONBIS",
-            name = "T8 Warrior Protection - LoonBiS WotLK",
+            name = "Warrior Protection - LoonBiS",
             class = "WARRIOR",
             spec = "Protection",
             tier = "WOTLK_T8",
@@ -13399,10 +13399,10 @@ Goals.WishlistBuildData = {
 
         {
             id = "WARRIOR_PROTECTION_WOTLK_PRE_BISTOOLTIP",
-            name = "PRE Warrior Protection - BiS-Tooltip WotLK",
+            name = "Warrior Protection - BiS-Tooltip",
             class = "WARRIOR",
             spec = "Protection",
-            tier = "WOTLK_PRE",
+            tier = "WOTLK_PR7",
             level = 80,
             tags = {"progression"},
             itemsBySlot = {
@@ -13429,7 +13429,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "WARRIOR_PROTECTION_WOTLK_T9_BISTOOLTIP",
-            name = "T9 Warrior Protection - BiS-Tooltip WotLK",
+            name = "Warrior Protection - BiS-Tooltip",
             class = "WARRIOR",
             spec = "Protection",
             tier = "WOTLK_T9",
@@ -13459,7 +13459,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "WARRIOR_PROTECTION_WOTLK_T10_BISTOOLTIP",
-            name = "T10 Warrior Protection - BiS-Tooltip WotLK",
+            name = "Warrior Protection - BiS-Tooltip",
             class = "WARRIOR",
             spec = "Protection",
             tier = "WOTLK_T10",
@@ -13489,7 +13489,7 @@ Goals.WishlistBuildData = {
 
         {
             id = "WARRIOR_PROTECTION_WOTLK_RS_BISTOOLTIP",
-            name = "RS Warrior Protection - BiS-Tooltip WotLK",
+            name = "RS Warrior Protection - BiS-Tooltip",
             class = "WARRIOR",
             spec = "Protection",
             tier = "WOTLK_RS",
