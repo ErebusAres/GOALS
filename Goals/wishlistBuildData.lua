@@ -942,6 +942,7 @@ Goals.WishlistBuildData = {
             tier = "TBC_T6",
             level = 70,
             tags = {"bis", "wowhead"},
+            -- https://www.wowhead.com/tbc/guide/balance-druid-dps-bt-hyjal-phase-3-best-in-slot-gear-burning-crusade
             itemsBySlot = {
                 HEAD = { itemId = 31040, enchantId = 29191, gemIds = {34220, 31867}, notes = "", source = "wowhead" },
                 NECK = { itemId = 30015, enchantId = 0, gemIds = {}, notes = "", source = "wowhead" },
@@ -953,11 +954,11 @@ Goals.WishlistBuildData = {
                 WAIST = { itemId = 30888, enchantId = 0, gemIds = {31867, 24056}, notes = "", source = "wowhead" },
                 LEGS = { itemId = 30916, enchantId = 24274, gemIds = {31867, 31867, 24056}, notes = "", source = "wowhead" },
                 FEET = { itemId = 32239, enchantId = 46470, gemIds = {31867, 24056}, notes = "", source = "wowhead" },
-                RING1 = { itemId = 32527, enchantId = 46518, gemIds = {}, notes = "", source = "wowhead" },
-                RING2 = { itemId = 29305, enchantId = 46518, gemIds = {}, notes = "", source = "wowhead" },
+                RING1 = { itemId = 32527, enchantId = 46470, gemIds = {}, notes = "", source = "wowhead" },
+                RING2 = { itemId = 29305, enchantId = 46470, gemIds = {}, notes = "", source = "wowhead" },
                 TRINKET1 = { itemId = 32483, enchantId = 0, gemIds = {}, notes = "", source = "wowhead" },
                 TRINKET2 = { itemId = 32486, enchantId = 0, gemIds = {}, notes = "", source = "wowhead" },
-                MAINHAND = { itemId = 32374, enchantId = 46540, gemIds = {}, notes = "", source ="wowhead" },
+                MAINHAND = { itemId = 32237, enchantId = 46540, gemIds = {}, notes = "", source ="wowhead" },
                 RELIC = { itemId = 32387, enchantId = 0, gemIds = {}, notes = "", source = "wowhead" },
             },
             sources = {"wowhead"},
@@ -1216,6 +1217,7 @@ Goals.WishlistBuildData = {
             tier = "TBC_T6",
             level = 70,
             tags = {"bis", "wowhead"},
+            -- https://www.wowhead.com/tbc/guide/feral-druid-dps-bt-hyjal-phase-3-best-in-slot-gear-burning-crusade
             itemsBySlot = {
                 HEAD = { itemId = 8345, enchantId = 35452, gemIds = {}, notes = "", source = "wowhead" },
                 NECK = { itemId = 32260, enchantId = 0, gemIds = {}, notes = "", source = "wowhead" },
@@ -1481,21 +1483,22 @@ Goals.WishlistBuildData = {
             tier = "TBC_T6",
             level = 70,
             tags = {"bis", "wowhead"},
+            -- https://www.wowhead.com/tbc/guide/feral-druid-tank-bt-hyjal-phase-3-best-in-slot-gear-burning-crusade
             itemsBySlot = {
-                HEAD = { itemId = 34404, enchantId = 35453, gemIds = {25896, 32212}, notes = "", source = "wowhead" },
-                NECK = { itemId = 34178, enchantId = 0, gemIds = {}, notes = "", source = "wowhead" },
-                SHOULDER = { itemId = 34392, enchantId = 29480, gemIds = {32200, 32200}, notes = "", source = "wowhead" },
-                BACK = { itemId = 34190, enchantId = 34004, gemIds = {}, notes = "", source = "wowhead" },
-                CHEST = { itemId = 34211, enchantId = 27960, gemIds = {32200, 32200, 32200}, notes = "", source = "wowhead" },
-                WRIST = { itemId = 34444, enchantId = 27914, gemIds = {32200}, notes = "", source = "wowhead" },
-                HANDS = { itemId = 34408, enchantId = 25080, gemIds = {32200, 32200}, notes = "", source = "wowhead" },
-                WAIST = { itemId = 35156, enchantId = 0, gemIds = {}, notes = "", source = "wowhead" },
-                LEGS = { itemId = 34385, enchantId = 35495, gemIds = {32200, 32200, 32200}, notes = "", source = "wowhead" },
-                FEET = { itemId = 34573, enchantId = 34008, gemIds = {32200}, notes = "", source = "wowhead" },
-                RING1 = { itemId = 34213, enchantId = 27927, gemIds = {}, notes = "", source = "wowhead" },
-                RING2 = { itemId = 34361, enchantId = 27927, gemIds = {}, notes = "", source = "wowhead" },
+                HEAD = { itemId = 31039, enchantId = 35443, gemIds = {32409, 32212}, notes = "", source = "wowhead" },
+                NECK = { itemId = 32362, enchantId = 0, gemIds = {}, notes = "", source = "wowhead" },
+                SHOULDER = { itemId = 31048, enchantId = 35402, gemIds = {32220, 32212}, notes = "", source = "wowhead" },
+                BACK = { itemId = 28660, enchantId = 34004, gemIds = {}, notes = "", source = "wowhead" },
+                CHEST = { itemId = 31042, enchantId = 27960, gemIds = {32212, 32220, 32194}, notes = "", source = "wowhead" },
+                WRIST = { itemId = 33881, enchantId = 27905, gemIds = {32194}, notes = "", source = "wowhead" },
+                HANDS = { itemId = 31034, enchantId = 25072, gemIds = {32212}, notes = "", source = "wowhead" },
+                WAIST = { itemId = 30106, enchantId = 0, gemIds = {32194, 32212}, notes = "", source = "wowhead" },
+                LEGS = { itemId = 31044, enchantId = 35495, gemIds = {32212}, notes = "", source = "wowhead" },
+                FEET = { itemId = 32593, enchantId = 34007, gemIds = {32212, 24056}, notes = "", source = "wowhead" },
+                RING1 = { itemId = 29279, enchantId = 27927, gemIds = {}, notes = "", source = "wowhead" },
+                RING2 = { itemId = 32266, enchantId = 27927, gemIds = {}, notes = "", source = "wowhead" },
                 TRINKET1 = { itemId = 32501, enchantId = 0, gemIds = {}, notes = "", source = "wowhead" },
-                TRINKET2 = { itemId = 32658, enchantId = 0, gemIds = {}, notes = "", source = "wowhead" },
+                TRINKET2 = { itemId = 34578, enchantId = 0, gemIds = {}, notes = "", source = "wowhead" },
                 MAINHAND = { itemId = 30883, enchantId = 27977, gemIds = {}, notes = "", source ="wowhead" },
                 RELIC= { itemId = 32387, enchantId = 0, gemIds = {}, notes = "", source = "wowhead" },
             },
@@ -1730,6 +1733,8 @@ Goals.WishlistBuildData = {
             tier = "TBC_T6",
             level = 70,
             tags = {"bis", "wowhead"},
+            -- https://www.wowhead.com/tbc/guide/druid-healer-bt-hyjal-phase-3-best-in-slot-gear-burning-crusade
+            -- update to T6/Phase3 instead of phase5
             itemsBySlot = {
                 HEAD = { itemId = 34245, enchantId = 35445, gemIds = {25897, 32195}, notes = "", source = "wowhead" },
                 NECK = { itemId = 33281, enchantId = 0, gemIds = {}, notes = "", source = "wowhead" },
@@ -7009,6 +7014,7 @@ Goals.WishlistBuildData = {
             tier = "TBC_T6",
             level = 70,
             tags = {"bis", "wowhead"},
+            -- https://www.wowhead.com/tbc/guide/affliction-warlock-dps-bt-hyjal-phase-3-best-in-slot-gear-burning-crusade
             itemsBySlot = {
                 HEAD = { itemId = 31051, enchantId = 29191, gemIds = {34220, 31867}, notes = "", source = "wowhead" },
                 NECK = { itemId = 32349, enchantId = 0, gemIds = {}, notes = "", source = "wowhead" },
@@ -8539,6 +8545,7 @@ Goals.WishlistBuildData = {
             tier = "TBC_T6",
             level = 70,
             tags = {"bis", "wowhead"},
+            -- https://www.wowhead.com/tbc/guide/destruction-warlock-dps-bt-hyjal-phase-3-best-in-slot-gear-burning-crusade
             itemsBySlot = {
                 HEAD = { itemId = 31051, enchantId = 29191, gemIds = {34220, 31867}, notes = "", source = "wowhead" },
                 NECK = { itemId = 32589, enchantId = 0, gemIds = {}, notes = "", source = "wowhead" },
