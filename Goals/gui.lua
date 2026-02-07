@@ -11442,7 +11442,12 @@ function UI:UpdateWishlistBuildList()
                 badge.text:SetTextColor(1, 1, 1, 1)
                 local w = (badge.text.GetStringWidth and badge.text:GetStringWidth() or 18) + 10
                 local h = 14
-                badge.bg:SetColorTexture(r or 0.2, g or 0.2, b or 0.2, 0.7)
+                local br, bg, bb, ba = r or 0.2, g or 0.2, b or 0.2, 0.7
+                if badge.bg.SetColorTexture then
+                    badge.bg:SetColorTexture(br, bg, bb, ba)
+                else
+                    badge.bg:SetTexture(br, bg, bb, ba)
+                end
                 badge:SetSize(w, h)
                 badge:ClearAllPoints()
                 badge:SetPoint("LEFT", row, "LEFT", iconX, 0)
