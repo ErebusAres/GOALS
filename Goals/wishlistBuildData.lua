@@ -6462,7 +6462,7 @@ Goals.WishlistBuildData = {
             },
             sources = {"wowhead"},
             notes = "Phase data 'T6' sourced from Wowhead. Enchants from Wowhead gem/enchants guides.",
-        }
+        },
         {
             id = "SHAMAN_RESTORATION_TBC_T6_LOONBIS",
             name = "Shaman Restoration - LoonBiS",
