@@ -1361,7 +1361,14 @@ local function ensureOverviewMigrationPrompt()
     end)
     frame.cancelBtn = cancelBtn
 
-    registerSpecialFrame(frame:GetName())
+    local frameNameForEscape = frame.GetName and frame:GetName() or nil
+    if frameNameForEscape then
+        if RegisterSpecialFrame then
+            RegisterSpecialFrame(frameNameForEscape)
+        elseif registerSpecialFrame then
+            registerSpecialFrame(frameNameForEscape)
+        end
+    end
     UI.overviewMigrationPrompt = frame
     return frame
 end
