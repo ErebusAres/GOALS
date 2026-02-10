@@ -1,0 +1,5 @@
+Issues/Bugs found during Raid on Friday 2/6/2026
+
+- Wishlist Announcement should determine that you've found an item on the wishlist upon the lootmaster seeing the item(s) from the boss.
+    - Double check that only when the lootmaster sees an item that it syncs the item(s) to everyone immediately, and check locally for wishlist items for players as well.
+- Wishlist Announcements shouldn't trigger if you've marked the item as "claimed" (checked off with green checkmark) on the wishlist(s).

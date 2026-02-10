@@ -4694,26 +4694,51 @@ function Goals:StartAutoSyncPush()
     local elapsed = 0
     self.autoSyncInterval = interval
     self.nextAutoSyncAt = time() + interval
+
     local frame = CreateFrame("Frame")
-    frame:SetScript("OnUpdate", function(_, delta)
-        elapsed = elapsed + (delta or 0)
-        if elapsed < interval then
-            return
-        end
-        elapsed = 0
-        if not self:IsSyncMaster() and not (self.IsMasterLooter and self:IsMasterLooter()) then
-            return
+    local function canSync()
+        if not self.IsSyncMaster or not self:IsSyncMaster() then
+            if not (self.IsMasterLooter and self:IsMasterLooter()) then
+                return false
+            end
         end
         if not self:IsInRaid() and not self:IsInParty() then
-            return
+            return false
         end
-        if self.Comm and self.Comm.SendPointsSync then
-            self.Comm:SendPointsSync(nil, "AUTO")
-        elseif self.Comm and self.Comm.SerializePoints then
-            self.Comm:Send("SYNC_POINTS", self.Comm:SerializePoints())
+        return true
+    end
+    local function updateOnUpdate()
+        if canSync() then
+            frame:SetScript("OnUpdate", function(_, delta)
+                elapsed = elapsed + (delta or 0)
+                if elapsed < interval then
+                    return
+                end
+                elapsed = 0
+                if not canSync() then
+                    return
+                end
+                if self.Comm and self.Comm.SendPointsSync then
+                    self.Comm:SendPointsSync(nil, "AUTO")
+                elseif self.Comm and self.Comm.SerializePoints then
+                    self.Comm:Send("SYNC_POINTS", self.Comm:SerializePoints())
+                end
+                self:MarkSyncSent()
+            end)
+        else
+            frame:SetScript("OnUpdate", nil)
         end
-        self:MarkSyncSent()
+    end
+
+    frame:RegisterEvent("PLAYER_ENTERING_WORLD")
+    frame:RegisterEvent("GROUP_ROSTER_UPDATE")
+    frame:RegisterEvent("RAID_ROSTER_UPDATE")
+    frame:RegisterEvent("PARTY_MEMBERS_CHANGED")
+    frame:SetScript("OnEvent", function()
+        updateOnUpdate()
     end)
+
+    updateOnUpdate()
     self.autoSyncFrame = frame
 end
 

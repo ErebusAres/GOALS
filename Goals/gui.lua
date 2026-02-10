@@ -3867,19 +3867,32 @@ function UI:CreateOverviewTab(page)
     self.rosterScroll:SetScript("OnShow", function(selfScroll)
         setScrollBarAlwaysVisible(selfScroll, selfScroll._contentHeight or 0)
     end)
-
     local autoSyncTicker = CreateFrame("Frame", nil, rosterInset)
     autoSyncTicker.elapsed = 0
-    autoSyncTicker:SetScript("OnUpdate", function(selfFrame, elapsed)
-        selfFrame.elapsed = selfFrame.elapsed + (elapsed or 0)
-        if selfFrame.elapsed < 0.5 then
-            return
-        end
-        selfFrame.elapsed = 0
-        if UI and UI.UpdateAutoSyncLabel then
-            UI:UpdateAutoSyncLabel()
-        end
+    local function startAutoSyncTicker()
+        autoSyncTicker:SetScript("OnUpdate", function(selfFrame, elapsed)
+            selfFrame.elapsed = selfFrame.elapsed + (elapsed or 0)
+            if selfFrame.elapsed < 0.5 then
+                return
+            end
+            selfFrame.elapsed = 0
+            if UI and UI.UpdateAutoSyncLabel then
+                UI:UpdateAutoSyncLabel()
+            end
+        end)
+    end
+    local function stopAutoSyncTicker()
+        autoSyncTicker:SetScript("OnUpdate", nil)
+    end
+    autoSyncTicker:SetScript("OnShow", function()
+        startAutoSyncTicker()
     end)
+    autoSyncTicker:SetScript("OnHide", function()
+        stopAutoSyncTicker()
+    end)
+    if autoSyncTicker:IsShown() then
+        startAutoSyncTicker()
+    end
     self.autoSyncTicker = autoSyncTicker
 
     for i = 1, #self.rosterRows do
