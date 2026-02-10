@@ -1392,6 +1392,9 @@ function Goals:UpdateLootSlots(resetSeen)
                 if seen[slot] ~= link then
                     seen[slot] = link
                     self:RecordLootFound(link)
+                    if self.HandleWishlistLoot then
+                        self:HandleWishlistLoot(link)
+                    end
                     local canSync = self:CanSync() or (self.IsMasterLooter and self:IsMasterLooter())
                     if self.Comm and canSync then
                         self.Comm:SendLootFound(entryId, entryTs, link)
