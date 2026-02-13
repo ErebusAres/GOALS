@@ -27,6 +27,13 @@ local function normalizeBossName(name)
     return text:lower():gsub("[^%w]", "")
 end
 
+local function trimText(value)
+    if not value then
+        return ""
+    end
+    return tostring(value):gsub("^%s+", ""):gsub("%s+$", "")
+end
+
 local bossIgnoreList = {
     infinitetimereaver = true,
 }
@@ -111,6 +118,19 @@ function Events:Init()
     self.frame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
     self.frame:RegisterEvent("PLAYER_ENTERING_WORLD")
     self.frame:RegisterEvent("BOSS_KILL")
+    self.frame:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
+    if not self.watchFrame then
+        self.watchFrame = CreateFrame("Frame")
+        self.watchElapsed = 0
+        self.watchFrame:SetScript("OnUpdate", function(_, elapsed)
+            self.watchElapsed = (self.watchElapsed or 0) + (elapsed or 0)
+            if self.watchElapsed < 1 then
+                return
+            end
+            self.watchElapsed = 0
+            self:WatchEncounterProgress()
+        end)
+    end
     self:BuildBossLookup()
     self:InitDBMCallbacks()
     if Goals and Goals.Dev and Goals.Dev.enabled then
@@ -185,17 +205,28 @@ function Events:BuildBossLookup()
     self.bossToEncounter = {}
     self.bossToEncounterNormalized = {}
     self.encounterBosses = {}
+    self.encounterBossRequiredCounts = {}
+    self.encounterFinalBosses = {}
     if type(_G.bossEncounters) ~= "table" then
         return
     end
     local redusRealm = isRedusRealm()
     for encounterName, data in pairs(_G.bossEncounters) do
         local set = {}
+        local meta = { finalBosses = {}, requiredCounts = {} }
         if encounterName == "Chess Event" and not redusRealm then
             set["King Llane"] = true
             set["Warchief Blackhand"] = true
+            meta.requiredCounts["King Llane"] = 1
+            meta.requiredCounts["Warchief Blackhand"] = 1
         else
-            self:CollectBossNames(data, set)
+            self:CollectBossNames(data, set, meta)
+        end
+        if next(meta.finalBosses) then
+            self.encounterFinalBosses[encounterName] = meta.finalBosses
+        end
+        if next(meta.requiredCounts) then
+            self.encounterBossRequiredCounts[encounterName] = meta.requiredCounts
         end
         self.encounterBosses[encounterName] = set
         for bossName in pairs(set) do
@@ -216,16 +247,139 @@ function Events:BuildBossLookup()
     end
 end
 
-function Events:CollectBossNames(data, set)
+function Events:CollectBossNames(data, set, meta)
     if type(data) == "string" then
-        set[data] = true
+        local name = data
+        local finalName = data:match("^%[%*%]%s*(.+)$")
+        if finalName then
+            name = trimText(finalName)
+            if meta and meta.finalBosses and name ~= "" then
+                meta.finalBosses[name] = true
+            end
+        else
+            local starName = data:match("^%*(.+)$")
+            if starName then
+                name = trimText(starName)
+                if meta and meta.finalBosses and name ~= "" then
+                    meta.finalBosses[name] = true
+                end
+            end
+        end
+        if name ~= "" then
+            set[name] = true
+            if meta and meta.requiredCounts then
+                meta.requiredCounts[name] = (meta.requiredCounts[name] or 0) + 1
+            end
+        end
         return
     end
     if type(data) == "table" then
+        if type(data.name) == "string" and data.name ~= "" then
+            local name = trimText(data.name)
+            if name ~= "" then
+                set[name] = true
+                if meta and meta.requiredCounts then
+                    local count = math.floor(tonumber(data.count) or 1)
+                    if count < 1 then
+                        count = 1
+                    end
+                    meta.requiredCounts[name] = (meta.requiredCounts[name] or 0) + count
+                end
+                if data.final and meta and meta.finalBosses then
+                    meta.finalBosses[name] = true
+                end
+            end
+            return
+        end
         for _, entry in pairs(data) do
-            self:CollectBossNames(entry, set)
+            self:CollectBossNames(entry, set, meta)
         end
     end
+end
+
+function Events:TouchEncounterActivity(encounterName)
+    if not (Goals and Goals.encounter and Goals.encounter.active) then
+        return
+    end
+    if Goals.encounter.name ~= encounterName then
+        return
+    end
+    local now = time()
+    Goals.encounter.lastBossActivityTs = now
+    Goals.encounter.lastBossUnitSeen = now
+end
+
+function Events:WatchEncounterProgress()
+    if not (Goals and Goals.encounter and Goals.encounter.active) then
+        return
+    end
+    local rule = Goals.encounter.rule
+    if not rule or rule.type ~= "multi_kill" then
+        return
+    end
+    local kills = Goals.encounter.kills
+    if type(kills) ~= "table" then
+        return
+    end
+    local hasProgress = false
+    for _, count in pairs(kills) do
+        if (tonumber(count) or 0) > 0 then
+            hasProgress = true
+            break
+        end
+    end
+    if not hasProgress then
+        return
+    end
+    local now = time()
+    local lastActivity = Goals.encounter.lastBossActivityTs or Goals.encounter.startTime or now
+    local lastSeen = Goals.encounter.lastBossUnitSeen or 0
+    local resetAfter = tonumber(rule.attemptResetAfter) or 75
+    if resetAfter <= 0 then
+        return
+    end
+    if (now - lastActivity) < resetAfter then
+        return
+    end
+    if lastSeen > 0 and (now - lastSeen) < resetAfter then
+        return
+    end
+    Goals.encounter.kills = {}
+    Goals.encounter.lastBossKillTs = nil
+    Goals:Debug(string.format("Rule multi_kill progress reset after %ds inactivity: %s", resetAfter, Goals.encounter.name or "Encounter"))
+end
+
+function Events:GetEncounterRule(encounterName)
+    if encounterName == "Chess Event" and isRedusRealm() then
+        -- Redus uses a gauntlet-style chess event; keep default kill-through behavior
+        -- (all configured pieces) but add grace to avoid false wipe during wave gaps.
+        return {
+            wipeGrace = 180,
+        }
+    end
+    local explicit = _G.encounterRules and _G.encounterRules[encounterName] or nil
+    if explicit then
+        return explicit
+    end
+    local finalBosses = self.encounterFinalBosses and self.encounterFinalBosses[encounterName] or nil
+    if not finalBosses or not next(finalBosses) then
+        return nil
+    end
+    local list = {}
+    for bossName in pairs(finalBosses) do
+        table.insert(list, bossName)
+    end
+    table.sort(list)
+    if #list == 1 then
+        return {
+            type = "final_boss_kill",
+            finalBoss = list[1],
+        }
+    end
+    return {
+        type = "final_boss_kill",
+        finalBosses = list,
+    }
 end
 
 function Events:OnEvent(event, ...)
@@ -288,6 +442,10 @@ function Events:OnEvent(event, ...)
         end
         return
     end
+    if event == "UNIT_SPELLCAST_SUCCEEDED" then
+        self:HandleUnitSpellcastSucceeded(...)
+        return
+    end
     if event == "ZONE_CHANGED_NEW_AREA" then
         self:ResetEncounter()
         return
@@ -297,6 +455,76 @@ function Events:OnEvent(event, ...)
         self:HandleGroupUpdate()
         return
     end
+end
+
+function Events:HandleUnitSpellcastSucceeded(unit, spellName, _, _, spellId)
+    if not (Goals and Goals.encounter and Goals.encounter.active) then
+        return
+    end
+    local unitName = getUnitNameIfExists(unit)
+    local encounterName, canonicalBoss = nil, nil
+    if unitName then
+        encounterName, canonicalBoss = self:GetEncounterForBossName(unitName)
+    end
+    if encounterName and encounterName == Goals.encounter.name then
+        self:TouchEncounterActivity(encounterName)
+    end
+    local rule = Goals.encounter.rule
+    if not rule or rule.type ~= "spellcast_success" then
+        return
+    end
+    local requireCaster = rule.requireEncounterBossCaster ~= false
+    if requireCaster then
+        if not encounterName or encounterName ~= Goals.encounter.name then
+            return
+        end
+        if type(rule.allowedCasters) == "table" and #rule.allowedCasters > 0 then
+            local normalizedCaster = normalizeBossName(canonicalBoss or unitName)
+            local allowed = false
+            for _, allowedName in ipairs(rule.allowedCasters) do
+                if normalizedCaster == normalizeBossName(allowedName) then
+                    allowed = true
+                    break
+                end
+            end
+            if not allowed then
+                return
+            end
+        end
+    end
+    local id = tonumber(spellId) or 0
+    local match = false
+    if rule.spellId and id > 0 then
+        match = id == tonumber(rule.spellId)
+    elseif rule.spellId and spellName and GetSpellInfo then
+        local expectedName = GetSpellInfo(tonumber(rule.spellId) or 0)
+        if expectedName and expectedName ~= "" then
+            match = tostring(spellName) == tostring(expectedName)
+        end
+    elseif type(rule.spellIds) == "table" and id > 0 then
+        for _, candidate in ipairs(rule.spellIds) do
+            if id == tonumber(candidate) then
+                match = true
+                break
+            end
+        end
+    elseif type(rule.spellIds) == "table" and spellName and GetSpellInfo then
+        for _, candidate in ipairs(rule.spellIds) do
+            local expectedName = GetSpellInfo(tonumber(candidate) or 0)
+            if expectedName and expectedName ~= "" and tostring(spellName) == tostring(expectedName) then
+                match = true
+                break
+            end
+        end
+    elseif rule.spellName and spellName then
+        match = tostring(spellName) == tostring(rule.spellName)
+    end
+    if not match then
+        return
+    end
+    Goals.encounter.lastBossKillTs = time()
+    Goals:Debug(string.format("Rule spellcast_success complete: %s (%s)", Goals.encounter.name or "Encounter", tostring(id)))
+    self:FinishEncounter(true)
 end
 
 function Events:CheckBossUnits(includeTargetFocus)
@@ -311,6 +539,9 @@ function Events:CheckBossUnits(includeTargetFocus)
             local encounterName, bossName = self:GetEncounterForBossName(name)
             if encounterName then
                 Goals.encounter.lastBossUnitSeen = time()
+                if Goals.encounter.active and Goals.encounter.name == encounterName then
+                    Goals.encounter.lastBossActivityTs = time()
+                end
                 return encounterName, bossName
             end
         end
@@ -405,12 +636,14 @@ function Events:HandleCombatLog(...)
         local encounterName, canonicalBoss = self:GetEncounterForBossName(sourceName)
         if encounterName then
             self:StartEncounter(encounterName, canonicalBoss)
+            self:TouchEncounterActivity(encounterName)
         end
     end
     if inCombat and destName then
         local encounterName, canonicalBoss = self:GetEncounterForBossName(destName)
         if encounterName then
             self:StartEncounter(encounterName, canonicalBoss)
+            self:TouchEncounterActivity(encounterName)
         end
     end
     if (eventType == "UNIT_DIED" or eventType == "PARTY_KILL") and destName then
@@ -493,20 +726,31 @@ function Events:StartEncounter(encounterName, bossName)
     Goals.encounter.remaining = {}
     Goals.encounter.kills = {}
     Goals.encounter.deathTimes = {}
+    Goals.encounter.deathEventTs = {}
+    Goals.encounter.alive = {}
     Goals.encounter.cycles = 0
-    Goals.encounter.rule = _G.encounterRules and _G.encounterRules[encounterName] or nil
+    Goals.encounter.rule = self:GetEncounterRule(encounterName)
     if Goals.encounter.rule and Goals.encounter.rule.type then
         Goals:Debug("Encounter rule: " .. encounterName .. " (" .. Goals.encounter.rule.type .. ")")
     end
     local bosses = self.encounterBosses[encounterName]
+    local requiredCounts = self.encounterBossRequiredCounts and self.encounterBossRequiredCounts[encounterName] or nil
     if bosses then
         for name in pairs(bosses) do
-            Goals.encounter.remaining[name] = true
+            local count = requiredCounts and tonumber(requiredCounts[name]) or 1
+            count = math.floor(count or 1)
+            if count < 1 then
+                count = 1
+            end
+            Goals.encounter.remaining[name] = count
+            Goals.encounter.alive[name] = true
         end
     elseif bossName then
-        Goals.encounter.remaining[bossName] = true
+        Goals.encounter.remaining[bossName] = 1
+        Goals.encounter.alive[bossName] = true
     end
     Goals.encounter.startTime = time()
+    Goals.encounter.lastBossActivityTs = Goals.encounter.startTime
     Goals.encounter.lastBoss = bossName
     Goals:Debug("Encounter started: " .. encounterName)
     if Goals.History and Goals.History.AddEncounterStart then
@@ -540,8 +784,16 @@ function Events:MarkBossDead(bossName, allowOutOfCombat)
     if Goals.encounter.name ~= encounterName then
         return
     end
+    Goals.encounter.lastBossActivityTs = time()
     local rule = Goals.encounter.rule
     local bossKey = canonicalBoss or bossName
+    local now = time()
+    Goals.encounter.deathEventTs = Goals.encounter.deathEventTs or {}
+    local lastDeathTs = Goals.encounter.deathEventTs[bossKey] or 0
+    if (now - lastDeathTs) < 2 then
+        return
+    end
+    Goals.encounter.deathEventTs[bossKey] = now
     if rule then
         if rule.type == "multi_kill" then
             Goals.encounter.kills[bossKey] = (Goals.encounter.kills[bossKey] or 0) + 1
@@ -554,8 +806,18 @@ function Events:MarkBossDead(bossName, allowOutOfCombat)
             end
             return
         elseif rule.type == "pair_revive" then
-            local now = time()
+            if Goals.encounter.alive and Goals.encounter.alive[bossKey] == false then
+                return
+            end
+            if Goals.encounter.alive then
+                Goals.encounter.alive[bossKey] = false
+            end
             local bosses = rule.bosses or {}
+            local minFightTime = tonumber(rule.minFightTime) or 0
+            if minFightTime > 0 and Goals.encounter.startTime and (now - Goals.encounter.startTime) < minFightTime then
+                Goals.encounter.deathTimes[bossKey] = now
+                return
+            end
             local other
             for _, name in ipairs(bosses) do
                 if name ~= bossKey then
@@ -577,10 +839,20 @@ function Events:MarkBossDead(bossName, allowOutOfCombat)
                     Goals.encounter.lastBossKillTs = now
                     Goals:Debug("Rule pair_revive complete: " .. encounterName)
                     self:FinishEncounter(true)
+                elseif Goals.encounter.alive then
+                    for _, name in ipairs(bosses) do
+                        Goals.encounter.alive[name] = true
+                    end
                 end
             end
             return
         elseif rule.type == "multi_death_window" then
+            if Goals.encounter.alive and Goals.encounter.alive[bossKey] == false then
+                return
+            end
+            if Goals.encounter.alive then
+                Goals.encounter.alive[bossKey] = false
+            end
             local now = time()
             local bosses = rule.bosses or {}
             Goals.encounter.deathTimes[bossKey] = now
@@ -607,12 +879,26 @@ function Events:MarkBossDead(bossName, allowOutOfCombat)
                     Goals.encounter.lastBossKillTs = now
                     Goals:Debug("Rule multi_death_window complete: " .. encounterName)
                     self:FinishEncounter(true)
+                elseif Goals.encounter.alive then
+                    for _, name in ipairs(bosses) do
+                        Goals.encounter.alive[name] = true
+                    end
                 end
             end
             return
         elseif rule.type == "final_boss_kill" then
-            local finalBoss = rule.finalBoss
-            local isFinal = finalBoss and (normalizeBossName(bossKey) == normalizeBossName(finalBoss))
+            local normalizedBossKey = normalizeBossName(bossKey)
+            local isFinal = false
+            if rule.finalBoss then
+                isFinal = normalizedBossKey == normalizeBossName(rule.finalBoss)
+            elseif type(rule.finalBosses) == "table" then
+                for _, name in ipairs(rule.finalBosses) do
+                    if normalizedBossKey == normalizeBossName(name) then
+                        isFinal = true
+                        break
+                    end
+                end
+            end
             Goals:Debug(string.format("Rule final_boss_kill: %s (final=%s)", bossKey, tostring(isFinal)))
             if isFinal then
                 Goals.encounter.lastBossKillTs = time()
@@ -620,10 +906,81 @@ function Events:MarkBossDead(bossName, allowOutOfCombat)
                 self:FinishEncounter(true)
             end
             return
+        elseif rule.type == "any_boss_kill" then
+            local bosses = rule.bosses or {}
+            local normalizedBossKey = normalizeBossName(bossKey)
+            local isMatch = false
+            if #bosses == 0 then
+                isMatch = true
+            else
+                for _, name in ipairs(bosses) do
+                    if normalizedBossKey == normalizeBossName(name) then
+                        isMatch = true
+                        break
+                    end
+                end
+            end
+            Goals:Debug(string.format("Rule any_boss_kill: %s (match=%s)", bossKey, tostring(isMatch)))
+            if isMatch then
+                Goals.encounter.lastBossKillTs = time()
+                local confirmDelay = tonumber(rule.confirmNoBossSeenFor) or 0
+                if confirmDelay > 0 then
+                    local token = tostring(Goals.encounter.lastBossKillTs) .. ":" .. tostring(bossKey)
+                    Goals.encounter.pendingRuleConfirm = token
+                    local maxChecks = 3
+                    local function confirmAnyBossKill(checkIndex)
+                        if not (Goals and Goals.encounter and Goals.encounter.active) then
+                            return
+                        end
+                        if Goals.encounter.name ~= encounterName then
+                            return
+                        end
+                        if Goals.encounter.pendingRuleConfirm ~= token then
+                            return
+                        end
+                        if self:CheckBossUnits(true) then
+                            if checkIndex < maxChecks then
+                                Goals:Delay(2, function()
+                                    confirmAnyBossKill(checkIndex + 1)
+                                end)
+                            else
+                                Goals.encounter.pendingRuleConfirm = nil
+                            end
+                            return
+                        end
+                        local lastSeen = Goals.encounter.lastBossUnitSeen or 0
+                        if lastSeen > 0 and (time() - lastSeen) < confirmDelay then
+                            if checkIndex < maxChecks then
+                                Goals:Delay(2, function()
+                                    confirmAnyBossKill(checkIndex + 1)
+                                end)
+                            else
+                                Goals.encounter.pendingRuleConfirm = nil
+                            end
+                            return
+                        end
+                        Goals.encounter.pendingRuleConfirm = nil
+                        Goals:Debug("Rule any_boss_kill complete (confirmed): " .. encounterName)
+                        self:FinishEncounter(true)
+                    end
+                    Goals:Delay(confirmDelay, function()
+                        confirmAnyBossKill(1)
+                    end)
+                else
+                    Goals:Debug("Rule any_boss_kill complete: " .. encounterName)
+                    self:FinishEncounter(true)
+                end
+            end
+            return
         end
     end
     if Goals.encounter.remaining then
-        Goals.encounter.remaining[bossKey] = nil
+        local remainingCount = tonumber(Goals.encounter.remaining[bossKey]) or 0
+        if remainingCount > 1 then
+            Goals.encounter.remaining[bossKey] = remainingCount - 1
+        else
+            Goals.encounter.remaining[bossKey] = nil
+        end
         if not next(Goals.encounter.remaining) then
             Goals.encounter.lastBossKillTs = time()
             self:FinishEncounter(true)
@@ -646,6 +1003,14 @@ function Events:HandleCombatEnd()
         local lastBossUnit = Goals.encounter.lastBossUnitSeen or 0
         if lastBossUnit > 0 and (time() - lastBossUnit) < 8 then
             return
+        end
+        local rule = Goals.encounter.rule
+        local wipeGrace = rule and tonumber(rule.wipeGrace) or 0
+        if wipeGrace and wipeGrace > 0 then
+            local lastActivity = Goals.encounter.lastBossActivityTs or Goals.encounter.startTime or 0
+            if lastActivity > 0 and (time() - lastActivity) < wipeGrace then
+                return
+            end
         end
         if Goals.encounter.active and not Goals:IsGroupInCombat() then
             self:FinishEncounter(false)
@@ -718,6 +1083,17 @@ function Events:FinishEncounter(success)
     Goals.encounter.name = nil
     Goals.encounter.remaining = nil
     Goals.encounter.startTime = 0
+    Goals.encounter.lastBossActivityTs = nil
+    Goals.encounter.lastBossUnitSeen = nil
+    Goals.encounter.lastBossKillTs = nil
+    Goals.encounter.lastBoss = nil
+    Goals.encounter.kills = nil
+    Goals.encounter.deathTimes = nil
+    Goals.encounter.deathEventTs = nil
+    Goals.encounter.alive = nil
+    Goals.encounter.cycles = 0
+    Goals.encounter.rule = nil
+    Goals.encounter.pendingRuleConfirm = nil
     if success then
         if Goals:IsSyncMaster() or (Goals.Dev and Goals.Dev.enabled) then
             Goals:AwardBossKill(encounterName)
@@ -742,9 +1118,15 @@ function Events:ResetEncounter()
     Goals.encounter.name = nil
     Goals.encounter.remaining = nil
     Goals.encounter.startTime = 0
+    Goals.encounter.lastBossActivityTs = nil
+    Goals.encounter.lastBossUnitSeen = nil
     Goals.encounter.lastBossKillTs = nil
+    Goals.encounter.lastBoss = nil
     Goals.encounter.kills = nil
     Goals.encounter.deathTimes = nil
+    Goals.encounter.deathEventTs = nil
+    Goals.encounter.alive = nil
     Goals.encounter.cycles = 0
     Goals.encounter.rule = nil
+    Goals.encounter.pendingRuleConfirm = nil
 end

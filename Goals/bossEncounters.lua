@@ -1,6 +1,9 @@
 -- Goals: bossEncounters.lua
 -- Boss list used for encounter detection.
 -- Usage: _G.bossEncounters["Encounter Name"] = { "Boss Name", "Boss Name 2" }
+-- Optional final-kill marker:
+--   Prefix a boss with `[*]` to indicate this boss ends the encounter.
+--   Example: { "Add 1", "Add 2", "[*]Final Boss" }
 -- Table of boss creatures, including multi-boss encounters
 _G.bossEncounters = {
     --[[Vanilla WoW Raids]]
@@ -87,7 +90,7 @@ _G.bossEncounters = {
     ["Nightbane"] = { "Nightbane" },
     ["Prince Malchezaar"] = { "Prince Malchezaar" },
     --T4 Gruul's Lair Bosses
-    ["High King Maulgar"] = { "High King Maulgar", "Kiggler the Crazed", "Blindeye the Seer", "Olm the Summoner", "Krosh Firehand" },
+    ["High King Maulgar"] = { "[*]High King Maulgar", "Kiggler the Crazed", "Blindeye the Seer", "Olm the Summoner", "Krosh Firehand" },
     ["Gruul the Dragonkiller"] = { "Gruul the Dragonkiller" },
     --T4 Magtheridon's Lair Bosses
     ["Magtheridon"] = { "Magtheridon" },
@@ -251,6 +254,8 @@ _G.encounterRules = {
         bosses = { "Romulo", "Julianne" },
         requiredKills = 1,
         reviveWindow = 10,
+        minFightTime = 30,
+        wipeGrace = 25,
     },
     ["Mimiron"] = {
         type = "multi_death_window",
@@ -264,19 +269,80 @@ _G.encounterRules = {
         requiredKills = 2,
     },
     ["Kalecgos"] = {
-        type = "pair_revive",
-        bosses = { "Kalecgos", "Sathrovarr the Corruptor" },
-        requiredKills = 1,
-        reviveWindow = 10,
+        type = "final_boss_kill",
+        finalBoss = "Sathrovarr the Corruptor",
+        wipeGrace = 45,
     },
     ["Al'ar"] = {
         type = "multi_kill",
         bosses = { "Al'ar" },
         requiredKills = 2,
+        attemptResetAfter = 75,
+    },
+    ["Leotheras the Blind"] = {
+        type = "final_boss_kill",
+        finalBoss = "Leotheras the Blind",
+        wipeGrace = 30,
+    },
+    ["Chess Event"] = {
+        type = "any_boss_kill",
+        bosses = { "King Llane", "Warchief Blackhand" },
+        wipeGrace = 60,
+    },
+    ["Kael'thas Sunstrider"] = {
+        type = "final_boss_kill",
+        finalBoss = "Kael'thas Sunstrider",
+        wipeGrace = 45,
+    },
+    ["Illidari Council"] = {
+        type = "any_boss_kill",
+        bosses = { "Gathios the Shatterer", "High Nethermancer Zerevor", "Lady Malande", "Veras Darkshadow" },
+        confirmNoBossSeenFor = 4,
+        wipeGrace = 30,
     },
     ["Reliquary of Souls"] = {
         type = "final_boss_kill",
         finalBoss = "Essence of Anger",
+        wipeGrace = 45,
+    },
+    ["M'uru"] = {
+        type = "final_boss_kill",
+        finalBoss = "Entropius",
+        wipeGrace = 45,
+    },
+    ["Zul'jin"] = {
+        type = "final_boss_kill",
+        finalBoss = "Zul'jin",
+        wipeGrace = 30,
+    },
+    ["Daakara"] = {
+        type = "final_boss_kill",
+        finalBoss = "Daakara",
+        wipeGrace = 30,
+    },
+    ["Twin Val'kyr"] = {
+        type = "any_boss_kill",
+        bosses = { "Eydis Darkbane", "Fjola Lightbane" },
+        confirmNoBossSeenFor = 4,
+        wipeGrace = 20,
+    },
+    ["Blood Prince Council"] = {
+        type = "any_boss_kill",
+        bosses = { "Prince Valanar", "Prince Keleseth", "Prince Taldaram" },
+        confirmNoBossSeenFor = 4,
+        wipeGrace = 20,
+    },
+    ["Icecrown Gunship Battle: Horde"] = {
+        type = "spellcast_success",
+        spellId = 72340,
+        allowedCasters = { "Muradin Bronzebeard" },
+        wipeGrace = 60,
+    },
+    ["Icecrown Gunship Battle: Alliance"] = {
+        type = "spellcast_success",
+        spellId = 72340,
+        allowedCasters = { "High Overlord Saurfang" },
+        wipeGrace = 60,
     },
 }
 
