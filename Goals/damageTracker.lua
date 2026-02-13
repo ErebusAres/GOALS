@@ -634,6 +634,10 @@ function DamageTracker:GetFilteredEntries(filter, opts)
     if settings and settings.combatLogShowThreatAbilities ~= nil then
         showThreatAbilities = settings.combatLogShowThreatAbilities and true or false
     end
+    local showBossHealing = true
+    if settings and settings.combatLogShowBossHealing ~= nil then
+        showBossHealing = settings.combatLogShowBossHealing and true or false
+    end
     local threshold = settings and tonumber(settings.combatLogBigThreshold) or nil
     if threshold == nil and settings then
         local oldDamage = tonumber(settings.combatLogBigDamageThreshold)
@@ -694,9 +698,19 @@ function DamageTracker:GetFilteredEntries(filter, opts)
             if showThreatAbilities and matchesScope(entry) then
                 table.insert(list, entry)
             end
+        elseif kind == "INTERRUPT" then
+            if matchesScope(entry) then
+                table.insert(list, entry)
+            end
         elseif kind == "DAMAGE" then
             if matchesScope(entry) then
                 if not useBigFilter or self:IsBigEntry(entry, stats, "DAMAGE", threshold) then
+                    table.insert(list, entry)
+                end
+            end
+        elseif kind == "BOSS_HEAL" then
+            if showBossHealing and matchesScope(entry) then
+                if not useBigFilter or self:IsBigEntry(entry, stats, "HEAL", threshold) then
                     table.insert(list, entry)
                 end
             end
@@ -720,7 +734,7 @@ function DamageTracker:BuildCombinedList(entries)
     local map = {}
     for i = #entries, 1, -1 do
         local entry = entries[i]
-        if not entry or entry.kind == "BREAK" or entry.kind == "DEATH" or entry.kind == "RES" or entry.kind == "THREAT" or entry.kind == "THREAT_ABILITY" then
+        if not entry or entry.kind == "BREAK" or entry.kind == "DEATH" or entry.kind == "RES" or entry.kind == "THREAT" or entry.kind == "THREAT_ABILITY" or entry.kind == "INTERRUPT" then
             table.insert(combined, entry)
         else
             local key = string.format("%s|%s", entry.kind or "DAMAGE", entry.player or "Unknown")
@@ -793,7 +807,7 @@ function DamageTracker:BuildEncounterStats(log)
                     if amount > (stats[activeId].maxDamage or 0) then
                         stats[activeId].maxDamage = amount
                     end
-                elseif (entry.kind == "HEAL" or entry.kind == "HEAL_OUT") and amount > 0 then
+                elseif (entry.kind == "HEAL" or entry.kind == "HEAL_OUT" or entry.kind == "BOSS_HEAL") and amount > 0 then
                     stats[activeId].healTotal = stats[activeId].healTotal + amount
                     stats[activeId].healCount = stats[activeId].healCount + 1
                     if amount > (stats[activeId].maxHeal or 0) then
@@ -824,7 +838,7 @@ function DamageTracker:BuildEncounterStats(log)
                         if amount > (stats[1].maxDamage or 0) then
                             stats[1].maxDamage = amount
                         end
-                    elseif (entry.kind == "HEAL" or entry.kind == "HEAL_OUT") and amount > 0 then
+                    elseif (entry.kind == "HEAL" or entry.kind == "HEAL_OUT" or entry.kind == "BOSS_HEAL") and amount > 0 then
                         stats[1].healTotal = stats[1].healTotal + amount
                         stats[1].healCount = stats[1].healCount + 1
                         if amount > (stats[1].maxHeal or 0) then
@@ -1154,7 +1168,9 @@ function DamageTracker:HandleCombatLog(...)
         or (normalizedDest ~= "" and rosterMap[normalizedDest])
     local isRosterSource = (sourceGUID and (sourceGUID == playerGuid or (self.rosterGuids and self.rosterGuids[sourceGUID])))
         or (normalizedSource ~= "" and rosterMap[normalizedSource])
-    if not isRosterDest and not isRosterSource then
+    local sourceKindPre = classifySource(sourceName, sourceFlags)
+    local allowHostileHealOnly = HEAL_EVENTS[subevent] and isHostileKind(sourceKindPre)
+    if not isRosterDest and not isRosterSource and not allowHostileHealOnly then
         debug.lastSkip = "Not roster dest"
         return
     end
@@ -1184,6 +1200,62 @@ function DamageTracker:HandleCombatLog(...)
             timestamp
         )
         debug.lastSkip = "Aura event"
+        return
+    end
+
+    if subevent == "SPELL_INTERRUPT" then
+        local sourceKind = classifySource(sourceName, sourceFlags)
+        local targetKind = classifySource(destName, destFlags)
+        local actorName = sourceName or "Unknown"
+        if sourceGUID and self.rosterGuids and self.rosterGuids[sourceGUID] then
+            actorName = self.rosterGuids[sourceGUID]
+        elseif normalizeName(actorName) == normalizeName(Goals and Goals.GetPlayerName and Goals:GetPlayerName() or "") then
+            actorName = Goals:GetPlayerName()
+        end
+        local targetName = destName or "Unknown"
+        local interruptSpellName = nil
+        local canceledSpellName = nil
+        if spellBase and type(args[spellBase + 1]) == "string" then
+            interruptSpellName = args[spellBase + 1]
+            if type(args[spellBase + 5]) == "string" then
+                canceledSpellName = args[spellBase + 5]
+            elseif type(args[spellBase + 4]) == "string" then
+                canceledSpellName = args[spellBase + 4]
+            end
+        else
+            local _, name = parseSpellPayload(args, 0, 0)
+            interruptSpellName = name
+            if type(args[16]) == "string" then
+                canceledSpellName = args[16]
+            elseif type(args[15]) == "string" then
+                canceledSpellName = args[15]
+            end
+        end
+        local hostileKind = nil
+        if isHostileKind(targetKind) then
+            hostileKind = targetKind
+        elseif isHostileKind(sourceKind) then
+            hostileKind = sourceKind
+        end
+        if hostileKind then
+            local reason = canceledSpellName and ("Interrupted " .. canceledSpellName) or "Interrupted cast"
+            self:AddEntry({
+                ts = timestamp,
+                player = actorName,
+                source = targetName,
+                kind = "INTERRUPT",
+                spell = interruptSpellName or "Interrupt",
+                interruptedSpell = canceledSpellName,
+                reason = reason,
+                sourceKind = sourceKind,
+                actorKind = sourceKind,
+                targetKind = targetKind,
+                hostileKind = hostileKind,
+            })
+            debug.lastAdded = true
+        else
+            debug.lastSkip = "Interrupt without hostile target"
+        end
         return
     end
 
@@ -1364,80 +1436,28 @@ function DamageTracker:HandleCombatLog(...)
             return
         end
         local source = sourceName or "Unknown"
-        local periodic = self:IsPeriodicHeal(
-            subevent,
-            sourceGUID or sourceName or "unknown",
-            destGUID or destName or "unknown",
-            spellId,
-            timestamp
-        )
-        local combineDirect = false
-        if not periodic and spellId then
-            combineDirect = self:HasPeriodicAura(
-                sourceGUID or sourceName or "unknown",
-                destGUID or destName or "unknown",
-                spellId,
-                "BUFF",
-                timestamp
-            )
-        end
-        local added = false
-        if isRosterDest then
-            if (not playerName or playerName == "") and Goals and Goals.GetPlayerName and destGUID == playerGuid then
-                playerName = Goals:GetPlayerName()
-            end
-            if not playerName or playerName == "" then
-                debug.lastSkip = "No player name"
-                return
-            end
+        local sourceKind = classifySource(sourceName, sourceFlags)
+        local targetKind = classifySource(destName, destFlags)
+        if isHostileKind(sourceKind) then
+            local targetName = destName or "Unknown"
             self:AddEntry({
                 ts = timestamp,
-                player = playerName ~= "" and playerName or "Unknown",
+                player = targetName,
                 amount = amount,
                 spell = spellName or "Unknown",
                 spellId = spellId,
                 source = source,
-                kind = "HEAL",
-                periodic = periodic,
-                combineDirect = combineDirect,
+                kind = "BOSS_HEAL",
                 sourceFlags = sourceFlags,
                 sourceKind = sourceKind,
+                hostileKind = sourceKind,
+                targetKind = targetKind,
                 overheal = overheal,
             })
-            added = true
-        end
-        if isRosterSource and (sourceGUID ~= destGUID) then
-            local srcName = (sourceGUID and self.rosterGuids[sourceGUID]) or (isRosterSource and normalizedSource) or normalizeName(sourceName)
-            if (not srcName or srcName == "") and Goals and Goals.GetPlayerName and sourceGUID == playerGuid then
-                srcName = Goals:GetPlayerName()
-            end
-            if not srcName or srcName == "" then
-                debug.lastSkip = "No player name"
-                return
-            end
-            local targetName = destName or "Unknown"
-            local targetKind = classifySource(targetName, destFlags)
-            self:AddEntry({
-                ts = timestamp,
-                player = srcName,
-                amount = amount,
-                spell = spellName or "Unknown",
-                spellId = spellId,
-                source = targetName,
-                kind = "HEAL_OUT",
-                periodic = periodic,
-                combineDirect = combineDirect,
-                sourceFlags = destFlags,
-                sourceKind = targetKind,
-                overheal = overheal,
-            })
-            added = true
-        end
-        if not added then
-            debug.lastSkip = "Not roster dest"
+            debug.lastAdded = true
             return
         end
-        debug.lastAdded = true
+        debug.lastSkip = "Ignore non-hostile heal"
         return
     end
 

@@ -7308,39 +7308,7 @@ function UI:CreateDamageTrackerTab(page)
     self:SetDropdownText(dropdown, initialMode)
     self.damageTrackerDropdown = dropdown
     self.damageTrackerFilter = initialMode
-    y = y - 8
-    addSectionHeader("Tracking")
-    addLabel("Show")
-    local showDropdown = addDropdown("GoalsCombatShowDropdown")
-    attachSideTooltip(showDropdown, "Choose which combat tracker entries to show.")
-    local showList = {
-        COMBAT_SHOW_ALL,
-        COMBAT_SHOW_BOSS,
-        COMBAT_SHOW_TRASH,
-    }
-    self:SetupDropdown(showDropdown, function()
-        return showList
-    end, function(value)
-        self:SetCombatShowMode(value)
-        self.damageTrackerFilter = value
-        if self.damageTrackerDropdown then
-            self.damageTrackerDropdown.selectedValue = value
-            UIDropDownMenu_SetSelectedValue(self.damageTrackerDropdown, value)
-            self:SetDropdownText(self.damageTrackerDropdown, value)
-        end
-        if UI and UI.UpdateDamageTrackerList then
-            UI:UpdateDamageTrackerList()
-        end
-        if UI and UI.UpdateTabFooters then
-            UI:UpdateTabFooters()
-        end
-    end, COMBAT_SHOW_ALL)
-    local initialMode = self:GetCombatShowMode(Goals.db and Goals.db.settings or {})
-    showDropdown.selectedValue = initialMode
-    UIDropDownMenu_SetSelectedValue(showDropdown, initialMode)
-    self:SetDropdownText(showDropdown, initialMode)
-    self.combatLogShowDropdown = showDropdown
-
+    self.combatLogShowDropdown = nil
     y = y - 8
     addSectionHeader(L.LABEL_DAMAGE_OPTIONS)
 
@@ -7373,13 +7341,13 @@ function UI:CreateDamageTrackerTab(page)
     self.combatLogBigThresholdSlider = bigThresholdSlider
     self.combatLogBigThresholdValue = bigThresholdValue
 
-    local showOverhealCheck = addCheck("Show overheal", function(selfBtn)
-        Goals.db.settings.combatLogShowOverheal = selfBtn:GetChecked() and true or false
+    local showBossHealingCheck = addCheck("Show boss/trash healing", function(selfBtn)
+        Goals.db.settings.combatLogShowBossHealing = selfBtn:GetChecked() and true or false
         if Goals.UI and Goals.UI.UpdateDamageTrackerList then
             Goals.UI:UpdateDamageTrackerList()
         end
-    end, "Show overheal as +X (Y) in heals.")
-    self.combatLogShowOverhealCheck = showOverhealCheck
+    end, "Show healing done by bosses/trash.")
+    self.combatLogShowBossHealingCheck = showBossHealingCheck
 
     local showThreatAbilityCheck = addCheck("Show threat ability events", function(selfBtn)
         Goals.db.settings.combatLogShowThreatAbilities = selfBtn:GetChecked() and true or false
@@ -7400,12 +7368,12 @@ function UI:CreateDamageTrackerTab(page)
     end, "Group periodic ticks into a single entry.")
     self.combatLogCombinePeriodicCheck = combinePeriodicCheck
 
-    local combineAllCheck = addCheck("Collapse damage/healing", function(selfBtn)
+    local combineAllCheck = addCheck("Collapse repeated events", function(selfBtn)
         Goals.db.settings.combatLogCombineAll = selfBtn:GetChecked() and true or false
         if Goals.UI and Goals.UI.UpdateDamageTrackerList then
             Goals.UI:UpdateDamageTrackerList()
         end
-    end, "Collapse damage/heal entries per player into one line.")
+    end, "Collapse repeated combat entries per unit into one line.")
     self.combatLogCombineAllCheck = combineAllCheck
 
     y = y - 8
@@ -9764,6 +9732,9 @@ function UI:FormatDamageTrackerEntry(entry)
     elseif kind == "THREAT" then
         sourceName = entry.source or "Unknown"
         targetName = player
+    elseif kind == "INTERRUPT" then
+        sourceName = player
+        targetName = entry.source or "Unknown"
     elseif kind == "THREAT_ABILITY" then
         sourceName = player
         targetName = entry.source or "Unknown"
@@ -9776,6 +9747,9 @@ function UI:FormatDamageTrackerEntry(entry)
     elseif kind == "HEAL_OUT" then
         sourceName = player
         targetName = entry.source or "Unknown"
+    elseif kind == "BOSS_HEAL" then
+        sourceName = entry.source or "Unknown"
+        targetName = player
     elseif kind == "RES" then
         sourceName = entry.source or "Unknown"
         targetName = player
@@ -9792,10 +9766,20 @@ function UI:FormatDamageTrackerEntry(entry)
         local reason = entry.reason or "Threat changed"
         return string.format("%s | %s | %s | THREAT | %s", ts, sourceName, targetName, reason)
     end
+    if kind == "INTERRUPT" then
+        local interruptedText = entry.interruptedSpell or "Interrupted cast"
+        local interruptSpell = entry.spell or "Interrupt"
+        return string.format("%s | %s | %s | %s | %s", ts, sourceName, targetName, interruptedText, interruptSpell)
+    end
     if kind == "THREAT_ABILITY" then
         local reason = entry.reason or "Threat"
         local spellText = entry.spell or "Unknown"
         return string.format("%s | %s | %s | %s | %s", ts, sourceName, targetName, reason, spellText)
+    end
+    if kind == "BOSS_HEAL" then
+        local healAmount = math.floor(tonumber(entry.amount) or 0)
+        local healSpell = entry.spell or "Boss heal"
+        return string.format("%s | %s | %s | +%d | %s", ts, sourceName, targetName, healAmount, healSpell)
     end
     if kind == "RES" then
         local spell = entry.spell or "Unknown"
@@ -9807,10 +9791,7 @@ function UI:FormatDamageTrackerEntry(entry)
     end
     local amount = math.floor(tonumber(entry.amount) or 0)
     local spell = entry.spell or "Unknown"
-    local showOverheal = Goals and Goals.db and Goals.db.settings and Goals.db.settings.combatLogShowOverheal
-    if showOverheal == nil then
-        showOverheal = true
-    end
+    local showOverheal = false
     if kind == "HEAL" then
         local overheal = math.floor(tonumber(entry.overheal) or 0)
         if showOverheal and overheal > 0 then
@@ -9842,8 +9823,14 @@ function UI:GetCombatEntrySourceTarget(entry)
     if kind == "THREAT" then
         return entry.source or "Unknown", entry.player or "Unknown"
     end
+    if kind == "INTERRUPT" then
+        return entry.player or "Unknown", entry.source or "Unknown"
+    end
     if kind == "THREAT_ABILITY" then
         return entry.player or "Unknown", entry.source or "Unknown"
+    end
+    if kind == "BOSS_HEAL" then
+        return entry.source or "Unknown", entry.player or "Unknown"
     end
     if kind == "DAMAGE_OUT" then
         return entry.player or "Unknown", entry.source or "Unknown"
@@ -9868,10 +9855,7 @@ function UI:FormatCombatBroadcastLine(entry)
         return nil
     end
     local sourceName, targetName = self:GetCombatEntrySourceTarget(entry)
-    local showOverheal = Goals and Goals.db and Goals.db.settings and Goals.db.settings.combatLogShowOverheal
-    if showOverheal == nil then
-        showOverheal = true
-    end
+    local showOverheal = false
     local amount = math.floor(tonumber(entry.amount) or 0)
     local overheal = math.floor(tonumber(entry.overheal) or 0)
     local spell = entry.spell or "Unknown"
@@ -9901,9 +9885,15 @@ function UI:FormatCombatBroadcastLine(entry)
     elseif kind == "THREAT" then
         amountText = "THREAT"
         abilityText = entry.reason or "Threat changed"
+    elseif kind == "INTERRUPT" then
+        amountText = entry.interruptedSpell or "Interrupted cast"
+        abilityText = entry.spell or "Interrupt"
     elseif kind == "THREAT_ABILITY" then
         amountText = entry.reason or "THREAT"
         abilityText = entry.spell or "Threat ability"
+    elseif kind == "BOSS_HEAL" then
+        amountText = string.format("+%d", amount)
+        abilityText = entry.spell or "Boss heal"
     else
         amountText = string.format("-%d", amount)
     end
@@ -10002,7 +9992,7 @@ function UI:UpdateDamageTrackerList()
             local entry = data[i]
             if entry and entry.kind ~= "BREAK" and entry.kind ~= "DEATH" and entry.kind ~= "RES" then
                 local amount = tonumber(entry.amount) or 0
-                if entry.kind == "HEAL" or entry.kind == "HEAL_OUT" then
+                if entry.kind == "HEAL" or entry.kind == "HEAL_OUT" or entry.kind == "BOSS_HEAL" then
                     if amount > sliceMaxHeal then
                         sliceMaxHeal = amount
                     end
@@ -10022,7 +10012,7 @@ function UI:UpdateDamageTrackerList()
             return true
         end
         local amount = tonumber(entry.amount) or 0
-        if entry.kind == "HEAL" or entry.kind == "HEAL_OUT" then
+        if entry.kind == "HEAL" or entry.kind == "HEAL_OUT" or entry.kind == "BOSS_HEAL" then
             if sliceMaxHeal <= 0 then
                 return true
             end
@@ -10055,10 +10045,7 @@ function UI:UpdateDamageTrackerList()
             end
         end
     end
-    local showOverheal = Goals and Goals.db and Goals.db.settings and Goals.db.settings.combatLogShowOverheal
-    if showOverheal == nil then
-        showOverheal = true
-    end
+    local showOverheal = false
     local function setNameText(font, name, r, g, b)
         if not font then
             return
@@ -10169,11 +10156,21 @@ function UI:UpdateDamageTrackerList()
                     targetName = entry.player or "Unknown"
                     sourceColorR, sourceColorG, sourceColorB = getSourceColor(entry)
                     targetColorR, targetColorG, targetColorB = getPlayerColor(targetName)
+                elseif kind == "INTERRUPT" then
+                    sourceName = entry.player or "Unknown"
+                    targetName = entry.source or "Unknown"
+                    sourceColorR, sourceColorG, sourceColorB = getPlayerColor(sourceName)
+                    targetColorR, targetColorG, targetColorB = getSourceColor(entry)
                 elseif kind == "THREAT_ABILITY" then
                     sourceName = entry.player or "Unknown"
                     targetName = entry.source or "Unknown"
                     sourceColorR, sourceColorG, sourceColorB = getPlayerColor(sourceName)
                     targetColorR, targetColorG, targetColorB = getSourceColor(entry)
+                elseif kind == "BOSS_HEAL" then
+                    sourceName = entry.source or "Unknown"
+                    targetName = entry.player or "Unknown"
+                    sourceColorR, sourceColorG, sourceColorB = getSourceColor(entry)
+                    targetColorR, targetColorG, targetColorB = getSourceColor({ sourceKind = entry.targetKind, source = targetName })
                 elseif kind == "DAMAGE_OUT" then
                     sourceName = entry.player or "Unknown"
                     targetName = entry.source or "Unknown"
@@ -10291,6 +10288,23 @@ function UI:UpdateDamageTrackerList()
                 end
                 if row.spellText then
                     row.spellText:SetText(entry.spell or "Threat ability")
+                end
+            elseif kind == "INTERRUPT" then
+                if row.amountText then
+                    row.amountText:SetText(entry.interruptedSpell or "Interrupted cast")
+                    row.amountText:SetTextColor(THREAT_COLOR[1], THREAT_COLOR[2], THREAT_COLOR[3])
+                end
+                if row.spellText then
+                    row.spellText:SetText(entry.spell or "Interrupt")
+                end
+            elseif kind == "BOSS_HEAL" then
+                local amount = math.floor(tonumber(entry.amount) or 0)
+                if row.amountText then
+                    row.amountText:SetText(string.format("+%d", amount))
+                    row.amountText:SetTextColor(HEAL_COLOR[1], HEAL_COLOR[2], HEAL_COLOR[3])
+                end
+                if row.spellText then
+                    row.spellText:SetText(entry.spell or "Boss heal")
                 end
             else
                 local amount = math.floor(tonumber(entry.amount) or 0)
@@ -12983,15 +12997,19 @@ function UI:Refresh()
     if Goals and Goals.db and Goals.db.settings then
         self:NormalizeCombatShowFlags(Goals.db.settings)
     end
+    local mode = self:GetCombatShowMode(Goals.db.settings)
+    self.damageTrackerFilter = mode
+    if self.damageTrackerDropdown then
+        self.damageTrackerDropdown.selectedValue = mode
+        UIDropDownMenu_SetSelectedValue(self.damageTrackerDropdown, mode)
+        self:SetDropdownText(self.damageTrackerDropdown, mode)
+        setDropdownEnabled(self.damageTrackerDropdown, trackingEnabled)
+        if self.damageTrackerDropdown.SetAlpha then
+            self.damageTrackerDropdown:SetAlpha(trackingEnabled and 1 or 0.6)
+        end
+    end
     if self.combatLogShowDropdown then
         local enabled = trackingEnabled
-        local mode = self:GetCombatShowMode(Goals.db.settings)
-        self.damageTrackerFilter = mode
-        if self.damageTrackerDropdown then
-            self.damageTrackerDropdown.selectedValue = mode
-            UIDropDownMenu_SetSelectedValue(self.damageTrackerDropdown, mode)
-            self:SetDropdownText(self.damageTrackerDropdown, mode)
-        end
         self.combatLogShowDropdown.selectedValue = mode
         UIDropDownMenu_SetSelectedValue(self.combatLogShowDropdown, mode)
         self:SetDropdownText(self.combatLogShowDropdown, mode)
@@ -13048,24 +13066,24 @@ function UI:Refresh()
     if self.combatLogBigThresholdSlider then
         updateSlider(self.combatLogBigThresholdSlider, self.combatLogBigThresholdValue, threshold, trackingEnabled)
     end
-    if self.combatLogShowOverhealCheck then
-        local enabled = false
-        local showOverheal = Goals.db.settings.combatLogShowOverheal
-        if showOverheal == nil then
-            showOverheal = true
-            Goals.db.settings.combatLogShowOverheal = showOverheal
+    if self.combatLogShowBossHealingCheck then
+        local enabled = trackingEnabled
+        local showBossHealing = Goals.db.settings.combatLogShowBossHealing
+        if showBossHealing == nil then
+            showBossHealing = true
+            Goals.db.settings.combatLogShowBossHealing = true
         end
-        self.combatLogShowOverhealCheck:SetChecked(showOverheal and true or false)
-        if self.combatLogShowOverhealCheck.SetAlpha then
-            self.combatLogShowOverhealCheck:SetAlpha(enabled and 1 or 0.6)
+        self.combatLogShowBossHealingCheck:SetChecked(showBossHealing and true or false)
+        if self.combatLogShowBossHealingCheck.SetAlpha then
+            self.combatLogShowBossHealingCheck:SetAlpha(enabled and 1 or 0.6)
         end
         if enabled then
-            if self.combatLogShowOverhealCheck.Enable then
-                self.combatLogShowOverhealCheck:Enable()
+            if self.combatLogShowBossHealingCheck.Enable then
+                self.combatLogShowBossHealingCheck:Enable()
             end
         else
-            if self.combatLogShowOverhealCheck.Disable then
-                self.combatLogShowOverhealCheck:Disable()
+            if self.combatLogShowBossHealingCheck.Disable then
+                self.combatLogShowBossHealingCheck:Disable()
             end
         end
     end

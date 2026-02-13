@@ -79,6 +79,7 @@ Goals.defaults = {
         combatLogShowDamageReceived = true,
         combatLogShowOverheal = true,
         combatLogShowThreatAbilities = true,
+        combatLogShowBossHealing = true,
         combatLogBroadcastCount = 9,
         combatLogBroadcastChannel = "SAY",
         combatLogBroadcastWhisperTarget = "",
