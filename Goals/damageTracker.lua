@@ -49,10 +49,13 @@ local PERIODIC_INCLUDE_DIRECT_WINDOW = 2.0
 local bit_band = bit and bit.band or nil
 local THREAT_DROP_SPELLS = {
     [66] = true,
+    [586] = true, -- Fade
     [1038] = true,
+    [1966] = true, -- Feint
     [1856] = true,
     [5384] = true,
     [29858] = true,
+    [55342] = true, -- Mirror Image
 }
 local THREAT_RESET_SPELLS = {
     [18670] = true,
@@ -62,14 +65,24 @@ local THREAT_INCREASE_SPELLS = {
     [355] = true, -- Taunt
     [1161] = true, -- Challenging Shout
     [694] = true, -- Mocking Blow
+    [20736] = true, -- Distracting Shot
+    [31789] = true, -- Righteous Defense
     [62124] = true, -- Hand of Reckoning
     [5209] = true, -- Challenging Roar
     [6795] = true, -- Growl
+    [49576] = true, -- Death Grip
     [56222] = true, -- Dark Command
 }
 local THREAT_TRANSFER_SPELLS = {
     [34477] = true, -- Misdirection
     [57934] = true, -- Tricks of the Trade
+}
+local THREAT_PASSIVE_AURAS = {
+    [71] = true, -- Defensive Stance
+    [25780] = true, -- Righteous Fury
+    [5487] = true, -- Bear Form
+    [9634] = true, -- Dire Bear Form
+    [48263] = true, -- Frost Presence
 }
 
 local function cloneEntry(entry)
@@ -245,6 +258,18 @@ local function isThreatDropSpell(spellId, spellName)
     if n:find("vanish", 1, true) or n:find("feign death", 1, true) then
         return true
     end
+    if n:find("fade", 1, true) or n:find("feint", 1, true) then
+        return true
+    end
+    if n:find("invisibility", 1, true) then
+        return true
+    end
+    if n:find("cower", 1, true) or n:find("wind shear", 1, true) then
+        return true
+    end
+    if n:find("mirror image", 1, true) then
+        return true
+    end
     return false
 end
 
@@ -285,6 +310,12 @@ local function getThreatAbilityDirection(spellId, spellName)
     if n:find("taunt", 1, true) or n:find("mocking", 1, true) or n:find("growl", 1, true) or n:find("reckoning", 1, true) then
         return "increase"
     end
+    if n:find("distracting shot", 1, true) then
+        return "increase"
+    end
+    if n:find("searing pain", 1, true) then
+        return "increase"
+    end
     if n:find("misdirection", 1, true) or n:find("tricks of the trade", 1, true) then
         return "transfer"
     end
@@ -292,6 +323,23 @@ local function getThreatAbilityDirection(spellId, spellName)
         return "decrease"
     end
     return nil
+end
+
+local function isPassiveThreatAura(spellId, spellName)
+    if spellId and THREAT_PASSIVE_AURAS[tonumber(spellId) or -1] then
+        return true
+    end
+    local n = normalizeSpellText(spellName)
+    if n == "" then
+        return false
+    end
+    if n:find("righteous fury", 1, true) or n:find("defensive stance", 1, true) then
+        return true
+    end
+    if n:find("bear form", 1, true) or n:find("frost presence", 1, true) then
+        return true
+    end
+    return false
 end
 
 local function getCombatLogArgs(...)
@@ -1181,6 +1229,24 @@ function DamageTracker:HandleCombatLog(...)
 
     if AURA_APPLY_EVENTS[subevent] or AURA_REMOVE_EVENTS[subevent] then
         local spellId, auraType = parseAuraPayload(args, spellBase)
+        local auraName = args[(spellBase or 0) + 1]
+        if isRosterDest and (subevent == "SPELL_AURA_APPLIED" or subevent == "SPELL_AURA_REMOVED") and isPassiveThreatAura(spellId, auraName) then
+            local actorName = (destGUID and self.rosterGuids and self.rosterGuids[destGUID]) or normalizedDest or (destName or "Unknown")
+            local isApplied = subevent == "SPELL_AURA_APPLIED"
+            self:AddEntry({
+                ts = timestamp,
+                player = actorName ~= "" and actorName or "Unknown",
+                source = "Self",
+                kind = "THREAT_ABILITY",
+                spell = auraName or "Passive threat stance",
+                spellId = spellId,
+                threatDir = isApplied and "increase" or "decrease",
+                reason = isApplied and "Threat+ (Passive)" or "Threat- (Passive Off)",
+                sourceKind = "player",
+                hostileKind = nil,
+            })
+            debug.lastAdded = true
+        end
         if AURA_APPLY_EVENTS[subevent] and isRosterDest and isThreatDropSpell(spellId, args[(spellBase or 0) + 1]) then
             self.recentThreatDropByTarget = self.recentThreatDropByTarget or {}
             local key = normalizeName(destName)
