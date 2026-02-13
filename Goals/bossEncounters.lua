@@ -274,6 +274,10 @@ _G.encounterRules = {
         bosses = { "Al'ar" },
         requiredKills = 2,
     },
+    ["Reliquary of Souls"] = {
+        type = "final_boss_kill",
+        finalBoss = "Essence of Anger",
+    },
 }
 
 return _G.bossEncounters

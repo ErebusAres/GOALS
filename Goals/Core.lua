@@ -1360,6 +1360,9 @@ function Goals:ApplyLootFound(id, ts, itemLink, sender)
     if self.History then
         self.History:AddLootFound(itemLink)
     end
+    if self.HandleWishlistLoot then
+        self:HandleWishlistLoot(itemLink)
+    end
     self:NotifyDataChanged()
 end
 
@@ -3290,8 +3293,10 @@ function Goals:MarkWishlistFound(itemId)
                 local listUpdated = false
                 for _, entry in pairs(list.items) do
                     if entry and (entry.itemId == itemId or entry.tokenId == itemId) then
-                        foundMap[entry.itemId] = true
-                        listUpdated = true
+                        if not foundMap[entry.itemId] then
+                            foundMap[entry.itemId] = true
+                            listUpdated = true
+                        end
                     end
                 end
                 if listUpdated then
@@ -3355,6 +3360,9 @@ function Goals:HandleWishlistLoot(itemLink)
     end
     if self:WishlistContainsItem(itemId) then
         local updated = self:MarkWishlistFound(itemId)
+        if not updated then
+            return
+        end
         local listNames = self:GetWishlistsContainingItem(itemId)
         if self.db and self.db.settings and not self.db.settings.wishlistAnnounce then
             local msg = self:FormatWishlistItemWithToken(itemLink)

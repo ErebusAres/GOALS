@@ -610,6 +610,16 @@ function Events:MarkBossDead(bossName, allowOutOfCombat)
                 end
             end
             return
+        elseif rule.type == "final_boss_kill" then
+            local finalBoss = rule.finalBoss
+            local isFinal = finalBoss and (normalizeBossName(bossKey) == normalizeBossName(finalBoss))
+            Goals:Debug(string.format("Rule final_boss_kill: %s (final=%s)", bossKey, tostring(isFinal)))
+            if isFinal then
+                Goals.encounter.lastBossKillTs = time()
+                Goals:Debug("Rule final_boss_kill complete: " .. encounterName)
+                self:FinishEncounter(true)
+            end
+            return
         end
     end
     if Goals.encounter.remaining then
