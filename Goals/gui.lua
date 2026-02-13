@@ -74,12 +74,12 @@ local DAMAGE_COLOR = { 1, 0.25, 0.25 }
 local HEAL_COLOR = { 0.2, 1, 0.2 }
 local DEATH_COLOR = { 0.7, 0.35, 0.9 }
 local REVIVE_COLOR = { 1, 0.9, 0.2 }
+local THREAT_COLOR = { 1, 0.7, 0.2 }
 local ELITE_COLOR = { 1, 0.25, 0.25 }
 local TRASH_COLOR = { 0.6, 0.6, 0.6 }
 local COMBAT_SHOW_ALL = "Show all"
-local COMBAT_SHOW_DAMAGE_RECEIVED = "Damage received"
-local COMBAT_SHOW_DAMAGE_DEALT = "Damage dealt"
-local COMBAT_SHOW_HEALING = "Healing events"
+local COMBAT_SHOW_BOSS = "Show boss encounters"
+local COMBAT_SHOW_TRASH = "Show trash"
 
 local function applyTextureColor(texture, color)
     if not texture or not color then
@@ -1959,13 +1959,11 @@ function UI:GetBuildShareCandidates()
 end
 
 function UI:GetDamageTrackerDropdownList()
-    local list = { L.DAMAGE_TRACKER_ALL }
-    local tracker = Goals and Goals.DamageTracker
-    local roster = tracker and tracker.GetRosterNames and tracker:GetRosterNames() or {}
-    for _, name in ipairs(roster) do
-        table.insert(list, name)
-    end
-    return list
+    return {
+        COMBAT_SHOW_ALL,
+        COMBAT_SHOW_BOSS,
+        COMBAT_SHOW_TRASH,
+    }
 end
 
 function UI:GetDisenchanterCandidates()
@@ -3330,45 +3328,32 @@ end
 
 function UI:NormalizeCombatShowFlags(settings)
     if not settings then
-        return false, false, false
+        return false, false, true
     end
-    local showHealing = settings.combatLogShowHealing
-    if showHealing == nil then
-        showHealing = (settings.combatLogHealing and true or false)
-        settings.combatLogShowHealing = showHealing
+    local mode = settings.combatLogViewMode
+    if mode ~= COMBAT_SHOW_ALL and mode ~= COMBAT_SHOW_BOSS and mode ~= COMBAT_SHOW_TRASH then
+        mode = COMBAT_SHOW_ALL
+        settings.combatLogViewMode = mode
     end
-    local showDealt = settings.combatLogShowDamageDealt
-    if showDealt == nil then
-        showDealt = (settings.combatLogTrackOutgoing and true or false)
-        settings.combatLogShowDamageDealt = showDealt
-    end
-    local showReceived = settings.combatLogShowDamageReceived
-    if showReceived == nil then
-        showReceived = true
-        settings.combatLogShowDamageReceived = showReceived
-    end
+    local showHealing = false
+    local showDealt = false
+    local showReceived = true
+    settings.combatLogShowHealing = showHealing
+    settings.combatLogShowDamageDealt = showDealt
+    settings.combatLogShowDamageReceived = showReceived
     return showHealing, showDealt, showReceived
 end
 
 function UI:GetCombatShowMode(settings)
-    local showHealing, showDealt, showReceived = self:NormalizeCombatShowFlags(settings)
-    if showHealing and showDealt and showReceived then
+    settings = settings or (Goals and Goals.db and Goals.db.settings) or nil
+    if not settings then
         return COMBAT_SHOW_ALL
     end
-    if showReceived and (not showHealing) and (not showDealt) then
-        return COMBAT_SHOW_DAMAGE_RECEIVED
+    local mode = settings.combatLogViewMode
+    if mode == COMBAT_SHOW_BOSS or mode == COMBAT_SHOW_TRASH then
+        return mode
     end
-    if showDealt and (not showHealing) and (not showReceived) then
-        return COMBAT_SHOW_DAMAGE_DEALT
-    end
-    if showHealing and (not showDealt) and (not showReceived) then
-        return COMBAT_SHOW_HEALING
-    end
-    if settings then
-        settings.combatLogShowHealing = true
-        settings.combatLogShowDamageDealt = true
-        settings.combatLogShowDamageReceived = true
-    end
+    settings.combatLogViewMode = COMBAT_SHOW_ALL
     return COMBAT_SHOW_ALL
 end
 
@@ -3377,26 +3362,12 @@ function UI:SetCombatShowMode(mode, settings)
     if not settings then
         return
     end
-    if mode == COMBAT_SHOW_DAMAGE_RECEIVED then
-        settings.combatLogShowHealing = false
-        settings.combatLogShowDamageDealt = false
-        settings.combatLogShowDamageReceived = true
-        return
+    if mode ~= COMBAT_SHOW_ALL and mode ~= COMBAT_SHOW_BOSS and mode ~= COMBAT_SHOW_TRASH then
+        mode = COMBAT_SHOW_ALL
     end
-    if mode == COMBAT_SHOW_DAMAGE_DEALT then
-        settings.combatLogShowHealing = false
-        settings.combatLogShowDamageDealt = true
-        settings.combatLogShowDamageReceived = false
-        return
-    end
-    if mode == COMBAT_SHOW_HEALING then
-        settings.combatLogShowHealing = true
-        settings.combatLogShowDamageDealt = false
-        settings.combatLogShowDamageReceived = false
-        return
-    end
-    settings.combatLogShowHealing = true
-    settings.combatLogShowDamageDealt = true
+    settings.combatLogViewMode = mode
+    settings.combatLogShowHealing = false
+    settings.combatLogShowDamageDealt = false
     settings.combatLogShowDamageReceived = true
 end
 
@@ -3441,16 +3412,12 @@ function UI:GetTabFooter2Segments(key)
         return listText, tabText, alertsText
     end
     if key == "damage" then
-        local filter = self.damageTrackerFilter or L.DAMAGE_TRACKER_ALL
+        local filter = self.damageTrackerFilter or COMBAT_SHOW_ALL
         local filterText = "Filter: " .. tostring(filter)
         local showText = self:GetCombatShowSummary(settings)
         local threshold = settings.combatLogBigThreshold or 0
         local thresholdText = string.format("Threshold: %d%%", math.floor(threshold + 0.5))
         local rightText = thresholdText
-        if settings.combatLogShowHealing then
-            local overhealText = settings.combatLogShowOverheal and "Overheal: On" or "Overheal: Off"
-            rightText = thresholdText .. " | " .. overhealText
-        end
         return filterText, showText, rightText
     end
     return nil, nil, nil
@@ -7332,13 +7299,15 @@ function UI:CreateDamageTrackerTab(page)
         return self:GetDamageTrackerDropdownList()
     end, function(value)
         self.damageTrackerFilter = value
+        self:SetCombatShowMode(value)
         self:UpdateDamageTrackerList()
-    end, L.DAMAGE_TRACKER_ALL)
-    dropdown.selectedValue = L.DAMAGE_TRACKER_ALL
-    UIDropDownMenu_SetSelectedValue(dropdown, L.DAMAGE_TRACKER_ALL)
-    self:SetDropdownText(dropdown, L.DAMAGE_TRACKER_ALL)
+    end, COMBAT_SHOW_ALL)
+    local initialMode = self:GetCombatShowMode(Goals.db and Goals.db.settings or {})
+    dropdown.selectedValue = initialMode
+    UIDropDownMenu_SetSelectedValue(dropdown, initialMode)
+    self:SetDropdownText(dropdown, initialMode)
     self.damageTrackerDropdown = dropdown
-    self.damageTrackerFilter = L.DAMAGE_TRACKER_ALL
+    self.damageTrackerFilter = initialMode
     y = y - 8
     addSectionHeader("Tracking")
     addLabel("Show")
@@ -7346,14 +7315,19 @@ function UI:CreateDamageTrackerTab(page)
     attachSideTooltip(showDropdown, "Choose which combat tracker entries to show.")
     local showList = {
         COMBAT_SHOW_ALL,
-        COMBAT_SHOW_DAMAGE_RECEIVED,
-        COMBAT_SHOW_DAMAGE_DEALT,
-        COMBAT_SHOW_HEALING,
+        COMBAT_SHOW_BOSS,
+        COMBAT_SHOW_TRASH,
     }
     self:SetupDropdown(showDropdown, function()
         return showList
     end, function(value)
         self:SetCombatShowMode(value)
+        self.damageTrackerFilter = value
+        if self.damageTrackerDropdown then
+            self.damageTrackerDropdown.selectedValue = value
+            UIDropDownMenu_SetSelectedValue(self.damageTrackerDropdown, value)
+            self:SetDropdownText(self.damageTrackerDropdown, value)
+        end
         if UI and UI.UpdateDamageTrackerList then
             UI:UpdateDamageTrackerList()
         end
@@ -7406,6 +7380,14 @@ function UI:CreateDamageTrackerTab(page)
         end
     end, "Show overheal as +X (Y) in heals.")
     self.combatLogShowOverhealCheck = showOverhealCheck
+
+    local showThreatAbilityCheck = addCheck("Show threat ability events", function(selfBtn)
+        Goals.db.settings.combatLogShowThreatAbilities = selfBtn:GetChecked() and true or false
+        if Goals.UI and Goals.UI.UpdateDamageTrackerList then
+            Goals.UI:UpdateDamageTrackerList()
+        end
+    end, "Show entries when players use explicit threat up/down/transfer abilities.")
+    self.combatLogShowThreatAbilitiesCheck = showThreatAbilityCheck
 
     local combinePeriodicCheck = addCheck("Combine periodic ticks", function(selfBtn)
         Goals.db.settings.combatLogCombinePeriodic = selfBtn:GetChecked() and true or false
@@ -9688,7 +9670,7 @@ function UI:RefreshDamageTrackerDropdown()
         return
     end
     local list = self:GetDamageTrackerDropdownList()
-    local selected = self.damageTrackerFilter or L.DAMAGE_TRACKER_ALL
+    local selected = self.damageTrackerFilter or COMBAT_SHOW_ALL
     local found = false
     for _, name in ipairs(list) do
         if name == selected then
@@ -9697,7 +9679,7 @@ function UI:RefreshDamageTrackerDropdown()
         end
     end
     if not found then
-        selected = L.DAMAGE_TRACKER_ALL
+        selected = COMBAT_SHOW_ALL
         self.damageTrackerFilter = selected
     end
     UIDropDownMenu_SetSelectedValue(self.damageTrackerDropdown, selected)
@@ -9779,6 +9761,12 @@ function UI:FormatDamageTrackerEntry(entry)
     if kind == "DAMAGE" then
         sourceName = entry.source or "Unknown"
         targetName = player
+    elseif kind == "THREAT" then
+        sourceName = entry.source or "Unknown"
+        targetName = player
+    elseif kind == "THREAT_ABILITY" then
+        sourceName = player
+        targetName = entry.source or "Unknown"
     elseif kind == "DAMAGE_OUT" then
         sourceName = player
         targetName = entry.source or "Unknown"
@@ -9799,6 +9787,15 @@ function UI:FormatDamageTrackerEntry(entry)
     targetName = fitName(targetName)
     if kind == "DEATH" then
         return string.format("%s | %s | %s | Died |", ts, sourceName, targetName)
+    end
+    if kind == "THREAT" then
+        local reason = entry.reason or "Threat changed"
+        return string.format("%s | %s | %s | THREAT | %s", ts, sourceName, targetName, reason)
+    end
+    if kind == "THREAT_ABILITY" then
+        local reason = entry.reason or "Threat"
+        local spellText = entry.spell or "Unknown"
+        return string.format("%s | %s | %s | %s | %s", ts, sourceName, targetName, reason, spellText)
     end
     if kind == "RES" then
         local spell = entry.spell or "Unknown"
@@ -9841,6 +9838,12 @@ function UI:GetCombatEntrySourceTarget(entry)
     local kind = entry.kind or "DAMAGE"
     if kind == "DAMAGE" then
         return entry.source or "Unknown", entry.player or "Unknown"
+    end
+    if kind == "THREAT" then
+        return entry.source or "Unknown", entry.player or "Unknown"
+    end
+    if kind == "THREAT_ABILITY" then
+        return entry.player or "Unknown", entry.source or "Unknown"
     end
     if kind == "DAMAGE_OUT" then
         return entry.player or "Unknown", entry.source or "Unknown"
@@ -9895,6 +9898,12 @@ function UI:FormatCombatBroadcastLine(entry)
     elseif kind == "DEATH" then
         amountText = "Died"
         abilityText = ""
+    elseif kind == "THREAT" then
+        amountText = "THREAT"
+        abilityText = entry.reason or "Threat changed"
+    elseif kind == "THREAT_ABILITY" then
+        amountText = entry.reason or "THREAT"
+        abilityText = entry.spell or "Threat ability"
     else
         amountText = string.format("-%d", amount)
     end
@@ -9928,7 +9937,7 @@ function UI:SendCombatBroadcastLines(channel, target, count)
     if not tracker or not tracker.GetFilteredEntries then
         return
     end
-    local filter = self.damageTrackerFilter or L.DAMAGE_TRACKER_ALL
+    local filter = self.damageTrackerFilter or COMBAT_SHOW_ALL
     local data = tracker:GetFilteredEntries(filter) or {}
     local limit = tonumber(count) or 0
     if limit < 0 then
@@ -9956,7 +9965,7 @@ function UI:UpdateDamageTrackerList()
         return
     end
     local tracker = Goals and Goals.DamageTracker
-    local filter = self.damageTrackerFilter or L.DAMAGE_TRACKER_ALL
+    local filter = self.damageTrackerFilter or COMBAT_SHOW_ALL
     local data = tracker and tracker.GetFilteredEntries and tracker:GetFilteredEntries(filter, { ignoreBigFilter = true }) or {}
     local offset = FauxScrollFrame_GetOffset(self.damageTrackerScroll) or 0
     FauxScrollFrame_Update(self.damageTrackerScroll, #data, DAMAGE_ROWS, DAMAGE_ROW_HEIGHT)
@@ -10155,6 +10164,16 @@ function UI:UpdateDamageTrackerList()
                     targetName = entry.player or "Unknown"
                     sourceColorR, sourceColorG, sourceColorB = getSourceColor(entry)
                     targetColorR, targetColorG, targetColorB = getPlayerColor(targetName)
+                elseif kind == "THREAT" then
+                    sourceName = entry.source or "Unknown"
+                    targetName = entry.player or "Unknown"
+                    sourceColorR, sourceColorG, sourceColorB = getSourceColor(entry)
+                    targetColorR, targetColorG, targetColorB = getPlayerColor(targetName)
+                elseif kind == "THREAT_ABILITY" then
+                    sourceName = entry.player or "Unknown"
+                    targetName = entry.source or "Unknown"
+                    sourceColorR, sourceColorG, sourceColorB = getPlayerColor(sourceName)
+                    targetColorR, targetColorG, targetColorB = getSourceColor(entry)
                 elseif kind == "DAMAGE_OUT" then
                     sourceName = entry.player or "Unknown"
                     targetName = entry.source or "Unknown"
@@ -10257,11 +10276,33 @@ function UI:UpdateDamageTrackerList()
                 if row.spellText then
                     row.spellText:SetText(spellText)
                 end
+            elseif kind == "THREAT" then
+                if row.amountText then
+                    row.amountText:SetText("THREAT")
+                    row.amountText:SetTextColor(THREAT_COLOR[1], THREAT_COLOR[2], THREAT_COLOR[3])
+                end
+                if row.spellText then
+                    row.spellText:SetText(entry.reason or "Threat changed")
+                end
+            elseif kind == "THREAT_ABILITY" then
+                if row.amountText then
+                    row.amountText:SetText(entry.reason or "THREAT")
+                    row.amountText:SetTextColor(THREAT_COLOR[1], THREAT_COLOR[2], THREAT_COLOR[3])
+                end
+                if row.spellText then
+                    row.spellText:SetText(entry.spell or "Threat ability")
+                end
             else
                 local amount = math.floor(tonumber(entry.amount) or 0)
                 if row.amountText then
-                    row.amountText:SetText(string.format("-%d", amount))
-                    row.amountText:SetTextColor(DAMAGE_COLOR[1], DAMAGE_COLOR[2], DAMAGE_COLOR[3])
+                    local isBigBoss = entry.sourceKind == "boss" and sliceMaxDamage > 0 and amount >= (sliceMaxDamage * 0.8)
+                    if isBigBoss then
+                        row.amountText:SetText(string.format("-%d !!!", amount))
+                        row.amountText:SetTextColor(1, 0.55, 0.1)
+                    else
+                        row.amountText:SetText(string.format("-%d", amount))
+                        row.amountText:SetTextColor(DAMAGE_COLOR[1], DAMAGE_COLOR[2], DAMAGE_COLOR[3])
+                    end
                 end
                 local spellText = entry.spell or ""
                 if entry.spellDuration and entry.spellDuration > 1 then
@@ -12939,13 +12980,18 @@ function UI:Refresh()
     if self.combatLogTrackingCheck then
         self.combatLogTrackingCheck:SetChecked(trackingEnabled)
     end
-    local showHealing = false
     if Goals and Goals.db and Goals.db.settings then
-        showHealing = (self:NormalizeCombatShowFlags(Goals.db.settings))
+        self:NormalizeCombatShowFlags(Goals.db.settings)
     end
     if self.combatLogShowDropdown then
         local enabled = trackingEnabled
         local mode = self:GetCombatShowMode(Goals.db.settings)
+        self.damageTrackerFilter = mode
+        if self.damageTrackerDropdown then
+            self.damageTrackerDropdown.selectedValue = mode
+            UIDropDownMenu_SetSelectedValue(self.damageTrackerDropdown, mode)
+            self:SetDropdownText(self.damageTrackerDropdown, mode)
+        end
         self.combatLogShowDropdown.selectedValue = mode
         UIDropDownMenu_SetSelectedValue(self.combatLogShowDropdown, mode)
         self:SetDropdownText(self.combatLogShowDropdown, mode)
@@ -13003,7 +13049,7 @@ function UI:Refresh()
         updateSlider(self.combatLogBigThresholdSlider, self.combatLogBigThresholdValue, threshold, trackingEnabled)
     end
     if self.combatLogShowOverhealCheck then
-        local enabled = trackingEnabled and (showHealing ~= false)
+        local enabled = false
         local showOverheal = Goals.db.settings.combatLogShowOverheal
         if showOverheal == nil then
             showOverheal = true
@@ -13020,6 +13066,27 @@ function UI:Refresh()
         else
             if self.combatLogShowOverhealCheck.Disable then
                 self.combatLogShowOverhealCheck:Disable()
+            end
+        end
+    end
+    if self.combatLogShowThreatAbilitiesCheck then
+        local enabled = trackingEnabled
+        local showThreatAbilities = Goals.db.settings.combatLogShowThreatAbilities
+        if showThreatAbilities == nil then
+            showThreatAbilities = true
+            Goals.db.settings.combatLogShowThreatAbilities = true
+        end
+        self.combatLogShowThreatAbilitiesCheck:SetChecked(showThreatAbilities and true or false)
+        if self.combatLogShowThreatAbilitiesCheck.SetAlpha then
+            self.combatLogShowThreatAbilitiesCheck:SetAlpha(enabled and 1 or 0.6)
+        end
+        if enabled then
+            if self.combatLogShowThreatAbilitiesCheck.Enable then
+                self.combatLogShowThreatAbilitiesCheck:Enable()
+            end
+        else
+            if self.combatLogShowThreatAbilitiesCheck.Disable then
+                self.combatLogShowThreatAbilitiesCheck:Disable()
             end
         end
     end

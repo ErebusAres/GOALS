@@ -9,6 +9,8 @@ Goals.DamageTracker = Goals.DamageTracker or {}
 local DamageTracker = Goals.DamageTracker
 
 local MAX_LOG_ENTRIES = 300
+local THREAT_EVENT_WINDOW = 8
+local THREAT_TARGET_HINT_WINDOW = 6
 local DAMAGE_EVENTS = {
     SPELL_DAMAGE = true,
     RANGE_DAMAGE = true,
@@ -45,6 +47,30 @@ local PERIODIC_AURA_TTL = 120
 local PERIODIC_AURA_DIRECT_WINDOW = 1.0
 local PERIODIC_INCLUDE_DIRECT_WINDOW = 2.0
 local bit_band = bit and bit.band or nil
+local THREAT_DROP_SPELLS = {
+    [66] = true,
+    [1038] = true,
+    [1856] = true,
+    [5384] = true,
+    [29858] = true,
+}
+local THREAT_RESET_SPELLS = {
+    [18670] = true,
+    [23339] = true,
+}
+local THREAT_INCREASE_SPELLS = {
+    [355] = true, -- Taunt
+    [1161] = true, -- Challenging Shout
+    [694] = true, -- Mocking Blow
+    [62124] = true, -- Hand of Reckoning
+    [5209] = true, -- Challenging Roar
+    [6795] = true, -- Growl
+    [56222] = true, -- Dark Command
+}
+local THREAT_TRANSFER_SPELLS = {
+    [34477] = true, -- Misdirection
+    [57934] = true, -- Tricks of the Trade
+}
 
 local function cloneEntry(entry)
     if type(entry) ~= "table" then
@@ -180,7 +206,92 @@ local function classifySource(name, flags)
 end
 
 local function getAllLabel()
-    return (Goals.L and Goals.L.DAMAGE_TRACKER_ALL) or "All Members"
+    return (Goals.L and Goals.L.DAMAGE_TRACKER_SHOW_ALL) or "Show all"
+end
+
+local function getBossLabel()
+    return (Goals.L and Goals.L.DAMAGE_TRACKER_SHOW_BOSS) or "Show boss encounters"
+end
+
+local function getTrashLabel()
+    return (Goals.L and Goals.L.DAMAGE_TRACKER_SHOW_TRASH) or "Show trash"
+end
+
+local function isHostileKind(kind)
+    return kind == "boss" or kind == "elite" or kind == "trash"
+end
+
+local function normalizeSpellText(name)
+    if not name then
+        return ""
+    end
+    return tostring(name):lower()
+end
+
+local function isThreatDropSpell(spellId, spellName)
+    if spellId and THREAT_DROP_SPELLS[tonumber(spellId) or -1] then
+        return true
+    end
+    local n = normalizeSpellText(spellName)
+    if n == "" then
+        return false
+    end
+    if n:find("threat", 1, true) or n:find("aggro", 1, true) then
+        return true
+    end
+    if n:find("salvation", 1, true) or n:find("soulshatter", 1, true) then
+        return true
+    end
+    if n:find("vanish", 1, true) or n:find("feign death", 1, true) then
+        return true
+    end
+    return false
+end
+
+local function isThreatResetSpell(spellId, spellName)
+    if spellId and THREAT_RESET_SPELLS[tonumber(spellId) or -1] then
+        return true
+    end
+    local n = normalizeSpellText(spellName)
+    if n == "" then
+        return false
+    end
+    if n:find("knock away", 1, true) or n:find("wing buffet", 1, true) then
+        return true
+    end
+    if n:find("threat", 1, true) or n:find("aggro", 1, true) then
+        return true
+    end
+    return false
+end
+
+local function getThreatAbilityDirection(spellId, spellName)
+    local id = tonumber(spellId) or 0
+    if id > 0 then
+        if THREAT_INCREASE_SPELLS[id] then
+            return "increase"
+        end
+        if THREAT_TRANSFER_SPELLS[id] then
+            return "transfer"
+        end
+        if THREAT_DROP_SPELLS[id] then
+            return "decrease"
+        end
+    end
+    local n = normalizeSpellText(spellName)
+    if n == "" then
+        return nil
+    end
+    if n:find("taunt", 1, true) or n:find("mocking", 1, true) or n:find("growl", 1, true) or n:find("reckoning", 1, true) then
+        return "increase"
+    end
+    if n:find("misdirection", 1, true) or n:find("tricks of the trade", 1, true) then
+        return "transfer"
+    end
+    if isThreatDropSpell(spellId, spellName) then
+        return "decrease"
+    end
+    return nil
 end
 
 local function getCombatLogArgs(...)
@@ -261,6 +372,10 @@ function DamageTracker:Init()
     end
     self.activeCombines = self.activeCombines or {}
     self.castStarts = self.castStarts or {}
+    self.lastHostileTargetBySource = self.lastHostileTargetBySource or {}
+    self.lastHostileTargetSinceBySource = self.lastHostileTargetSinceBySource or {}
+    self.recentThreatDropByTarget = self.recentThreatDropByTarget or {}
+    self.recentThreatResetBySource = self.recentThreatResetBySource or {}
     self.startTs = self.startTs or time()
     self:RefreshRoster()
     self:RebuildPeriodicCombines()
@@ -292,6 +407,10 @@ function DamageTracker:ClearLog()
     self.startTs = time()
     self.activeCombines = {}
     self.castStarts = {}
+    self.lastHostileTargetBySource = {}
+    self.lastHostileTargetSinceBySource = {}
+    self.recentThreatDropByTarget = {}
+    self.recentThreatResetBySource = {}
 end
 
 function DamageTracker:TryCombineAll(entry)
@@ -507,30 +626,13 @@ end
 function DamageTracker:GetFilteredEntries(filter, opts)
     local log = Goals.state.damageLog or {}
     local allLabel = getAllLabel()
+    local bossLabel = getBossLabel()
+    local trashLabel = getTrashLabel()
     local settings = Goals and Goals.db and Goals.db.settings or nil
     local options = opts or {}
-    local showHealing = settings and settings.combatLogShowHealing
-    local showDamageDealt = settings and settings.combatLogShowDamageDealt
-    local showDamageReceived = settings and settings.combatLogShowDamageReceived
-    if showHealing == nil and settings then
-        if settings.combatLogHealing ~= nil then
-            showHealing = settings.combatLogHealing and true or false
-        else
-            showHealing = true
-        end
-        settings.combatLogShowHealing = showHealing
-    end
-    if showDamageDealt == nil and settings then
-        if settings.combatLogTrackOutgoing ~= nil then
-            showDamageDealt = settings.combatLogTrackOutgoing and true or false
-        else
-            showDamageDealt = true
-        end
-        settings.combatLogShowDamageDealt = showDamageDealt
-    end
-    if showDamageReceived == nil and settings then
-        showDamageReceived = true
-        settings.combatLogShowDamageReceived = showDamageReceived
+    local showThreatAbilities = true
+    if settings and settings.combatLogShowThreatAbilities ~= nil then
+        showThreatAbilities = settings.combatLogShowThreatAbilities and true or false
     end
     local threshold = settings and tonumber(settings.combatLogBigThreshold) or nil
     if threshold == nil and settings then
@@ -556,170 +658,52 @@ function DamageTracker:GetFilteredEntries(filter, opts)
     if useBigFilter then
         stats = self:BuildEncounterStats(log)
     end
-    local isAllView = not filter or filter == "" or filter == allLabel
-    local rosterMap = self.rosterNameMap or {}
-    local function isRosterName(name)
-        if not name or name == "" then
-            return false
-        end
-        return rosterMap[normalizeName(name)] and true or false
-    end
-    local function isSelfHeal(entry)
-        if not entry or entry.kind ~= "HEAL" then
-            return false
-        end
-        local source = entry.source or ""
-        local target = entry.player or ""
-        if source == "" or target == "" then
-            return false
-        end
-        return normalizeName(source) == normalizeName(target)
-    end
-    local function shouldIncludeAll(entry)
-        if not entry then
-            return false
-        end
-        if entry.kind == "HEAL" or entry.kind == "HEAL_OUT" or entry.kind == "RES" then
-            if not showHealing then
-                return false
-            end
-        elseif entry.kind == "DAMAGE_OUT" then
-            if not showDamageDealt then
-                return false
-            end
-        elseif entry.kind == "DAMAGE" or entry.kind == "DEATH" then
-            if not showDamageReceived then
-                return false
-            end
-        end
-        if entry.kind == "HEAL" then
-            if isRosterName(entry.source) and not isSelfHeal(entry) then
-                return false
-            end
-        end
-        return true
-    end
-    local function filterAllList(entries)
-        local list = {}
-        for _, entry in ipairs(entries or {}) do
-            if shouldIncludeAll(entry) then
-                table.insert(list, entry)
-            end
-        end
-        return list
+    local mode = "all"
+    if filter == bossLabel then
+        mode = "boss"
+    elseif filter == trashLabel then
+        mode = "trash"
+    elseif not filter or filter == "" or filter == allLabel then
+        mode = "all"
     end
 
-    if isAllView then
-        if not useBigFilter then
-            local list = filterAllList(log)
-            if not self:IsCombineAllEnabled() then
-                return list
-            end
-            return self:BuildCombinedList(list)
-        end
-        local list = {}
-        for _, entry in ipairs(log) do
-            if shouldIncludeAll(entry) then
-                if entry.kind == "BREAK" or entry.kind == "DEATH" or entry.kind == "RES" then
-                    table.insert(list, entry)
-                elseif entry.kind == "HEAL" or entry.kind == "HEAL_OUT" then
-                    if self:IsBigEntry(entry, stats, "HEAL", threshold) then
-                        table.insert(list, entry)
-                    end
-                else
-                    if self:IsBigEntry(entry, stats, "DAMAGE", threshold) then
-                        table.insert(list, entry)
-                    end
-                end
-            end
-        end
-        if not self:IsCombineAllEnabled() then
-            return list
-        end
-        return self:BuildCombinedList(list)
-    end
-    local function entryMatchesFilter(entry, filterName)
-        if not entry or not filterName or filterName == "" then
-            return false
-        end
-        local targetName = nil
-        local sourceName = nil
-        if entry.kind == "DAMAGE" then
-            sourceName = entry.source
-            targetName = entry.player
-        elseif entry.kind == "DAMAGE_OUT" then
-            sourceName = entry.player
-            targetName = entry.source
-        elseif entry.kind == "HEAL" then
-            sourceName = entry.source
-            targetName = entry.player
-        elseif entry.kind == "HEAL_OUT" then
-            sourceName = entry.player
-            targetName = entry.source
-        elseif entry.kind == "RES" then
-            sourceName = entry.source
-            targetName = entry.player
-        elseif entry.kind == "DEATH" then
-            targetName = entry.player
-        else
-            targetName = entry.player
-        end
-        local normalizedFilter = normalizeName(filterName)
-        if sourceName and normalizeName(sourceName) == normalizedFilter then
+    local function matchesScope(entry)
+        if mode == "all" then
             return true
         end
-        if targetName and normalizeName(targetName) == normalizedFilter then
-            return true
+        local kind = entry and (entry.hostileKind or entry.sourceKind) or nil
+        if not kind then
+            return mode == "all"
         end
-        return false
+        if mode == "boss" then
+            return kind == "boss"
+        end
+        return kind == "trash" or kind == "elite"
     end
 
     local list = {}
     for _, entry in ipairs(log) do
-        if entry.kind == "BREAK" then
+        local kind = entry and entry.kind or nil
+        if kind == "BREAK" then
             table.insert(list, entry)
-        elseif entryMatchesFilter(entry, filter) then
-            if not useBigFilter then
-                if entry.kind == "HEAL" or entry.kind == "HEAL_OUT" or entry.kind == "RES" then
-                    if showHealing then
-                        table.insert(list, entry)
-                    end
-                elseif entry.kind == "DAMAGE_OUT" then
-                    if showDamageDealt then
-                        table.insert(list, entry)
-                    end
-                elseif entry.kind == "DAMAGE" or entry.kind == "DEATH" then
-                    if showDamageReceived then
-                        table.insert(list, entry)
-                    end
-                else
+        elseif kind == "THREAT" then
+            if matchesScope(entry) then
+                table.insert(list, entry)
+            end
+        elseif kind == "THREAT_ABILITY" then
+            if showThreatAbilities and matchesScope(entry) then
+                table.insert(list, entry)
+            end
+        elseif kind == "DAMAGE" then
+            if matchesScope(entry) then
+                if not useBigFilter or self:IsBigEntry(entry, stats, "DAMAGE", threshold) then
                     table.insert(list, entry)
-                end
-            elseif entry.kind == "HEAL" or entry.kind == "HEAL_OUT" then
-                if showHealing and self:IsBigEntry(entry, stats, "HEAL", threshold) then
-                    table.insert(list, entry)
-                end
-            elseif entry.kind == "DEATH" or entry.kind == "RES" then
-                if entry.kind == "RES" then
-                    if showHealing then
-                        table.insert(list, entry)
-                    end
-                else
-                    if showDamageReceived then
-                        table.insert(list, entry)
-                    end
-                end
-            else
-                if entry.kind == "DAMAGE_OUT" then
-                    if showDamageDealt and self:IsBigEntry(entry, stats, "DAMAGE", threshold) then
-                        table.insert(list, entry)
-                    end
-                else
-                    if showDamageReceived and self:IsBigEntry(entry, stats, "DAMAGE", threshold) then
-                        table.insert(list, entry)
-                    end
                 end
             end
+        elseif kind == "DEATH" then
+            table.insert(list, entry)
+        elseif kind == "RES" and mode == "all" then
+            table.insert(list, entry)
         end
     end
     if not self:IsCombineAllEnabled() then
@@ -736,7 +720,7 @@ function DamageTracker:BuildCombinedList(entries)
     local map = {}
     for i = #entries, 1, -1 do
         local entry = entries[i]
-        if not entry or entry.kind == "BREAK" or entry.kind == "DEATH" or entry.kind == "RES" then
+        if not entry or entry.kind == "BREAK" or entry.kind == "DEATH" or entry.kind == "RES" or entry.kind == "THREAT" or entry.kind == "THREAT_ABILITY" then
             table.insert(combined, entry)
         else
             local key = string.format("%s|%s", entry.kind or "DAMAGE", entry.player or "Unknown")
@@ -1103,12 +1087,59 @@ function DamageTracker:HandleCombatLog(...)
     debug.lastAdded = false
     debug.lastSkip = nil
     if subevent == "SPELL_CAST_SUCCESS" then
-        local spellId = tonumber(arg12) or nil
-        local spellName = arg13
+        local spellId, spellName = nil, nil
+        if spellBase and type(args[spellBase + 1]) == "string" then
+            spellId = tonumber(args[spellBase]) or nil
+            spellName = args[spellBase + 1]
+        else
+            spellId, spellName = parseSpellPayload(args, 0, 0)
+        end
         if spellId or spellName then
             self.castStarts = self.castStarts or {}
             local key = string.format("%s|%s", tostring(sourceGUID or sourceName or "unknown"), tostring(spellId or spellName))
             self.castStarts[key] = timestamp or time()
+            local sourceKind = classifySource(sourceName, sourceFlags)
+            if isHostileKind(sourceKind) and isThreatResetSpell(spellId, spellName) then
+                self.recentThreatResetBySource = self.recentThreatResetBySource or {}
+                self.recentThreatResetBySource[tostring(sourceGUID or sourceName or "unknown")] = {
+                    ts = timestamp or time(),
+                    spell = spellName or "Threat Reset",
+                }
+            end
+            if not (self.rosterGuids and next(self.rosterGuids)) then
+                self:RefreshRoster()
+            end
+            local normalizedSource = normalizeName(sourceName)
+            local isRosterSource = (sourceGUID and self.rosterGuids and self.rosterGuids[sourceGUID])
+                or (normalizedSource ~= "" and self.rosterNameMap and self.rosterNameMap[normalizedSource])
+            if isRosterSource then
+                local direction = getThreatAbilityDirection(spellId, spellName)
+                if direction then
+                    local srcName = (sourceGUID and self.rosterGuids and self.rosterGuids[sourceGUID]) or normalizedSource or normalizeName(sourceName)
+                    local targetKind = classifySource(destName, destFlags)
+                    local directionText = "Threat"
+                    if direction == "increase" then
+                        directionText = "Threat+"
+                    elseif direction == "decrease" then
+                        directionText = "Threat-"
+                    elseif direction == "transfer" then
+                        directionText = "Threat->"
+                    end
+                    self:AddEntry({
+                        ts = timestamp,
+                        player = srcName ~= "" and srcName or "Unknown",
+                        source = destName or "Unknown",
+                        kind = "THREAT_ABILITY",
+                        spell = spellName or "Unknown",
+                        spellId = spellId,
+                        threatDir = direction,
+                        reason = directionText,
+                        sourceKind = "player",
+                        hostileKind = isHostileKind(targetKind) and targetKind or nil,
+                    })
+                    debug.lastAdded = true
+                end
+            end
         end
         return
     end
@@ -1134,6 +1165,16 @@ function DamageTracker:HandleCombatLog(...)
 
     if AURA_APPLY_EVENTS[subevent] or AURA_REMOVE_EVENTS[subevent] then
         local spellId, auraType = parseAuraPayload(args, spellBase)
+        if AURA_APPLY_EVENTS[subevent] and isRosterDest and isThreatDropSpell(spellId, args[(spellBase or 0) + 1]) then
+            self.recentThreatDropByTarget = self.recentThreatDropByTarget or {}
+            local key = normalizeName(destName)
+            if key ~= "" then
+                self.recentThreatDropByTarget[key] = {
+                    ts = timestamp or time(),
+                    spell = args[(spellBase or 0) + 1] or "Threat Drop",
+                }
+            end
+        end
         self:TrackPeriodicAura(
             subevent,
             sourceGUID or sourceName or "unknown",
@@ -1223,6 +1264,48 @@ function DamageTracker:HandleCombatLog(...)
                 sourceFlags = sourceFlags,
                 sourceKind = sourceKind,
             })
+            if isHostileKind(sourceKind) then
+                self.lastHostileTargetBySource = self.lastHostileTargetBySource or {}
+                self.lastHostileTargetSinceBySource = self.lastHostileTargetSinceBySource or {}
+                local sourceKey = tostring(sourceGUID or sourceName or "unknown")
+                local previousTarget = self.lastHostileTargetBySource[sourceKey]
+                local currentTarget = playerName
+                local previousSince = self.lastHostileTargetSinceBySource[sourceKey] or (timestamp or time())
+                if previousTarget and previousTarget ~= "" and currentTarget and currentTarget ~= "" and normalizeName(previousTarget) ~= normalizeName(currentTarget) then
+                    local nowTs = timestamp or time()
+                    local heldFor = math.floor(math.max(0, nowTs - previousSince) + 0.5)
+                    local reason = "Aggro changed due to higher threat."
+                    local newDrop = self.recentThreatDropByTarget and self.recentThreatDropByTarget[normalizeName(currentTarget)] or nil
+                    if newDrop and (nowTs - (newDrop.ts or 0)) <= THREAT_TARGET_HINT_WINDOW then
+                        reason = string.format("New target dropped threat: %s.", newDrop.spell or "Unknown")
+                    else
+                        local prevDrop = self.recentThreatDropByTarget and self.recentThreatDropByTarget[normalizeName(previousTarget)] or nil
+                        if prevDrop and (nowTs - (prevDrop.ts or 0)) <= THREAT_TARGET_HINT_WINDOW then
+                            reason = string.format("Previous target dropped threat: %s.", prevDrop.spell or "Unknown")
+                        else
+                            local reset = self.recentThreatResetBySource and self.recentThreatResetBySource[sourceKey] or nil
+                            if reset and (nowTs - (reset.ts or 0)) <= THREAT_EVENT_WINDOW then
+                                reason = string.format("Boss cast threat reset: %s.", reset.spell or "Unknown")
+                            end
+                        end
+                    end
+                    reason = string.format("%s Previous target held aggro for %ds.", reason, heldFor)
+                    self:AddEntry({
+                        ts = timestamp,
+                        player = currentTarget,
+                        source = sourceName or "Unknown",
+                        kind = "THREAT",
+                        spell = "Threat Change",
+                        reason = reason,
+                        holdDuration = heldFor,
+                        previousTarget = previousTarget,
+                        sourceKind = sourceKind,
+                        hostileKind = sourceKind,
+                    })
+                end
+                self.lastHostileTargetBySource[sourceKey] = currentTarget
+                self.lastHostileTargetSinceBySource[sourceKey] = timestamp or time()
+            end
         elseif isRosterSource then
             local srcName = (sourceGUID and self.rosterGuids[sourceGUID]) or (isRosterSource and normalizedSource) or normalizeName(sourceName)
             if (not srcName or srcName == "") and Goals and Goals.GetPlayerName and sourceGUID == playerGuid then
