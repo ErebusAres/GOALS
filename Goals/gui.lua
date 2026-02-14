@@ -299,7 +299,12 @@ end
 
 local function createOptionsButton(parent)
     OPTIONS_BUTTON_ID = OPTIONS_BUTTON_ID + 1
-    return CreateFrame("Button", "GoalsOptionsButton" .. OPTIONS_BUTTON_ID, parent, "UIPanelButtonTemplate2")
+    local name = "GoalsOptionsButton" .. OPTIONS_BUTTON_ID
+    local ok, button = pcall(CreateFrame, "Button", name, parent, "UIPanelButtonTemplate2")
+    if ok and button then
+        return button
+    end
+    return CreateFrame("Button", name, parent, "UIPanelButtonTemplate")
 end
 
 local styleDropdown
@@ -1296,13 +1301,46 @@ local function setupSaveTableHelpPopup()
     return
 end
 
+local function getOverviewMigrationPromptText()
+    return (L and L.POPUP_OVERVIEW_MIGRATE) or
+        "Old table data detected. Click OK to combine all account-based tables."
+end
+
+local function layoutOverviewMigrationPrompt(frame)
+    if not frame or not frame.content or not frame.body or not frame.okBtn then
+        return
+    end
+    local content = frame.content
+    local body = frame.body
+    local button = frame.okBtn
+    local contentWidth = (content.GetWidth and content:GetWidth()) or (OPTIONS_PANEL_WIDTH + 8)
+    local textWidth = math.max(140, contentWidth - 16)
+
+    body:ClearAllPoints()
+    body:SetPoint("TOPLEFT", content, "TOPLEFT", 8, -8)
+    body:SetPoint("TOPRIGHT", content, "TOPRIGHT", -8, -8)
+    if body.SetWidth then
+        body:SetWidth(textWidth)
+    end
+
+    local textHeight = (body.GetStringHeight and body:GetStringHeight()) or 16
+    if textHeight < 16 then
+        textHeight = 16
+    end
+    local buttonHeight = (button.GetHeight and button:GetHeight()) or OPTIONS_BUTTON_HEIGHT
+    local contentNeeded = textHeight + buttonHeight + 24
+    local frameNeeded = contentNeeded + 30
+    local targetHeight = math.max(124, math.min(220, math.ceil(frameNeeded)))
+    frame:SetHeight(targetHeight)
+end
+
 local function ensureOverviewMigrationPrompt()
     if not UI or UI.overviewMigrationPrompt then
         return UI and UI.overviewMigrationPrompt or nil
     end
     local frame = CreateFrame("Frame", "GoalsOverviewMigrationPrompt", UIParent, "GoalsFrameTemplate")
     applyFrameTheme(frame)
-    frame:SetSize(OPTIONS_PANEL_WIDTH + 40, 140)
+    frame:SetSize(OPTIONS_PANEL_WIDTH + 24, 132)
     frame:SetFrameStrata("FULLSCREEN_DIALOG")
     frame:SetFrameLevel(1000)
     frame:SetToplevel(true)
@@ -1310,17 +1348,19 @@ local function ensureOverviewMigrationPrompt()
     frame:Hide()
 
     if frame.TitleText then
-        frame.TitleText:SetText("Account Data")
+        frame.TitleText:SetText("GOALS Account Data")
         frame.TitleText:Show()
     end
     local frameName = frame.GetName and frame:GetName() or nil
     local close = frame.CloseButton or (frameName and _G[frameName .. "CloseButton"]) or nil
     if close then
         close:SetScript("OnClick", function()
-            frame:Hide()
-            if Goals and Goals.dbRoot then
+            if Goals and Goals.MergeLegacyOverviewTables then
+                Goals:MergeLegacyOverviewTables()
+            elseif Goals and Goals.dbRoot then
                 Goals.dbRoot.overviewMigrationPending = false
             end
+            frame:Hide()
         end)
     end
 
@@ -1330,17 +1370,30 @@ local function ensureOverviewMigrationPrompt()
     content:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -6, 6)
     frame.content = content
 
-    local body = createLabel(content, L.POPUP_OVERVIEW_MIGRATE, "GameFontHighlightSmall")
+    local migrateText = getOverviewMigrationPromptText()
+    local body = createLabel(content, migrateText, "GameFontHighlight")
     body:SetPoint("TOPLEFT", content, "TOPLEFT", 8, -8)
-    body:SetPoint("TOPRIGHT", content, "TOPRIGHT", -8, -8)
     body:SetJustifyH("LEFT")
-    body:SetWordWrap(true)
+    body:SetJustifyV("TOP")
+    body:SetWidth(OPTIONS_PANEL_WIDTH)
+    if body.SetWordWrap then
+        body:SetWordWrap(true)
+    end
+    if body.SetNonSpaceWrap then
+        body:SetNonSpaceWrap(true)
+    end
+    if body.SetMaxLines then
+        body:SetMaxLines(0)
+    end
+    if body.SetTextColor then
+        body:SetTextColor(0.9, 0.92, 0.98, 1)
+    end
     frame.body = body
 
     local okBtn = createOptionsButton(content)
     styleOptionsButton(okBtn, 120)
     okBtn:SetPoint("BOTTOMRIGHT", content, "BOTTOMRIGHT", -8, 8)
-    okBtn:SetText(OKAY)
+    okBtn:SetText("OK")
     okBtn:SetScript("OnClick", function()
         if Goals and Goals.MergeLegacyOverviewTables then
             Goals:MergeLegacyOverviewTables()
@@ -1348,18 +1401,6 @@ local function ensureOverviewMigrationPrompt()
         frame:Hide()
     end)
     frame.okBtn = okBtn
-
-    local cancelBtn = createOptionsButton(content)
-    styleOptionsButton(cancelBtn, 120)
-    cancelBtn:SetPoint("RIGHT", okBtn, "LEFT", -8, 0)
-    cancelBtn:SetText(CANCEL)
-    cancelBtn:SetScript("OnClick", function()
-        frame:Hide()
-        if Goals and Goals.dbRoot then
-            Goals.dbRoot.overviewMigrationPending = false
-        end
-    end)
-    frame.cancelBtn = cancelBtn
 
     local frameNameForEscape = frame.GetName and frame:GetName() or nil
     if frameNameForEscape then
@@ -1371,6 +1412,116 @@ local function ensureOverviewMigrationPrompt()
     end
     UI.overviewMigrationPrompt = frame
     return frame
+end
+
+local function ensureOverviewMigrationPromptWidgets(frame)
+    if not frame or not frame.content then
+        return
+    end
+    local content = frame.content
+    local migrateText = getOverviewMigrationPromptText()
+
+    if not frame.body then
+        local body = createLabel(content, migrateText, "GameFontHighlight")
+        body:SetPoint("TOPLEFT", content, "TOPLEFT", 8, -8)
+        body:SetJustifyH("LEFT")
+        body:SetJustifyV("TOP")
+        body:SetWidth(OPTIONS_PANEL_WIDTH)
+        if body.SetWordWrap then
+            body:SetWordWrap(true)
+        end
+        if body.SetNonSpaceWrap then
+            body:SetNonSpaceWrap(true)
+        end
+        if body.SetMaxLines then
+            body:SetMaxLines(0)
+        end
+        if body.SetTextColor then
+            body:SetTextColor(0.9, 0.92, 0.98, 1)
+        end
+        frame.body = body
+    end
+    if frame.body then
+        if frame.body.SetText then
+            frame.body:SetText(migrateText)
+        end
+        if frame.body.SetFontObject then
+            frame.body:SetFontObject("GameFontHighlight")
+        end
+        if frame.body.SetTextColor then
+            frame.body:SetTextColor(0.9, 0.92, 0.98, 1)
+        end
+        if frame.body.SetJustifyV then
+            frame.body:SetJustifyV("TOP")
+        end
+        if frame.body.SetWordWrap then
+            frame.body:SetWordWrap(true)
+        end
+        if frame.body.SetMaxLines then
+            frame.body:SetMaxLines(0)
+        end
+        if frame.body.SetWidth then
+            frame.body:SetWidth(OPTIONS_PANEL_WIDTH)
+        end
+        if frame.body.SetDrawLayer then
+            frame.body:SetDrawLayer("OVERLAY")
+        end
+        if frame.body.Show then
+            frame.body:Show()
+        end
+    end
+
+    local function forceButtonVisuals(btn, labelText)
+        if not btn then
+            return
+        end
+        if btn.SetText then
+            btn:SetText(labelText or "")
+        end
+        local fs = btn.GetFontString and btn:GetFontString() or nil
+        if not fs then
+            fs = btn.goalsFallbackText
+            if not fs then
+                fs = btn:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+                fs:SetPoint("CENTER", btn, "CENTER", 0, 0)
+                btn.goalsFallbackText = fs
+            end
+            fs:SetText(labelText or "")
+        end
+        if fs and fs.SetTextColor then
+            fs:SetTextColor(1, 1, 1, 1)
+        end
+        if btn.SetAlpha then
+            btn:SetAlpha(1)
+        end
+        if btn.Show then
+            btn:Show()
+        end
+    end
+
+    if not frame.okBtn then
+        local okBtn = createOptionsButton(content)
+        styleOptionsButton(okBtn, 120)
+        okBtn:SetPoint("BOTTOMRIGHT", content, "BOTTOMRIGHT", -8, 8)
+        okBtn:SetText("OK")
+        okBtn:SetScript("OnClick", function()
+            if Goals and Goals.MergeLegacyOverviewTables then
+                Goals:MergeLegacyOverviewTables()
+            end
+            frame:Hide()
+        end)
+        frame.okBtn = okBtn
+    end
+    if frame.okBtn then
+        frame.okBtn:SetFrameLevel((content:GetFrameLevel() or frame:GetFrameLevel() or 1) + 10)
+        forceButtonVisuals(frame.okBtn, "OK")
+    end
+
+    if frame.cancelBtn then
+        frame.cancelBtn:Hide()
+    end
+
+    layoutOverviewMigrationPrompt(frame)
 end
 
 local function setupBuildSharePopup()
@@ -2525,6 +2676,11 @@ function UI:ShowOverviewMigrationPrompt()
     if not frame then
         return
     end
+    if frame.content then
+        frame.content:SetFrameLevel((frame:GetFrameLevel() or 1) + 2)
+        frame.content:SetAlpha(1)
+    end
+    ensureOverviewMigrationPromptWidgets(frame)
     if self.frame and self.frame:IsShown() then
         frame:ClearAllPoints()
         frame:SetPoint("TOPLEFT", self.frame, "TOPRIGHT", -2, -34)
@@ -2532,7 +2688,9 @@ function UI:ShowOverviewMigrationPrompt()
         frame:ClearAllPoints()
         frame:SetPoint("CENTER", UIParent, "CENTER", 0, 120)
     end
+    layoutOverviewMigrationPrompt(frame)
     frame:Show()
+    layoutOverviewMigrationPrompt(frame)
 end
 
 function UI:CreateBuildShareTargetFrame()
@@ -3816,7 +3974,10 @@ function UI:CreateOverviewTab(page)
         end
     end
     if actionsHeader then
-        local allPlusBtn = CreateFrame("Button", "GoalsRosterAllPlusButton", tableWidget.header, "UIPanelButtonTemplate2")
+        local okAllPlus, allPlusBtn = pcall(CreateFrame, "Button", "GoalsRosterAllPlusButton", tableWidget.header, "UIPanelButtonTemplate2")
+        if not (okAllPlus and allPlusBtn) then
+            allPlusBtn = CreateFrame("Button", "GoalsRosterAllPlusButton", tableWidget.header, "UIPanelButtonTemplate")
+        end
         allPlusBtn:SetSize(48, 16)
         allPlusBtn:SetText("+1 All")
         allPlusBtn:SetPoint("RIGHT", tableWidget.header, "RIGHT", -2, 0)
