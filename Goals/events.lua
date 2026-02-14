@@ -527,13 +527,21 @@ function Events:HandleUnitSpellcastSucceeded(unit, spellName, _, _, spellId)
     self:FinishEncounter(true)
 end
 
-function Events:CheckBossUnits(includeTargetFocus)
+function Events:CheckBossUnits(includeTargetFocus, requireCombat)
     local units = { "boss1", "boss2", "boss3", "boss4" }
     if includeTargetFocus then
         units[5] = "target"
         units[6] = "focus"
     end
     for _, unit in ipairs(units) do
+        local allowScan = true
+        if requireCombat and UnitAffectingCombat and not UnitAffectingCombat(unit) then
+            -- Avoid false encounter starts when boss units are visible nearby but not engaged.
+            if not includeTargetFocus or (unit ~= "target" and unit ~= "focus") then
+                allowScan = false
+            end
+        end
+        if allowScan then
         local name = getUnitNameIfExists(unit)
         if name then
             local encounterName, bossName = self:GetEncounterForBossName(name)
@@ -544,6 +552,7 @@ function Events:CheckBossUnits(includeTargetFocus)
                 end
                 return encounterName, bossName
             end
+        end
         end
     end
     return nil
@@ -659,7 +668,7 @@ function Events:HandleCombatLog(...)
             end
         end
     end
-    local encounterName = self:CheckBossUnits(false)
+    local encounterName = self:CheckBossUnits(false, true)
     if encounterName then
         self:StartEncounter(encounterName)
     end
@@ -992,16 +1001,33 @@ function Events:HandleCombatEnd()
     if not Goals.encounter.active then
         return
     end
-    Goals:Delay(5, function()
+    local encounterName = Goals.encounter.name
+    self.pendingWipeCheckToken = (self.pendingWipeCheckToken or 0) + 1
+    local token = self.pendingWipeCheckToken
+    local function evaluateWipe()
+        if token ~= self.pendingWipeCheckToken then
+            return
+        end
+        if not Goals.encounter.active then
+            return
+        end
+        if Goals.encounter.name ~= encounterName then
+            return
+        end
+        if Goals:IsGroupInCombat() then
+            return
+        end
         local lastKill = Goals.encounter.lastBossKillTs or 0
         if lastKill > 0 and (time() - lastKill) < 20 then
             return
         end
-        if self:CheckBossUnits(true) then
+        if self:CheckBossUnits(false, true) then
+            Goals:Delay(5, evaluateWipe)
             return
         end
         local lastBossUnit = Goals.encounter.lastBossUnitSeen or 0
         if lastBossUnit > 0 and (time() - lastBossUnit) < 8 then
+            Goals:Delay(5, evaluateWipe)
             return
         end
         local rule = Goals.encounter.rule
@@ -1009,17 +1035,19 @@ function Events:HandleCombatEnd()
         if wipeGrace and wipeGrace > 0 then
             local lastActivity = Goals.encounter.lastBossActivityTs or Goals.encounter.startTime or 0
             if lastActivity > 0 and (time() - lastActivity) < wipeGrace then
+                Goals:Delay(5, evaluateWipe)
                 return
             end
         end
         if Goals.encounter.active and not Goals:IsGroupInCombat() then
             self:FinishEncounter(false)
         end
-    end)
+    end
+    Goals:Delay(5, evaluateWipe)
 end
 
 function Events:HandleCombatStart()
-    local encounterName = self:CheckBossUnits(false)
+    local encounterName = self:CheckBossUnits(false, true)
     if encounterName then
         self:StartEncounter(encounterName)
     end

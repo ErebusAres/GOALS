@@ -678,6 +678,10 @@ function DamageTracker:GetFilteredEntries(filter, opts)
     local trashLabel = getTrashLabel()
     local settings = Goals and Goals.db and Goals.db.settings or nil
     local options = opts or {}
+    local showThreat = true
+    if settings and settings.combatLogShowThreat ~= nil then
+        showThreat = settings.combatLogShowThreat and true or false
+    end
     local showThreatAbilities = true
     if settings and settings.combatLogShowThreatAbilities ~= nil then
         showThreatAbilities = settings.combatLogShowThreatAbilities and true or false
@@ -739,7 +743,7 @@ function DamageTracker:GetFilteredEntries(filter, opts)
         if kind == "BREAK" then
             table.insert(list, entry)
         elseif kind == "THREAT" then
-            if matchesScope(entry) then
+            if showThreat and matchesScope(entry) then
                 table.insert(list, entry)
             end
         elseif kind == "THREAT_ABILITY" then
@@ -855,7 +859,7 @@ function DamageTracker:BuildEncounterStats(log)
                     if amount > (stats[activeId].maxDamage or 0) then
                         stats[activeId].maxDamage = amount
                     end
-                elseif (entry.kind == "HEAL" or entry.kind == "HEAL_OUT" or entry.kind == "BOSS_HEAL") and amount > 0 then
+                elseif entry.kind == "BOSS_HEAL" and amount > 0 then
                     stats[activeId].healTotal = stats[activeId].healTotal + amount
                     stats[activeId].healCount = stats[activeId].healCount + 1
                     if amount > (stats[activeId].maxHeal or 0) then
@@ -886,7 +890,7 @@ function DamageTracker:BuildEncounterStats(log)
                         if amount > (stats[1].maxDamage or 0) then
                             stats[1].maxDamage = amount
                         end
-                    elseif (entry.kind == "HEAL" or entry.kind == "HEAL_OUT" or entry.kind == "BOSS_HEAL") and amount > 0 then
+                    elseif entry.kind == "BOSS_HEAL" and amount > 0 then
                         stats[1].healTotal = stats[1].healTotal + amount
                         stats[1].healCount = stats[1].healCount + 1
                         if amount > (stats[1].maxHeal or 0) then
@@ -1444,33 +1448,12 @@ function DamageTracker:HandleCombatLog(...)
                 self.lastHostileTargetBySource[sourceKey] = currentTarget
                 self.lastHostileTargetSinceBySource[sourceKey] = timestamp or time()
             end
-        elseif isRosterSource then
-            local srcName = (sourceGUID and self.rosterGuids[sourceGUID]) or (isRosterSource and normalizedSource) or normalizeName(sourceName)
-            if (not srcName or srcName == "") and Goals and Goals.GetPlayerName and sourceGUID == playerGuid then
-                srcName = Goals:GetPlayerName()
-            end
-            if not srcName or srcName == "" then
-                debug.lastSkip = "No player name"
-                return
-            end
-            local targetName = destName or "Unknown"
-            local targetKind = classifySource(targetName, destFlags)
-            self:AddEntry({
-                ts = timestamp,
-                player = srcName,
-                amount = amount,
-                spell = spellName or "Unknown",
-                spellId = spellId,
-                source = targetName,
-                kind = "DAMAGE_OUT",
-                periodic = periodic,
-                combineDirect = combineDirect,
-                castStart = castStart,
-                sourceFlags = destFlags,
-                sourceKind = targetKind,
-            })
         end
-        debug.lastAdded = true
+        if isRosterDest then
+            debug.lastAdded = true
+        else
+            debug.lastSkip = "Ignore outgoing damage"
+        end
         return
     end
 

@@ -1842,7 +1842,8 @@ local function ensureCombatRowTooltip()
     local content = CreateFrame("Frame", nil, tip, "GoalsInsetTemplate")
     applyInsetTheme(content)
     content:SetPoint("TOPLEFT", tip, "TOPLEFT", 6, -24)
-    content:SetPoint("BOTTOMRIGHT", tip, "BOTTOMRIGHT", -6, 6)
+    content:SetPoint("TOPRIGHT", tip, "TOPRIGHT", -6, -24)
+    content:SetHeight(80)
     tip.content = content
 
     local function makeRow(labelText)
@@ -1860,6 +1861,9 @@ local function ensureCombatRowTooltip()
         value:SetJustifyH("LEFT")
         value:SetJustifyV("TOP")
         value:SetWordWrap(true)
+        if value.SetNonSpaceWrap then
+            value:SetNonSpaceWrap(true)
+        end
         row.label = label
         row.value = value
         return row
@@ -1917,6 +1921,15 @@ local function showCombatRowTooltip(entry)
     elseif kind == "DEATH" then
         sourceName = ""
         targetName = entry.player or "Unknown"
+    elseif kind == "THREAT" then
+        sourceName = entry.source or "Unknown"
+        targetName = entry.player or "Unknown"
+    elseif kind == "THREAT_ABILITY" then
+        sourceName = entry.player or "Unknown"
+        targetName = entry.source or "Unknown"
+    elseif kind == "INTERRUPT" then
+        sourceName = entry.player or "Unknown"
+        targetName = entry.source or "Unknown"
     end
 
     local amount = math.floor(tonumber(entry.amount) or 0)
@@ -1931,11 +1944,55 @@ local function showCombatRowTooltip(entry)
         else
             amountText = "Revived"
         end
+    elseif kind == "THREAT" then
+        amountText = "THREAT"
+    elseif kind == "THREAT_ABILITY" then
+        amountText = entry.reason or "THREAT"
+    elseif kind == "INTERRUPT" then
+        amountText = entry.interruptedSpell or "Interrupted cast"
     end
 
     local abilityText = entry.spell or "Unknown"
+    if kind == "THREAT" then
+        abilityText = entry.reason or "Threat changed"
+    elseif kind == "THREAT_ABILITY" then
+        abilityText = entry.spell or "Threat ability"
+    elseif kind == "INTERRUPT" then
+        abilityText = entry.spell or "Interrupt"
+    end
     if entry.spellDuration and entry.spellDuration > 1 then
         abilityText = string.format("%s (%ds)", abilityText, entry.spellDuration)
+    end
+
+    local amountLabelText = "Amount:"
+    local abilityLabelText = "Ability:"
+    if kind == "DAMAGE" or kind == "DAMAGE_OUT" then
+        amountLabelText = "Damage:"
+        abilityLabelText = "Spell:"
+    elseif kind == "HEAL" or kind == "HEAL_OUT" or kind == "BOSS_HEAL" then
+        amountLabelText = "Healing:"
+        abilityLabelText = "Spell:"
+    elseif kind == "RES" then
+        amountLabelText = "Result:"
+        abilityLabelText = "Spell:"
+    elseif kind == "DEATH" then
+        amountLabelText = "Status:"
+        abilityLabelText = "Cause:"
+    elseif kind == "THREAT" then
+        amountLabelText = "Event:"
+        abilityLabelText = "Reason:"
+    elseif kind == "THREAT_ABILITY" then
+        amountLabelText = "Direction:"
+        abilityLabelText = "Threat Ability:"
+    elseif kind == "INTERRUPT" then
+        amountLabelText = "Interrupted:"
+        abilityLabelText = "Interrupt:"
+    end
+    if tip.rowAmount and tip.rowAmount.label then
+        tip.rowAmount.label:SetText(amountLabelText)
+    end
+    if tip.rowAbility and tip.rowAbility.label then
+        tip.rowAbility.label:SetText(abilityLabelText)
     end
 
     local rows = {}
@@ -1966,6 +2023,15 @@ local function showCombatRowTooltip(entry)
         targetColorR, targetColorG, targetColorB = getPlayerColor(targetName)
     elseif kind == "DEATH" then
         targetColorR, targetColorG, targetColorB = getPlayerColor(targetName)
+    elseif kind == "THREAT" then
+        sourceColorR, sourceColorG, sourceColorB = getSourceColor(entry)
+        targetColorR, targetColorG, targetColorB = getPlayerColor(targetName)
+    elseif kind == "THREAT_ABILITY" then
+        sourceColorR, sourceColorG, sourceColorB = getPlayerColor(sourceName)
+        targetColorR, targetColorG, targetColorB = getSourceColor(entry)
+    elseif kind == "INTERRUPT" then
+        sourceColorR, sourceColorG, sourceColorB = getPlayerColor(sourceName)
+        targetColorR, targetColorG, targetColorB = getSourceColor(entry)
     end
 
     setRow(tip.rowSource, sourceName ~= "" and sourceName or "None", sourceColorR, sourceColorG, sourceColorB)
@@ -1978,6 +2044,8 @@ local function showCombatRowTooltip(entry)
         amountColor = REVIVE_COLOR
     elseif kind == "DEATH" then
         amountColor = DEATH_COLOR
+    elseif kind == "THREAT" or kind == "THREAT_ABILITY" or kind == "INTERRUPT" then
+        amountColor = THREAT_COLOR
     end
     setRow(tip.rowAmount, amountText, amountColor[1], amountColor[2], amountColor[3])
 
@@ -1991,11 +2059,17 @@ local function showCombatRowTooltip(entry)
 
     local content = tip.content or tip
     local y = -8
+    local rowInnerWidth = math.max(120, (content:GetWidth() > 0 and content:GetWidth() or (OPTIONS_PANEL_WIDTH - 12)) - 16)
     for _, row in ipairs(rows) do
         row:ClearAllPoints()
         row:SetPoint("TOPLEFT", content, "TOPLEFT", 8, y)
         row:SetPoint("RIGHT", content, "RIGHT", -8, 0)
+        row:SetWidth(rowInnerWidth)
+        local labelWidth = row.label and row.label:GetWidth() or 70
+        local valueWidth = math.max(40, rowInnerWidth - labelWidth - 6)
+        row.value:SetWidth(valueWidth)
         local height = math.max(row.label:GetStringHeight() or 12, row.value:GetStringHeight() or 12)
+        row:SetHeight(height)
         y = y - (height + 6)
     end
     tip.divider:ClearAllPoints()
@@ -3493,12 +3567,21 @@ function UI:NormalizeCombatShowFlags(settings)
         mode = COMBAT_SHOW_ALL
         settings.combatLogViewMode = mode
     end
-    local showHealing = false
-    local showDealt = false
-    local showReceived = true
-    settings.combatLogShowHealing = showHealing
-    settings.combatLogShowDamageDealt = showDealt
-    settings.combatLogShowDamageReceived = showReceived
+    local showHealing = settings.combatLogShowHealing
+    if showHealing == nil then
+        showHealing = false
+        settings.combatLogShowHealing = showHealing
+    end
+    local showDealt = settings.combatLogShowDamageDealt
+    if showDealt == nil then
+        showDealt = false
+        settings.combatLogShowDamageDealt = showDealt
+    end
+    local showReceived = settings.combatLogShowDamageReceived
+    if showReceived == nil then
+        showReceived = true
+        settings.combatLogShowDamageReceived = showReceived
+    end
     return showHealing, showDealt, showReceived
 end
 
@@ -7509,6 +7592,14 @@ function UI:CreateDamageTrackerTab(page)
         end
     end, "Show healing done by bosses/trash.")
     self.combatLogShowBossHealingCheck = showBossHealingCheck
+
+    local showThreatCheck = addCheck("Show threat events", function(selfBtn)
+        Goals.db.settings.combatLogShowThreat = selfBtn:GetChecked() and true or false
+        if Goals.UI and Goals.UI.UpdateDamageTrackerList then
+            Goals.UI:UpdateDamageTrackerList()
+        end
+    end, "Show aggro/threat change events.")
+    self.combatLogShowThreatCheck = showThreatCheck
 
     local showThreatAbilityCheck = addCheck("Show threat ability events", function(selfBtn)
         Goals.db.settings.combatLogShowThreatAbilities = selfBtn:GetChecked() and true or false
@@ -13245,6 +13336,27 @@ function UI:Refresh()
         else
             if self.combatLogShowBossHealingCheck.Disable then
                 self.combatLogShowBossHealingCheck:Disable()
+            end
+        end
+    end
+    if self.combatLogShowThreatCheck then
+        local enabled = trackingEnabled
+        local showThreat = Goals.db.settings.combatLogShowThreat
+        if showThreat == nil then
+            showThreat = true
+            Goals.db.settings.combatLogShowThreat = true
+        end
+        self.combatLogShowThreatCheck:SetChecked(showThreat and true or false)
+        if self.combatLogShowThreatCheck.SetAlpha then
+            self.combatLogShowThreatCheck:SetAlpha(enabled and 1 or 0.6)
+        end
+        if enabled then
+            if self.combatLogShowThreatCheck.Enable then
+                self.combatLogShowThreatCheck:Enable()
+            end
+        else
+            if self.combatLogShowThreatCheck.Disable then
+                self.combatLogShowThreatCheck:Disable()
             end
         end
     end
