@@ -80,7 +80,6 @@ Goals.WishlistBuildCustomData = {
             },
             notes = "Preview build to verify custom source icons render in-game.",
         },
-
         -- EXAMPLE 1: WotLK template (replace item IDs)
         {
             id = "CUSTOM_WOTLK_TEMPLATE",
