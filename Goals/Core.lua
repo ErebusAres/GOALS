@@ -7,6 +7,7 @@
 local addonName = ...
 local Goals = _G.Goals or {}
 _G.Goals = Goals
+local hasProfileStopCore = type(debugprofilestop) == "function"
 
 if not _G.BINDING_HEADER_GOALS then
     _G.BINDING_HEADER_GOALS = "GOALS"
@@ -888,15 +889,27 @@ function Goals:RemovePlayer(name)
 end
 
 function Goals:AwardBossKill(encounterName, members, skipSync)
+    local ui = self.UI
+    local traceEnabled = hasProfileStopCore and ui and ui.IsCpuDebugTracingEnabled and ui:IsCpuDebugTracingEnabled()
+    local t0 = traceEnabled and debugprofilestop() or 0
+    local function traceDone(detail)
+        if traceEnabled and ui and ui.RecordCpuSpikeDetail then
+            ui:RecordCpuSpikeDetail("AwardBossKill", debugprofilestop() - t0, detail)
+        end
+    end
+
     local roster = members or self:GetGroupMembers()
     if not roster or #roster == 0 then
+        traceDone("skip=no-roster")
         return
     end
     if not skipSync and not self:IsSyncMaster() then
+        traceDone("skip=not-master")
         return
     end
     local overviewSettings = self:GetOverviewSettings()
     if overviewSettings.disablePointGain then
+        traceDone("skip=point-gain-disabled")
         return
     end
     local present = self:GetPresenceMap()
@@ -925,6 +938,7 @@ function Goals:AwardBossKill(encounterName, members, skipSync)
     if self:CanSync() and not skipSync and self.Comm then
         self.Comm:SendBossKill(encounterName, names)
     end
+    traceDone(string.format("enc=%s awarded=%d", tostring(encounterName), #names))
 end
 
 function Goals:ApplyBossKillFromSync(encounterName, names)
@@ -1124,15 +1138,27 @@ function Goals:HandleLoot(playerName, itemLink, skipSync)
 end
 
 function Goals:HandleLootAssignment(playerName, itemLink, skipSync, forceRecord)
+    local ui = self.UI
+    local traceEnabled = hasProfileStopCore and ui and ui.IsCpuDebugTracingEnabled and ui:IsCpuDebugTracingEnabled()
+    local t0 = traceEnabled and debugprofilestop() or 0
+    local function traceDone(detail)
+        if traceEnabled and ui and ui.RecordCpuSpikeDetail then
+            ui:RecordCpuSpikeDetail("HandleLootAssignment", debugprofilestop() - t0, detail)
+        end
+    end
+
     if not playerName or not itemLink then
+        traceDone("skip=missing-input")
         return
     end
     playerName = self:NormalizeName(playerName)
     self:EnsurePlayer(playerName)
     if self:ShouldSkipLootAssignment(playerName, itemLink) then
+        traceDone("skip=recent-duplicate")
         return
     end
     if not self:IsInRaid() and not (self.Dev and self.Dev.enabled) then
+        traceDone("skip=not-in-raid")
         return
     end
     local itemName, _, quality, _, _, itemType, itemSubType, _, equipSlot = GetItemInfo(itemLink)
@@ -1140,6 +1166,7 @@ function Goals:HandleLootAssignment(playerName, itemLink, skipSync, forceRecord)
         self.pendingLoot[itemLink] = self.pendingLoot[itemLink] or {}
         self.pendingLoot[itemLink][playerName] = { skipSync = skipSync, forceRecord = forceRecord }
         self:RequestItemInfo(itemLink)
+        traceDone("pending-item-info")
         return
     end
     local itemId = self:GetItemIdFromLink(itemLink)
@@ -1190,6 +1217,7 @@ function Goals:HandleLootAssignment(playerName, itemLink, skipSync, forceRecord)
     if forceRecord or shouldTrack then
         self:NotifyDataChanged()
     end
+    traceDone(string.format("track=%s reset=%s force=%s", tostring(shouldTrack), tostring(resetApplied), tostring(forceRecord and true or false)))
 end
 
 function Goals:HandleManualLootReset(playerName, itemLink, skipSync)
@@ -1683,14 +1711,89 @@ function Goals:IsGroupInCombat()
 end
 
 function Goals:NotifyDataChanged()
+    local ui = self.UI
+    local traceEnabled = hasProfileStopCore and ui and ui.IsCpuDebugTracingEnabled and ui:IsCpuDebugTracingEnabled()
+    local t0 = traceEnabled and debugprofilestop() or 0
     if self.db then
         self.db.lastUpdated = time()
     end
     if self.dbRoot then
         self.dbRoot.overviewLastUpdated = time()
     end
-    if self.UI and self.UI.Refresh then
+    local function doFullRefresh()
+        if not (self.UI and self.UI.Refresh) then
+            return
+        end
+        local stillVisible = self.UI and self.UI.frame and self.UI.frame.IsShown and self.UI.frame:IsShown() or false
+        if not stillVisible then
+            self.state = self.state or {}
+            self.state.uiRefreshQueued = false
+            return
+        end
+        self.state = self.state or {}
+        self.state.uiRefreshQueued = false
+        self.state.lastUIRefreshAt = GetTime and GetTime() or 0
         self.UI:Refresh()
+    end
+    local function doLightRefresh()
+        self.state = self.state or {}
+        self.state.uiLightRefreshQueued = false
+        self.state.lastUILightRefreshAt = GetTime and GetTime() or 0
+        if self.UI and self.UI.UpdateMiniTracker then
+            local miniShown = self.UI.miniTracker and self.UI.miniTracker.IsShown and self.UI.miniTracker:IsShown() or false
+            local miniButtonShown = self.UI.miniFloatingButton and self.UI.miniFloatingButton.IsShown and self.UI.miniFloatingButton:IsShown() or false
+            if miniShown or miniButtonShown then
+                self.UI:UpdateMiniTracker()
+            end
+        end
+    end
+
+    local mainVisible = self.UI and self.UI.frame and self.UI.frame.IsShown and self.UI.frame:IsShown() or false
+    if mainVisible then
+        self.state = self.state or {}
+        local now = GetTime and GetTime() or 0
+        local minInterval = 0.25
+        local last = tonumber(self.state.lastUIRefreshAt) or 0
+        local delta = now - last
+        if delta >= minInterval then
+            doFullRefresh()
+        elseif not self.state.uiRefreshQueued then
+            self.state.uiRefreshQueued = true
+            local wait = minInterval - delta
+            if wait < 0.01 then
+                wait = 0.01
+            end
+            self:Delay(wait, function()
+                doFullRefresh()
+            end)
+        end
+    else
+        -- Avoid expensive full refresh while the main window is hidden.
+        self.state = self.state or {}
+        local now = GetTime and GetTime() or 0
+        local minLightInterval = 0.50
+        local lastLight = tonumber(self.state.lastUILightRefreshAt) or 0
+        local deltaLight = now - lastLight
+        if deltaLight >= minLightInterval then
+            doLightRefresh()
+        elseif not self.state.uiLightRefreshQueued then
+            self.state.uiLightRefreshQueued = true
+            local wait = minLightInterval - deltaLight
+            if wait < 0.02 then
+                wait = 0.02
+            end
+            self:Delay(wait, function()
+                local visibleNow = self.UI and self.UI.frame and self.UI.frame.IsShown and self.UI.frame:IsShown() or false
+                if not visibleNow then
+                    doLightRefresh()
+                else
+                    self.state.uiLightRefreshQueued = false
+                end
+            end)
+        end
+    end
+    if traceEnabled and ui and ui.RecordCpuSpikeDetail then
+        ui:RecordCpuSpikeDetail("NotifyDataChanged", debugprofilestop() - t0, mainVisible and "refresh=full" or "refresh=light")
     end
 end
 
@@ -4577,6 +4680,117 @@ function Goals:InitSlashCommands()
             end
             return
         end
+        if cmd:match("^cpu") then
+            local action = cmd:match("^cpu%s*(.*)$") or ""
+            action = action:gsub("^%s+", ""):gsub("%s+$", "")
+            local subcmd, subarg = action:match("^(%S+)%s*(.*)$")
+            subcmd = subcmd or action
+            subarg = (subarg or ""):gsub("^%s+", ""):gsub("%s+$", "")
+            if not self.UI then
+                self:Print("CPU monitor unavailable.")
+                return
+            end
+            if action == "" or action == "toggle" then
+                if self.UI.ToggleCpuDebugPopout then
+                    self.UI:ToggleCpuDebugPopout()
+                end
+            elseif action == "start" then
+                if self.UI.CreateCpuDebugPopout then
+                    self.UI:CreateCpuDebugPopout()
+                end
+                if self.UI.StartCpuDebugSampler then
+                    self.UI:StartCpuDebugSampler()
+                end
+            elseif action == "stop" then
+                if self.UI.StopCpuDebugSampler then
+                    self.UI:StopCpuDebugSampler()
+                end
+            elseif action == "sample" then
+                if self.UI.CreateCpuDebugPopout then
+                    self.UI:CreateCpuDebugPopout()
+                end
+                if self.UI.SampleCpuDebugNow then
+                    self.UI:SampleCpuDebugNow(true)
+                end
+            elseif action == "clear" then
+                if self.UI.CreateCpuDebugPopout then
+                    self.UI:CreateCpuDebugPopout()
+                end
+                if self.UI.ClearCpuDebugLog then
+                    self.UI:ClearCpuDebugLog()
+                end
+            elseif action == "status" then
+                local running = self.UI.cpuDebugRunning and "running" or "stopped"
+                local interval = self.UI.GetCpuDebugInterval and self.UI:GetCpuDebugInterval() or 0
+                local trace = self.UI.IsCpuDebugTracingEnabled and self.UI:IsCpuDebugTracingEnabled() and "on" or "off"
+                local threshold = self.UI.GetCpuDebugSpikeThreshold and self.UI:GetCpuDebugSpikeThreshold() or 0
+                local enabled = self.db and self.db.settings and self.db.settings.cpuDebugEnabled and "on" or "off"
+                self:Print(string.format("CPU monitor: %s (enabled %s, interval %.1fs, trace %s >= %.1fms)", running, enabled, tonumber(interval) or 0, trace, tonumber(threshold) or 0))
+            elseif action == "on" then
+                if not (self.db and self.db.settings) then
+                    return
+                end
+                self.db.settings.cpuDebugEnabled = true
+                self:Print("CPU monitor enabled.")
+                if self.UI and self.UI.UpdateCpuDebugStatusText then
+                    self.UI:UpdateCpuDebugStatusText()
+                end
+            elseif action == "off" then
+                if not (self.db and self.db.settings) then
+                    return
+                end
+                self.db.settings.cpuDebugEnabled = false
+                self.db.settings.cpuDebugTrace = false
+                if self.UI and self.UI.StopCpuDebugSampler then
+                    self.UI:StopCpuDebugSampler()
+                end
+                self:Print("CPU monitor disabled.")
+                if self.UI and self.UI.UpdateCpuDebugStatusText then
+                    self.UI:UpdateCpuDebugStatusText()
+                end
+            elseif subcmd == "trace" then
+                if not (self.db and self.db.settings) then
+                    return
+                end
+                if subarg == "" then
+                    self.db.settings.cpuDebugTrace = not (self.db.settings.cpuDebugTrace and true or false)
+                elseif subarg == "on" or subarg == "1" or subarg == "enable" then
+                    self.db.settings.cpuDebugTrace = true
+                elseif subarg == "off" or subarg == "0" or subarg == "disable" then
+                    self.db.settings.cpuDebugTrace = false
+                else
+                    self:Print("Usage: /goals cpu trace [on|off]")
+                    return
+                end
+                local state = self.db.settings.cpuDebugTrace and "ON" or "OFF"
+                self:Print("CPU spike tracing: " .. state)
+                if self.UI and self.UI.UpdateCpuDebugStatusText then
+                    self.UI:UpdateCpuDebugStatusText()
+                end
+            elseif subcmd == "threshold" then
+                if not (self.db and self.db.settings) then
+                    return
+                end
+                local value = tonumber(subarg or "")
+                if not value then
+                    self:Print("Usage: /goals cpu threshold <ms>")
+                    return
+                end
+                if value < 0.5 then
+                    value = 0.5
+                elseif value > 200 then
+                    value = 200
+                end
+                self.db.settings.cpuDebugSpikeThreshold = value
+                self:Print(string.format("CPU spike threshold set to %.1fms", value))
+                if self.UI and self.UI.UpdateCpuDebugStatusText then
+                    self.UI:UpdateCpuDebugStatusText()
+                end
+            else
+                self:Print("Usage: /goals cpu [on|off|toggle|start|stop|sample|clear|status|trace|threshold]")
+            end
+            return
+        end
         self:ToggleUI()
     end
 end
@@ -4680,9 +4894,6 @@ function Goals:Init()
     end
     if self.Events and self.Events.Init then
         self.Events:Init()
-    end
-    if self.DamageTracker and self.DamageTracker.Init then
-        self.DamageTracker:Init()
     end
     if self.UI and self.UI.Init then
         self.UI:Init()

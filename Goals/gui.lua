@@ -80,6 +80,13 @@ local TRASH_COLOR = { 0.6, 0.6, 0.6 }
 local COMBAT_SHOW_ALL = "Show all"
 local COMBAT_SHOW_BOSS = "Show boss encounters"
 local COMBAT_SHOW_TRASH = "Show trash"
+local CPU_DEBUG_DEFAULT_INTERVAL = 2
+local CPU_DEBUG_MIN_INTERVAL = 0.2
+local CPU_DEBUG_MAX_INTERVAL = 30
+local CPU_DEBUG_MAX_LINES = 180
+local CPU_DEBUG_DEFAULT_SPIKE_THRESHOLD = 8
+local CPU_DEBUG_MIN_SPIKE_THRESHOLD = 0.5
+local CPU_DEBUG_MAX_SPIKE_THRESHOLD = 200
 
 local function applyTextureColor(texture, color)
     if not texture or not color then
@@ -3349,7 +3356,6 @@ function UI:CreateMainFrame()
         { key = "loot", text = L.TAB_LOOT, create = "CreateLootTab" },
         { key = "history", text = L.TAB_HISTORY, create = "CreateHistoryTab" },
         { key = "wishlist", text = L.TAB_WISHLIST, create = "CreateWishlistTab" },
-        { key = "damage", text = L.TAB_DAMAGE_TRACKER, create = "CreateDamageTrackerTab" },
     }
     if self:ShouldShowUpdateTab() then
         table.insert(tabDefs, { key = "update", text = L.TAB_UPDATE, create = "CreateUpdateTab" })
@@ -8806,6 +8812,17 @@ function UI:CreateDebugTab(page)
     end)
     self.debugTestHealButton = testHealBtn
 
+    local cpuMonitorBtn = CreateFrame("Button", "GoalsDebugCpuMonitorButton", inset, "UIPanelButtonTemplate")
+    cpuMonitorBtn:SetSize(120, 20)
+    cpuMonitorBtn:SetText("CPU Monitor")
+    cpuMonitorBtn:SetPoint("LEFT", testHealBtn, "RIGHT", 6, 0)
+    cpuMonitorBtn:SetScript("OnClick", function()
+        if UI and UI.ToggleCpuDebugPopout then
+            UI:ToggleCpuDebugPopout()
+        end
+    end)
+    self.debugCpuMonitorButton = cpuMonitorBtn
+
     local title = createLabel(inset, "Debug Log", "GameFontNormal")
     title:SetPoint("TOPLEFT", testDamageBtn, "BOTTOMLEFT", 0, -16)
     local debugBar = applySectionHeader(title, inset, -6)
@@ -9183,6 +9200,420 @@ function UI:ToggleCombatBroadcastPopout()
         self.combatBroadcastPopout:Show()
         self:RefreshCombatBroadcastDropdown()
         self:UpdateCombatBroadcastLayout()
+    end
+end
+
+function UI:GetCpuDebugInterval()
+    local settings = Goals and Goals.db and Goals.db.settings or nil
+    local value = settings and tonumber(settings.cpuDebugInterval) or CPU_DEBUG_DEFAULT_INTERVAL
+    if not value then
+        value = CPU_DEBUG_DEFAULT_INTERVAL
+    end
+    if value < CPU_DEBUG_MIN_INTERVAL then
+        value = CPU_DEBUG_MIN_INTERVAL
+    elseif value > CPU_DEBUG_MAX_INTERVAL then
+        value = CPU_DEBUG_MAX_INTERVAL
+    end
+    if settings then
+        settings.cpuDebugInterval = value
+    end
+    return value
+end
+
+function UI:IsCpuDebugAllowed()
+    local settings = Goals and Goals.db and Goals.db.settings or nil
+    if not (Goals and Goals.Dev and Goals.Dev.enabled) then
+        return false
+    end
+    return settings and settings.cpuDebugEnabled and true or false
+end
+
+function UI:IsCpuDebugTracingEnabled()
+    local settings = Goals and Goals.db and Goals.db.settings or nil
+    if not self:IsCpuDebugAllowed() then
+        return false
+    end
+    return settings and settings.cpuDebugTrace and true or false
+end
+
+function UI:GetCpuDebugSpikeThreshold()
+    local settings = Goals and Goals.db and Goals.db.settings or nil
+    local value = settings and tonumber(settings.cpuDebugSpikeThreshold) or CPU_DEBUG_DEFAULT_SPIKE_THRESHOLD
+    if not value then
+        value = CPU_DEBUG_DEFAULT_SPIKE_THRESHOLD
+    end
+    if value < CPU_DEBUG_MIN_SPIKE_THRESHOLD then
+        value = CPU_DEBUG_MIN_SPIKE_THRESHOLD
+    elseif value > CPU_DEBUG_MAX_SPIKE_THRESHOLD then
+        value = CPU_DEBUG_MAX_SPIKE_THRESHOLD
+    end
+    if settings then
+        settings.cpuDebugSpikeThreshold = value
+    end
+    return value
+end
+
+function UI:RefreshCpuDebugLogView()
+    if not self.cpuDebugLogBox then
+        return
+    end
+    local lines = self.cpuDebugLines or {}
+    self.cpuDebugLogBox:SetText(table.concat(lines, "\n"))
+    self.cpuDebugLogBox:SetCursorPosition(string.len(self.cpuDebugLogBox:GetText() or ""))
+    if self.cpuDebugLogScroll then
+        self.cpuDebugLogScroll:SetVerticalScroll(self.cpuDebugLogScroll:GetVerticalScrollRange() or 0)
+    end
+end
+
+function UI:AppendCpuDebugLine(text)
+    if not text or text == "" then
+        return
+    end
+    self.cpuDebugLines = self.cpuDebugLines or {}
+    table.insert(self.cpuDebugLines, text)
+    while #self.cpuDebugLines > CPU_DEBUG_MAX_LINES do
+        table.remove(self.cpuDebugLines, 1)
+    end
+    self:RefreshCpuDebugLogView()
+end
+
+function UI:IsCpuDebugProfilingEnabled()
+    local profile = GetCVar and tonumber(GetCVar("scriptProfile")) or 0
+    return profile == 1
+end
+
+function UI:UpdateCpuDebugStatusText()
+    if not self.cpuDebugStatusLabel then
+        return
+    end
+    local running = self.cpuDebugRunning and true or false
+    local state = running and "|cff66ff66RUNNING|r" or "|cffff6666STOPPED|r"
+    local interval = self:GetCpuDebugInterval()
+    local profileText = self:IsCpuDebugProfilingEnabled() and "ON" or "OFF"
+    local traceText = self:IsCpuDebugTracingEnabled() and "ON" or "OFF"
+    local spike = self:GetCpuDebugSpikeThreshold()
+    local settings = Goals and Goals.db and Goals.db.settings or {}
+    local enabledText = (settings and settings.cpuDebugEnabled) and "ON" or "OFF"
+    local devText = (Goals and Goals.Dev and Goals.Dev.enabled) and "ON" or "OFF"
+    self.cpuDebugStatusLabel:SetText(string.format("Status: %s  |  Dev: %s  |  CPU dbg: %s  |  Interval: %.1fs  |  scriptProfile: %s  |  trace: %s >= %.1fms", state, devText, enabledText, interval, profileText, traceText, spike))
+end
+
+function UI:UpdateCpuDebugControls()
+    self:UpdateCpuDebugStatusText()
+    local running = self.cpuDebugRunning and true or false
+    if self.cpuDebugStartButton then
+        self.cpuDebugStartButton:SetEnabled(not running)
+    end
+    if self.cpuDebugStopButton then
+        self.cpuDebugStopButton:SetEnabled(running)
+    end
+end
+
+function UI:RecordCpuSpikeDetail(tag, totalMs, detail)
+    local total = tonumber(totalMs) or 0
+    if total <= 0 then
+        return
+    end
+    if not self:IsCpuDebugTracingEnabled() then
+        return
+    end
+    local threshold = self:GetCpuDebugSpikeThreshold()
+    if total < threshold then
+        return
+    end
+    local stamp = date and date("%H:%M:%S") or tostring(time())
+    local label = tostring(tag or "unknown")
+    local extra = detail and tostring(detail) or ""
+    if extra ~= "" then
+        self:AppendCpuDebugLine(string.format("[SPIKE %s] %s %.2fms | %s", stamp, label, total, extra))
+    else
+        self:AppendCpuDebugLine(string.format("[SPIKE %s] %s %.2fms", stamp, label, total))
+    end
+end
+
+function UI:SampleCpuDebugNow(manual)
+    if not self:IsCpuDebugAllowed() then
+        return
+    end
+    if not UpdateAddOnCPUUsage or not GetAddOnCPUUsage then
+        self:AppendCpuDebugLine("[CPU] CPU profiling API unavailable in this client.")
+        return
+    end
+    UpdateAddOnCPUUsage()
+    local goalsCpu = tonumber(GetAddOnCPUUsage(addonName)) or tonumber(GetAddOnCPUUsage("Goals")) or 0
+    local prev = tonumber(self.cpuDebugPrevGoalsCpu)
+    local delta = prev and (goalsCpu - prev) or 0
+    self.cpuDebugPrevGoalsCpu = goalsCpu
+
+    local topName = addonName
+    local topCpu = goalsCpu
+    if GetNumAddOns and GetAddOnInfo then
+        for i = 1, GetNumAddOns() do
+            local name = GetAddOnInfo(i)
+            local usage = tonumber(GetAddOnCPUUsage(i)) or 0
+            if usage > topCpu then
+                topCpu = usage
+                topName = name or topName
+            end
+        end
+    end
+
+    local stamp = date and date("%H:%M:%S") or tostring(time())
+    local flag = manual and " [manual]" or ""
+    self:AppendCpuDebugLine(string.format("[%s]%s Goals %.2fms (%+.2f) | Top %s %.2fms", stamp, flag, goalsCpu, delta, tostring(topName or "?"), topCpu))
+    self:UpdateCpuDebugStatusText()
+end
+
+function UI:StartCpuDebugSampler()
+    if not (Goals and Goals.Dev and Goals.Dev.enabled) then
+        self.cpuDebugRunning = false
+        self:AppendCpuDebugLine("[CPU] Dev mode is OFF. CPU monitor sampling is disabled.")
+        self:UpdateCpuDebugControls()
+        return
+    end
+    if Goals and Goals.db and Goals.db.settings then
+        Goals.db.settings.cpuDebugEnabled = true
+    end
+    if not self:IsCpuDebugAllowed() then
+        self.cpuDebugRunning = false
+        self:UpdateCpuDebugControls()
+        return
+    end
+    self.cpuDebugRunning = true
+    self.cpuDebugElapsed = 0
+    self:AppendCpuDebugLine(string.format("[CPU] sampler started (interval %.1fs)", self:GetCpuDebugInterval()))
+    self:SampleCpuDebugNow(true)
+    self:UpdateCpuDebugControls()
+end
+
+function UI:StopCpuDebugSampler()
+    self.cpuDebugRunning = false
+    self:AppendCpuDebugLine("[CPU] sampler stopped")
+    self:UpdateCpuDebugControls()
+end
+
+function UI:ClearCpuDebugLog()
+    self.cpuDebugLines = {}
+    self.cpuDebugPrevGoalsCpu = nil
+    self:RefreshCpuDebugLogView()
+    self:AppendCpuDebugLine("[CPU] log cleared")
+end
+
+function UI:CreateCpuDebugPopout()
+    if self.cpuDebugPopout then
+        return
+    end
+    local frame = CreateFrame("Frame", "GoalsCpuDebugPopout", UIParent, "GoalsFrameTemplate")
+    applyFrameTheme(frame)
+    frame:SetSize(460, 320)
+    frame:SetFrameStrata("DIALOG")
+    frame:SetClampedToScreen(true)
+    frame:EnableMouse(true)
+    frame:SetMovable(true)
+    frame:RegisterForDrag("LeftButton")
+    frame:SetScript("OnDragStart", function(selfFrame)
+        selfFrame:StartMoving()
+    end)
+    frame:SetScript("OnDragStop", function(selfFrame)
+        selfFrame:StopMovingOrSizing()
+    end)
+    frame:SetScript("OnUpdate", function(_, elapsed)
+        if not UI.cpuDebugRunning then
+            return
+        end
+        UI.cpuDebugElapsed = (UI.cpuDebugElapsed or 0) + (elapsed or 0)
+        local interval = UI:GetCpuDebugInterval()
+        if UI.cpuDebugElapsed >= interval then
+            UI.cpuDebugElapsed = 0
+            UI:SampleCpuDebugNow(false)
+        end
+    end)
+
+    if self.frame then
+        frame:SetPoint("TOPLEFT", self.frame, "TOPRIGHT", 8, -28)
+    else
+        frame:SetPoint("CENTER")
+    end
+
+    if frame.TitleText then
+        frame.TitleText:SetText("CPU Debug Monitor")
+        frame.TitleText:Show()
+    end
+    if frame.CloseButton then
+        frame.CloseButton:SetScript("OnClick", function()
+            frame:Hide()
+        end)
+    end
+
+    local inset = CreateFrame("Frame", "GoalsCpuDebugInset", frame, "GoalsInsetTemplate")
+    applyInsetTheme(inset)
+    inset:SetPoint("TOPLEFT", frame, "TOPLEFT", 6, -24)
+    inset:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -6, 6)
+
+    local status = createLabel(inset, "", "GameFontHighlightSmall")
+    status:SetPoint("TOPLEFT", inset, "TOPLEFT", 10, -10)
+    status:SetJustifyH("LEFT")
+    status:SetWidth(430)
+    self.cpuDebugStatusLabel = status
+
+    local intervalLabel = createLabel(inset, "Interval (sec)", "GameFontNormalSmall")
+    intervalLabel:SetPoint("TOPLEFT", status, "BOTTOMLEFT", 0, -8)
+    styleOptionsControlLabel(intervalLabel)
+
+    local intervalBox = CreateFrame("EditBox", "GoalsCpuDebugIntervalBox", inset, "InputBoxTemplate")
+    intervalBox:SetPoint("LEFT", intervalLabel, "RIGHT", 8, 0)
+    intervalBox:SetAutoFocus(false)
+    styleOptionsEditBox(intervalBox, 56)
+    intervalBox:SetText(string.format("%.1f", self:GetCpuDebugInterval()))
+    intervalBox:SetScript("OnEnterPressed", function(selfBox)
+        selfBox:ClearFocus()
+        local value = tonumber(selfBox:GetText())
+        if not value then
+            value = CPU_DEBUG_DEFAULT_INTERVAL
+        end
+        if value < CPU_DEBUG_MIN_INTERVAL then
+            value = CPU_DEBUG_MIN_INTERVAL
+        elseif value > CPU_DEBUG_MAX_INTERVAL then
+            value = CPU_DEBUG_MAX_INTERVAL
+        end
+        if Goals and Goals.db and Goals.db.settings then
+            Goals.db.settings.cpuDebugInterval = value
+        end
+        selfBox:SetText(string.format("%.1f", value))
+        UI:UpdateCpuDebugStatusText()
+    end)
+    bindEscapeClear(intervalBox)
+    self.cpuDebugIntervalBox = intervalBox
+
+    local traceCheck = CreateFrame("CheckButton", nil, inset, "UICheckButtonTemplate")
+    traceCheck:SetPoint("LEFT", intervalBox, "RIGHT", 14, 0)
+    setCheckText(traceCheck, "Trace spikes")
+    traceCheck:SetChecked(self:IsCpuDebugTracingEnabled())
+    traceCheck:SetScript("OnClick", function(selfBtn)
+        if Goals and Goals.db and Goals.db.settings then
+            Goals.db.settings.cpuDebugTrace = selfBtn:GetChecked() and true or false
+        end
+        UI:UpdateCpuDebugStatusText()
+    end)
+    self.cpuDebugTraceCheck = traceCheck
+
+    local spikeLabel = createLabel(inset, "Spike ms", "GameFontNormalSmall")
+    spikeLabel:SetPoint("LEFT", traceCheck, "RIGHT", 8, 0)
+    styleOptionsControlLabel(spikeLabel)
+
+    local spikeBox = CreateFrame("EditBox", "GoalsCpuDebugSpikeThresholdBox", inset, "InputBoxTemplate")
+    spikeBox:SetPoint("LEFT", spikeLabel, "RIGHT", 6, 0)
+    spikeBox:SetAutoFocus(false)
+    styleOptionsEditBox(spikeBox, 48)
+    spikeBox:SetText(string.format("%.1f", self:GetCpuDebugSpikeThreshold()))
+    spikeBox:SetScript("OnEnterPressed", function(selfBox)
+        selfBox:ClearFocus()
+        local value = tonumber(selfBox:GetText())
+        if not value then
+            value = CPU_DEBUG_DEFAULT_SPIKE_THRESHOLD
+        end
+        if value < CPU_DEBUG_MIN_SPIKE_THRESHOLD then
+            value = CPU_DEBUG_MIN_SPIKE_THRESHOLD
+        elseif value > CPU_DEBUG_MAX_SPIKE_THRESHOLD then
+            value = CPU_DEBUG_MAX_SPIKE_THRESHOLD
+        end
+        if Goals and Goals.db and Goals.db.settings then
+            Goals.db.settings.cpuDebugSpikeThreshold = value
+        end
+        selfBox:SetText(string.format("%.1f", value))
+        UI:UpdateCpuDebugStatusText()
+    end)
+    bindEscapeClear(spikeBox)
+    self.cpuDebugSpikeThresholdBox = spikeBox
+
+    local startBtn = createOptionsButton(inset)
+    styleOptionsButton(startBtn, 70)
+    startBtn:SetPoint("TOPLEFT", intervalLabel, "BOTTOMLEFT", 0, -8)
+    startBtn:SetText("Start")
+    startBtn:SetScript("OnClick", function()
+        UI:StartCpuDebugSampler()
+    end)
+    self.cpuDebugStartButton = startBtn
+
+    local stopBtn = createOptionsButton(inset)
+    styleOptionsButton(stopBtn, 70)
+    stopBtn:SetPoint("LEFT", startBtn, "RIGHT", 6, 0)
+    stopBtn:SetText("Stop")
+    stopBtn:SetScript("OnClick", function()
+        UI:StopCpuDebugSampler()
+    end)
+    self.cpuDebugStopButton = stopBtn
+
+    local sampleBtn = createOptionsButton(inset)
+    styleOptionsButton(sampleBtn, 88)
+    sampleBtn:SetPoint("LEFT", stopBtn, "RIGHT", 6, 0)
+    sampleBtn:SetText("Sample Now")
+    sampleBtn:SetScript("OnClick", function()
+        UI:SampleCpuDebugNow(true)
+    end)
+
+    local clearBtn = createOptionsButton(inset)
+    styleOptionsButton(clearBtn, 70)
+    clearBtn:SetPoint("LEFT", sampleBtn, "RIGHT", 6, 0)
+    clearBtn:SetText("Clear")
+    clearBtn:SetScript("OnClick", function()
+        UI:ClearCpuDebugLog()
+    end)
+
+    local logScroll = CreateFrame("ScrollFrame", "GoalsCpuDebugLogScroll", inset, "UIPanelScrollFrameTemplate")
+    logScroll:SetPoint("TOPLEFT", startBtn, "BOTTOMLEFT", 0, -8)
+    logScroll:SetPoint("BOTTOMRIGHT", inset, "BOTTOMRIGHT", -30, 10)
+    self.cpuDebugLogScroll = logScroll
+
+    local logBox = CreateFrame("EditBox", nil, logScroll)
+    logBox:SetMultiLine(true)
+    logBox:SetAutoFocus(false)
+    logBox:SetFontObject("ChatFontNormal")
+    logBox:SetWidth(logScroll:GetWidth())
+    logScroll:SetScrollChild(logBox)
+    logScroll:SetScript("OnSizeChanged", function(selfScroll)
+        if logBox and logBox.SetWidth then
+            logBox:SetWidth(selfScroll:GetWidth())
+        end
+    end)
+    bindEscapeClear(logBox)
+    self.cpuDebugLogBox = logBox
+
+    self.cpuDebugPopout = frame
+    self.cpuDebugLines = self.cpuDebugLines or {}
+    if #self.cpuDebugLines == 0 then
+        self:AppendCpuDebugLine("[CPU] Monitor ready. Use Start to begin periodic sampling.")
+        if not self:IsCpuDebugProfilingEnabled() then
+            self:AppendCpuDebugLine("[CPU] scriptProfile is OFF. Enable via /console scriptProfile 1 then /reload.")
+        end
+    else
+        self:RefreshCpuDebugLogView()
+    end
+    self:UpdateCpuDebugControls()
+end
+
+function UI:ToggleCpuDebugPopout()
+    if not self.cpuDebugPopout then
+        self:CreateCpuDebugPopout()
+    end
+    if not self.cpuDebugPopout then
+        return
+    end
+    if self.cpuDebugPopout:IsShown() then
+        self.cpuDebugPopout:Hide()
+    else
+        self.cpuDebugPopout:Show()
+        if self.cpuDebugIntervalBox then
+            self.cpuDebugIntervalBox:SetText(string.format("%.1f", self:GetCpuDebugInterval()))
+        end
+        if self.cpuDebugSpikeThresholdBox then
+            self.cpuDebugSpikeThresholdBox:SetText(string.format("%.1f", self:GetCpuDebugSpikeThreshold()))
+        end
+        if self.cpuDebugTraceCheck then
+            self.cpuDebugTraceCheck:SetChecked(self:IsCpuDebugTracingEnabled())
+        end
+        self:UpdateCpuDebugControls()
+        self:RefreshCpuDebugLogView()
     end
 end
 
@@ -13214,6 +13645,8 @@ function UI:UpdateAutoSyncLabel()
 end
 
 function UI:Refresh()
+    local traceEnabled = Goals and Goals.UI and Goals.UI.IsCpuDebugTracingEnabled and Goals.UI:IsCpuDebugTracingEnabled()
+    local t0 = (traceEnabled and type(debugprofilestop) == "function") and debugprofilestop() or 0
     if not self.frame then
         return
     end
@@ -13549,16 +13982,31 @@ function UI:Refresh()
     if self.UpdateOverviewOptionsLayout then
         self:UpdateOverviewOptionsLayout(hasAccess)
     end
-    self:UpdateRosterList()
-    self:UpdateHistoryList()
-    self:UpdateLootHistoryList()
-    self:UpdateFoundLootList()
-    self:UpdateDamageTrackerList()
-    self:UpdateDebugLogList()
-    self:UpdateWishlistUI()
+    local currentTab = self.currentTab or 1
+    local debugTabId = self.debugTab and self.debugTab.GetID and self.debugTab:GetID() or nil
+
+    if self.lootTabId and currentTab == self.lootTabId then
+        self:UpdateLootHistoryList()
+        self:UpdateFoundLootList()
+    elseif self.historyTabId and currentTab == self.historyTabId then
+        self:UpdateHistoryList()
+    elseif self.wishlistTabId and currentTab == self.wishlistTabId then
+        self:UpdateWishlistUI()
+    elseif self.damageTabId and currentTab == self.damageTabId then
+        self:UpdateDamageTrackerList()
+    elseif debugTabId and currentTab == debugTabId then
+        self:UpdateDebugLogList()
+    else
+        -- Overview and other lightweight tabs.
+        self:UpdateRosterList()
+    end
     self:UpdateMiniTracker()
     self:UpdateMiniFloatingButtonPosition()
     self:UpdateMinimapButton()
+    if traceEnabled and self.RecordCpuSpikeDetail and type(debugprofilestop) == "function" then
+        local detail = string.format("tab=%s frame=%s", tostring(self.currentTab or 0), tostring(self.frame and self.frame:IsShown() and "shown" or "hidden"))
+        self:RecordCpuSpikeDetail("UI.Refresh", debugprofilestop() - t0, detail)
+    end
 end
 
 function UI:TriggerWishlistRefresh()

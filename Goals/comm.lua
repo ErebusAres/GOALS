@@ -8,6 +8,7 @@ _G.Goals = Goals
 
 Goals.Comm = Goals.Comm or {}
 local Comm = Goals.Comm
+local hasProfileStopComm = type(debugprofilestop) == "function"
 
 Comm.prefix = "GOALS"
 Comm.pending = {}
@@ -73,6 +74,10 @@ function Comm:SendChunked(msgType, payload, channel, target)
 end
 
 function Comm:OnMessage(prefix, message, channel, sender)
+    local ui = Goals and Goals.UI or nil
+    local traceEnabled = hasProfileStopComm and ui and ui.IsCpuDebugTracingEnabled and ui:IsCpuDebugTracingEnabled()
+    local t0 = traceEnabled and debugprofilestop() or 0
+
     if prefix ~= self.prefix then
         return
     end
@@ -89,9 +94,15 @@ function Comm:OnMessage(prefix, message, channel, sender)
     local base, index, total = msgType:match("^(.-)#(%d+)/(%d+)$")
     if base then
         self:HandleChunk(base, tonumber(index), tonumber(total), payload, sender, channel)
+        if traceEnabled and ui and ui.RecordCpuSpikeDetail then
+            ui:RecordCpuSpikeDetail("Comm.OnMessage", debugprofilestop() - t0, string.format("chunk type=%s sender=%s", tostring(base), tostring(sender or "-")))
+        end
         return
     end
     self:HandleMessage(msgType, payload, sender, channel)
+    if traceEnabled and ui and ui.RecordCpuSpikeDetail then
+        ui:RecordCpuSpikeDetail("Comm.OnMessage", debugprofilestop() - t0, string.format("type=%s sender=%s", tostring(msgType), tostring(sender or "-")))
+    end
 end
 
 function Comm:HandleChunk(base, index, total, payload, sender, channel)
@@ -111,10 +122,20 @@ function Comm:HandleChunk(base, index, total, payload, sender, channel)
 end
 
 function Comm:HandleMessage(msgType, payload, sender, channel)
+    local ui = Goals and Goals.UI or nil
+    local traceEnabled = hasProfileStopComm and ui and ui.IsCpuDebugTracingEnabled and ui:IsCpuDebugTracingEnabled()
+    local t0 = traceEnabled and debugprofilestop() or 0
+    local function traceDone(detail)
+        if traceEnabled and ui and ui.RecordCpuSpikeDetail then
+            ui:RecordCpuSpikeDetail("Comm.HandleMessage", debugprofilestop() - t0, string.format("type=%s %s", tostring(msgType), tostring(detail or "")))
+        end
+    end
+
     if msgType == "VERSION" then
         if Goals.HandleRemoteVersion then
             Goals:HandleRemoteVersion(payload, sender)
         end
+        traceDone("version")
         return
     end
     if msgType == "SYNC_REQUEST" then
@@ -124,6 +145,7 @@ function Comm:HandleMessage(msgType, payload, sender, channel)
         if Goals:IsSyncMaster() then
             self:SendSync(sender, "REQUEST")
         end
+        traceDone("sync-request")
         return
     end
     if msgType == "SYNC_POINTS" then
@@ -132,6 +154,7 @@ function Comm:HandleMessage(msgType, payload, sender, channel)
             Goals.History:AddSyncReceived("POINTS", sender, channel)
         end
         self:ApplyPoints(payload)
+        traceDone("sync-points")
         return
     end
     if msgType == "SYNC_SETTINGS" then
@@ -140,6 +163,7 @@ function Comm:HandleMessage(msgType, payload, sender, channel)
             Goals.History:AddSyncReceived("SETTINGS", sender, channel)
         end
         self:ApplySettings(payload)
+        traceDone("sync-settings")
         return
     end
     if msgType == "BOSSKILL" then
@@ -147,50 +171,59 @@ function Comm:HandleMessage(msgType, payload, sender, channel)
         local encounter, list = payload:match("^(.-)|(.*)$")
         local names = split(list or "", ",")
         Goals:ApplyBossKillFromSync(encounter or "Boss", names)
+        traceDone("bosskill")
         return
     end
     if msgType == "WISHLIST_BUILD" then
         if Goals.HandleIncomingBuild then
             Goals:HandleIncomingBuild(payload, sender)
         end
+        traceDone("wishlist-build")
         return
     end
     if msgType == "ADJUST" then
         Goals.lastSyncReceivedAt = time()
         local name, delta, reason = payload:match("^(.-)|(-?%d+)|?(.*)$")
         Goals:AdjustPoints(name, tonumber(delta) or 0, reason or "Sync adjustment", true, true)
+        traceDone("adjust")
         return
     end
     if msgType == "SETPOINTS" then
         Goals.lastSyncReceivedAt = time()
         local name, points, reason = payload:match("^(.-)|(-?%d+)|?(.*)$")
         Goals:SetPoints(name, tonumber(points) or 0, reason or "Sync set", true, false, true)
+        traceDone("setpoints")
         return
     end
     if msgType == "LOOTRESET" then
         Goals.lastSyncReceivedAt = time()
         local name, itemLink = payload:match("^(.-)|(.+)$")
         Goals:ApplyLootReset(name, itemLink)
+        traceDone("lootreset")
         return
     end
     if msgType == "LOOT" then
         Goals.lastSyncReceivedAt = time()
         local name, itemLink = payload:match("^(.-)|(.+)$")
         Goals:ApplyLootAssignment(name, itemLink)
+        traceDone("loot")
         return
     end
     if msgType == "LOOTFOUND" then
         Goals.lastSyncReceivedAt = time()
         local id, ts, itemLink = payload:match("^(%d+)|(%d+)|(.+)$")
         Goals:ApplyLootFound(tonumber(id) or 0, tonumber(ts) or 0, itemLink, sender)
+        traceDone("lootfound")
         return
     end
     if msgType == "SETTING" then
         Goals.lastSyncReceivedAt = time()
         local key, value = payload:match("^(.-)|(.+)$")
         self:ApplySetting(key, value)
+        traceDone("setting")
         return
     end
+    traceDone("unknown")
 end
 
 function Comm:RequestSync(source)
@@ -316,17 +349,26 @@ end
 
 function Comm:ApplyPoints(payload)
     local players = Goals.GetOverviewPlayers and Goals:GetOverviewPlayers() or (Goals.db and Goals.db.players) or {}
+    local changed = false
     for entry in string.gmatch(payload or "", "([^;]+)") do
         local name, points, class = entry:match("([^,]+),([^,]+),?(.*)")
         if name and points then
             local normalized = Goals:NormalizeName(name)
             if normalized ~= "" and normalized ~= "Unknown" then
-                players[normalized] = { points = tonumber(points) or 0, class = class ~= "" and class or "UNKNOWN" }
+                local newPoints = tonumber(points) or 0
+                local newClass = class ~= "" and class or "UNKNOWN"
+                local existing = players[normalized]
+                if not existing or (existing.points or 0) ~= newPoints or (existing.class or "UNKNOWN") ~= newClass then
+                    players[normalized] = { points = newPoints, class = newClass }
+                    changed = true
+                end
             end
         end
     end
     Goals.lastSyncReceivedAt = time()
-    Goals:NotifyDataChanged()
+    if changed then
+        Goals:NotifyDataChanged()
+    end
 end
 
 function Comm:SerializeSettings()
@@ -349,13 +391,17 @@ function Comm:SerializeSettings()
 end
 
 function Comm:ApplySettings(payload)
+    local before = self:SerializeSettings()
     for pair in string.gmatch(payload or "", "([^;]+)") do
         local key, value = pair:match("([^=]+)=(.*)")
         if key then
             self:ApplySetting(key, value)
         end
     end
-    Goals:NotifyDataChanged()
+    local after = self:SerializeSettings()
+    if before ~= after then
+        Goals:NotifyDataChanged()
+    end
 end
 
 function Comm:ApplySetting(key, value)

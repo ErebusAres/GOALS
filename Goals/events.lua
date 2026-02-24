@@ -10,6 +10,10 @@ _G.Goals = Goals
 
 Goals.Events = Goals.Events or {}
 local Events = Goals.Events
+local CLEU_BOSS_SCAN_SAMPLE = 0.50
+local CLEU_NAME_TOUCH_SAMPLE = 0.20
+local CLEU_GROUP_COMBAT_SAMPLE = 0.75
+local hasProfileStopEvent = type(debugprofilestop) == "function"
 
 local function isRedusRealm()
     local realm = GetRealmName and GetRealmName() or ""
@@ -561,9 +565,6 @@ end
 function Events:HandleGroupUpdate()
     Goals:EnsureGroupMembers()
     -- Auto-load seen players removed (account-bound overview).
-    if Goals.DamageTracker and Goals.DamageTracker.HandleGroupUpdate then
-        Goals.DamageTracker:HandleGroupUpdate()
-    end
     if Goals:CanSync() and Goals.Comm and Goals.Comm.BroadcastVersion then
         Goals.Comm:BroadcastVersion()
     end
@@ -579,11 +580,20 @@ function Events:HandleGroupUpdate()
         end
     end
     if Goals.UI then
-        Goals.UI:Refresh()
+        local mainVisible = Goals.UI.frame and Goals.UI.frame.IsShown and Goals.UI.frame:IsShown() or false
+        if mainVisible and Goals.UI.Refresh then
+            Goals.UI:Refresh()
+        elseif Goals.UI.UpdateMiniTracker then
+            Goals.UI:UpdateMiniTracker()
+        end
     end
 end
 
 function Events:HandleLootMessage(message)
+    local ui = Goals and Goals.UI or nil
+    local traceEnabled = hasProfileStopEvent and ui and ui.IsCpuDebugTracingEnabled and ui:IsCpuDebugTracingEnabled()
+    local t0 = traceEnabled and debugprofilestop() or 0
+
     local canAssign = Goals:IsSyncMaster() or (Goals.Dev and Goals.Dev.enabled)
     local itemLink = message:match("(|c%x+|Hitem:.-|h%[.-%]|h|r)")
     if not itemLink then
@@ -599,36 +609,54 @@ function Events:HandleLootMessage(message)
     if not playerName then
         return
     end
+    local tParsed = traceEnabled and debugprofilestop() or 0
     if Goals.HandleWishlistLoot then
         Goals:HandleWishlistLoot(itemLink)
     end
+    local tWishlist = traceEnabled and debugprofilestop() or 0
     if not canAssign then
+        if traceEnabled and ui and ui.RecordCpuSpikeDetail then
+            ui:RecordCpuSpikeDetail("HandleLootMessage", tWishlist - t0, string.format("assign=false parse=%.2f wishlist=%.2f", tParsed - t0, tWishlist - tParsed))
+        end
         return
     end
     Goals:HandleLootAssignment(Goals:NormalizeName(playerName), itemLink, false, true)
+    if traceEnabled and ui and ui.RecordCpuSpikeDetail then
+        local tEnd = debugprofilestop()
+        ui:RecordCpuSpikeDetail("HandleLootMessage", tEnd - t0, string.format("assign=true parse=%.2f wishlist=%.2f assign=%.2f", tParsed - t0, tWishlist - tParsed, tEnd - tWishlist))
+    end
 end
 
 function Events:HandleCombatLog(...)
-    local args = nil
+    local ui = Goals and Goals.UI or nil
+    local traceEnabled = hasProfileStopEvent and ui and ui.IsCpuDebugTracingEnabled and ui:IsCpuDebugTracingEnabled()
+    local t0 = traceEnabled and debugprofilestop() or 0
+
+    local eventType, sourceName, destName, shiftedSourceName, shiftedDestName
     if CombatLogGetCurrentEventInfo then
-        args = { CombatLogGetCurrentEventInfo() }
+        local a1, a2, a3, a4, a5, a6, a7, a8, a9 = CombatLogGetCurrentEventInfo()
+        eventType = a2
+        sourceName = a5
+        destName = a9
+        shiftedSourceName = a4
+        shiftedDestName = a7
+    else
+        local a1, a2, a3, a4, a5, a6, a7, a8, a9 = ...
+        eventType = a2
+        sourceName = a5
+        destName = a9
+        shiftedSourceName = a4
+        shiftedDestName = a7
     end
-    if not args or #args == 0 then
-        args = { ... }
-    end
-    if not args or #args == 0 then
+    if not eventType then
         return
     end
-    local eventType = args[2]
-    local sourceName = args[5]
-    local destName = args[9]
-    if type(sourceName) ~= "string" and type(args[4]) == "string" then
-        sourceName = args[4]
-        destName = args[7]
+    if type(sourceName) ~= "string" and type(shiftedSourceName) == "string" then
+        sourceName = shiftedSourceName
+        destName = shiftedDestName
     end
-    if Goals.DamageTracker and Goals.DamageTracker.HandleCombatLog then
-        Goals.DamageTracker:HandleCombatLog(unpack(args))
-    end
+    local isDeathEvent = (eventType == "UNIT_DIED" or eventType == "PARTY_KILL")
+    local tParsed = traceEnabled and debugprofilestop() or 0
     if Goals and Goals.Dev and Goals.Dev.enabled and Goals.db and Goals.db.settings and Goals.db.settings.devTestBoss then
         if not self.debugCombatLogged then
             self.debugCombatLogged = true
@@ -636,29 +664,59 @@ function Events:HandleCombatLog(...)
         end
     end
     if Goals and Goals.Dev and Goals.Dev.enabled and Goals.db and Goals.db.settings and Goals.db.settings.devTestBoss then
-        if (eventType == "UNIT_DIED" or eventType == "PARTY_KILL") and destName then
+        if isDeathEvent and destName then
             Goals:Debug("Combat log: " .. eventType .. " " .. tostring(destName))
         end
     end
-    local inCombat = Goals:IsGroupInCombat()
-    if inCombat and sourceName then
-        local encounterName, canonicalBoss = self:GetEncounterForBossName(sourceName)
-        if encounterName then
-            self:StartEncounter(encounterName, canonicalBoss)
-            self:TouchEncounterActivity(encounterName)
+    local now = GetTime and GetTime() or 0
+    local playerCombat = UnitAffectingCombat and UnitAffectingCombat("player") or false
+    if (not self.cleuGroupCombatSampleTs) or ((now - self.cleuGroupCombatSampleTs) >= CLEU_GROUP_COMBAT_SAMPLE) then
+        self.cleuGroupCombatSampleTs = now
+        self.cleuGroupInCombat = Goals:IsGroupInCombat() and true or false
+    end
+    local inCombat = playerCombat or self.cleuGroupInCombat or (Goals.encounter and Goals.encounter.active and true or false)
+    if inCombat and not isDeathEvent then
+        local function touchByName(name)
+            if not name or name == "" then
+                return
+            end
+            local encounterName, canonicalBoss = self:GetEncounterForBossName(name)
+            if encounterName then
+                self:StartEncounter(encounterName, canonicalBoss)
+                self:TouchEncounterActivity(encounterName)
+            end
+        end
+        if sourceName and sourceName ~= "" then
+            local shouldCheckSource = (sourceName ~= self.cleuLastSourceName)
+            if not shouldCheckSource then
+                shouldCheckSource = (now - (self.cleuLastSourceTs or 0)) >= CLEU_NAME_TOUCH_SAMPLE
+            end
+            if shouldCheckSource then
+                self.cleuLastSourceName = sourceName
+                self.cleuLastSourceTs = now
+                touchByName(sourceName)
+            end
+        end
+        if destName and destName ~= "" then
+            local shouldCheckDest = (destName ~= self.cleuLastDestName)
+            if not shouldCheckDest then
+                shouldCheckDest = (now - (self.cleuLastDestTs or 0)) >= CLEU_NAME_TOUCH_SAMPLE
+            end
+            if shouldCheckDest then
+                self.cleuLastDestName = destName
+                self.cleuLastDestTs = now
+                touchByName(destName)
+            end
         end
     end
-    if inCombat and destName then
-        local encounterName, canonicalBoss = self:GetEncounterForBossName(destName)
-        if encounterName then
-            self:StartEncounter(encounterName, canonicalBoss)
-            self:TouchEncounterActivity(encounterName)
-        end
-    end
-    if (eventType == "UNIT_DIED" or eventType == "PARTY_KILL") and destName then
+    if isDeathEvent and destName then
         if Goals.Dev and Goals.Dev.enabled and Goals.db.settings.devTestBoss then
             if normalizeBossName(destName) == normalizeBossName("Garryowen Boar") then
                 Goals:AwardBossKill("Garryowen Boar")
+                if traceEnabled and ui and ui.RecordCpuSpikeDetail then
+                    local tEnd = debugprofilestop()
+                    ui:RecordCpuSpikeDetail("HandleCombatLog", tEnd - t0, string.format("event=%s parse=%.2f death=%.2f scan=0.00", tostring(eventType), tParsed - t0, tEnd - tParsed))
+                end
                 return
             end
         else
@@ -668,9 +726,17 @@ function Events:HandleCombatLog(...)
             end
         end
     end
-    local encounterName = self:CheckBossUnits(false, true)
-    if encounterName then
-        self:StartEncounter(encounterName)
+    local tAfterDeath = traceEnabled and debugprofilestop() or 0
+    if inCombat and not isDeathEvent and (not self.cleuBossScanTs or (now - self.cleuBossScanTs) >= CLEU_BOSS_SCAN_SAMPLE) then
+        self.cleuBossScanTs = now
+        local encounterName = self:CheckBossUnits(false, true)
+        if encounterName then
+            self:StartEncounter(encounterName)
+        end
+    end
+    if traceEnabled and ui and ui.RecordCpuSpikeDetail then
+        local tEnd = debugprofilestop()
+        ui:RecordCpuSpikeDetail("HandleCombatLog", tEnd - t0, string.format("event=%s parse=%.2f death=%.2f scan=%.2f", tostring(eventType), tParsed - t0, tAfterDeath - tParsed, tEnd - tAfterDeath))
     end
 end
 
@@ -767,9 +833,6 @@ function Events:StartEncounter(encounterName, bossName)
     end
     if Goals.AnnounceEncounterStart then
         Goals:AnnounceEncounterStart(encounterName)
-    end
-    if Goals.DamageTracker and Goals.DamageTracker.AddBreakpoint then
-        Goals.DamageTracker:AddBreakpoint(encounterName, "START")
     end
 end
 
@@ -1103,9 +1166,6 @@ function Events:FinishEncounter(success)
         if (time() - lastTs) < 30 then
             return
         end
-    end
-    if Goals.DamageTracker and Goals.DamageTracker.AddBreakpoint then
-        Goals.DamageTracker:AddBreakpoint(encounterName, success and "SUCCESS" or "FAIL")
     end
     Goals.encounter.active = false
     Goals.encounter.name = nil
