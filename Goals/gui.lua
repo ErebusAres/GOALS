@@ -52,6 +52,8 @@ local OPTIONS_CHECKBOX_SIZE = 24
 local OPTIONS_DROPDOWN_HEIGHT = 26
 local OPTIONS_EDITBOX_HEIGHT = 26
 local MAIN_FRAME_HEIGHT = 520
+local MAIN_FRAME_WIDTH = 900
+local MAIN_FRAME_WIDTH_COMBAT = 1240
 local PAGE_BOTTOM_OFFSET = 12
 local FOOTER_BOTTOM_INSET = 6
 local FOOTER_BAR_HEIGHT = 24
@@ -80,6 +82,14 @@ local TRASH_COLOR = { 0.6, 0.6, 0.6 }
 local COMBAT_SHOW_ALL = "Show all"
 local COMBAT_SHOW_BOSS = "Show boss encounters"
 local COMBAT_SHOW_TRASH = "Show trash"
+local COMBAT_DISPLAY_TABLE = "table"
+local COMBAT_DISPLAY_CHAT = "chat"
+local COMBAT_THEME_NEUTRAL = "neutral"
+local COMBAT_THEME_ALLIANCE = "alliance"
+local COMBAT_THEME_HORDE = "horde"
+local COMBAT_THEME_CLASS = "class"
+local COMBAT_ROW_BG_EVENT_TINT = "event_tint"
+local COMBAT_ROW_BG_NEUTRAL = "neutral"
 local CPU_DEBUG_DEFAULT_INTERVAL = 2
 local CPU_DEBUG_MIN_INTERVAL = 0.2
 local CPU_DEBUG_MAX_INTERVAL = 30
@@ -875,6 +885,7 @@ local function createTableWidget(parent, name, config)
     local headerBg = header:CreateTexture(nil, "BORDER")
     headerBg:SetAllPoints(header)
     headerBg:SetTexture(0, 0, 0, 0.45)
+    widget.headerBg = headerBg
     widget.header = header
 
     local headerLine = parent:CreateTexture(nil, "BORDER")
@@ -1677,7 +1688,11 @@ local function formatCombatTimestamp(ts)
         return ""
     end
     if ts > 1000000000 then
-        return date("%H:%M:%S", ts)
+        local fmt = "%H:%M:%S"
+        if Goals and Goals.db and Goals.db.settings and Goals.db.settings.combatWhtmTimestampFormat == "12h" then
+            fmt = "%I:%M:%S %p"
+        end
+        return date(fmt, ts)
     end
     return string.format("%.1f", ts)
 end
@@ -1772,6 +1787,30 @@ local function getPlayerColor(name)
     return 1, 1, 1
 end
 
+local function isSelfCombatName(name)
+    if not name or name == "" or not Goals or not Goals.GetPlayerName then
+        return false
+    end
+    local playerName = Goals:GetPlayerName()
+    if not playerName or playerName == "" then
+        return false
+    end
+    if Goals.NormalizeName then
+        return Goals:NormalizeName(name) == Goals:NormalizeName(playerName)
+    end
+    return name == playerName
+end
+
+local function decorateSelfCombatName(name)
+    if not name or name == "" then
+        return name or ""
+    end
+    if isSelfCombatName(name) then
+        return "< " .. name .. " >"
+    end
+    return name
+end
+
 local function getSourceColor(entry)
     if not entry then
         return 1, 1, 1
@@ -1809,7 +1848,28 @@ local function clearCombatRowTooltipLock()
     if UI then
         UI.combatTooltipLocked = false
         UI.combatTooltipEntry = nil
+        UI.combatTooltipEntryKey = nil
+        if UI.UpdateDamageTrackerList then
+            UI:UpdateDamageTrackerList()
+        end
     end
+end
+
+local function combatEventKey(event)
+    if not event then
+        return nil
+    end
+    if event.id ~= nil then
+        return "id:" .. tostring(event.id)
+    end
+    return table.concat({
+        tostring(event.timestamp or event.ts or ""),
+        tostring(event.subevent or ""),
+        tostring(event.sourceGUID or ""),
+        tostring(event.destGUID or ""),
+        tostring(event.spellId or event.spellName or ""),
+        tostring(event.amount or ""),
+    }, "|")
 end
 
 local function ensureCombatRowTooltip()
@@ -1821,7 +1881,7 @@ local function ensureCombatRowTooltip()
     end
     local tip = CreateFrame("Frame", "GoalsCombatRowTooltip", UIParent, "GoalsFrameTemplate")
     applyFrameTheme(tip)
-    tip:SetFrameStrata("TOOLTIP")
+    tip:SetFrameStrata("HIGH")
     tip:SetClampedToScreen(true)
     tip:SetWidth(OPTIONS_PANEL_WIDTH + 12)
     tip:Hide()
@@ -1849,46 +1909,10 @@ local function ensureCombatRowTooltip()
     local content = CreateFrame("Frame", nil, tip, "GoalsInsetTemplate")
     applyInsetTheme(content)
     content:SetPoint("TOPLEFT", tip, "TOPLEFT", 6, -24)
-    content:SetPoint("TOPRIGHT", tip, "TOPRIGHT", -6, -24)
-    content:SetHeight(80)
+    content:SetPoint("BOTTOMRIGHT", tip, "BOTTOMRIGHT", -6, 6)
     tip.content = content
-
-    local function makeRow(labelText)
-        local row = CreateFrame("Frame", nil, content)
-        row:SetWidth(OPTIONS_PANEL_WIDTH - 16)
-        local label = createLabel(row, labelText, "GameFontNormalSmall")
-        styleOptionsControlLabel(label)
-        label:SetPoint("TOPLEFT", row, "TOPLEFT", 0, 0)
-        label:SetJustifyH("LEFT")
-        label:SetJustifyV("TOP")
-        label:SetWidth(70)
-        local value = createLabel(row, "", "GameFontHighlightSmall")
-        value:SetPoint("TOPLEFT", label, "TOPRIGHT", 6, 0)
-        value:SetPoint("RIGHT", row, "RIGHT", 0, 0)
-        value:SetJustifyH("LEFT")
-        value:SetJustifyV("TOP")
-        value:SetWordWrap(true)
-        if value.SetNonSpaceWrap then
-            value:SetNonSpaceWrap(true)
-        end
-        row.label = label
-        row.value = value
-        return row
-    end
-
-    tip.rowTime = makeRow("Time:")
-    tip.rowSource = makeRow("Source:")
-    tip.rowTarget = makeRow("Target:")
-    tip.rowAmount = makeRow("Amount:")
-    tip.rowOverheal = makeRow("Overheal:")
-    tip.rowDot = makeRow("DOT:")
-    tip.rowAbility = makeRow("Ability:")
-
-    tip.divider = content:CreateTexture(nil, "BORDER")
-    tip.divider:SetHeight(8)
-    tip.divider:SetTexture("Interface\\Tooltips\\UI-Tooltip-Border")
-    tip.divider:SetTexCoord(0.81, 0.94, 0.5, 1)
-    tip.divider:Hide()
+    tip.valueRows = {}
+    tip.headerRows = {}
 
     UI.combatRowTooltip = tip
     return tip
@@ -1907,184 +1931,226 @@ local function showCombatRowTooltip(entry)
     tip:ClearAllPoints()
     tip:SetPoint("TOPRIGHT", anchor, "TOPLEFT", -10, -30)
 
-    local kind = entry.kind or "DAMAGE"
-    local sourceName = ""
-    local targetName = ""
-    if kind == "DAMAGE" then
-        sourceName = entry.source or "Unknown"
-        targetName = entry.player or "Unknown"
-    elseif kind == "DAMAGE_OUT" then
-        sourceName = entry.player or "Unknown"
-        targetName = entry.source or "Unknown"
-    elseif kind == "HEAL" then
-        sourceName = entry.source or "Unknown"
-        targetName = entry.player or "Unknown"
-    elseif kind == "HEAL_OUT" then
-        sourceName = entry.player or "Unknown"
-        targetName = entry.source or "Unknown"
-    elseif kind == "RES" then
-        sourceName = entry.source or "Unknown"
-        targetName = entry.player or "Unknown"
-    elseif kind == "DEATH" then
-        sourceName = ""
-        targetName = entry.player or "Unknown"
-    elseif kind == "THREAT" then
-        sourceName = entry.source or "Unknown"
-        targetName = entry.player or "Unknown"
-    elseif kind == "THREAT_ABILITY" then
-        sourceName = entry.player or "Unknown"
-        targetName = entry.source or "Unknown"
-    elseif kind == "INTERRUPT" then
-        sourceName = entry.player or "Unknown"
-        targetName = entry.source or "Unknown"
+    local function colorForTier(tier)
+        if tier == "junk" then return 0.62, 0.62, 0.62 end
+        if tier == "normal" then return 0.95, 0.95, 0.95 end
+        if tier == "elite" then return 1.00, 0.30, 0.30 end
+        if tier == "boss" then return 1.00, 0.50, 0.00 end
+        return nil
     end
-
-    local amount = math.floor(tonumber(entry.amount) or 0)
-    local overheal = math.floor(tonumber(entry.overheal) or 0)
-    local isHeal = (kind == "HEAL" or kind == "HEAL_OUT" or kind == "RES")
-    local amountText = isHeal and string.format("+%d", amount) or string.format("-%d", amount)
-    if kind == "DEATH" then
-        amountText = "Died"
-    elseif kind == "RES" then
-        if amount > 0 then
-            amountText = string.format("Revived +%d", amount)
-        else
-            amountText = "Revived"
+    local function colorForClass(classFile)
+        if classFile and RAID_CLASS_COLORS and RAID_CLASS_COLORS[classFile] then
+            local c = RAID_CLASS_COLORS[classFile]
+            return c.r, c.g, c.b
         end
-    elseif kind == "THREAT" then
-        amountText = "THREAT"
-    elseif kind == "THREAT_ABILITY" then
-        amountText = entry.reason or "THREAT"
-    elseif kind == "INTERRUPT" then
-        amountText = entry.interruptedSpell or "Interrupted cast"
+        return nil
+    end
+    local function colorForUnit(isSource)
+        local tier = isSource and entry.sourceTier or entry.destTier
+        local tr, tg, tb = colorForTier(tier)
+        if tr then
+            return tr, tg, tb
+        end
+        local classFile = isSource and entry.sourceClass or entry.destClass
+        local cr, cg, cb = colorForClass(classFile)
+        if cr then
+            return cr, cg, cb
+        end
+        return 1, 1, 1
+    end
+    local function groupType(event)
+        if event.eventGroup == "aura" then return "Aura" end
+        if event.eventGroup == "heal" then return "Heal" end
+        if event.eventGroup == "damage" then return "Damage" end
+        if event.eventGroup == "death" then return "Death" end
+        if event.eventGroup == "miss" then return "Miss" end
+        if event.eventGroup == "control" then return "Control" end
+        if event.eventGroup == "resource" then return "Resource" end
+        return "Event"
+    end
+    local function auraAction(event)
+        if event.subevent == "SPELL_AURA_APPLIED" then return "Applied" end
+        if event.subevent == "SPELL_AURA_REMOVED" then return "Lost" end
+        if event.subevent == "SPELL_AURA_REFRESH" then return "Refreshed" end
+        if event.subevent == "SPELL_AURA_APPLIED_DOSE" then return "Stacked" end
+        if event.subevent == "SPELL_AURA_REMOVED_DOSE" then return "Unstacked" end
+        if event.subevent == "SPELL_AURA_BROKEN" or event.subevent == "SPELL_AURA_BROKEN_SPELL" then return "Broken" end
+        return "Changed"
     end
 
-    local abilityText = entry.spell or "Unknown"
-    if kind == "THREAT" then
-        abilityText = entry.reason or "Threat changed"
-    elseif kind == "THREAT_ABILITY" then
-        abilityText = entry.spell or "Threat ability"
-    elseif kind == "INTERRUPT" then
-        abilityText = entry.spell or "Interrupt"
+    local function ensureHeaderRow(index)
+        if tip.headerRows[index] then
+            return tip.headerRows[index]
+        end
+        local row = CreateFrame("Frame", nil, tip.content)
+        local label, frame = createOptionsHeader(row, "", 0)
+        row.headerLabel = label
+        row.headerFrame = frame
+        tip.headerRows[index] = row
+        return row
     end
-    if entry.spellDuration and entry.spellDuration > 1 then
-        abilityText = string.format("%s (%ds)", abilityText, entry.spellDuration)
-    end
-
-    local amountLabelText = "Amount:"
-    local abilityLabelText = "Ability:"
-    if kind == "DAMAGE" or kind == "DAMAGE_OUT" then
-        amountLabelText = "Damage:"
-        abilityLabelText = "Spell:"
-    elseif kind == "HEAL" or kind == "HEAL_OUT" or kind == "BOSS_HEAL" then
-        amountLabelText = "Healing:"
-        abilityLabelText = "Spell:"
-    elseif kind == "RES" then
-        amountLabelText = "Result:"
-        abilityLabelText = "Spell:"
-    elseif kind == "DEATH" then
-        amountLabelText = "Status:"
-        abilityLabelText = "Cause:"
-    elseif kind == "THREAT" then
-        amountLabelText = "Event:"
-        abilityLabelText = "Reason:"
-    elseif kind == "THREAT_ABILITY" then
-        amountLabelText = "Direction:"
-        abilityLabelText = "Threat Ability:"
-    elseif kind == "INTERRUPT" then
-        amountLabelText = "Interrupted:"
-        abilityLabelText = "Interrupt:"
-    end
-    if tip.rowAmount and tip.rowAmount.label then
-        tip.rowAmount.label:SetText(amountLabelText)
-    end
-    if tip.rowAbility and tip.rowAbility.label then
-        tip.rowAbility.label:SetText(abilityLabelText)
+    local function ensureValueRow(index)
+        if tip.valueRows[index] then
+            return tip.valueRows[index]
+        end
+        local row = CreateFrame("Frame", nil, tip.content)
+        local label = createLabel(row, "", "GameFontNormalSmall")
+        styleOptionsControlLabel(label)
+        label:SetPoint("TOPLEFT", row, "TOPLEFT", 0, 0)
+        label:SetWidth(78)
+        label:SetJustifyH("LEFT")
+        label:SetJustifyV("TOP")
+        local value = createLabel(row, "", "GameFontHighlightSmall")
+        value:SetPoint("TOPLEFT", label, "TOPRIGHT", 6, 0)
+        value:SetPoint("TOPRIGHT", row, "TOPRIGHT", 0, 0)
+        value:SetJustifyH("LEFT")
+        value:SetJustifyV("TOP")
+        value:SetWordWrap(true)
+        if value.SetNonSpaceWrap then
+            value:SetNonSpaceWrap(true)
+        end
+        row.label = label
+        row.value = value
+        tip.valueRows[index] = row
+        return row
     end
 
-    local rows = {}
-    local function setRow(row, text, r, g, b)
-        row.value:SetText(text)
+    local y = -6
+    local usedHeaderRows = 0
+    local usedValueRows = 0
+    local function pushHeader(text)
+        usedHeaderRows = usedHeaderRows + 1
+        local row = ensureHeaderRow(usedHeaderRows)
+        row:Show()
+        row:ClearAllPoints()
+        row:SetPoint("TOPLEFT", tip.content, "TOPLEFT", 0, y)
+        row:SetPoint("TOPRIGHT", tip.content, "TOPRIGHT", 0, y)
+        row:SetHeight(OPTIONS_HEADER_HEIGHT or 18)
+        if row.headerLabel then
+            row.headerLabel:SetText(text or "")
+        end
+        if row.headerFrame then
+            row.headerFrame:Show()
+            row.headerFrame:ClearAllPoints()
+            row.headerFrame:SetPoint("TOPLEFT", row, "TOPLEFT", 0, 0)
+            row.headerFrame:SetPoint("TOPRIGHT", row, "TOPRIGHT", 0, 0)
+        end
+        y = y - ((OPTIONS_HEADER_HEIGHT or 18) + 2)
+    end
+    local function pushValue(labelText, valueText, r, g, b)
+        if not valueText or valueText == "" then
+            return
+        end
+        valueText = tostring(valueText)
+        usedValueRows = usedValueRows + 1
+        local row = ensureValueRow(usedValueRows)
+        row:Show()
+        row:ClearAllPoints()
+        row:SetPoint("TOPLEFT", tip.content, "TOPLEFT", 8, y)
+        row:SetPoint("TOPRIGHT", tip.content, "TOPRIGHT", -8, y)
+        row.label:SetText(labelText or "")
+        row.value:SetText(valueText)
         if row.value.SetTextColor and r then
             row.value:SetTextColor(r, g or r, b or r, 1)
+        else
+            row.value:SetTextColor(1, 1, 1, 1)
         end
-        row:Show()
-        table.insert(rows, row)
+        local h = math.max(row.label:GetStringHeight() or 12, row.value:GetStringHeight() or 12)
+        row:SetHeight(h)
+        y = y - (h + 4)
     end
 
-    setRow(tip.rowTime, formatCombatTimestamp(entry.ts), 1, 1, 1)
-
-    local sourceColorR, sourceColorG, sourceColorB = 1, 1, 1
-    local targetColorR, targetColorG, targetColorB = 1, 1, 1
-    if kind == "DAMAGE" then
-        sourceColorR, sourceColorG, sourceColorB = getSourceColor(entry)
-        targetColorR, targetColorG, targetColorB = getPlayerColor(targetName)
-    elseif kind == "DAMAGE_OUT" then
-        sourceColorR, sourceColorG, sourceColorB = getPlayerColor(sourceName)
-        targetColorR, targetColorG, targetColorB = getSourceColor(entry)
-    elseif kind == "HEAL" or kind == "HEAL_OUT" then
-        sourceColorR, sourceColorG, sourceColorB = getPlayerColor(sourceName)
-        targetColorR, targetColorG, targetColorB = getPlayerColor(targetName)
-    elseif kind == "RES" then
-        sourceColorR, sourceColorG, sourceColorB = getSourceColor(entry)
-        targetColorR, targetColorG, targetColorB = getPlayerColor(targetName)
-    elseif kind == "DEATH" then
-        targetColorR, targetColorG, targetColorB = getPlayerColor(targetName)
-    elseif kind == "THREAT" then
-        sourceColorR, sourceColorG, sourceColorB = getSourceColor(entry)
-        targetColorR, targetColorG, targetColorB = getPlayerColor(targetName)
-    elseif kind == "THREAT_ABILITY" then
-        sourceColorR, sourceColorG, sourceColorB = getPlayerColor(sourceName)
-        targetColorR, targetColorG, targetColorB = getSourceColor(entry)
-    elseif kind == "INTERRUPT" then
-        sourceColorR, sourceColorG, sourceColorB = getPlayerColor(sourceName)
-        targetColorR, targetColorG, targetColorB = getSourceColor(entry)
+    if tip.TitleText then
+        local title = "Combat Details"
+        if UI and UI.combatTooltipLocked then
+            title = title .. " (Locked)"
+        end
+        tip.TitleText:SetText(title)
+        if UI and UI.GetCombatThemePalette then
+            local pal = UI:GetCombatThemePalette()
+            if pal and pal.accent then
+                tip.TitleText:SetTextColor(pal.accent[1], pal.accent[2], pal.accent[3], 1)
+            end
+        end
     end
 
-    setRow(tip.rowSource, sourceName ~= "" and sourceName or "None", sourceColorR, sourceColorG, sourceColorB)
-    setRow(tip.rowTarget, targetName ~= "" and targetName or "None", targetColorR, targetColorG, targetColorB)
-
-    local amountColor = DAMAGE_COLOR
-    if kind == "HEAL" or kind == "HEAL_OUT" then
-        amountColor = HEAL_COLOR
-    elseif kind == "RES" then
-        amountColor = REVIVE_COLOR
-    elseif kind == "DEATH" then
-        amountColor = DEATH_COLOR
-    elseif kind == "THREAT" or kind == "THREAT_ABILITY" or kind == "INTERRUPT" then
-        amountColor = THREAT_COLOR
+    local sourceName = decorateSelfCombatName(entry.sourceName or entry.source or "Unknown")
+    local targetName = decorateSelfCombatName(entry.destName or entry.player or "Unknown")
+    local ability = entry.spellName or entry.spell or entry.subevent or ""
+    local where = (entry.subzone and entry.subzone ~= "" and entry.subzone) or entry.zone or ""
+    if entry.coordsText and entry.coordsText ~= "" then
+        where = where ~= "" and (where .. " " .. entry.coordsText) or entry.coordsText
     end
-    setRow(tip.rowAmount, amountText, amountColor[1], amountColor[2], amountColor[3])
-
-    if kind == "HEAL" or kind == "HEAL_OUT" then
-        setRow(tip.rowOverheal, tostring(overheal), 0.55, 0.9, 0.55)
+    local detailText, totalText
+    if entry.eventGroup == "aura" then
+        detailText = (entry.auraType == "BUFF" and "Buff") or (entry.auraType == "DEBUFF" and "Debuff") or "Aura"
+        totalText = auraAction(entry)
+    elseif entry.amount then
+        detailText = tostring(entry.effectiveAmount or entry.amount)
+        if entry.overheal then
+            detailText = detailText .. " (" .. tostring(entry.overheal) .. ")"
+        elseif entry.resisted then
+            detailText = detailText .. " (" .. tostring(entry.resisted) .. ")"
+        elseif entry.overkill then
+            detailText = detailText .. " (" .. tostring(entry.overkill) .. ")"
+        end
+        totalText = tostring(entry.rawAmount or entry.amount)
+    elseif entry.eventText and entry.eventText ~= "" then
+        detailText = entry.eventText
+        totalText = "-"
     else
-        tip.rowOverheal:Hide()
+        detailText = entry.missType or ""
+        totalText = "-"
+    end
+    local mitigations = {}
+    if tonumber(entry.resisted) and tonumber(entry.resisted) > 0 then
+        mitigations[#mitigations + 1] = "Resist " .. tostring(entry.resisted)
+    end
+    if tonumber(entry.blocked) and tonumber(entry.blocked) > 0 then
+        mitigations[#mitigations + 1] = "Block " .. tostring(entry.blocked)
+    end
+    if tonumber(entry.absorbed) and tonumber(entry.absorbed) > 0 then
+        mitigations[#mitigations + 1] = "Absorb " .. tostring(entry.absorbed)
+    end
+    if tonumber(entry.overkill) and tonumber(entry.overkill) > 0 then
+        mitigations[#mitigations + 1] = "Overkill " .. tostring(entry.overkill)
+    end
+    if tonumber(entry.overheal) and tonumber(entry.overheal) > 0 then
+        mitigations[#mitigations + 1] = "Overheal " .. tostring(entry.overheal)
+    end
+    local mitigationText = table.concat(mitigations, ", ")
+
+    local sr, sg, sb = colorForUnit(true)
+    local tr, tg, tb = colorForUnit(false)
+    pushHeader("Summary")
+    pushValue("Time:", formatCombatTimestamp(entry.timestamp or entry.ts))
+    pushValue("Type:", groupType(entry))
+    pushValue("Detail:", detailText)
+    pushValue("Total:", totalText)
+    pushValue("Where:", where, 0.8, 0.9, 1)
+
+    pushHeader("Actors")
+    pushValue("Source:", sourceName, sr, sg, sb)
+    pushValue("Target:", targetName, tr, tg, tb)
+    pushValue("Ability:", ability)
+    pushValue("Subevent:", entry.subevent or "")
+    pushValue("Raid Icon:", tostring(entry.sourceRaidIcon or ""))
+
+    pushHeader("Breakdown")
+    pushValue("Effective:", tostring(entry.effectiveAmount or ""))
+    pushValue("Mitigation:", mitigationText)
+    pushValue("Aura:", entry.auraType or "")
+    pushValue("Result:", entry.auraState or auraAction(entry))
+
+    for i = usedValueRows + 1, #tip.valueRows do
+        tip.valueRows[i]:Hide()
+    end
+    for i = usedHeaderRows + 1, #tip.headerRows do
+        tip.headerRows[i]:Hide()
     end
 
-    setRow(tip.rowAbility, abilityText, 1, 1, 1)
-
-    local content = tip.content or tip
-    local y = -8
-    local rowInnerWidth = math.max(120, (content:GetWidth() > 0 and content:GetWidth() or (OPTIONS_PANEL_WIDTH - 12)) - 16)
-    for _, row in ipairs(rows) do
-        row:ClearAllPoints()
-        row:SetPoint("TOPLEFT", content, "TOPLEFT", 8, y)
-        row:SetPoint("RIGHT", content, "RIGHT", -8, 0)
-        row:SetWidth(rowInnerWidth)
-        local labelWidth = row.label and row.label:GetWidth() or 70
-        local valueWidth = math.max(40, rowInnerWidth - labelWidth - 6)
-        row.value:SetWidth(valueWidth)
-        local height = math.max(row.label:GetStringHeight() or 12, row.value:GetStringHeight() or 12)
-        row:SetHeight(height)
-        y = y - (height + 6)
-    end
-    tip.divider:ClearAllPoints()
-    tip.divider:SetPoint("TOPLEFT", content, "TOPLEFT", 8, y + 2)
-    tip.divider:SetPoint("RIGHT", content, "RIGHT", -8, 0)
-    tip.divider:Show()
-    local contentHeight = math.max(36, -y + 10)
-    content:SetHeight(contentHeight)
+    local contentHeight = math.max(86, -y + 8)
+    tip.content:SetHeight(contentHeight)
     tip:SetHeight(contentHeight + 30)
     tip:Show()
 
@@ -2108,6 +2174,10 @@ local function setCombatRowTooltipLock(entry, locked)
     end
     UI.combatTooltipLocked = locked and true or false
     UI.combatTooltipEntry = locked and entry or nil
+    UI.combatTooltipEntryKey = locked and combatEventKey(entry) or nil
+    if UI and UI.UpdateDamageTrackerList then
+        UI:UpdateDamageTrackerList()
+    end
 end
 
 local function createSmallIconButton(parent, size, texture)
@@ -2637,27 +2707,39 @@ function UI:SetupDropdown(dropdown, getList, onSelect, fallbackText)
             UIDropDownMenu_AddButton(info, level)
             return
         end
-        for _, name in ipairs(list) do
-            info = UIDropDownMenu_CreateInfo()
-            if dropdown.colorize and name ~= L.NONE_OPTION then
-                info.text = colorizeName(name)
-            else
-                info.text = name
+        for _, option in ipairs(list) do
+            local value = option
+            local text = option
+            if type(option) == "table" then
+                value = option.value
+                text = option.text or option.label or option.value
             end
-            info.value = name
+            if value == nil then
+                value = text
+            end
+            if text == nil then
+                text = tostring(value or "")
+            end
+            info = UIDropDownMenu_CreateInfo()
+            if dropdown.colorize and text ~= L.NONE_OPTION then
+                info.text = colorizeName(text)
+            else
+                info.text = text
+            end
+            info.value = value
             info.func = function()
-                dropdown.selectedValue = name
-                UIDropDownMenu_SetSelectedValue(dropdown, name)
-                if dropdown.colorize and name ~= L.NONE_OPTION then
-                    UIDropDownMenu_SetText(dropdown, colorizeName(name))
+                dropdown.selectedValue = value
+                UIDropDownMenu_SetSelectedValue(dropdown, value)
+                if dropdown.colorize and text ~= L.NONE_OPTION then
+                    UIDropDownMenu_SetText(dropdown, colorizeName(text))
                 else
-                    UIDropDownMenu_SetText(dropdown, name)
+                    UIDropDownMenu_SetText(dropdown, text)
                 end
                 if dropdown.onSelect then
-                    dropdown.onSelect(name)
+                    dropdown.onSelect(value, option)
                 end
             end
-            info.checked = dropdown.selectedValue == name
+            info.checked = dropdown.selectedValue == value
             UIDropDownMenu_AddButton(info, level)
         end
     end)
@@ -2669,6 +2751,155 @@ function UI:SetDropdownText(dropdown, text)
         UIDropDownMenu_SetText(dropdown, colorizeName(value))
     else
         UIDropDownMenu_SetText(dropdown, value)
+    end
+end
+
+function UI:GetCombatDisplayStyle()
+    local settings = Goals and Goals.db and Goals.db.settings or nil
+    local mode = settings and settings.combatWhtmDisplayStyle or COMBAT_DISPLAY_TABLE
+    if mode ~= COMBAT_DISPLAY_CHAT then
+        mode = COMBAT_DISPLAY_TABLE
+    end
+    return mode
+end
+
+function UI:GetCombatTheme()
+    local settings = Goals and Goals.db and Goals.db.settings or nil
+    local theme = settings and settings.combatWhtmTheme or COMBAT_THEME_NEUTRAL
+    if theme ~= COMBAT_THEME_ALLIANCE and theme ~= COMBAT_THEME_HORDE and theme ~= COMBAT_THEME_CLASS then
+        theme = COMBAT_THEME_NEUTRAL
+    end
+    return theme
+end
+
+function UI:GetCombatThemePalette()
+    local theme = self:GetCombatTheme()
+    local accent = { 0.92, 0.80, 0.50 }
+    local headerBg = { 0.00, 0.00, 0.00, 0.45 }
+    local hover = { 1.00, 1.00, 1.00, 0.12 }
+    local selected = { 1.00, 0.82, 0.25, 0.16 }
+
+    if theme == COMBAT_THEME_ALLIANCE then
+        accent = { 0.36, 0.62, 1.00 }
+        headerBg = { 0.06, 0.13, 0.25, 0.68 }
+        hover = { 0.36, 0.62, 1.00, 0.14 }
+        selected = { 0.36, 0.62, 1.00, 0.24 }
+    elseif theme == COMBAT_THEME_HORDE then
+        accent = { 1.00, 0.34, 0.28 }
+        headerBg = { 0.24, 0.07, 0.05, 0.70 }
+        hover = { 1.00, 0.34, 0.28, 0.14 }
+        selected = { 1.00, 0.34, 0.28, 0.24 }
+    elseif theme == COMBAT_THEME_CLASS then
+        local classFile = UnitClass and select(2, UnitClass("player")) or nil
+        if classFile and RAID_CLASS_COLORS and RAID_CLASS_COLORS[classFile] then
+            local c = RAID_CLASS_COLORS[classFile]
+            accent = { c.r, c.g, c.b }
+        else
+            accent = { 0.75, 0.75, 0.75 }
+        end
+        headerBg = { accent[1] * 0.22, accent[2] * 0.22, accent[3] * 0.22, 0.68 }
+        hover = { accent[1], accent[2], accent[3], 0.14 }
+        selected = { accent[1], accent[2], accent[3], 0.24 }
+    end
+
+    return {
+        accent = accent,
+        headerBg = headerBg,
+        hover = hover,
+        selected = selected,
+    }
+end
+
+function UI:ApplyCombatTheme()
+    local palette = self:GetCombatThemePalette()
+    local accent = palette.accent
+    if self.damageTableWidget then
+        if self.damageTableWidget.headerBg then
+            self.damageTableWidget.headerBg:SetTexture(palette.headerBg[1], palette.headerBg[2], palette.headerBg[3], palette.headerBg[4])
+        end
+        for _, col in ipairs(self.damageTableWidget.columns or {}) do
+            if col.header and col.header.SetTextColor then
+                col.header:SetTextColor(accent[1], accent[2], accent[3], 1)
+            end
+        end
+    end
+    for _, row in ipairs(self.damageTrackerRows or {}) do
+        if row.hoverTint then
+            row.hoverTint:SetTexture(palette.hover[1], palette.hover[2], palette.hover[3], palette.hover[4])
+        end
+        if row.selectedTint then
+            row.selectedTint:SetTexture(palette.selected[1], palette.selected[2], palette.selected[3], palette.selected[4])
+        end
+    end
+    if self.combatRowTooltip and self.combatRowTooltip.TitleText then
+        self.combatRowTooltip.TitleText:SetTextColor(accent[1], accent[2], accent[3], 1)
+    end
+end
+
+function UI:GetCombatRowBgStyle()
+    local settings = Goals and Goals.db and Goals.db.settings or nil
+    local mode = settings and settings.combatWhtmRowBgStyle or COMBAT_ROW_BG_EVENT_TINT
+    if mode == "color" then
+        mode = COMBAT_ROW_BG_EVENT_TINT
+    elseif mode == "mono" then
+        mode = COMBAT_ROW_BG_NEUTRAL
+    end
+    if mode ~= COMBAT_ROW_BG_NEUTRAL then
+        mode = COMBAT_ROW_BG_EVENT_TINT
+    end
+    return mode
+end
+
+function UI:ApplyCombatDisplayStyle(mode)
+    if not self.damageTableWidget then
+        return
+    end
+    mode = mode or self:GetCombatDisplayStyle()
+    local isChat = mode == COMBAT_DISPLAY_CHAT
+    local tableWidths = {
+        time = 68, icon = 34, source = 110, target = 110, ability = 140, type = 62, detail = 112, total = 76,
+    }
+    local chatWidths = {
+        time = 68, icon = 34, source = 154, target = 0, ability = 0, type = 0, detail = 0, total = 0,
+    }
+    local chatTitles = {
+        time = "Time", icon = "Icon", source = "Source", target = "", ability = "", type = "", detail = "", total = "", where = "Entry",
+    }
+    local cols = self.damageTableWidget.columns or {}
+    for _, col in ipairs(cols) do
+        if col.header then
+            if isChat then
+                col.header:SetText(chatTitles[col.key] or "")
+            else
+                col.header:SetText(col.title or "")
+            end
+        end
+        if not col.fill then
+            local width = isChat and chatWidths[col.key] or tableWidths[col.key]
+            if width then
+                col.width = width
+                if col.header then
+                    col.header:SetWidth(width)
+                end
+                for _, row in ipairs(self.damageTrackerRows or {}) do
+                    local text = row.cols and row.cols[col.key]
+                    if text then
+                        text:SetWidth(width)
+                    end
+                end
+            end
+        end
+    end
+    for _, row in ipairs(self.damageTrackerRows or {}) do
+        if row.cols and row.cols.where and row.cols.where.SetJustifyH then
+            row.cols.where:SetJustifyH(isChat and "LEFT" or "RIGHT")
+        end
+    end
+    for _, col in ipairs(cols) do
+        if col.key == "where" and col.header and col.header.SetJustifyH then
+            col.header:SetJustifyH(isChat and "LEFT" or "RIGHT")
+            break
+        end
     end
 end
 
@@ -3263,7 +3494,7 @@ function UI:CreateMainFrame()
     end
 
     local frame = CreateFrame("Frame", "GoalsMainFrame", UIParent, "GoalsFrameTemplate")
-    frame:SetSize(900, MAIN_FRAME_HEIGHT + FOOTER_BAR_EXTRA)
+    frame:SetSize(MAIN_FRAME_WIDTH, MAIN_FRAME_HEIGHT + FOOTER_BAR_EXTRA)
     frame:SetPoint("CENTER")
     frame:SetMovable(true)
     frame:EnableMouse(true)
@@ -3333,6 +3564,8 @@ function UI:CreateMainFrame()
     frame.minimize = minimize
 
     self.frame = frame
+    self.mainFrameNormalWidth = MAIN_FRAME_WIDTH
+    self.mainFrameCombatWidth = MAIN_FRAME_WIDTH_COMBAT
     self.tabs = {}
     self.pages = {}
 
@@ -3356,6 +3589,7 @@ function UI:CreateMainFrame()
         { key = "loot", text = L.TAB_LOOT, create = "CreateLootTab" },
         { key = "history", text = L.TAB_HISTORY, create = "CreateHistoryTab" },
         { key = "wishlist", text = L.TAB_WISHLIST, create = "CreateWishlistTab" },
+        { key = "damage", text = L.TAB_DAMAGE_TRACKER, create = "CreateDamageTrackerTab" },
     }
     if self:ShouldShowUpdateTab() then
         table.insert(tabDefs, { key = "update", text = L.TAB_UPDATE, create = "CreateUpdateTab" })
@@ -3426,6 +3660,23 @@ function UI:CreateMainFrame()
     self:UpdateUpdateTabGlow()
     self:LayoutTabs()
     self:UpdateDamageTabVisibility()
+end
+
+function UI:UpdateFrameWidthForTab(tabId)
+    if not self.frame then
+        return
+    end
+    local normalW = self.mainFrameNormalWidth or MAIN_FRAME_WIDTH
+    local combatW = self.mainFrameCombatWidth or MAIN_FRAME_WIDTH_COMBAT
+    local targetW = normalW
+    if self.damageTabId and tabId == self.damageTabId then
+        targetW = combatW
+    end
+    local currentW = self.frame:GetWidth() or normalW
+    if math.abs(currentW - targetW) < 1 then
+        return
+    end
+    self.frame:SetWidth(targetW)
 end
 
 function UI:LayoutTabs()
@@ -3895,6 +4146,9 @@ function UI:SelectTab(id)
     PanelTemplates_SetTab(self.frame, id)
     for index, page in ipairs(self.pages) do
         setShown(page, index == id)
+    end
+    if self.UpdateFrameWidthForTab then
+        self:UpdateFrameWidthForTab(id)
     end
     self.currentTab = id
     clearCombatRowTooltipLock()
@@ -7367,16 +7621,21 @@ function UI:CreateDamageTrackerTab(page)
 
     local tableWidget = createTableWidget(inset, "GoalsDamageTrackerTable", {
         columns = {
-            { key = "time", title = "Time", width = DAMAGE_COL_TIME, justify = "LEFT", wrap = false },
-            { key = "source", title = "Source", width = DAMAGE_COL_SOURCE, justify = "LEFT", wrap = false },
-            { key = "target", title = "Target", width = DAMAGE_COL_TARGET, justify = "LEFT", wrap = false },
-            { key = "amount", title = "Amount", width = DAMAGE_COL_AMOUNT, justify = "RIGHT", wrap = false },
-            { key = "spell", title = "Ability", fill = true, justify = "LEFT", wrap = false },
+            { key = "time", title = "Time", width = 68, justify = "LEFT", wrap = false },
+            { key = "icon", title = "Icon", width = 34, justify = "LEFT", wrap = false },
+            { key = "source", title = "Source", width = 110, justify = "LEFT", wrap = false },
+            { key = "target", title = "Target", width = 110, justify = "LEFT", wrap = false },
+            { key = "ability", title = "Ability", width = 140, justify = "LEFT", wrap = false },
+            { key = "type", title = "Type", width = 62, justify = "LEFT", wrap = false },
+            { key = "detail", title = "Detail", width = 112, justify = "LEFT", wrap = false },
+            { key = "total", title = "Total", width = 76, justify = "LEFT", wrap = false },
+            { key = "where", title = "Where", fill = true, justify = "RIGHT", wrap = false },
         },
         rowHeight = DAMAGE_ROW_HEIGHT,
         visibleRows = DAMAGE_ROWS,
         headerHeight = 16,
     })
+    self.damageTableWidget = tableWidget
     self.damageTrackerScroll = tableWidget.scroll
     self.damageTrackerRows = tableWidget.rows
 
@@ -7389,78 +7648,102 @@ function UI:CreateDamageTrackerTab(page)
         setScrollBarAlwaysVisible(selfScroll, selfScroll._contentHeight or 0)
     end)
 
-    for _, row in ipairs(self.damageTrackerRows) do
-        row:EnableMouse(true)
-        if row.cols then
-            row.timeText = row.cols.time
-            row.sourceText = row.cols.source
-            row.targetText = row.cols.target
-            row.amountText = row.cols.amount
-            row.spellText = row.cols.spell
+    self.combatUnavailableLabel = createLabel(inset, "WHTM not loaded. Install/enable WHTM to use Combat.", "GameFontHighlight")
+    self.combatUnavailableLabel:SetPoint("CENTER", inset, "CENTER", 0, 0)
+    self.combatUnavailableLabel:SetJustifyH("CENTER")
+    self.combatUnavailableLabel:SetTextColor(1, 0.35, 0.35, 1)
+    self.combatUnavailableLabel:Hide()
+
+    self.combatRetryButton = createOptionsButton(inset)
+    styleOptionsButton(self.combatRetryButton, 170)
+    self.combatRetryButton:SetPoint("TOP", self.combatUnavailableLabel, "BOTTOM", 0, -8)
+    self.combatRetryButton:SetText("Retry WHTM detection")
+    self.combatRetryButton:SetScript("OnClick", function()
+        if Goals and Goals.CombatProvider and Goals.CombatProvider.Init then
+            Goals.CombatProvider:Init()
         end
+        UI:UpdateDamageTrackerList()
+    end)
+    self.combatRetryButton:Hide()
 
-        local breakBg = row:CreateTexture(nil, "BACKGROUND")
-        breakBg:SetAllPoints(row)
-        breakBg:SetTexture(0.5, 0.5, 0.5, 0.2)
-        breakBg:Hide()
-        row.breakBg = breakBg
-
-        local breakText = row:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
-        breakText:SetPoint("LEFT", row, "LEFT", 4, 0)
-        breakText:SetPoint("RIGHT", row, "RIGHT", -4, 0)
-        breakText:SetJustifyH("LEFT")
-        breakText:SetWordWrap(false)
-        breakText:Hide()
-        row.breakText = breakText
-
-        row:SetScript("OnEnter", function(selfRow)
-            if UI and UI.combatTooltipLocked then
-                if UI.combatTooltipEntry == selfRow.entry then
-                    showCombatRowTooltip(selfRow.entry)
-                end
-                return
-            end
-            showCombatRowTooltip(selfRow.entry)
-        end)
-        row:SetScript("OnLeave", function()
-            if UI and UI.combatTooltipLocked then
-                return
-            end
-            hideCombatRowTooltip()
-        end)
+    for _, row in ipairs(self.damageTrackerRows) do
+        if not row.softTint then
+            local soft = row:CreateTexture(nil, "BACKGROUND", nil, 1)
+            soft:SetAllPoints(row)
+            soft:SetTexture(0, 0, 0, 0)
+            row.softTint = soft
+        end
+        if not row.hoverTint then
+            local hover = row:CreateTexture(nil, "HIGHLIGHT", nil, 1)
+            hover:SetAllPoints(row)
+            hover:SetTexture(1, 1, 1, 0.12)
+            hover:Hide()
+            row.hoverTint = hover
+        end
+        if not row.selectedTint then
+            local selected = row:CreateTexture(nil, "ARTWORK", nil, 1)
+            selected:SetAllPoints(row)
+            selected:SetTexture(1, 0.82, 0.25, 0.16)
+            selected:Hide()
+            row.selectedTint = selected
+        end
+        row:EnableMouse(true)
         if row.RegisterForClicks then
             row:RegisterForClicks("LeftButtonUp", "RightButtonUp")
         end
+        row:SetScript("OnEnter", function(selfRow)
+            if selfRow.hoverTint then
+                selfRow.hoverTint:Show()
+            end
+            if selfRow.entry and not (UI and UI.combatTooltipLocked) then
+                showCombatRowTooltip(selfRow.entry)
+            end
+        end)
+        row:SetScript("OnLeave", function(selfRow)
+            if selfRow.hoverTint then
+                selfRow.hoverTint:Hide()
+            end
+            if not (UI and UI.combatTooltipLocked) then
+                hideCombatRowTooltip()
+            end
+        end)
         row:SetScript("OnMouseUp", function(selfRow, button)
-            if button == "LeftButton" then
-                if selfRow.entry and selfRow.entry.kind ~= "BREAK" then
-                    if UI and UI.combatTooltipLocked and UI.combatTooltipEntry == selfRow.entry then
-                        setCombatRowTooltipLock(nil, false)
-                        if selfRow.IsMouseOver and selfRow:IsMouseOver() then
-                            showCombatRowTooltip(selfRow.entry)
-                        else
-                            hideCombatRowTooltip()
-                        end
-                    else
-                        setCombatRowTooltipLock(selfRow.entry, true)
-                        showCombatRowTooltip(selfRow.entry)
-                    end
-                end
+            if button == "LeftButton" and selfRow.entry then
+                setCombatRowTooltipLock(selfRow.entry, true)
+                showCombatRowTooltip(selfRow.entry)
                 return
             end
-            if button == "RightButton" and selfRow.entry and selfRow.entry.kind ~= "BREAK" then
-                if UI and UI.ShowCombatRowMenu then
-                    UI:ShowCombatRowMenu(selfRow.entry, selfRow)
-                end
+            if button == "RightButton" and selfRow.entry and UI and UI.ShowCombatRowMenu then
+                setCombatRowTooltipLock(selfRow.entry, true)
+                showCombatRowTooltip(selfRow.entry)
+                UI:ShowCombatRowMenu(selfRow.entry, selfRow)
             end
+        end)
+    end
+
+    inset:EnableMouse(true)
+    inset:SetScript("OnMouseUp", function(_, button)
+        if button ~= "LeftButton" then
+            return
+        end
+        clearCombatRowTooltipLock()
+        hideCombatRowTooltip()
+    end)
+    if tableWidget and tableWidget.header then
+        tableWidget.header:EnableMouse(true)
+        tableWidget.header:SetScript("OnMouseUp", function(_, button)
+            if button ~= "LeftButton" then
+                return
+            end
+            clearCombatRowTooltipLock()
+            hideCombatRowTooltip()
         end)
     end
 
     local y = -10
     local function addSectionHeader(text)
-        local label, bar = createOptionsHeader(optionsContent, text, y)
+        createOptionsHeader(optionsContent, text, y)
         y = y - 22
-        return label, bar
     end
 
     local function addCheck(text, onClick, tooltipText)
@@ -7488,184 +7771,268 @@ function UI:CreateDamageTrackerTab(page)
         return dropdown
     end
 
-    local function addSlider(name, labelText, tooltipText)
-        local label = createLabel(optionsContent, labelText, "GameFontNormalSmall")
-        label:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
-        styleOptionsControlLabel(label)
-        local valueLabel = createLabel(optionsContent, "0%", "GameFontHighlightSmall")
-        valueLabel:SetPoint("TOPRIGHT", optionsContent, "TOPLEFT", 8 + OPTIONS_CONTROL_WIDTH, y)
-        valueLabel:SetJustifyH("RIGHT")
-        if valueLabel.SetTextColor then
-            valueLabel:SetTextColor(1, 1, 1, 1)
+    local provider = Goals and Goals.CombatProvider or nil
+    Goals.db.settings.combatWhtmDirections = Goals.db.settings.combatWhtmDirections or { incoming = true, outgoing = false, internal = false }
+    Goals.db.settings.combatWhtmGroups = Goals.db.settings.combatWhtmGroups or {
+        damage = true, heal = true, aura = true, miss = true, death = true, control = true, resource = true
+    }
+    Goals.db.settings.combatWhtmAuraStates = Goals.db.settings.combatWhtmAuraStates or { gained = true, lost = true, other = true }
+    if Goals.db.settings.combatWhtmSoftRowColors == nil then
+        Goals.db.settings.combatWhtmSoftRowColors = true
+    end
+    if Goals.db.settings.combatWhtmRowBgStyle == nil then
+        Goals.db.settings.combatWhtmRowBgStyle = COMBAT_ROW_BG_EVENT_TINT
+    end
+    if Goals.db.settings.combatWhtmHideMinimapIcon == nil then
+        Goals.db.settings.combatWhtmHideMinimapIcon = false
+    end
+    if Goals.db.settings.combatWhtmBossOnly == nil then
+        Goals.db.settings.combatWhtmBossOnly = false
+    end
+    if Goals.db.settings.combatWhtmRetainFullHistory == nil then
+        Goals.db.settings.combatWhtmRetainFullHistory = false
+    end
+    if Goals.db.settings.combatWhtmTheme == nil then
+        Goals.db.settings.combatWhtmTheme = COMBAT_THEME_NEUTRAL
+    end
+    if Goals.db.settings.combatWhtmDisplayStyle == nil then
+        Goals.db.settings.combatWhtmDisplayStyle = COMBAT_DISPLAY_TABLE
+    end
+    local function syncProvider()
+        if provider and provider.SyncSettingsToWHTM then
+            provider:SyncSettingsToWHTM()
+            provider:RefreshEvents()
         end
-        if valueLabel.SetWidth then
-            valueLabel:SetWidth(48)
-        end
-        y = y - 18
-
-        local slider = CreateFrame("Slider", name, optionsContent, "OptionsSliderTemplate")
-        slider:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
-        styleOptionsSlider(slider)
-        attachSideTooltip(slider, tooltipText)
-
-        y = y - 28
-        return slider, valueLabel
+        UI:UpdateDamageTrackerList()
     end
 
-    local trackingCheck = addCheck("Enable combat log tracking", function(selfBtn)
-        local enabled = selfBtn:GetChecked() and true or false
-        if Goals.DamageTracker and Goals.DamageTracker.SetEnabled then
-            Goals.DamageTracker:SetEnabled(enabled)
-        else
-            Goals.db.settings.combatLogTracking = enabled
-        end
-        if UI and UI.UpdateDamageTrackerList then
-            UI:UpdateDamageTrackerList()
-        end
-        if UI and UI.UpdateCombatDebugStatus then
-            UI:UpdateCombatDebugStatus()
-        end
-    end, "Record combat log events for the tracker.")
-    self.combatLogTrackingCheck = trackingCheck
-    do
-        local settings = Goals.db and Goals.db.settings or nil
-        local trackingEnabled = settings and settings.combatLogTracking
-        if trackingEnabled == nil then
-            trackingEnabled = false
-            if settings then
-                settings.combatLogTracking = false
+    addSectionHeader("Capture")
+    addLabel("Scope")
+    local scopeDrop = addDropdown("GoalsCombatScopeDropdown")
+    self:SetupDropdown(scopeDrop, function()
+        return {
+            { value = "player", text = "Self only" },
+            { value = "party", text = "Party group" },
+            { value = "raid", text = "Raid group" },
+        }
+    end, function(value)
+        Goals.db.settings.combatWhtmScope = value
+        syncProvider()
+    end, Goals.db.settings.combatWhtmScope or "player")
+    self.combatScopeDropdown = scopeDrop
+
+    addLabel("Timestamp")
+    local tsDrop = addDropdown("GoalsCombatTimestampDropdown")
+    self:SetupDropdown(tsDrop, function()
+        return {
+            { value = "24h", text = "24h" },
+            { value = "12h", text = "12h" },
+        }
+    end, function(value)
+        Goals.db.settings.combatWhtmTimestampFormat = value
+        syncProvider()
+    end, Goals.db.settings.combatWhtmTimestampFormat or "24h")
+    self.combatTimestampDropdown = tsDrop
+
+    addLabel("Display style")
+    local displayDrop = addDropdown("GoalsCombatDisplayStyleDropdown")
+    self:SetupDropdown(displayDrop, function()
+        return {
+            { value = COMBAT_DISPLAY_TABLE, text = "Table" },
+            { value = COMBAT_DISPLAY_CHAT, text = "Chat style" },
+        }
+    end, function(value)
+        Goals.db.settings.combatWhtmDisplayStyle = value
+        UI:ApplyCombatDisplayStyle(value)
+        syncProvider()
+    end, "Table")
+    self.combatDisplayStyleDropdown = displayDrop
+
+    local pausedCheck = addCheck("Pause capture", function(selfBtn)
+        Goals.db.settings.combatWhtmPaused = selfBtn:GetChecked() and true or false
+        syncProvider()
+    end, "Pause/resume combat capture.")
+    self.combatPausedCheck = pausedCheck
+
+    addSectionHeader("Direction")
+    local dirIn = addCheck("Incoming", function(selfBtn)
+        Goals.db.settings.combatWhtmDirections.incoming = selfBtn:GetChecked() and true or false
+        syncProvider()
+    end, "Events happening to tracked units.")
+    local dirOut = addCheck("Outgoing", function(selfBtn)
+        Goals.db.settings.combatWhtmDirections.outgoing = selfBtn:GetChecked() and true or false
+        syncProvider()
+    end, "Events done by tracked units.")
+    local dirInternal = addCheck("Internal", function(selfBtn)
+        Goals.db.settings.combatWhtmDirections.internal = selfBtn:GetChecked() and true or false
+        syncProvider()
+    end, "Tracked source and target events.")
+    self.combatDirIncomingCheck = dirIn
+    self.combatDirOutgoingCheck = dirOut
+    self.combatDirInternalCheck = dirInternal
+    self.combatBossOnlyCheck = addCheck("Boss encounters only", function(selfBtn)
+        Goals.db.settings.combatWhtmBossOnly = selfBtn:GetChecked() and true or false
+        syncProvider()
+    end, "Only show events where source or target is classified as boss.")
+
+    addSectionHeader("Groups")
+    self.combatGroupChecks = {}
+    local groupKeys = {
+        { "damage", "Damage" },
+        { "heal", "Heal" },
+        { "aura", "Aura" },
+        { "miss", "Miss" },
+        { "death", "Death" },
+        { "control", "Control" },
+        { "resource", "Resource" },
+    }
+    for i = 1, #groupKeys do
+        local key, label = groupKeys[i][1], groupKeys[i][2]
+        self.combatGroupChecks[key] = addCheck(label, function(selfBtn)
+            Goals.db.settings.combatWhtmGroups[key] = selfBtn:GetChecked() and true or false
+            syncProvider()
+        end, "Toggle " .. label .. " events.")
+    end
+
+    addSectionHeader("Aura State")
+    self.combatAuraChecks = {}
+    local auraKeys = {
+        { "gained", "Aura gained" },
+        { "lost", "Aura lost" },
+        { "other", "Aura other" },
+    }
+    for i = 1, #auraKeys do
+        local key, label = auraKeys[i][1], auraKeys[i][2]
+        self.combatAuraChecks[key] = addCheck(label, function(selfBtn)
+            Goals.db.settings.combatWhtmAuraStates[key] = selfBtn:GetChecked() and true or false
+            syncProvider()
+        end, "Toggle " .. label .. " entries.")
+    end
+
+    addSectionHeader("Display")
+    addLabel("Theme")
+    local themeDrop = addDropdown("GoalsCombatThemeDropdown")
+    self:SetupDropdown(themeDrop, function()
+        return {
+            { value = COMBAT_THEME_NEUTRAL, text = "Neutral" },
+            { value = COMBAT_THEME_ALLIANCE, text = "Alliance" },
+            { value = COMBAT_THEME_HORDE, text = "Horde" },
+            { value = COMBAT_THEME_CLASS, text = "Class Accent" },
+        }
+    end, function(value)
+        Goals.db.settings.combatWhtmTheme = value
+        UI:ApplyCombatTheme()
+    end, "Neutral")
+    self.combatThemeDropdown = themeDrop
+
+    self.combatSoftRowsCheck = addCheck("Soft row colors", function(selfBtn)
+        Goals.db.settings.combatWhtmSoftRowColors = selfBtn:GetChecked() and true or false
+        UI:UpdateDamageTrackerList()
+    end, "Use subtle per-event row tinting in the combat table.")
+    addLabel("Row background style")
+    local rowBgStyleDrop = addDropdown("GoalsCombatRowBgStyleDropdown")
+    self:SetupDropdown(rowBgStyleDrop, function()
+        return {
+            { value = COMBAT_ROW_BG_EVENT_TINT, text = "Event" },
+            { value = COMBAT_ROW_BG_NEUTRAL, text = "Neutral (B/W)" },
+        }
+    end, function(value)
+        Goals.db.settings.combatWhtmRowBgStyle = value
+        UI:UpdateDamageTrackerList()
+    end, "Event")
+    self.combatRowBgStyleDropdown = rowBgStyleDrop
+    self.combatHideMinimapCheck = addCheck("Hide WHTM minimap icon", function(selfBtn)
+        Goals.db.settings.combatWhtmHideMinimapIcon = selfBtn:GetChecked() and true or false
+        syncProvider()
+    end, "Hide/show WHTM minimap launcher icon.")
+
+    addSectionHeader("Session")
+    local retainHistoryCheck = addCheck("Retain full history", function(selfBtn)
+        Goals.db.settings.combatWhtmRetainFullHistory = selfBtn:GetChecked() and true or false
+        local retain = Goals.db.settings.combatWhtmRetainFullHistory
+        if UI.combatMaxRowsSlider then
+            if retain then
+                UI.combatMaxRowsSlider:Disable()
+                if UI.combatMaxRowsSlider.SetAlpha then
+                    UI.combatMaxRowsSlider:SetAlpha(0.45)
+                end
+            else
+                UI.combatMaxRowsSlider:Enable()
+                if UI.combatMaxRowsSlider.SetAlpha then
+                    UI.combatMaxRowsSlider:SetAlpha(1)
+                end
             end
         end
-        trackingCheck:SetChecked(trackingEnabled and true or false)
-    end
-    y = y - 8
+        if UI.combatMaxRowsValue then
+            if retain then
+                UI.combatMaxRowsValue:SetText("Max rows: Session (unlimited)")
+            else
+                UI.combatMaxRowsValue:SetText(("Max rows: %d"):format(Goals.db.settings.combatWhtmMaxRows or 600))
+            end
+        end
+        syncProvider()
+    end, "Keep the full combat history for this play session (disables row cap).")
+    self.combatRetainHistoryCheck = retainHistoryCheck
 
-    addSectionHeader("Filter")
-    addLabel("Show")
-
-    local dropdown = addDropdown("GoalsDamageTrackerDropdown")
-    attachSideTooltip(dropdown, "Choose which entries to show in the combat tracker.")
-    self:SetupDropdown(dropdown, function()
-        return self:GetDamageTrackerDropdownList()
-    end, function(value)
-        self.damageTrackerFilter = value
-        self:SetCombatShowMode(value)
-        self:UpdateDamageTrackerList()
-    end, COMBAT_SHOW_ALL)
-    local initialMode = self:GetCombatShowMode(Goals.db and Goals.db.settings or {})
-    dropdown.selectedValue = initialMode
-    UIDropDownMenu_SetSelectedValue(dropdown, initialMode)
-    self:SetDropdownText(dropdown, initialMode)
-    self.damageTrackerDropdown = dropdown
-    self.damageTrackerFilter = initialMode
-    self.combatLogShowDropdown = nil
-    y = y - 8
-    addSectionHeader(L.LABEL_DAMAGE_OPTIONS)
-
-    local function clampSliderValue(value)
-        local clamped = math.floor((tonumber(value) or 0) + 0.5)
-        if clamped < 0 then
-            clamped = 0
-        elseif clamped > 100 then
+    local maxRowsSlider = CreateFrame("Slider", "GoalsCombatMaxRowsSlider", optionsContent, "OptionsSliderTemplate")
+    maxRowsSlider:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
+    styleOptionsSlider(maxRowsSlider)
+    maxRowsSlider:SetMinMaxValues(100, 3000)
+    maxRowsSlider:SetValueStep(50)
+    attachSideTooltip(maxRowsSlider, "Max in-memory combat rows.")
+    y = y - 28
+    local maxRowsValue = createLabel(optionsContent, "", "GameFontHighlightSmall")
+    maxRowsValue:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
+    y = y - 18
+    maxRowsSlider:SetScript("OnValueChanged", function(selfSlider, value)
+        local clamped = math.floor((tonumber(value) or 600) / 50 + 0.5) * 50
+        if clamped < 100 then
             clamped = 100
+        elseif clamped > 3000 then
+            clamped = 3000
         end
-        return clamped
+        Goals.db.settings.combatWhtmMaxRows = clamped
+        if Goals.db.settings.combatWhtmRetainFullHistory then
+            maxRowsValue:SetText("Max rows: Session (unlimited)")
+        else
+            maxRowsValue:SetText(("Max rows: %d"):format(clamped))
+        end
+        syncProvider()
+    end)
+    self.combatMaxRowsSlider = maxRowsSlider
+    self.combatMaxRowsValue = maxRowsValue
+    if Goals.db.settings.combatWhtmRetainFullHistory then
+        maxRowsSlider:Disable()
+        if maxRowsSlider.SetAlpha then
+            maxRowsSlider:SetAlpha(0.45)
+        end
+        maxRowsValue:SetText("Max rows: Session (unlimited)")
     end
 
-    local bigThresholdSlider, bigThresholdValue = addSlider("GoalsCombatBigThresholdSlider", "Big number threshold", "Set the big number cutoff. 0% shows all numbers; 100% shows only the highest value in each encounter.")
-    bigThresholdSlider:SetScript("OnValueChanged", function(selfSlider, value)
-        local clamped = clampSliderValue(value)
-        if clamped ~= value then
-            selfSlider:SetValue(clamped)
+    local clearBtn = createOptionsButton(optionsContent)
+    styleOptionsButton(clearBtn, OPTIONS_CONTROL_WIDTH)
+    clearBtn:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
+    clearBtn:SetText("Clear session")
+    clearBtn:SetScript("OnClick", function()
+        if Goals and Goals.CombatProvider and Goals.CombatProvider.ClearLog then
+            Goals.CombatProvider:ClearLog()
         end
-        if Goals.db and Goals.db.settings then
-            Goals.db.settings.combatLogBigThreshold = clamped
-        end
-        if bigThresholdValue then
-            bigThresholdValue:SetText(string.format("%d%%", clamped))
-        end
-        if Goals.UI and Goals.UI.UpdateDamageTrackerList then
-            Goals.UI:UpdateDamageTrackerList()
-        end
+        UI:UpdateDamageTrackerList()
     end)
-    self.combatLogBigThresholdSlider = bigThresholdSlider
-    self.combatLogBigThresholdValue = bigThresholdValue
+    attachSideTooltip(clearBtn, "Clear current session combat rows.")
+    y = y - 30
+    self.combatLogClearButton = clearBtn
 
-    local showBossHealingCheck = addCheck("Show boss/trash healing", function(selfBtn)
-        Goals.db.settings.combatLogShowBossHealing = selfBtn:GetChecked() and true or false
-        if Goals.UI and Goals.UI.UpdateDamageTrackerList then
-            Goals.UI:UpdateDamageTrackerList()
-        end
-    end, "Show healing done by bosses/trash.")
-    self.combatLogShowBossHealingCheck = showBossHealingCheck
-
-    local showThreatCheck = addCheck("Show threat events", function(selfBtn)
-        Goals.db.settings.combatLogShowThreat = selfBtn:GetChecked() and true or false
-        if Goals.UI and Goals.UI.UpdateDamageTrackerList then
-            Goals.UI:UpdateDamageTrackerList()
-        end
-    end, "Show aggro/threat change events.")
-    self.combatLogShowThreatCheck = showThreatCheck
-
-    local showThreatAbilityCheck = addCheck("Show threat ability events", function(selfBtn)
-        Goals.db.settings.combatLogShowThreatAbilities = selfBtn:GetChecked() and true or false
-        if Goals.UI and Goals.UI.UpdateDamageTrackerList then
-            Goals.UI:UpdateDamageTrackerList()
-        end
-    end, "Show entries when players use explicit threat up/down/transfer abilities.")
-    self.combatLogShowThreatAbilitiesCheck = showThreatAbilityCheck
-
-    local combinePeriodicCheck = addCheck("Combine periodic ticks", function(selfBtn)
-        Goals.db.settings.combatLogCombinePeriodic = selfBtn:GetChecked() and true or false
-        if Goals.DamageTracker and Goals.DamageTracker.RebuildPeriodicCombines then
-            Goals.DamageTracker:RebuildPeriodicCombines()
-        end
-        if Goals.UI and Goals.UI.UpdateDamageTrackerList then
-            Goals.UI:UpdateDamageTrackerList()
-        end
-    end, "Group periodic ticks into a single entry.")
-    self.combatLogCombinePeriodicCheck = combinePeriodicCheck
-
-    local combineAllCheck = addCheck("Collapse repeated events", function(selfBtn)
-        Goals.db.settings.combatLogCombineAll = selfBtn:GetChecked() and true or false
-        if Goals.UI and Goals.UI.UpdateDamageTrackerList then
-            Goals.UI:UpdateDamageTrackerList()
-        end
-    end, "Collapse repeated combat entries per unit into one line.")
-    self.combatLogCombineAllCheck = combineAllCheck
-
-    y = y - 8
-    addSectionHeader("Broadcast")
     local broadcastBtn = createOptionsButton(optionsContent)
     styleOptionsButton(broadcastBtn, OPTIONS_CONTROL_WIDTH)
     broadcastBtn:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
-    broadcastBtn:SetText("Open broadcast panel")
+    broadcastBtn:SetText("Open share panel")
     broadcastBtn:SetScript("OnClick", function()
         if UI and UI.ToggleCombatBroadcastPopout then
             UI:ToggleCombatBroadcastPopout()
         end
     end)
-    attachSideTooltip(broadcastBtn, "Open a panel to send recent combat log lines to chat.")
-    y = y - 28
-
-    local clearBtn = createOptionsButton(optionsContent)
-    styleOptionsButton(clearBtn, OPTIONS_CONTROL_WIDTH)
-    clearBtn:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
-    clearBtn:SetText("Clear combat log")
-    clearBtn:SetScript("OnClick", function()
-        if Goals.DamageTracker and Goals.DamageTracker.ClearLog then
-            Goals.DamageTracker:ClearLog()
-        end
-        if UI and UI.UpdateDamageTrackerList then
-            UI:UpdateDamageTrackerList()
-        end
-        if UI and UI.UpdateCombatDebugStatus then
-            UI:UpdateCombatDebugStatus()
-        end
-    end)
-    attachSideTooltip(clearBtn, "Clear the current combat log list.")
     y = y - 30
-    self.combatLogClearButton = clearBtn
 
     local contentHeight = math.abs(y) + 40
     optionsContent:SetHeight(contentHeight)
@@ -7673,6 +8040,8 @@ function UI:CreateDamageTrackerTab(page)
     optionsPanel.scroll:SetScript("OnShow", function(selfScroll)
         setScrollBarAlwaysVisible(selfScroll, contentHeight)
     end)
+    self:ApplyCombatDisplayStyle(Goals.db.settings.combatWhtmDisplayStyle or COMBAT_DISPLAY_TABLE)
+    self:ApplyCombatTheme()
 end
 
 function UI:CreateHelpTab(page)
@@ -8927,15 +9296,20 @@ function UI:ShowCombatWhisperPopup(entry, defaultTarget)
 end
 
 function UI:SendCombatEntryToChannel(entry, channel, target)
-    local line = self:FormatCombatBroadcastLine(entry)
-    if not line or line == "" then
-        return
-    end
     if channel == "WHISPER_TARGET" then
         if UnitExists and UnitExists("target") and UnitIsPlayer and UnitIsPlayer("target") then
             target = UnitName and UnitName("target") or target
             channel = "WHISPER"
         end
+    end
+    local api = _G.WHTM_API
+    if api and api.ShareEvent then
+        api.ShareEvent(entry, channel, target)
+        return
+    end
+    local line = self:FormatCombatBroadcastLine(entry)
+    if not line or line == "" then
+        return
     end
     self:SendCombatChatLine(line, channel, target)
 end
@@ -10440,8 +10814,8 @@ function UI:FormatDamageTrackerEntry(entry)
         sourceName = ""
         targetName = player
     end
-    sourceName = fitName(sourceName)
-    targetName = fitName(targetName)
+    sourceName = decorateSelfCombatName(fitName(sourceName))
+    targetName = decorateSelfCombatName(fitName(targetName))
     if kind == "DEATH" then
         return string.format("%s | %s | %s | Died |", ts, sourceName, targetName)
     end
@@ -10537,7 +10911,16 @@ function UI:FormatCombatBroadcastLine(entry)
     if not entry or entry.kind == "BREAK" then
         return nil
     end
+    local provider = Goals and Goals.CombatProvider
+    if provider and provider.BuildShareLine then
+        local shared = provider:BuildShareLine(entry)
+        if shared and shared ~= "" then
+            return shared
+        end
+    end
     local sourceName, targetName = self:GetCombatEntrySourceTarget(entry)
+    sourceName = decorateSelfCombatName(sourceName)
+    targetName = decorateSelfCombatName(targetName)
     local showOverheal = false
     local amount = math.floor(tonumber(entry.amount) or 0)
     local overheal = math.floor(tonumber(entry.overheal) or 0)
@@ -10637,397 +11020,357 @@ function UI:UpdateDamageTrackerList()
     if not self.damageTrackerScroll or not self.damageTrackerRows then
         return
     end
-    local tracker = Goals and Goals.DamageTracker
-    local filter = self.damageTrackerFilter or COMBAT_SHOW_ALL
-    local data = tracker and tracker.GetFilteredEntries and tracker:GetFilteredEntries(filter, { ignoreBigFilter = true }) or {}
+    if self.ApplyCombatTheme then
+        self:ApplyCombatTheme()
+    end
+    local provider = Goals and Goals.CombatProvider or nil
+    local available = provider and provider.IsAvailable and provider:IsAvailable()
+    if self.combatUnavailableLabel then
+        setShown(self.combatUnavailableLabel, not available)
+    end
+    if self.combatRetryButton then
+        setShown(self.combatRetryButton, not available)
+    end
+
+    local data = {}
+    if available and provider.GetFilteredEntries then
+        data = provider:GetFilteredEntries() or {}
+    end
     local offset = FauxScrollFrame_GetOffset(self.damageTrackerScroll) or 0
     FauxScrollFrame_Update(self.damageTrackerScroll, #data, DAMAGE_ROWS, DAMAGE_ROW_HEIGHT)
     local contentHeight = #data * DAMAGE_ROW_HEIGHT
     self.damageTrackerScroll._contentHeight = contentHeight
     setScrollBarAlwaysVisible(self.damageTrackerScroll, contentHeight)
-    local settings = Goals and Goals.db and Goals.db.settings or nil
-    local threshold = settings and tonumber(settings.combatLogBigThreshold) or nil
-    if threshold == nil and settings then
-        local oldDamage = tonumber(settings.combatLogBigDamageThreshold)
-        local oldHeal = tonumber(settings.combatLogBigHealingThreshold)
-        if oldDamage or oldHeal then
-            threshold = math.max(oldDamage or 0, oldHeal or 0)
+    local displayStyle = self:GetCombatDisplayStyle()
+    local chatStyle = displayStyle == COMBAT_DISPLAY_CHAT
+    local softRowsEnabled = not (Goals and Goals.db and Goals.db.settings and Goals.db.settings.combatWhtmSoftRowColors == false)
+    local rowBgStyle = self:GetCombatRowBgStyle()
+    local selectedEntry = self.combatTooltipLocked and self.combatTooltipEntry or nil
+    local selectedEntryKey = self.combatTooltipLocked and self.combatTooltipEntryKey or nil
+    local selectedVisible = false
+    local selectedCurrentEvent = nil
+
+    local function iconTag(idx)
+        idx = tonumber(idx)
+        if not idx or idx < 1 or idx > 8 then
+            return ""
         end
-    end
-    if threshold == nil then
-        threshold = (settings and settings.combatLogShowBig) and 50 or 0
-        if settings then
-            settings.combatLogBigThreshold = threshold
-        end
-    end
-    if threshold < 0 then
-        threshold = 0
-    elseif threshold > 100 then
-        threshold = 100
-    end
-    local useBigFilter = threshold > 0
-    local sliceStart = offset + 1
-    local sliceEnd = math.min(offset + DAMAGE_ROWS, #data)
-    local sliceMaxDamage = 0
-    local sliceMaxHeal = 0
-    if useBigFilter then
-        for i = sliceStart, sliceEnd do
-            local entry = data[i]
-            if entry and entry.kind ~= "BREAK" and entry.kind ~= "DEATH" and entry.kind ~= "RES" then
-                local amount = tonumber(entry.amount) or 0
-                if entry.kind == "HEAL" or entry.kind == "HEAL_OUT" or entry.kind == "BOSS_HEAL" then
-                    if amount > sliceMaxHeal then
-                        sliceMaxHeal = amount
-                    end
-                elseif entry.kind == "DAMAGE" or entry.kind == "DAMAGE_OUT" then
-                    if amount > sliceMaxDamage then
-                        sliceMaxDamage = amount
-                    end
-                end
-            end
-        end
-    end
-    local function passesSliceThreshold(entry)
-        if not useBigFilter or not entry then
-            return true
-        end
-        if entry.kind == "BREAK" or entry.kind == "DEATH" or entry.kind == "RES" then
-            return true
-        end
-        local amount = tonumber(entry.amount) or 0
-        if entry.kind == "HEAL" or entry.kind == "HEAL_OUT" or entry.kind == "BOSS_HEAL" then
-            if sliceMaxHeal <= 0 then
-                return true
-            end
-            return amount >= (sliceMaxHeal * (threshold / 100))
-        end
-        if entry.kind == "DAMAGE" or entry.kind == "DAMAGE_OUT" then
-            if sliceMaxDamage <= 0 then
-                return true
-            end
-            return amount >= (sliceMaxDamage * (threshold / 100))
-        end
-        return true
-    end
-    local visibleEntries = {}
-    local visibleIndexes = {}
-    if useBigFilter then
-        for i = sliceStart, sliceEnd do
-            local entry = data[i]
-            if entry and passesSliceThreshold(entry) then
-                table.insert(visibleEntries, entry)
-                table.insert(visibleIndexes, i)
-            end
-        end
-    else
-        for i = sliceStart, sliceEnd do
-            local entry = data[i]
-            if entry then
-                table.insert(visibleEntries, entry)
-                table.insert(visibleIndexes, i)
-            end
-        end
-    end
-    local showOverheal = false
-    local function setNameText(font, name, r, g, b)
-        if not font then
-            return
-        end
-        font:SetText(name or "")
-        if r and g and b then
-            font:SetTextColor(r, g, b)
-        else
-            font:SetTextColor(1, 1, 1)
-        end
+        return ("|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_%d:0|t"):format(idx)
     end
 
-    local function getPlayerColor(name)
-        if Goals and Goals.GetPlayerColor and name and name ~= "" then
-            local pr, pg, pb = Goals:GetPlayerColor(name)
-            if pr and pg and pb then
-                return pr, pg, pb
+    local function short(text)
+        if not text or text == "" then
+            return ""
+        end
+        return text
+    end
+
+    local function groupType(event)
+        if event.eventGroup == "aura" then
+            return "Aura"
+        end
+        if event.eventGroup == "heal" then
+            return "Heal"
+        end
+        if event.eventGroup == "damage" then
+            return "Damage"
+        end
+        if event.eventGroup == "death" then
+            return "Death"
+        end
+        if event.eventGroup == "miss" then
+            return "Miss"
+        end
+        if event.eventGroup == "control" then
+            return "Control"
+        end
+        if event.eventGroup == "resource" then
+            return "Resource"
+        end
+        return "Event"
+    end
+
+    local function auraAction(event)
+        if event.subevent == "SPELL_AURA_APPLIED" then return "Applied" end
+        if event.subevent == "SPELL_AURA_REMOVED" then return "Lost" end
+        if event.subevent == "SPELL_AURA_REFRESH" then return "Refreshed" end
+        if event.subevent == "SPELL_AURA_APPLIED_DOSE" then return "Stacked" end
+        if event.subevent == "SPELL_AURA_REMOVED_DOSE" then return "Unstacked" end
+        if event.subevent == "SPELL_AURA_BROKEN" or event.subevent == "SPELL_AURA_BROKEN_SPELL" then return "Broken" end
+        return "Changed"
+    end
+
+    local function detailAndTotal(event)
+        local function colorWrap(text, r, g, b)
+            return string.format("|cff%02x%02x%02x%s|r", (r or 1) * 255, (g or 1) * 255, (b or 1) * 255, tostring(text or ""))
+        end
+        local clr = {
+            damage = { 1.00, 0.30, 0.30 },
+            heal = { 0.30, 1.00, 0.30 },
+            overheal = { 0.00, 0.70, 0.20 },
+            overkill = { 0.50, 0.02, 0.02 },
+            resist = { 0.68, 0.10, 0.10 },
+            blocked = { 0.80, 0.74, 0.46 },
+            absorbed = { 0.60, 0.74, 0.98 },
+        }
+        if event.eventGroup == "aura" then
+            local detail = (event.auraType == "BUFF" and "Buff") or (event.auraType == "DEBUFF" and "Debuff") or "Aura"
+            return detail, auraAction(event)
+        end
+        if event.amount then
+            local effective = tonumber(event.effectiveAmount or event.amount) or 0
+            local detail = tostring(effective)
+            if event.eventGroup == "heal" then
+                detail = colorWrap(detail, clr.heal[1], clr.heal[2], clr.heal[3])
+                if event.overheal then
+                    detail = detail .. " " .. colorWrap("(" .. tostring(event.overheal) .. ")", clr.overheal[1], clr.overheal[2], clr.overheal[3])
+                end
+            else
+                if event.eventGroup == "damage" then
+                    if event.overkill then
+                        detail = colorWrap(detail, clr.overkill[1], clr.overkill[2], clr.overkill[3])
+                    elseif event.resisted then
+                        detail = colorWrap(detail, clr.resist[1], clr.resist[2], clr.resist[3])
+                    else
+                        detail = colorWrap(detail, clr.damage[1], clr.damage[2], clr.damage[3])
+                    end
+                end
+                local mods = {}
+                if event.resisted then
+                    mods[#mods + 1] = colorWrap("R " .. tostring(event.resisted), clr.resist[1], clr.resist[2], clr.resist[3])
+                end
+                if event.overkill then
+                    mods[#mods + 1] = colorWrap("OK " .. tostring(event.overkill), clr.overkill[1], clr.overkill[2], clr.overkill[3])
+                end
+                if event.blocked then
+                    mods[#mods + 1] = colorWrap("B " .. tostring(event.blocked), clr.blocked[1], clr.blocked[2], clr.blocked[3])
+                end
+                if event.absorbed then
+                    mods[#mods + 1] = colorWrap("A " .. tostring(event.absorbed), clr.absorbed[1], clr.absorbed[2], clr.absorbed[3])
+                end
+                if #mods > 0 then
+                    detail = detail .. " (" .. table.concat(mods, " ") .. ")"
+                end
             end
+            return detail, tostring(event.rawAmount or event.amount)
+        end
+        if event.eventText and event.eventText ~= "" then
+            return event.eventText, "-"
+        end
+        return short(event.missType), "-"
+    end
+
+    local function colorForGroup(group)
+        if group == "heal" then
+            return 0.2, 1, 0.2
+        end
+        if group == "damage" then
+            return 1, 0.25, 0.25
+        end
+        if group == "aura" then
+            return 1, 0.88, 0.35
+        end
+        if group == "death" then
+            return 0.8, 0.35, 0.9
+        end
+        if group == "control" then
+            return 0.6, 0.8, 1
         end
         return 1, 1, 1
     end
 
-    local function truncateName(name, maxLen)
-        if not name or name == "" then
-            return name or ""
+    local function colorForTier(tier)
+        if tier == "junk" then
+            return 0.62, 0.62, 0.62
         end
-        local limit = tonumber(maxLen) or 0
-        if limit < 4 then
-            return name
+        if tier == "normal" then
+            return 0.95, 0.95, 0.95
         end
-        if string.len(name) > limit then
-            return string.sub(name, 1, limit - 3) .. "..."
+        if tier == "elite" then
+            return 1.0, 0.3, 0.3
         end
-        return name
+        if tier == "boss" then
+            return 1.0, 0.5, 0.0
+        end
+        return nil
     end
 
-    local function isPlayerName(name)
-        if not name or name == "" then
-            return false
+    local function colorForClass(classFile)
+        if classFile and RAID_CLASS_COLORS and RAID_CLASS_COLORS[classFile] then
+            local c = RAID_CLASS_COLORS[classFile]
+            return c.r, c.g, c.b
         end
-        if Goals and Goals.NormalizeName and Goals.DamageTracker and Goals.DamageTracker.rosterNameMap then
-            local normalized = Goals:NormalizeName(name)
-            return Goals.DamageTracker.rosterNameMap[normalized] and true or false
-        end
-        if Goals and Goals.GetPlayerName and Goals.NormalizeName then
-            return Goals:NormalizeName(name) == Goals:NormalizeName(Goals:GetPlayerName())
-        end
-        return false
+        return nil
     end
 
-    local function fitName(name)
-        if isPlayerName(name) then
-            return truncateName(name, DAMAGE_NAME_MAX_PLAYER)
+    local function colorForUnit(event, isSource)
+        local tier = isSource and event.sourceTier or event.destTier
+        local tr, tg, tb = colorForTier(tier)
+        if tr then
+            return tr, tg, tb
         end
-        return truncateName(name, DAMAGE_NAME_MAX_NPC)
+        local classFile = isSource and event.sourceClass or event.destClass
+        local cr, cg, cb = colorForClass(classFile)
+        if cr then
+            return cr, cg, cb
+        end
+        return 0.95, 0.95, 0.95
+    end
+
+    local function colorForAbility(event)
+        if event.eventGroup == "heal" then
+            if event.overheal then
+                return 0.00, 0.70, 0.20
+            end
+            return 0.30, 1.00, 0.30
+        end
+        if event.eventGroup == "damage" then
+            if event.overkill then
+                return 0.50, 0.02, 0.02
+            end
+            if event.resisted then
+                return 0.68, 0.10, 0.10
+            end
+            return 1.00, 0.30, 0.30
+        end
+        if event.eventGroup == "aura" then
+            return 1.00, 0.88, 0.35
+        end
+        if event.eventGroup == "control" then
+            return 0.35, 0.70, 1.00
+        end
+        if event.eventGroup == "resource" then
+            return 0.75, 0.55, 1.00
+        end
+        return 0.90, 0.90, 0.90
     end
 
     for i = 1, DAMAGE_ROWS do
         local row = self.damageTrackerRows[i]
-        local entry = visibleEntries[i]
-        local entryIndex = visibleIndexes[i] or (offset + i)
-        if entry then
+        local event = data[offset + i]
+        if event then
             row:Show()
-            row.entry = entry
-            local isBreak = entry.kind == "BREAK"
-            if isBreak then
-                if row.stripe then
-                    setShown(row.stripe, false)
+            row.entry = event
+            if row.stripe then
+                setShown(row.stripe, ((offset + i) % 2) == 0)
+            end
+
+            local detail, total = detailAndTotal(event)
+            local where = short((event.subzone and event.subzone ~= "" and event.subzone) or event.zone)
+            if event.coordsText and event.coordsText ~= "" then
+                where = where .. " " .. event.coordsText
+            end
+            local r, g, b = colorForGroup(event.eventGroup)
+            local sr, sg, sb = colorForUnit(event, true)
+            local tr, tg, tb = colorForUnit(event, false)
+            local ar, ag, ab = colorForAbility(event)
+
+            local src = short(decorateSelfCombatName(event.sourceName))
+            local dst = short(decorateSelfCombatName(event.destName))
+            row.cols.time:SetText(formatCombatTimestamp(event.timestamp or event.ts))
+            row.cols.icon:SetText(iconTag(event.sourceRaidIcon))
+            if chatStyle then
+                local actor = src
+                if src ~= "" and dst ~= "" then
+                    actor = src .. " -> " .. dst
+                elseif src == "" then
+                    actor = dst
                 end
-                setShown(row.breakBg, true)
-                setShown(row.breakText, true)
-                local label = entry.label or ""
-                local ts = formatCombatTimestamp(entry.ts)
-                if ts ~= "" then
-                    label = ts .. " - " .. label
+                local summary = short(event.spellName or event.subevent)
+                if detail and detail ~= "" then
+                    summary = summary ~= "" and (summary .. " " .. detail) or detail
                 end
-                row.breakText:SetText(label)
-                row.breakText:SetTextColor(0.9, 0.9, 0.9)
-                row.timeText:SetText("")
-                if row.sourceText then
-                    row.sourceText:SetText("")
+                if total and total ~= "" and total ~= "-" then
+                    summary = summary .. " [" .. total .. "]"
                 end
-                if row.targetText then
-                    row.targetText:SetText("")
+                if where and where ~= "" then
+                    summary = summary .. " - " .. where
                 end
-                row.amountText:SetText("")
-                row.spellText:SetText("")
+                row.cols.source:SetText(actor or "")
+                row.cols.target:SetText("")
+                row.cols.ability:SetText("")
+                row.cols.type:SetText("")
+                row.cols.detail:SetText("")
+                row.cols.total:SetText("")
+                row.cols.where:SetText(summary or "")
+
+                row.cols.time:SetTextColor(1, 1, 1)
+                row.cols.icon:SetTextColor(1, 1, 1)
+                row.cols.source:SetTextColor(sr, sg, sb)
+                row.cols.target:SetTextColor(1, 1, 1)
+                row.cols.ability:SetTextColor(1, 1, 1)
+                row.cols.type:SetTextColor(1, 1, 1)
+                row.cols.detail:SetTextColor(1, 1, 1)
+                row.cols.total:SetTextColor(1, 1, 1)
+                row.cols.where:SetTextColor(1, 1, 1)
             else
-                setShown(row.breakBg, false)
-                setShown(row.breakText, false)
-                if row.stripe then
-                    setShown(row.stripe, (entryIndex % 2) == 0)
-                end
-                row.timeText:SetText(formatCombatTimestamp(entry.ts))
-                local kind = entry.kind or "DAMAGE"
-                local sourceName = ""
-                local targetName = ""
-                local sourceColorR, sourceColorG, sourceColorB = 1, 1, 1
-                local targetColorR, targetColorG, targetColorB = 1, 1, 1
+                row.cols.source:SetText(src)
+                row.cols.target:SetText(dst)
+                row.cols.ability:SetText(short(event.spellName or event.subevent))
+                row.cols.type:SetText(groupType(event))
+                row.cols.detail:SetText(detail or "")
+                row.cols.total:SetText(total or "")
+                row.cols.where:SetText(where or "")
 
-                if kind == "DAMAGE" then
-                    sourceName = entry.source or "Unknown"
-                    targetName = entry.player or "Unknown"
-                    sourceColorR, sourceColorG, sourceColorB = getSourceColor(entry)
-                    targetColorR, targetColorG, targetColorB = getPlayerColor(targetName)
-                elseif kind == "THREAT" then
-                    sourceName = entry.source or "Unknown"
-                    targetName = entry.player or "Unknown"
-                    sourceColorR, sourceColorG, sourceColorB = getSourceColor(entry)
-                    targetColorR, targetColorG, targetColorB = getPlayerColor(targetName)
-                elseif kind == "INTERRUPT" then
-                    sourceName = entry.player or "Unknown"
-                    targetName = entry.source or "Unknown"
-                    sourceColorR, sourceColorG, sourceColorB = getPlayerColor(sourceName)
-                    targetColorR, targetColorG, targetColorB = getSourceColor(entry)
-                elseif kind == "THREAT_ABILITY" then
-                    sourceName = entry.player or "Unknown"
-                    targetName = entry.source or "Unknown"
-                    sourceColorR, sourceColorG, sourceColorB = getPlayerColor(sourceName)
-                    targetColorR, targetColorG, targetColorB = getSourceColor(entry)
-                elseif kind == "BOSS_HEAL" then
-                    sourceName = entry.source or "Unknown"
-                    targetName = entry.player or "Unknown"
-                    sourceColorR, sourceColorG, sourceColorB = getSourceColor(entry)
-                    targetColorR, targetColorG, targetColorB = getSourceColor({ sourceKind = entry.targetKind, source = targetName })
-                elseif kind == "DAMAGE_OUT" then
-                    sourceName = entry.player or "Unknown"
-                    targetName = entry.source or "Unknown"
-                    sourceColorR, sourceColorG, sourceColorB = getPlayerColor(sourceName)
-                    targetColorR, targetColorG, targetColorB = getSourceColor(entry)
-                elseif kind == "HEAL" then
-                    sourceName = entry.source or "Unknown"
-                    targetName = entry.player or "Unknown"
-                    sourceColorR, sourceColorG, sourceColorB = getPlayerColor(sourceName)
-                    targetColorR, targetColorG, targetColorB = getPlayerColor(targetName)
-                elseif kind == "HEAL_OUT" then
-                    sourceName = entry.player or "Unknown"
-                    targetName = entry.source or "Unknown"
-                    sourceColorR, sourceColorG, sourceColorB = getPlayerColor(sourceName)
-                    targetColorR, targetColorG, targetColorB = getPlayerColor(targetName)
-                elseif kind == "RES" then
-                    sourceName = entry.source or "Unknown"
-                    targetName = entry.player or "Unknown"
-                    sourceColorR, sourceColorG, sourceColorB = getSourceColor(entry)
-                    targetColorR, targetColorG, targetColorB = getPlayerColor(targetName)
-                elseif kind == "DEATH" then
-                    sourceName = ""
-                    targetName = entry.player or "Unknown"
-                    targetColorR, targetColorG, targetColorB = getPlayerColor(targetName)
-                end
+                row.cols.type:SetTextColor(r, g, b)
+                row.cols.total:SetTextColor(ar, ag, ab)
+                row.cols.time:SetTextColor(1, 1, 1)
+                row.cols.icon:SetTextColor(1, 1, 1)
+                row.cols.source:SetTextColor(sr, sg, sb)
+                row.cols.target:SetTextColor(tr, tg, tb)
+                row.cols.ability:SetTextColor(ar, ag, ab)
+                row.cols.detail:SetTextColor(1, 1, 1)
+                row.cols.where:SetTextColor(0.8, 0.9, 1)
+            end
 
-                sourceName = fitName(sourceName)
-                targetName = fitName(targetName)
-
-                setNameText(row.sourceText, sourceName, sourceColorR, sourceColorG, sourceColorB)
-                setNameText(row.targetText, targetName, targetColorR, targetColorG, targetColorB)
-
-                if kind == "DEATH" then
-                if row.amountText then
-                    row.amountText:SetText("Died")
-                    row.amountText:SetTextColor(DEATH_COLOR[1], DEATH_COLOR[2], DEATH_COLOR[3])
-                end
-                if row.spellText then
-                    row.spellText:SetText("")
-                end
-            elseif kind == "RES" then
-                local amount = math.floor(tonumber(entry.amount) or 0)
-                if row.amountText then
-                    if amount > 0 then
-                        row.amountText:SetText(string.format("Revived +%d", amount))
+            if row.softTint then
+                if softRowsEnabled then
+                    if rowBgStyle == COMBAT_ROW_BG_NEUTRAL then
+                        local odd = ((offset + i) % 2) == 1
+                        if odd then
+                            row.softTint:SetTexture(0.64, 0.66, 0.70, 0.12)
+                        else
+                            row.softTint:SetTexture(0.18, 0.20, 0.24, 0.20)
+                        end
                     else
-                        row.amountText:SetText("Revived")
+                        row.softTint:SetTexture(r, g, b, 0.08)
                     end
-                    row.amountText:SetTextColor(REVIVE_COLOR[1], REVIVE_COLOR[2], REVIVE_COLOR[3])
-                end
-                if row.spellText then
-                    row.spellText:SetText(entry.spell or "")
-                end
-            elseif kind == "HEAL" then
-                local amount = math.floor(tonumber(entry.amount) or 0)
-                local overheal = math.floor(tonumber(entry.overheal) or 0)
-                if row.amountText then
-                    if showOverheal and overheal > 0 then
-                        row.amountText:SetText(string.format("+%d |cff55aa55(%d)|r", amount, overheal))
-                    else
-                        row.amountText:SetText(string.format("+%d", amount))
-                    end
-                    row.amountText:SetTextColor(HEAL_COLOR[1], HEAL_COLOR[2], HEAL_COLOR[3])
-                end
-                local spellText = entry.spell or ""
-                if entry.spellDuration and entry.spellDuration > 1 then
-                    spellText = string.format("%s (%ds)", spellText ~= "" and spellText or "Unknown", entry.spellDuration)
-                end
-                if row.spellText then
-                    row.spellText:SetText(spellText)
-                end
-            elseif kind == "HEAL_OUT" then
-                local amount = math.floor(tonumber(entry.amount) or 0)
-                local overheal = math.floor(tonumber(entry.overheal) or 0)
-                if row.amountText then
-                    if showOverheal and overheal > 0 then
-                        row.amountText:SetText(string.format("+%d |cff55aa55(%d)|r", amount, overheal))
-                    else
-                        row.amountText:SetText(string.format("+%d", amount))
-                    end
-                    row.amountText:SetTextColor(HEAL_COLOR[1], HEAL_COLOR[2], HEAL_COLOR[3])
-                end
-                local spellText = entry.spell or ""
-                if entry.spellDuration and entry.spellDuration > 1 then
-                    spellText = string.format("%s (%ds)", spellText ~= "" and spellText or "Unknown", entry.spellDuration)
-                end
-                if row.spellText then
-                    row.spellText:SetText(spellText)
-                end
-            elseif kind == "DAMAGE_OUT" then
-                local amount = math.floor(tonumber(entry.amount) or 0)
-                if row.amountText then
-                    row.amountText:SetText(string.format("-%d", amount))
-                    row.amountText:SetTextColor(DAMAGE_COLOR[1], DAMAGE_COLOR[2], DAMAGE_COLOR[3])
-                end
-                local spellText = entry.spell or ""
-                if entry.spellDuration and entry.spellDuration > 1 then
-                    spellText = string.format("%s (%ds)", spellText ~= "" and spellText or "Unknown", entry.spellDuration)
-                end
-                if row.spellText then
-                    row.spellText:SetText(spellText)
-                end
-            elseif kind == "THREAT" then
-                if row.amountText then
-                    row.amountText:SetText("THREAT")
-                    row.amountText:SetTextColor(THREAT_COLOR[1], THREAT_COLOR[2], THREAT_COLOR[3])
-                end
-                if row.spellText then
-                    row.spellText:SetText(entry.reason or "Threat changed")
-                end
-            elseif kind == "THREAT_ABILITY" then
-                if row.amountText then
-                    row.amountText:SetText(entry.reason or "THREAT")
-                    row.amountText:SetTextColor(THREAT_COLOR[1], THREAT_COLOR[2], THREAT_COLOR[3])
-                end
-                if row.spellText then
-                    row.spellText:SetText(entry.spell or "Threat ability")
-                end
-            elseif kind == "INTERRUPT" then
-                if row.amountText then
-                    row.amountText:SetText(entry.interruptedSpell or "Interrupted cast")
-                    row.amountText:SetTextColor(THREAT_COLOR[1], THREAT_COLOR[2], THREAT_COLOR[3])
-                end
-                if row.spellText then
-                    row.spellText:SetText(entry.spell or "Interrupt")
-                end
-            elseif kind == "BOSS_HEAL" then
-                local amount = math.floor(tonumber(entry.amount) or 0)
-                if row.amountText then
-                    row.amountText:SetText(string.format("+%d", amount))
-                    row.amountText:SetTextColor(HEAL_COLOR[1], HEAL_COLOR[2], HEAL_COLOR[3])
-                end
-                if row.spellText then
-                    row.spellText:SetText(entry.spell or "Boss heal")
-                end
-            else
-                local amount = math.floor(tonumber(entry.amount) or 0)
-                if row.amountText then
-                    local isBigBoss = entry.sourceKind == "boss" and sliceMaxDamage > 0 and amount >= (sliceMaxDamage * 0.8)
-                    if isBigBoss then
-                        row.amountText:SetText(string.format("-%d !!!", amount))
-                        row.amountText:SetTextColor(1, 0.55, 0.1)
-                    else
-                        row.amountText:SetText(string.format("-%d", amount))
-                        row.amountText:SetTextColor(DAMAGE_COLOR[1], DAMAGE_COLOR[2], DAMAGE_COLOR[3])
-                    end
-                end
-                local spellText = entry.spell or ""
-                if entry.spellDuration and entry.spellDuration > 1 then
-                    spellText = string.format("%s (%ds)", spellText ~= "" and spellText or "Unknown", entry.spellDuration)
-                end
-                if row.spellText then
-                    row.spellText:SetText(spellText)
+                else
+                    row.softTint:SetTexture(0, 0, 0, 0)
                 end
             end
+            if row.selectedTint then
+                local eventKey = combatEventKey(event)
+                local isSelected = false
+                if selectedEntryKey and eventKey and selectedEntryKey == eventKey then
+                    isSelected = true
+                elseif selectedEntry and selectedEntry == event then
+                    isSelected = true
+                end
+                setShown(row.selectedTint, isSelected)
+                if isSelected then
+                    selectedVisible = true
+                    selectedCurrentEvent = event
+                end
             end
         else
             row:Hide()
             row.entry = nil
-            setShown(row.breakBg, false)
-            setShown(row.breakText, false)
-            row.timeText:SetText("")
-            if row.sourceText then
-                row.sourceText:SetText("")
+            if row.softTint then
+                row.softTint:SetTexture(0, 0, 0, 0)
             end
-            if row.targetText then
-                row.targetText:SetText("")
+            if row.selectedTint then
+                row.selectedTint:Hide()
             end
-            if row.amountText then
-                row.amountText:SetText("")
-            end
-            if row.spellText then
-                row.spellText:SetText("")
-            end
+        end
+    end
+    if (selectedEntry or selectedEntryKey) and self.combatTooltipLocked then
+        if selectedVisible then
+            self.combatTooltipEntry = selectedCurrentEvent
+            self.combatTooltipEntryKey = combatEventKey(selectedCurrentEvent)
+            showCombatRowTooltip(selectedCurrentEvent)
+        else
+            hideCombatRowTooltip()
         end
     end
 end
@@ -13678,6 +14021,104 @@ function UI:Refresh()
     local trackingEnabled = Goals.db.settings.combatLogTracking and true or false
     if self.combatLogTrackingCheck then
         self.combatLogTrackingCheck:SetChecked(trackingEnabled)
+    end
+    if Goals.db.settings.combatWhtmDirections then
+        if self.combatDirIncomingCheck then
+            self.combatDirIncomingCheck:SetChecked(Goals.db.settings.combatWhtmDirections.incoming and true or false)
+        end
+        if self.combatDirOutgoingCheck then
+            self.combatDirOutgoingCheck:SetChecked(Goals.db.settings.combatWhtmDirections.outgoing and true or false)
+        end
+        if self.combatDirInternalCheck then
+            self.combatDirInternalCheck:SetChecked(Goals.db.settings.combatWhtmDirections.internal and true or false)
+        end
+    end
+    if self.combatGroupChecks and Goals.db.settings.combatWhtmGroups then
+        for key, check in pairs(self.combatGroupChecks) do
+            check:SetChecked(Goals.db.settings.combatWhtmGroups[key] and true or false)
+        end
+    end
+    if self.combatAuraChecks and Goals.db.settings.combatWhtmAuraStates then
+        for key, check in pairs(self.combatAuraChecks) do
+            check:SetChecked(Goals.db.settings.combatWhtmAuraStates[key] and true or false)
+        end
+    end
+    if self.combatPausedCheck then
+        self.combatPausedCheck:SetChecked(Goals.db.settings.combatWhtmPaused and true or false)
+    end
+    if self.combatSoftRowsCheck then
+        self.combatSoftRowsCheck:SetChecked(Goals.db.settings.combatWhtmSoftRowColors ~= false)
+    end
+    if self.combatThemeDropdown then
+        local theme = self:GetCombatTheme()
+        UIDropDownMenu_SetSelectedValue(self.combatThemeDropdown, theme)
+        local label = "Neutral"
+        if theme == COMBAT_THEME_ALLIANCE then
+            label = "Alliance"
+        elseif theme == COMBAT_THEME_HORDE then
+            label = "Horde"
+        elseif theme == COMBAT_THEME_CLASS then
+            label = "Class Accent"
+        end
+        self:SetDropdownText(self.combatThemeDropdown, label)
+        self:ApplyCombatTheme()
+    end
+    if self.combatRowBgStyleDropdown then
+        local rowStyle = self:GetCombatRowBgStyle()
+        UIDropDownMenu_SetSelectedValue(self.combatRowBgStyleDropdown, rowStyle)
+        self:SetDropdownText(self.combatRowBgStyleDropdown, rowStyle == COMBAT_ROW_BG_NEUTRAL and "Neutral (B/W)" or "Event")
+    end
+    if self.combatHideMinimapCheck then
+        self.combatHideMinimapCheck:SetChecked(Goals.db.settings.combatWhtmHideMinimapIcon and true or false)
+    end
+    if self.combatBossOnlyCheck then
+        self.combatBossOnlyCheck:SetChecked(Goals.db.settings.combatWhtmBossOnly and true or false)
+    end
+    if self.combatRetainHistoryCheck then
+        self.combatRetainHistoryCheck:SetChecked(Goals.db.settings.combatWhtmRetainFullHistory and true or false)
+    end
+    if self.combatScopeDropdown then
+        local scope = Goals.db.settings.combatWhtmScope or "player"
+        local scopeText = "Self only"
+        if scope == "party" then
+            scopeText = "Party group"
+        elseif scope == "raid" then
+            scopeText = "Raid group"
+        end
+        UIDropDownMenu_SetSelectedValue(self.combatScopeDropdown, scope)
+        self:SetDropdownText(self.combatScopeDropdown, scopeText)
+    end
+    if self.combatTimestampDropdown then
+        local fmt = Goals.db.settings.combatWhtmTimestampFormat or "24h"
+        UIDropDownMenu_SetSelectedValue(self.combatTimestampDropdown, fmt)
+        self:SetDropdownText(self.combatTimestampDropdown, fmt)
+    end
+    if self.combatDisplayStyleDropdown then
+        local style = self:GetCombatDisplayStyle()
+        UIDropDownMenu_SetSelectedValue(self.combatDisplayStyleDropdown, style)
+        self:SetDropdownText(self.combatDisplayStyleDropdown, style == COMBAT_DISPLAY_CHAT and "Chat style" or "Table")
+        self:ApplyCombatDisplayStyle(style)
+    end
+    if self.combatMaxRowsSlider then
+        self.combatMaxRowsSlider:SetValue(Goals.db.settings.combatWhtmMaxRows or 600)
+        if Goals.db.settings.combatWhtmRetainFullHistory then
+            self.combatMaxRowsSlider:Disable()
+            if self.combatMaxRowsSlider.SetAlpha then
+                self.combatMaxRowsSlider:SetAlpha(0.45)
+            end
+        else
+            self.combatMaxRowsSlider:Enable()
+            if self.combatMaxRowsSlider.SetAlpha then
+                self.combatMaxRowsSlider:SetAlpha(1)
+            end
+        end
+    end
+    if self.combatMaxRowsValue then
+        if Goals.db.settings.combatWhtmRetainFullHistory then
+            self.combatMaxRowsValue:SetText("Max rows: Session (unlimited)")
+        else
+            self.combatMaxRowsValue:SetText(("Max rows: %d"):format(Goals.db.settings.combatWhtmMaxRows or 600))
+        end
     end
     if Goals and Goals.db and Goals.db.settings then
         self:NormalizeCombatShowFlags(Goals.db.settings)

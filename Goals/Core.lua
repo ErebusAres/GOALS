@@ -4895,6 +4895,9 @@ function Goals:Init()
     if self.Events and self.Events.Init then
         self.Events:Init()
     end
+    if self.CombatProvider and self.CombatProvider.Init then
+        self.CombatProvider:Init()
+    end
     if self.UI and self.UI.Init then
         self.UI:Init()
     end
