@@ -14,6 +14,7 @@ gemsAndEnchants.lua
 wishlistBanner.lua
 wishlistBuildData.lua
 wishlistBuildCustom.lua
+CustomBuilds\Autoload.xml
 wishlistBuilds.lua
 Core.lua
 loc.lua

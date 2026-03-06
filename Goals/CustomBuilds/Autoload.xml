@@ -1,0 +1,17 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/ ..\FrameXML\UI.xsd">
+    <!--
+        Autoload custom build packs.
+        Create files in order with no gaps: Builds01.lua, then Builds02.lua, etc.
+        Missing listed files can cause addon load errors.
+    -->
+    <Script file="Builds01.lua"/>
+    <Script file="Builds02.lua"/>
+    <Script file="Builds03.lua"/>
+    <Script file="Builds04.lua"/>
+    <Script file="Builds05.lua"/>
+    <Script file="Builds06.lua"/>
+    <Script file="Builds07.lua"/>
+    <Script file="Builds08.lua"/>
+    <Script file="Builds09.lua"/>
+    <Script file="Builds10.lua"/>
+</Ui>

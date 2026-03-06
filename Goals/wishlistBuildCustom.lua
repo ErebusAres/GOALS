@@ -61,6 +61,19 @@ Goals.IconTextures["custom-classic"] = "Interface\\AddOns\\" .. addonName .. "\\
 Goals.IconTextures["custom-tbc"] = "Interface\\AddOns\\" .. addonName .. "\\Icons\\custom-tbc.tga"
 Goals.IconTextures["custom-wotlk"] = "Interface\\AddOns\\" .. addonName .. "\\Icons\\custom-wotlk.tga"
 
+Goals.CustomBuildFiles = Goals.CustomBuildFiles or {}
+function Goals:RegisterCustomBuildFile(builds)
+    if type(builds) ~= "table" then
+        return
+    end
+    local isArray = (builds[1] ~= nil)
+    local hasBuildsField = (type(builds.builds) == "table")
+    if not isArray and not hasBuildsField then
+        return
+    end
+    table.insert(Goals.CustomBuildFiles, builds)
+end
+
 Goals.WishlistBuildCustomData = {
     builds = {
         -- CUSTOM TEST: shows all three custom source icons at once.

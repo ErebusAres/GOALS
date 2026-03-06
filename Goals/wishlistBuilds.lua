@@ -128,17 +128,28 @@ Goals.WishlistBuildLibrary = Goals.WishlistBuildLibrary or {
 
 local function ensureBuildsPopulated()
     local merged = {}
-    if Goals.WishlistBuildData and Goals.WishlistBuildData.builds then
-        for _, build in ipairs(Goals.WishlistBuildData.builds) do
+    local function appendBuildList(list)
+        if type(list) ~= "table" then
+            return
+        end
+        for _, build in ipairs(list) do
             if not (build and build.disabled) then
                 table.insert(merged, build)
             end
         end
     end
+    if Goals.WishlistBuildData and Goals.WishlistBuildData.builds then
+        appendBuildList(Goals.WishlistBuildData.builds)
+    end
     if Goals.WishlistBuildCustomData and Goals.WishlistBuildCustomData.builds then
-        for _, build in ipairs(Goals.WishlistBuildCustomData.builds) do
-            if not (build and build.disabled) then
-                table.insert(merged, build)
+        appendBuildList(Goals.WishlistBuildCustomData.builds)
+    end
+    if type(Goals.CustomBuildFiles) == "table" then
+        for _, customPack in ipairs(Goals.CustomBuildFiles) do
+            if customPack and type(customPack.builds) == "table" then
+                appendBuildList(customPack.builds)
+            else
+                appendBuildList(customPack)
             end
         end
     end

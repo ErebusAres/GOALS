@@ -3,17 +3,24 @@
 -- Copy any build below into Builds01.lua (or Builds02.lua ... Builds10.lua).
 --
 -- Quick start
--- 1) Create Goals/CustomBuilds/Builds01.lua (or Builds02.lua ... Builds10.lua).
--- 2) Paste your build blocks inside a returned list, separated by commas.
--- 3) Save and reload the UI.
+-- 1) Create Goals/CustomBuilds/Builds01.lua first.
+-- 2) Add Builds02.lua only after Builds01.lua exists, then Builds03.lua, etc.
+-- 3) Keep file names exact and sequential (Builds01.lua .. Builds10.lua) with no gaps.
+-- 4) Paste your build blocks inside Goals:RegisterCustomBuildFile({ ... }).
+-- 5) Save and reload the UI.
 --
 -- Example file structure (Builds01.lua):
--- return {
---     { ... },
---     { ... },
--- }
+-- local Goals = _G.Goals
+-- if Goals and Goals.RegisterCustomBuildFile then
+--     Goals:RegisterCustomBuildFile({
+--         { ... },
+--         { ... },
+--     })
+-- end
 --
 -- Notes
+-- - IMPORTANT: Autoload lists Builds01..Builds10 explicitly.
+--   If a listed file is missing, addon loading can fail.
 -- - itemId must be > 0 to import into the wishlist.
 -- - Use itemsBySlot (preferred) or items (list form). Avoid both.
 -- - tags are optional strings used for filtering (example: "custom", "bis", "progression").
@@ -60,7 +67,9 @@
 --
 -- Two-build example (copy into Builds01.lua):
 
-return {
+local Goals = _G.Goals
+if Goals and Goals.RegisterCustomBuildFile then
+Goals:RegisterCustomBuildFile({
     {
         id = "CUSTOM_WOTLK_SAMPLE",
         name = "Sample Build",
@@ -91,4 +100,5 @@ return {
         },
         notes = "Second sample build for reference only.",
     },
-}
+})
+end
