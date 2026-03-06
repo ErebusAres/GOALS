@@ -3568,6 +3568,12 @@ function UI:CreateMainFrame()
     self.mainFrameCombatWidth = MAIN_FRAME_WIDTH_COMBAT
     self.tabs = {}
     self.pages = {}
+    self.damageTab = nil
+    self.damageTabId = nil
+    self.damageTableWidget = nil
+    self.damageTrackerScroll = nil
+    self.damageTrackerRows = nil
+    self.damageOptionsFrame = nil
 
     local tabBar = CreateFrame("Frame", "GoalsMainTabBar", frame)
     tabBar:SetPoint("TOPLEFT", frame, "TOPLEFT", 12, -30)
@@ -3584,13 +3590,17 @@ function UI:CreateMainFrame()
     tabLine:SetTexture(1, 1, 1, 0.08)
     self.tabBarLine = tabLine
 
+    local hasWHTMInstalled = (GetAddOnInfo and GetAddOnInfo("WHTM")) and true or false
+
     local tabDefs = {
         { key = "overview", text = L.TAB_OVERVIEW, create = "CreateOverviewTab" },
         { key = "loot", text = L.TAB_LOOT, create = "CreateLootTab" },
         { key = "history", text = L.TAB_HISTORY, create = "CreateHistoryTab" },
         { key = "wishlist", text = L.TAB_WISHLIST, create = "CreateWishlistTab" },
-        { key = "damage", text = L.TAB_DAMAGE_TRACKER, create = "CreateDamageTrackerTab" },
     }
+    if hasWHTMInstalled then
+        table.insert(tabDefs, { key = "damage", text = L.TAB_DAMAGE_TRACKER, create = "CreateDamageTrackerTab" })
+    end
     if self:ShouldShowUpdateTab() then
         table.insert(tabDefs, { key = "update", text = L.TAB_UPDATE, create = "CreateUpdateTab" })
     end
