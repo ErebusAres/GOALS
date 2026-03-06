@@ -10971,65 +10971,235 @@ function UI:FormatCombatBroadcastLine(entry)
     if not entry or entry.kind == "BREAK" then
         return nil
     end
-    local provider = Goals and Goals.CombatProvider
-    if provider and provider.BuildShareLine then
-        local shared = provider:BuildShareLine(entry)
-        if shared and shared ~= "" then
-            return shared
+    local function short(text)
+        if not text or text == "" then
+            return ""
         end
+        return tostring(text)
     end
-    local sourceName, targetName = self:GetCombatEntrySourceTarget(entry)
-    sourceName = decorateSelfCombatName(sourceName)
-    targetName = decorateSelfCombatName(targetName)
-    local showOverheal = false
-    local amount = math.floor(tonumber(entry.amount) or 0)
-    local overheal = math.floor(tonumber(entry.overheal) or 0)
-    local spell = entry.spell or "Unknown"
-    local kind = entry.kind or "DAMAGE"
-    local prefix = ""
-    if sourceName ~= "" then
-        prefix = sourceName .. " -> " .. (targetName ~= "" and targetName or "Unknown")
+    local function raidTag(idx)
+        idx = tonumber(idx)
+        if not idx or idx < 1 or idx > 8 then
+            return nil
+        end
+        return ("[RT%d]"):format(idx)
+    end
+    local function actionFor(event)
+        local function resourceLabel(ev)
+            local rt = ev.resourceType or ev.powerType or ev.resourceName or ev.powerName
+            if type(rt) == "number" then
+                if rt == 0 then return "Mana" end
+                if rt == 1 then return "Rage" end
+                if rt == 2 then return "Focus" end
+                if rt == 3 then return "Energy" end
+                if rt == 6 then return "Runic Power" end
+                return "Resource"
+            end
+            rt = tostring(rt or "")
+            if rt == "" then
+                local spellText = string.lower(tostring(ev.spellName or ev.spell or ""))
+                if string.find(spellText, "mana", 1, true) or string.find(spellText, "life tap", 1, true) then
+                    return "Mana"
+                end
+                return "Resource"
+            end
+            return rt
+        end
+        local group = event.eventGroup or ""
+        if group == "" then
+            local kind = tostring(event.kind or "")
+            if kind == "HEAL" or kind == "HEAL_OUT" or kind == "BOSS_HEAL" then group = "heal" end
+            if kind == "DAMAGE" or kind == "DAMAGE_OUT" then group = "damage" end
+            if kind == "DEATH" then group = "death" end
+            if kind == "RES" then group = "control" end
+            if kind == "THREAT" or kind == "THREAT_ABILITY" or kind == "INTERRUPT" then group = "control" end
+        end
+        local subevent = tostring(event.subevent or "")
+        local spellText = string.lower(tostring(event.spellName or event.spell or ""))
+        if group == "heal" then
+            return "healed"
+        end
+        if group == "damage" then
+            return "damaged"
+        end
+        if group == "aura" then
+            if subevent == "SPELL_AURA_REMOVED" or subevent == "SPELL_AURA_REMOVED_DOSE" then
+                return "removed aura from"
+            end
+            if subevent == "SPELL_AURA_REFRESH" then
+                return "refreshed aura on"
+            end
+            if subevent == "SPELL_AURA_BROKEN" or subevent == "SPELL_AURA_BROKEN_SPELL" then
+                return "broke aura on"
+            end
+            return "aura'd"
+        end
+        if group == "miss" then
+            return "missed"
+        end
+        if group == "death" then
+            if event.sourceName and event.sourceName ~= "" then
+                return "killed"
+            end
+            return "died"
+        end
+        if group == "resource" then
+            local amount = tonumber(event.effectiveAmount or event.amount) or 0
+            if amount < 0 then
+                return "spent " .. string.lower(resourceLabel(event))
+            end
+            return "gained " .. string.lower(resourceLabel(event))
+        end
+        if group == "control" then
+            if string.find(subevent, "INTERRUPT", 1, true) then
+                return "interrupted"
+            end
+            if string.find(spellText, "stun", 1, true) then
+                return "stunned"
+            end
+            if string.find(spellText, "fear", 1, true) or string.find(spellText, "horror", 1, true) then
+                return "feared"
+            end
+            if string.find(spellText, "silence", 1, true) then
+                return "silenced"
+            end
+            if string.find(spellText, "charm", 1, true) or string.find(spellText, "mind control", 1, true) then
+                return "charmed"
+            end
+            if string.find(spellText, "dispel", 1, true) or string.find(subevent, "DISPEL", 1, true) then
+                return "dispelled"
+            end
+            if string.find(spellText, "taunt", 1, true) then
+                return "taunted"
+            end
+            return "controlled"
+        end
+        return "affected"
+    end
+    local function inferGroup(event)
+        local group = event.eventGroup or ""
+        if group == "" then
+            local kind = tostring(event.kind or "")
+            if kind == "HEAL" or kind == "HEAL_OUT" or kind == "BOSS_HEAL" then group = "heal" end
+            if kind == "DAMAGE" or kind == "DAMAGE_OUT" then group = "damage" end
+            if kind == "DEATH" then group = "death" end
+            if kind == "THREAT" or kind == "THREAT_ABILITY" or kind == "INTERRUPT" or kind == "RES" then group = "control" end
+        end
+        return group
+    end
+
+    local function resourceLabel(event)
+        local rt = event.resourceType or event.powerType or event.resourceName or event.powerName
+        if type(rt) == "number" then
+            if rt == 0 then return "Mana" end
+            if rt == 1 then return "Rage" end
+            if rt == 2 then return "Focus" end
+            if rt == 3 then return "Energy" end
+            if rt == 6 then return "Runic Power" end
+            return "Resource"
+        end
+        rt = short(rt)
+        if rt == "" then
+            local spellText = string.lower(short(event.spellName or event.spell))
+            if string.find(spellText, "mana", 1, true) or string.find(spellText, "life tap", 1, true) then
+                return "Mana"
+            end
+            return "Resource"
+        end
+        return rt
+    end
+
+    local sourceName = decorateSelfCombatName(short(entry.sourceName or entry.source))
+    local targetName = decorateSelfCombatName(short(entry.destName or entry.player))
+    if sourceName == "" then sourceName = "Unknown" end
+    if targetName == "" then targetName = "Unknown" end
+    local group = inferGroup(entry)
+    local action = actionFor(entry)
+    local spell = short(entry.spellName or entry.spell or entry.subevent)
+    local where = short((entry.subzone and entry.subzone ~= "" and entry.subzone) or entry.zone)
+    if entry.coordsText and entry.coordsText ~= "" then
+        where = where ~= "" and (where .. " " .. entry.coordsText) or tostring(entry.coordsText)
+    end
+
+    local parts = {}
+    local ts = formatCombatTimestamp(entry.timestamp or entry.ts)
+    if ts and ts ~= "" then
+        parts[#parts + 1] = "[" .. ts .. "]"
+    end
+    local rt = raidTag(entry.sourceRaidIcon)
+    if rt then
+        parts[#parts + 1] = rt
+    end
+    if action == "died" then
+        parts[#parts + 1] = targetName
     else
-        prefix = targetName ~= "" and targetName or "Unknown"
+        parts[#parts + 1] = sourceName
     end
-    local amountText = ""
-    local abilityText = spell
-    if kind == "HEAL" or kind == "HEAL_OUT" then
-        amountText = string.format("+%d", amount)
-        if showOverheal and overheal > 0 then
-            amountText = string.format("+%d (%d)", amount, overheal)
-        end
-    elseif kind == "RES" then
-        if amount > 0 then
-            amountText = string.format("Revived +%d", amount)
+    parts[#parts + 1] = action
+    if action ~= "died" and group ~= "resource" then
+        parts[#parts + 1] = targetName
+    end
+    if spell ~= "" then
+        parts[#parts + 1] = "with"
+        parts[#parts + 1] = spell
+    end
+
+    local effective = tonumber(entry.effectiveAmount or entry.amount)
+    local raw = tonumber(entry.rawAmount or entry.amount)
+    local over = tonumber(entry.overheal) or 0
+    local resist = tonumber(entry.resisted) or 0
+    local overkill = tonumber(entry.overkill) or 0
+    local blocked = tonumber(entry.blocked) or 0
+    local absorbed = tonumber(entry.absorbed) or 0
+    if effective and group ~= "aura" and group ~= "death" then
+        parts[#parts + 1] = "for"
+        if group == "resource" then
+            local resource = string.lower(resourceLabel(entry))
+            local spellLower = string.lower(spell or "")
+            local healthLost = tonumber(entry.healthLost or entry.healthCost or entry.lifeCost or entry.hpCost or entry.selfDamage) or 0
+            if string.find(spellLower, "life tap", 1, true) and healthLost > 0 and effective > 0 then
+                parts[#parts + 1] = "-" .. tostring(math.floor(healthLost)) .. " health"
+                parts[#parts + 1] = "+" .. tostring(math.floor(effective)) .. " " .. resource
+            else
+                local sign = effective >= 0 and "+" or ""
+                parts[#parts + 1] = sign .. tostring(math.floor(effective)) .. " " .. resource
+            end
         else
-            amountText = "Revived"
+            parts[#parts + 1] = tostring(math.floor(effective))
         end
-    elseif kind == "DEATH" then
-        amountText = "Died"
-        abilityText = ""
-    elseif kind == "THREAT" then
-        amountText = "THREAT"
-        abilityText = entry.reason or "Threat changed"
-    elseif kind == "INTERRUPT" then
-        amountText = entry.interruptedSpell or "Interrupted cast"
-        abilityText = entry.spell or "Interrupt"
-    elseif kind == "THREAT_ABILITY" then
-        amountText = entry.reason or "THREAT"
-        abilityText = entry.spell or "Threat ability"
-    elseif kind == "BOSS_HEAL" then
-        amountText = string.format("+%d", amount)
-        abilityText = entry.spell or "Boss heal"
-    else
-        amountText = string.format("-%d", amount)
+        if group == "heal" and over > 0 then
+            parts[#parts + 1] = "(" .. tostring(math.floor(over)) .. ")"
+        elseif group == "damage" then
+            if resist > 0 then
+                parts[#parts + 1] = "(" .. tostring(math.floor(resist)) .. ")"
+            end
+            if overkill > 0 then
+                parts[#parts + 1] = "(" .. tostring(math.floor(overkill)) .. ")"
+            end
+        end
+    elseif entry.missType and entry.missType ~= "" then
+        parts[#parts + 1] = "for"
+        parts[#parts + 1] = tostring(entry.missType)
     end
-    if abilityText ~= "" and entry.spellDuration and entry.spellDuration > 1 then
-        abilityText = string.format("%s (%ds)", abilityText, entry.spellDuration)
+    if group ~= "heal" and group ~= "damage" then
+        local mods = {}
+        if over > 0 then mods[#mods + 1] = "OH " .. tostring(math.floor(over)) end
+        if resist > 0 then mods[#mods + 1] = "Resist " .. tostring(math.floor(resist)) end
+        if overkill > 0 then mods[#mods + 1] = "OK " .. tostring(math.floor(overkill)) end
+        if blocked > 0 then mods[#mods + 1] = "Block " .. tostring(math.floor(blocked)) end
+        if absorbed > 0 then mods[#mods + 1] = "Absorb " .. tostring(math.floor(absorbed)) end
+        if #mods > 0 then
+            parts[#parts + 1] = "(" .. table.concat(mods, ", ") .. ")"
+        end
     end
-    if abilityText ~= "" then
-        return string.format("%s %s %s", prefix, amountText, abilityText)
+    if raw then
+        parts[#parts + 1] = "[" .. tostring(math.floor(raw)) .. "]"
     end
-    return string.format("%s %s", prefix, amountText)
+    if where ~= "" then
+        parts[#parts + 1] = "@"
+        parts[#parts + 1] = where
+    end
+    return table.concat(parts, " ")
 end
 
 function UI:SendCombatChatLine(line, channel, target)
@@ -11039,6 +11209,8 @@ function UI:SendCombatChatLine(line, channel, target)
     if not SendChatMessage then
         return
     end
+    -- WoW chat parser treats "|" as an escape prefix; literal pipes must be doubled.
+    line = tostring(line):gsub("|", "||")
     if channel == "WHISPER" then
         if target and target ~= "" then
             SendChatMessage(line, "WHISPER", nil, target)
@@ -11236,6 +11408,9 @@ function UI:UpdateDamageTrackerList()
         if group == "control" then
             return 0.6, 0.8, 1
         end
+        if group == "resource" then
+            return 0.52, 0.72, 0.98
+        end
         return 1, 1, 1
     end
 
@@ -11300,7 +11475,7 @@ function UI:UpdateDamageTrackerList()
             return 0.35, 0.70, 1.00
         end
         if event.eventGroup == "resource" then
-            return 0.75, 0.55, 1.00
+            return 0.36, 0.62, 0.95
         end
         return 0.90, 0.90, 0.90
     end
@@ -11310,6 +11485,27 @@ function UI:UpdateDamageTrackerList()
             return ""
         end
         return string.format("|cff%02x%02x%02x%s|r", (rr or 1) * 255, (gg or 1) * 255, (bb or 1) * 255, tostring(text))
+    end
+
+    local function resourceLabel(event)
+        local rt = event.resourceType or event.powerType or event.resourceName or event.powerName
+        if type(rt) == "number" then
+            if rt == 0 then return "Mana" end
+            if rt == 1 then return "Rage" end
+            if rt == 2 then return "Focus" end
+            if rt == 3 then return "Energy" end
+            if rt == 6 then return "Runic Power" end
+            return "Resource"
+        end
+        rt = short(rt)
+        if rt == "" then
+            local spellText = string.lower(short(event.spellName or event.spell))
+            if string.find(spellText, "mana", 1, true) or string.find(spellText, "life tap", 1, true) then
+                return "Mana"
+            end
+            return "Resource"
+        end
+        return rt
     end
 
     local function chatActionVerb(event)
@@ -11343,7 +11539,11 @@ function UI:UpdateDamageTrackerList()
             return "died"
         end
         if event.eventGroup == "resource" then
-            return "changed resource for"
+            local amount = tonumber(event.effectiveAmount or event.amount) or 0
+            if amount < 0 then
+                return "spent " .. string.lower(resourceLabel(event))
+            end
+            return "gained " .. string.lower(resourceLabel(event))
         end
         if event.eventGroup == "control" then
             if string.find(subevent, "INTERRUPT", 1, true) then
@@ -11387,11 +11587,13 @@ function UI:UpdateDamageTrackerList()
         local targetText = dst ~= "" and dst or "Unknown"
         if action == "died" then
             parts[#parts + 1] = colorWrap(targetText, tr, tg, tb)
+        elseif event.eventGroup == "resource" then
+            parts[#parts + 1] = colorWrap(sourceText, sr, sg, sb)
         else
             parts[#parts + 1] = colorWrap(sourceText, sr, sg, sb)
         end
         parts[#parts + 1] = colorWrap(action, r, g, b)
-        if action ~= "died" then
+        if action ~= "died" and event.eventGroup ~= "resource" then
             parts[#parts + 1] = colorWrap(targetText, tr, tg, tb)
         end
 
@@ -11420,6 +11622,20 @@ function UI:UpdateDamageTrackerList()
                 end
                 if overkill > 0 then
                     parts[#parts + 1] = colorWrap("(" .. tostring(math.floor(overkill)) .. ")", 0.50, 0.02, 0.02)
+                end
+            elseif event.eventGroup == "resource" then
+                local resource = string.lower(resourceLabel(event))
+                local spellLower = string.lower(spellText or "")
+                local healthLost = tonumber(event.healthLost or event.healthCost or event.lifeCost or event.hpCost or event.selfDamage) or 0
+                local manaBlue = {0.36, 0.62, 0.95}
+                local manaBlueDark = {0.22, 0.45, 0.78}
+                if string.find(spellLower, "life tap", 1, true) and healthLost > 0 and effective > 0 then
+                    parts[#parts + 1] = colorWrap("-" .. tostring(math.floor(healthLost)) .. " health", 1.00, 0.35, 0.35)
+                    parts[#parts + 1] = colorWrap("+" .. tostring(math.floor(effective)) .. " " .. resource, manaBlue[1], manaBlue[2], manaBlue[3])
+                else
+                    local sign = effective >= 0 and "+" or ""
+                    parts[#parts + 1] = colorWrap(sign .. tostring(math.floor(effective)), manaBlue[1], manaBlue[2], manaBlue[3])
+                    parts[#parts + 1] = colorWrap(resource, manaBlueDark[1], manaBlueDark[2], manaBlueDark[3])
                 end
             else
                 parts[#parts + 1] = colorWrap(tostring(math.floor(effective)), ar, ag, ab)
