@@ -295,3 +295,10 @@ Goal: add tab-aware info density without clutter. Provide up to 6 short, glancea
 ## Issues to fix Feb 3rd
 
 - Continue work on the Wishlist tab's `Share Build` button's 'pop out box'. (fix placements and match theme/style to the combat tab's custom tooltip.)
+
+## Combat Chat Format Update (3/6/2026)
+
+- Combat tab chat style now renders as chat-like message lines instead of pseudo-table text.
+- Chat lines preserve per-segment colors (actor source/target, event type, ability, detail/amount, and location).
+- Chat display headers now read `Actor` and `Chat` for clearer intent.
+- Follow-up: chat mode now uses a single cohesive line layout (`Timestamp [RT] Source action Target with Spell for Value (mods) [Raw] @ Location`) and hides table headers/columns.

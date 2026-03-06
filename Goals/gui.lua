@@ -2860,18 +2860,26 @@ function UI:ApplyCombatDisplayStyle(mode)
         time = 68, icon = 34, source = 110, target = 110, ability = 140, type = 62, detail = 112, total = 76,
     }
     local chatWidths = {
-        time = 68, icon = 34, source = 154, target = 0, ability = 0, type = 0, detail = 0, total = 0,
+        time = 0, icon = 0, source = 0, target = 0, ability = 0, type = 0, detail = 0, total = 0,
     }
     local chatTitles = {
-        time = "Time", icon = "Icon", source = "Source", target = "", ability = "", type = "", detail = "", total = "", where = "Entry",
+        time = "", icon = "", source = "", target = "", ability = "", type = "", detail = "", total = "", where = "",
     }
     local cols = self.damageTableWidget.columns or {}
+    if self.damageTableWidget.header then
+        setShown(self.damageTableWidget.header, not isChat)
+    end
+    if self.damageTableWidget.headerLine then
+        setShown(self.damageTableWidget.headerLine, not isChat)
+    end
     for _, col in ipairs(cols) do
         if col.header then
             if isChat then
                 col.header:SetText(chatTitles[col.key] or "")
+                col.header:Hide()
             else
                 col.header:SetText(col.title or "")
+                col.header:Show()
             end
         end
         if not col.fill then
@@ -2886,6 +2894,48 @@ function UI:ApplyCombatDisplayStyle(mode)
                     if text then
                         text:SetWidth(width)
                     end
+                end
+            end
+        end
+    end
+    local rowTopOffset = isChat and -6 or (self.damageTableWidget.rowTopOffset or -22)
+    for idx, row in ipairs(self.damageTrackerRows or {}) do
+        row:ClearAllPoints()
+        row:SetPoint("TOPLEFT", row:GetParent(), "TOPLEFT", self.damageTableWidget.headerLeft or 6, rowTopOffset - (idx - 1) * (self.damageTableWidget.rowHeight or DAMAGE_ROW_HEIGHT))
+        row:SetPoint("RIGHT", row:GetParent(), "RIGHT", self.damageTableWidget.headerRight or -32, 0)
+    end
+    for _, row in ipairs(self.damageTrackerRows or {}) do
+        if isChat then
+            for _, col in ipairs(cols) do
+                local text = row.cols and row.cols[col.key]
+                if text then
+                    text:ClearAllPoints()
+                    if col.key == "where" then
+                        text:SetPoint("LEFT", row, "LEFT", 0, 0)
+                        text:SetPoint("RIGHT", row, "RIGHT", -4, 0)
+                    else
+                        text:SetPoint("LEFT", row, "LEFT", 0, 0)
+                        text:SetWidth(0)
+                    end
+                end
+            end
+        else
+            local prev = nil
+            for _, col in ipairs(cols) do
+                local text = row.cols and row.cols[col.key]
+                if text then
+                    text:ClearAllPoints()
+                    if prev then
+                        text:SetPoint("LEFT", prev, "RIGHT", col.spacing or 6, 0)
+                    else
+                        text:SetPoint("LEFT", row, "LEFT", 0, 0)
+                    end
+                    if col.fill then
+                        text:SetPoint("RIGHT", row, "RIGHT", -4, 0)
+                    else
+                        text:SetWidth(col.width or 80)
+                    end
+                    prev = text
                 end
             end
         end
@@ -11255,6 +11305,164 @@ function UI:UpdateDamageTrackerList()
         return 0.90, 0.90, 0.90
     end
 
+    local function colorWrap(text, rr, gg, bb)
+        if not text or text == "" then
+            return ""
+        end
+        return string.format("|cff%02x%02x%02x%s|r", (rr or 1) * 255, (gg or 1) * 255, (bb or 1) * 255, tostring(text))
+    end
+
+    local function chatActionVerb(event)
+        local subevent = tostring(event.subevent or "")
+        local spellText = string.lower(tostring(event.spellName or ""))
+        if event.eventGroup == "heal" then
+            return "healed"
+        end
+        if event.eventGroup == "damage" then
+            return "damaged"
+        end
+        if event.eventGroup == "aura" then
+            if subevent == "SPELL_AURA_REMOVED" or subevent == "SPELL_AURA_REMOVED_DOSE" then
+                return "removed aura from"
+            end
+            if subevent == "SPELL_AURA_REFRESH" then
+                return "refreshed aura on"
+            end
+            if subevent == "SPELL_AURA_BROKEN" or subevent == "SPELL_AURA_BROKEN_SPELL" then
+                return "broke aura on"
+            end
+            return "aura'd"
+        end
+        if event.eventGroup == "miss" then
+            return "missed"
+        end
+        if event.eventGroup == "death" then
+            if event.sourceName and event.sourceName ~= "" then
+                return "killed"
+            end
+            return "died"
+        end
+        if event.eventGroup == "resource" then
+            return "changed resource for"
+        end
+        if event.eventGroup == "control" then
+            if string.find(subevent, "INTERRUPT", 1, true) then
+                return "interrupted"
+            end
+            if string.find(spellText, "stun", 1, true) then
+                return "stunned"
+            end
+            if string.find(spellText, "fear", 1, true) or string.find(spellText, "horror", 1, true) then
+                return "feared"
+            end
+            if string.find(spellText, "silence", 1, true) then
+                return "silenced"
+            end
+            if string.find(spellText, "charm", 1, true) or string.find(spellText, "mind control", 1, true) then
+                return "charmed"
+            end
+            if string.find(spellText, "dispel", 1, true) or string.find(subevent, "DISPEL", 1, true) then
+                return "dispelled"
+            end
+            if string.find(spellText, "taunt", 1, true) then
+                return "taunted"
+            end
+            return "controlled"
+        end
+        return "affected"
+    end
+
+    local function buildChatLine(event, src, dst, where, r, g, b, sr, sg, sb, tr, tg, tb, ar, ag, ab)
+        local parts = {}
+        local action = chatActionVerb(event)
+        local ts = formatCombatTimestamp(event.timestamp or event.ts)
+        if ts and ts ~= "" then
+            parts[#parts + 1] = ts
+        end
+        local rt = iconTag(event.sourceRaidIcon)
+        if rt and rt ~= "" then
+            parts[#parts + 1] = rt
+        end
+        local sourceText = src ~= "" and src or "Unknown"
+        local targetText = dst ~= "" and dst or "Unknown"
+        if action == "died" then
+            parts[#parts + 1] = colorWrap(targetText, tr, tg, tb)
+        else
+            parts[#parts + 1] = colorWrap(sourceText, sr, sg, sb)
+        end
+        parts[#parts + 1] = colorWrap(action, r, g, b)
+        if action ~= "died" then
+            parts[#parts + 1] = colorWrap(targetText, tr, tg, tb)
+        end
+
+        local spellText = short(event.spellName or event.subevent)
+        if spellText ~= "" then
+            parts[#parts + 1] = "with"
+            parts[#parts + 1] = colorWrap(spellText, ar, ag, ab)
+        end
+
+        local effective = tonumber(event.effectiveAmount or event.amount)
+        local raw = tonumber(event.rawAmount or event.amount)
+        if effective and event.eventGroup ~= "aura" and event.eventGroup ~= "death" then
+            parts[#parts + 1] = "for"
+            if event.eventGroup == "heal" then
+                parts[#parts + 1] = colorWrap(tostring(math.floor(effective)), 0.30, 1.00, 0.30)
+                local oh = tonumber(event.overheal) or 0
+                if oh > 0 then
+                    parts[#parts + 1] = colorWrap("(" .. tostring(math.floor(oh)) .. ")", 0.00, 0.70, 0.20)
+                end
+            elseif event.eventGroup == "damage" then
+                parts[#parts + 1] = colorWrap(tostring(math.floor(effective)), 1.00, 0.30, 0.30)
+                local resisted = tonumber(event.resisted) or 0
+                local overkill = tonumber(event.overkill) or 0
+                if resisted > 0 then
+                    parts[#parts + 1] = colorWrap("(" .. tostring(math.floor(resisted)) .. ")", 0.68, 0.10, 0.10)
+                end
+                if overkill > 0 then
+                    parts[#parts + 1] = colorWrap("(" .. tostring(math.floor(overkill)) .. ")", 0.50, 0.02, 0.02)
+                end
+            else
+                parts[#parts + 1] = colorWrap(tostring(math.floor(effective)), ar, ag, ab)
+            end
+        elseif event.missType and event.missType ~= "" then
+            parts[#parts + 1] = "for"
+            parts[#parts + 1] = colorWrap(event.missType, ar, ag, ab)
+        end
+
+        local mods = {}
+        local overheal = tonumber(event.overheal) or 0
+        local overkill = tonumber(event.overkill) or 0
+        local resisted = tonumber(event.resisted) or 0
+        local blocked = tonumber(event.blocked) or 0
+        local absorbed = tonumber(event.absorbed) or 0
+        if event.eventGroup ~= "heal" and overheal > 0 then
+            mods[#mods + 1] = "OH " .. tostring(math.floor(overheal))
+        end
+        if event.eventGroup ~= "damage" and overkill > 0 then
+            mods[#mods + 1] = "OK " .. tostring(math.floor(overkill))
+        end
+        if event.eventGroup ~= "damage" and resisted > 0 then
+            mods[#mods + 1] = "Resist " .. tostring(math.floor(resisted))
+        end
+        if blocked > 0 then
+            mods[#mods + 1] = "Block " .. tostring(math.floor(blocked))
+        end
+        if absorbed > 0 then
+            mods[#mods + 1] = "Absorb " .. tostring(math.floor(absorbed))
+        end
+        if #mods > 0 then
+            parts[#parts + 1] = colorWrap("(" .. table.concat(mods, ", ") .. ")", 0.80, 0.84, 0.90)
+        end
+        if raw then
+            parts[#parts + 1] = colorWrap("[" .. tostring(math.floor(raw)) .. "]", 0.70, 0.74, 0.80)
+        end
+        if where and where ~= "" then
+            parts[#parts + 1] = colorWrap("@ " .. where, 0.80, 0.90, 1.00)
+        end
+
+        return table.concat(parts, " ")
+    end
+
     for i = 1, DAMAGE_ROWS do
         local row = self.damageTrackerRows[i]
         local event = data[offset + i]
@@ -11280,23 +11488,10 @@ function UI:UpdateDamageTrackerList()
             row.cols.time:SetText(formatCombatTimestamp(event.timestamp or event.ts))
             row.cols.icon:SetText(iconTag(event.sourceRaidIcon))
             if chatStyle then
-                local actor = src
-                if src ~= "" and dst ~= "" then
-                    actor = src .. " -> " .. dst
-                elseif src == "" then
-                    actor = dst
-                end
-                local summary = short(event.spellName or event.subevent)
-                if detail and detail ~= "" then
-                    summary = summary ~= "" and (summary .. " " .. detail) or detail
-                end
-                if total and total ~= "" and total ~= "-" then
-                    summary = summary .. " [" .. total .. "]"
-                end
-                if where and where ~= "" then
-                    summary = summary .. " - " .. where
-                end
-                row.cols.source:SetText(actor or "")
+                local summary = buildChatLine(event, src, dst, where, r, g, b, sr, sg, sb, tr, tg, tb, ar, ag, ab)
+                row.cols.time:SetText("")
+                row.cols.icon:SetText("")
+                row.cols.source:SetText("")
                 row.cols.target:SetText("")
                 row.cols.ability:SetText("")
                 row.cols.type:SetText("")
@@ -11306,7 +11501,7 @@ function UI:UpdateDamageTrackerList()
 
                 row.cols.time:SetTextColor(1, 1, 1)
                 row.cols.icon:SetTextColor(1, 1, 1)
-                row.cols.source:SetTextColor(sr, sg, sb)
+                row.cols.source:SetTextColor(1, 1, 1)
                 row.cols.target:SetTextColor(1, 1, 1)
                 row.cols.ability:SetTextColor(1, 1, 1)
                 row.cols.type:SetTextColor(1, 1, 1)
