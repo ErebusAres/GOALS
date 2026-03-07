@@ -91,6 +91,7 @@ Goals.defaults = {
         combatLogCombineGap = 6,
         combatWhtmScope = "player",
         combatWhtmDisplayStyle = "table",
+        combatWhtmCombineOverTime = false,
         combatWhtmTimestampFormat = "24h",
         combatWhtmMaxRows = 600,
         combatWhtmRetainFullHistory = false,

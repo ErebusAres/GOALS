@@ -19,6 +19,14 @@ local DEBUG_ROWS = 16
 local DEBUG_ROW_HEIGHT = 14
 local DAMAGE_ROWS = 20
 local DAMAGE_ROW_HEIGHT = 18
+local COMBAT_DETAIL_WIDTH_BASE = 112
+local COMBAT_TOTAL_WIDTH_BASE = 76
+local COMBAT_DYNAMIC_EXTRA_MAX = 640
+local COMBAT_WHERE_MIN_WIDTH = 130
+local FRAME_EDGE_MARGIN_UI = 96
+local COMBAT_DETAIL_DYNAMIC_CAP = 190
+local COMBAT_TOTAL_DYNAMIC_CAP = 180
+local COMBAT_DYNAMIC_DEADZONE = 6
 local DAMAGE_COL_TIME = 70
 local DAMAGE_COL_SOURCE = 120
 local DAMAGE_COL_TARGET = 120
@@ -1946,12 +1954,19 @@ local function showCombatRowTooltip(entry)
         return nil
     end
     local function colorForUnit(isSource)
+        local name = isSource and entry.sourceName or entry.destName
+        local classFile = isSource and entry.sourceClass or entry.destClass
+        if Goals and Goals.GetPlayerColor and name and name ~= "" then
+            local pr, pg, pb = Goals:GetPlayerColor(name)
+            if pr and pg and pb then
+                return pr, pg, pb
+            end
+        end
         local tier = isSource and entry.sourceTier or entry.destTier
         local tr, tg, tb = colorForTier(tier)
         if tr then
             return tr, tg, tb
         end
-        local classFile = isSource and entry.sourceClass or entry.destClass
         local cr, cg, cb = colorForClass(classFile)
         if cr then
             return cr, cg, cb
@@ -2077,6 +2092,15 @@ local function showCombatRowTooltip(entry)
     local sourceName = decorateSelfCombatName(entry.sourceName or entry.source or "Unknown")
     local targetName = decorateSelfCombatName(entry.destName or entry.player or "Unknown")
     local ability = entry.spellName or entry.spell or entry.subevent or ""
+    local function fmtDuration(seconds)
+        local s = tonumber(seconds) or 0
+        if s < 0.1 then
+            s = 0.1
+        end
+        local rounded = math.floor((s * 10) + 0.5) / 10
+        local text = tostring(rounded)
+        return string.gsub(text, "%.0$", "")
+    end
     local where = (entry.subzone and entry.subzone ~= "" and entry.subzone) or entry.zone or ""
     if entry.coordsText and entry.coordsText ~= "" then
         where = where ~= "" and (where .. " " .. entry.coordsText) or entry.coordsText
@@ -2085,6 +2109,18 @@ local function showCombatRowTooltip(entry)
     if entry.eventGroup == "aura" then
         detailText = (entry.auraType == "BUFF" and "Buff") or (entry.auraType == "DEBUFF" and "Debuff") or "Aura"
         totalText = auraAction(entry)
+    elseif entry.isCombinedOverTime then
+        local total = tonumber(entry.combinedTotal or entry.effectiveAmount or entry.amount) or 0
+        local duration = math.max(0.1, tonumber(entry.combinedDuration) or 0.1)
+        local rate = tonumber(entry.combinedRate) or (total / duration)
+        local oh = tonumber(entry.combinedOverheal or entry.overheal) or 0
+        local ok = tonumber(entry.combinedOverkill or entry.overkill) or 0
+        local rs = tonumber(entry.combinedResisted or entry.resisted) or 0
+        local bl = tonumber(entry.combinedBlocked or entry.blocked) or 0
+        local ab = tonumber(entry.combinedAbsorbed or entry.absorbed) or 0
+        local prevented = (entry.eventGroup == "heal") and oh or (ok + rs + bl + ab)
+        detailText = tostring(math.floor(rate + 0.5)) .. " (" .. tostring(math.floor((prevented / duration) + 0.5)) .. ") /s"
+        totalText = tostring(math.floor(total + 0.5)) .. " ( " .. tostring(math.floor(prevented + 0.5)) .. " ) /" .. fmtDuration(duration) .. "s"
     elseif entry.amount then
         detailText = tostring(entry.effectiveAmount or entry.amount)
         if entry.overheal then
@@ -2141,6 +2177,36 @@ local function showCombatRowTooltip(entry)
     pushValue("Mitigation:", mitigationText)
     pushValue("Aura:", entry.auraType or "")
     pushValue("Result:", entry.auraState or auraAction(entry))
+    if entry.isCombinedOverTime then
+        local total = tonumber(entry.combinedTotal or entry.effectiveAmount or entry.amount) or 0
+        local rawTotal = tonumber(entry.combinedRawTotal or entry.rawAmount or entry.amount) or total
+        local duration = math.max(0.1, tonumber(entry.combinedDuration) or 0.1)
+        local ticks = math.max(1, math.floor((tonumber(entry.combinedTicks) or 1) + 0.5))
+        local rate = tonumber(entry.combinedRate) or (total / duration)
+        local oh = tonumber(entry.combinedOverheal or entry.overheal) or 0
+        local ok = tonumber(entry.combinedOverkill or entry.overkill) or 0
+        local rs = tonumber(entry.combinedResisted or entry.resisted) or 0
+        local bl = tonumber(entry.combinedBlocked or entry.blocked) or 0
+        local ab = tonumber(entry.combinedAbsorbed or entry.absorbed) or 0
+        local prevented = (entry.eventGroup == "heal") and oh or (ok + rs + bl + ab)
+
+        pushHeader("Over-Time Combine")
+        pushValue("Kind:", (entry.combinedKind == "hot" and "HoT") or "DoT")
+        pushValue("Ticks:", tostring(ticks))
+        pushValue("Duration:", fmtDuration(duration) .. "s")
+        pushValue("Rate:", tostring(math.floor(rate + 0.5)) .. "/s")
+        pushValue("Prevented/s:", tostring(math.floor((prevented / duration) + 0.5)) .. "/s")
+        pushValue("Net Total:", tostring(math.floor(total + 0.5)))
+        pushValue("Prevented:", tostring(math.floor(prevented + 0.5)))
+        pushValue("Raw Total:", tostring(math.floor(rawTotal + 0.5)))
+        pushValue("Overheal:", tostring(math.floor(oh + 0.5)))
+        pushValue("Overkill:", tostring(math.floor(ok + 0.5)))
+        pushValue("Resisted:", tostring(math.floor(rs + 0.5)))
+        pushValue("Blocked:", tostring(math.floor(bl + 0.5)))
+        pushValue("Absorbed:", tostring(math.floor(ab + 0.5)))
+        pushValue("Start:", formatCombatTimestamp(entry.combinedStartTs or entry.timestamp or entry.ts))
+        pushValue("End:", formatCombatTimestamp(entry.combinedEndTs or entry.timestamp or entry.ts))
+    end
 
     for i = usedValueRows + 1, #tip.valueRows do
         tip.valueRows[i]:Hide()
@@ -2856,8 +2922,16 @@ function UI:ApplyCombatDisplayStyle(mode)
     end
     mode = mode or self:GetCombatDisplayStyle()
     local isChat = mode == COMBAT_DISPLAY_CHAT
+    local dynDetail = tonumber(self.combatDynamicDetailWidth) or COMBAT_DETAIL_WIDTH_BASE
+    local dynTotal = tonumber(self.combatDynamicTotalWidth) or COMBAT_TOTAL_WIDTH_BASE
+    if dynDetail < COMBAT_DETAIL_WIDTH_BASE then
+        dynDetail = COMBAT_DETAIL_WIDTH_BASE
+    end
+    if dynTotal < COMBAT_TOTAL_WIDTH_BASE then
+        dynTotal = COMBAT_TOTAL_WIDTH_BASE
+    end
     local tableWidths = {
-        time = 68, icon = 34, source = 110, target = 110, ability = 140, type = 62, detail = 112, total = 76,
+        time = 68, icon = 34, source = 110, target = 110, ability = 140, type = 62, detail = dynDetail, total = dynTotal,
     }
     local chatWidths = {
         time = 0, icon = 0, source = 0, target = 0, ability = 0, type = 0, detail = 0, total = 0,
@@ -2950,6 +3024,134 @@ function UI:ApplyCombatDisplayStyle(mode)
             col.header:SetJustifyH(isChat and "LEFT" or "RIGHT")
             break
         end
+    end
+end
+
+function UI:UpdateCombatDynamicSizing(data, displayStyle)
+    if displayStyle == COMBAT_DISPLAY_CHAT then
+        if self.combatDynamicDetailWidth or self.combatDynamicTotalWidth or self.combatDynamicWidthExtra then
+            self.combatDynamicDetailWidth = nil
+            self.combatDynamicTotalWidth = nil
+            self.combatDynamicWidthExtra = 0
+            self:ApplyCombatDisplayStyle(displayStyle)
+            if self.damageTabId and self.currentTab == self.damageTabId then
+                self:UpdateFrameWidthForTab(self.damageTabId)
+            end
+        end
+        self.combatBaseWhereWidth = nil
+        return
+    end
+    local settings = Goals and Goals.db and Goals.db.settings or nil
+    if not (settings and settings.combatWhtmCombineOverTime) then
+        if self.combatDynamicDetailWidth or self.combatDynamicTotalWidth or self.combatDynamicWidthExtra then
+            self.combatDynamicDetailWidth = nil
+            self.combatDynamicTotalWidth = nil
+            self.combatDynamicWidthExtra = 0
+            self:ApplyCombatDisplayStyle(displayStyle)
+            if self.damageTabId and self.currentTab == self.damageTabId then
+                self:UpdateFrameWidthForTab(self.damageTabId)
+            end
+        end
+        local whereCell = self.damageTrackerRows and self.damageTrackerRows[1] and self.damageTrackerRows[1].cols and self.damageTrackerRows[1].cols.where or nil
+        self.combatBaseWhereWidth = (whereCell and whereCell.GetWidth and tonumber(whereCell:GetWidth())) or self.combatBaseWhereWidth
+        return
+    end
+    local fs = self.combatMeasureFontString
+    if not fs then
+        fs = UIParent:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+        fs:Hide()
+        self.combatMeasureFontString = fs
+    end
+    local function textWidth(text)
+        fs:SetText(tostring(text or ""))
+        return (fs:GetStringWidth() or 0) + 8
+    end
+    local function fmtDuration(seconds)
+        local s = tonumber(seconds) or 0
+        if s < 0.1 then s = 0.1 end
+        local rounded = math.floor((s * 10) + 0.5) / 10
+        local text = tostring(rounded)
+        return string.gsub(text, "%.0$", "")
+    end
+    local maxDetail = COMBAT_DETAIL_WIDTH_BASE
+    local maxTotal = COMBAT_TOTAL_WIDTH_BASE
+    local maxWhere = 0
+    local hasCombined = false
+    local n = math.min(#(data or {}), DAMAGE_ROWS + 10)
+    for i = 1, n do
+        local event = data[i]
+        if event and event.isCombinedOverTime then
+            hasCombined = true
+            local where = tostring((event.subzone and event.subzone ~= "" and event.subzone) or event.zone or "")
+            if event.coordsText and event.coordsText ~= "" then
+                where = where ~= "" and (where .. " " .. tostring(event.coordsText)) or tostring(event.coordsText)
+            end
+            local ww = textWidth(where)
+            if ww > maxWhere then
+                maxWhere = ww
+            end
+            local total = tonumber(event.combinedTotal or event.effectiveAmount or event.amount) or 0
+            local duration = math.max(0.1, tonumber(event.combinedDuration) or 0.1)
+            local rate = tonumber(event.combinedRate) or (total / duration)
+            local oh = tonumber(event.combinedOverheal or event.overheal) or 0
+            local ok = tonumber(event.combinedOverkill or event.overkill) or 0
+            local rs = tonumber(event.combinedResisted or event.resisted) or 0
+            local bl = tonumber(event.combinedBlocked or event.blocked) or 0
+            local ab = tonumber(event.combinedAbsorbed or event.absorbed) or 0
+            local prevented = (event.eventGroup == "heal") and oh or (ok + rs + bl + ab)
+            local detailText = tostring(math.floor(rate + 0.5)) .. " (" .. tostring(math.floor((prevented / duration) + 0.5)) .. ") /s"
+            local totalText = tostring(math.floor(total + 0.5)) .. " ( " .. tostring(math.floor(prevented + 0.5)) .. " ) /" .. fmtDuration(duration) .. "s"
+            local dw = textWidth(detailText)
+            local tw = textWidth(totalText)
+            if dw > maxDetail then maxDetail = dw end
+            if tw > maxTotal then maxTotal = tw end
+        end
+    end
+    if maxDetail > COMBAT_DETAIL_DYNAMIC_CAP then maxDetail = COMBAT_DETAIL_DYNAMIC_CAP end
+    if maxTotal > COMBAT_TOTAL_DYNAMIC_CAP then maxTotal = COMBAT_TOTAL_DYNAMIC_CAP end
+    if (maxDetail - COMBAT_DETAIL_WIDTH_BASE) <= COMBAT_DYNAMIC_DEADZONE then
+        maxDetail = COMBAT_DETAIL_WIDTH_BASE
+    end
+    if (maxTotal - COMBAT_TOTAL_WIDTH_BASE) <= COMBAT_DYNAMIC_DEADZONE then
+        maxTotal = COMBAT_TOTAL_WIDTH_BASE
+    end
+    local detailExtra = (maxDetail - COMBAT_DETAIL_WIDTH_BASE)
+    local totalExtra = (maxTotal - COMBAT_TOTAL_WIDTH_BASE)
+    if detailExtra < 0 then detailExtra = 0 end
+    if totalExtra < 0 then totalExtra = 0 end
+    local whereExtra = 0
+    if hasCombined then
+        local whereCell = self.damageTrackerRows and self.damageTrackerRows[1] and self.damageTrackerRows[1].cols and self.damageTrackerRows[1].cols.where or nil
+        local baseWhere = tonumber(self.combatBaseWhereWidth) or 0
+        if baseWhere <= 0 and whereCell and whereCell.GetWidth then
+            baseWhere = tonumber(whereCell:GetWidth()) or 0
+        end
+        if baseWhere <= 0 then
+            baseWhere = COMBAT_WHERE_MIN_WIDTH
+        end
+        self.combatBaseWhereWidth = baseWhere
+        if maxWhere > baseWhere + COMBAT_DYNAMIC_DEADZONE then
+            whereExtra = maxWhere - baseWhere
+        end
+    end
+
+    local extra = detailExtra + totalExtra + whereExtra
+    if extra < 0 then extra = 0 end
+    if extra > COMBAT_DYNAMIC_EXTRA_MAX then
+        extra = COMBAT_DYNAMIC_EXTRA_MAX
+    end
+    local changed = (self.combatDynamicDetailWidth ~= maxDetail)
+        or (self.combatDynamicTotalWidth ~= maxTotal)
+        or ((self.combatDynamicWidthExtra or 0) ~= extra)
+    if not changed then
+        return
+    end
+    self.combatDynamicDetailWidth = maxDetail
+    self.combatDynamicTotalWidth = maxTotal
+    self.combatDynamicWidthExtra = extra
+    self:ApplyCombatDisplayStyle(displayStyle)
+    if self.damageTabId and self.currentTab == self.damageTabId then
+        self:UpdateFrameWidthForTab(self.damageTabId)
     end
 end
 
@@ -3731,6 +3933,20 @@ function UI:UpdateFrameWidthForTab(tabId)
     local targetW = normalW
     if self.damageTabId and tabId == self.damageTabId then
         targetW = combatW
+        local extra = tonumber(self.combatDynamicWidthExtra) or 0
+        if extra < 0 then
+            extra = 0
+        elseif extra > COMBAT_DYNAMIC_EXTRA_MAX then
+            extra = COMBAT_DYNAMIC_EXTRA_MAX
+        end
+        targetW = targetW + extra
+    end
+    local parentW = (UIParent and UIParent.GetWidth and UIParent:GetWidth()) or 0
+    if parentW and parentW > 0 then
+        local maxAllowed = parentW - (FRAME_EDGE_MARGIN_UI * 2)
+        if maxAllowed > 420 and targetW > maxAllowed then
+            targetW = maxAllowed
+        end
     end
     local currentW = self.frame:GetWidth() or normalW
     if math.abs(currentW - targetW) < 1 then
@@ -7687,8 +7903,8 @@ function UI:CreateDamageTrackerTab(page)
             { key = "target", title = "Target", width = 110, justify = "LEFT", wrap = false },
             { key = "ability", title = "Ability", width = 140, justify = "LEFT", wrap = false },
             { key = "type", title = "Type", width = 62, justify = "LEFT", wrap = false },
-            { key = "detail", title = "Detail", width = 112, justify = "LEFT", wrap = false },
-            { key = "total", title = "Total", width = 76, justify = "LEFT", wrap = false },
+            { key = "detail", title = "Detail", width = COMBAT_DETAIL_WIDTH_BASE, justify = "LEFT", wrap = false },
+            { key = "total", title = "Total", width = COMBAT_TOTAL_WIDTH_BASE, justify = "LEFT", wrap = false },
             { key = "where", title = "Where", fill = true, justify = "RIGHT", wrap = false },
         },
         rowHeight = DAMAGE_ROW_HEIGHT,
@@ -7698,6 +7914,26 @@ function UI:CreateDamageTrackerTab(page)
     self.damageTableWidget = tableWidget
     self.damageTrackerScroll = tableWidget.scroll
     self.damageTrackerRows = tableWidget.rows
+
+    local function clearCombatSession()
+        if Goals and Goals.CombatProvider and Goals.CombatProvider.ClearLog then
+            Goals.CombatProvider:ClearLog()
+        end
+        UI:UpdateDamageTrackerList()
+    end
+
+    if tableWidget and tableWidget.header then
+        local headerClearBtn = CreateFrame("Button", nil, tableWidget.header, "UIPanelButtonTemplate")
+        headerClearBtn:SetSize(16, 16)
+        headerClearBtn:SetParent(inset)
+        headerClearBtn:SetPoint("TOPRIGHT", inset, "TOPRIGHT", -9, -6)
+        headerClearBtn:SetText("X")
+        headerClearBtn:SetScript("OnClick", function()
+            clearCombatSession()
+        end)
+        attachSideTooltip(headerClearBtn, "Clear session combat rows.")
+        self.combatHeaderClearButton = headerClearBtn
+    end
 
     self.damageTrackerScroll:SetScript("OnVerticalScroll", function(selfScroll, offset)
         FauxScrollFrame_OnVerticalScroll(selfScroll, offset, DAMAGE_ROW_HEIGHT, function()
@@ -7858,6 +8094,9 @@ function UI:CreateDamageTrackerTab(page)
     if Goals.db.settings.combatWhtmDisplayStyle == nil then
         Goals.db.settings.combatWhtmDisplayStyle = COMBAT_DISPLAY_TABLE
     end
+    if Goals.db.settings.combatWhtmCombineOverTime == nil then
+        Goals.db.settings.combatWhtmCombineOverTime = false
+    end
     local function syncProvider()
         if provider and provider.SyncSettingsToWHTM then
             provider:SyncSettingsToWHTM()
@@ -7881,40 +8120,18 @@ function UI:CreateDamageTrackerTab(page)
     end, Goals.db.settings.combatWhtmScope or "player")
     self.combatScopeDropdown = scopeDrop
 
-    addLabel("Timestamp")
-    local tsDrop = addDropdown("GoalsCombatTimestampDropdown")
-    self:SetupDropdown(tsDrop, function()
-        return {
-            { value = "24h", text = "24h" },
-            { value = "12h", text = "12h" },
-        }
-    end, function(value)
-        Goals.db.settings.combatWhtmTimestampFormat = value
-        syncProvider()
-    end, Goals.db.settings.combatWhtmTimestampFormat or "24h")
-    self.combatTimestampDropdown = tsDrop
-
-    addLabel("Display style")
-    local displayDrop = addDropdown("GoalsCombatDisplayStyleDropdown")
-    self:SetupDropdown(displayDrop, function()
-        return {
-            { value = COMBAT_DISPLAY_TABLE, text = "Table" },
-            { value = COMBAT_DISPLAY_CHAT, text = "Chat style" },
-        }
-    end, function(value)
-        Goals.db.settings.combatWhtmDisplayStyle = value
-        UI:ApplyCombatDisplayStyle(value)
-        syncProvider()
-    end, "Table")
-    self.combatDisplayStyleDropdown = displayDrop
-
     local pausedCheck = addCheck("Pause capture", function(selfBtn)
         Goals.db.settings.combatWhtmPaused = selfBtn:GetChecked() and true or false
         syncProvider()
     end, "Pause/resume combat capture.")
     self.combatPausedCheck = pausedCheck
+    self.combatBossOnlyCheck = addCheck("Boss encounters only", function(selfBtn)
+        Goals.db.settings.combatWhtmBossOnly = selfBtn:GetChecked() and true or false
+        syncProvider()
+    end, "Only show events where source or target is classified as boss.")
 
-    addSectionHeader("Direction")
+    addSectionHeader("Filters")
+    addLabel("Direction")
     local dirIn = addCheck("Incoming", function(selfBtn)
         Goals.db.settings.combatWhtmDirections.incoming = selfBtn:GetChecked() and true or false
         syncProvider()
@@ -7930,10 +8147,6 @@ function UI:CreateDamageTrackerTab(page)
     self.combatDirIncomingCheck = dirIn
     self.combatDirOutgoingCheck = dirOut
     self.combatDirInternalCheck = dirInternal
-    self.combatBossOnlyCheck = addCheck("Boss encounters only", function(selfBtn)
-        Goals.db.settings.combatWhtmBossOnly = selfBtn:GetChecked() and true or false
-        syncProvider()
-    end, "Only show events where source or target is classified as boss.")
 
     addSectionHeader("Groups")
     self.combatGroupChecks = {}
@@ -7970,6 +8183,33 @@ function UI:CreateDamageTrackerTab(page)
     end
 
     addSectionHeader("Display")
+    addLabel("Display style")
+    local displayDrop = addDropdown("GoalsCombatDisplayStyleDropdown")
+    self:SetupDropdown(displayDrop, function()
+        return {
+            { value = COMBAT_DISPLAY_TABLE, text = "Table" },
+            { value = COMBAT_DISPLAY_CHAT, text = "Chat style" },
+        }
+    end, function(value)
+        Goals.db.settings.combatWhtmDisplayStyle = value
+        UI:ApplyCombatDisplayStyle(value)
+        syncProvider()
+    end, "Table")
+    self.combatDisplayStyleDropdown = displayDrop
+
+    addLabel("Timestamp")
+    local tsDrop = addDropdown("GoalsCombatTimestampDropdown")
+    self:SetupDropdown(tsDrop, function()
+        return {
+            { value = "24h", text = "24h" },
+            { value = "12h", text = "12h" },
+        }
+    end, function(value)
+        Goals.db.settings.combatWhtmTimestampFormat = value
+        syncProvider()
+    end, Goals.db.settings.combatWhtmTimestampFormat or "24h")
+    self.combatTimestampDropdown = tsDrop
+
     addLabel("Theme")
     local themeDrop = addDropdown("GoalsCombatThemeDropdown")
     self:SetupDropdown(themeDrop, function()
@@ -7989,6 +8229,10 @@ function UI:CreateDamageTrackerTab(page)
         Goals.db.settings.combatWhtmSoftRowColors = selfBtn:GetChecked() and true or false
         UI:UpdateDamageTrackerList()
     end, "Use subtle per-event row tinting in the combat table.")
+    self.combatCombineOverTimeCheck = addCheck("Combine Over-Time Events", function(selfBtn)
+        Goals.db.settings.combatWhtmCombineOverTime = selfBtn:GetChecked() and true or false
+        UI:UpdateDamageTrackerList()
+    end, "Merge DoT/HoT periodic ticks into rolling summaries.")
     addLabel("Row background style")
     local rowBgStyleDrop = addDropdown("GoalsCombatRowBgStyleDropdown")
     self:SetupDropdown(rowBgStyleDrop, function()
@@ -8074,10 +8318,7 @@ function UI:CreateDamageTrackerTab(page)
     clearBtn:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
     clearBtn:SetText("Clear session")
     clearBtn:SetScript("OnClick", function()
-        if Goals and Goals.CombatProvider and Goals.CombatProvider.ClearLog then
-            Goals.CombatProvider:ClearLog()
-        end
-        UI:UpdateDamageTrackerList()
+        clearCombatSession()
     end)
     attachSideTooltip(clearBtn, "Clear current session combat rows.")
     y = y - 30
@@ -11076,6 +11317,17 @@ function UI:FormatCombatBroadcastLine(entry)
         end
         return "affected"
     end
+    local LIFE_TAP_SPELL_IDS = {
+        [1454] = true, [1455] = true, [1456] = true, [11687] = true,
+        [11688] = true, [11689] = true, [27222] = true, [57946] = true,
+    }
+    local function isLifeTap(event, spellLower)
+        local sid = tonumber(event.spellId)
+        if sid and LIFE_TAP_SPELL_IDS[sid] then
+            return true
+        end
+        return spellLower and string.find(spellLower, "life tap", 1, true) ~= nil
+    end
     local function inferGroup(event)
         local group = event.eventGroup or ""
         if group == "" then
@@ -11105,6 +11357,10 @@ function UI:FormatCombatBroadcastLine(entry)
                 return "Mana"
             end
             return "Resource"
+        end
+        local rtLower = string.lower(rt)
+        if rtLower == "0" then
+            return "Mana"
         end
         return rt
     end
@@ -11155,14 +11411,18 @@ function UI:FormatCombatBroadcastLine(entry)
         parts[#parts + 1] = "for"
         if group == "resource" then
             local resource = string.lower(resourceLabel(entry))
+            local resourceShort = (resource == "mana") and "MP" or resource
             local spellLower = string.lower(spell or "")
             local healthLost = tonumber(entry.healthLost or entry.healthCost or entry.lifeCost or entry.hpCost or entry.selfDamage) or 0
-            if string.find(spellLower, "life tap", 1, true) and healthLost > 0 and effective > 0 then
-                parts[#parts + 1] = "-" .. tostring(math.floor(healthLost)) .. " health"
-                parts[#parts + 1] = "+" .. tostring(math.floor(effective)) .. " " .. resource
+            if healthLost <= 0 and isLifeTap(entry, spellLower) then
+                healthLost = tonumber(entry.extraAmount) or 0
+            end
+            if isLifeTap(entry, spellLower) and healthLost > 0 and effective > 0 then
+                parts[#parts + 1] = "-" .. tostring(math.floor(healthLost)) .. " HP"
+                parts[#parts + 1] = "+" .. tostring(math.floor(effective)) .. " " .. resourceShort
             else
                 local sign = effective >= 0 and "+" or ""
-                parts[#parts + 1] = sign .. tostring(math.floor(effective)) .. " " .. resource
+                parts[#parts + 1] = sign .. tostring(math.floor(effective)) .. " " .. resourceShort
             end
         else
             parts[#parts + 1] = tostring(math.floor(effective))
@@ -11226,7 +11486,12 @@ function UI:SendCombatBroadcastLines(channel, target, count)
         return
     end
     local filter = self.damageTrackerFilter or COMBAT_SHOW_ALL
-    local data = tracker:GetFilteredEntries(filter) or {}
+    local data = {}
+    if tracker == (Goals and Goals.CombatProvider) then
+        data = tracker:GetFilteredEntries({ disableCombine = true }) or {}
+    else
+        data = tracker:GetFilteredEntries(filter) or {}
+    end
     local limit = tonumber(count) or 0
     if limit < 0 then
         limit = 0
@@ -11275,6 +11540,9 @@ function UI:UpdateDamageTrackerList()
     setScrollBarAlwaysVisible(self.damageTrackerScroll, contentHeight)
     local displayStyle = self:GetCombatDisplayStyle()
     local chatStyle = displayStyle == COMBAT_DISPLAY_CHAT
+    if self.UpdateCombatDynamicSizing then
+        self:UpdateCombatDynamicSizing(data, displayStyle)
+    end
     local softRowsEnabled = not (Goals and Goals.db and Goals.db.settings and Goals.db.settings.combatWhtmSoftRowColors == false)
     local rowBgStyle = self:GetCombatRowBgStyle()
     local selectedEntry = self.combatTooltipLocked and self.combatTooltipEntry or nil
@@ -11314,6 +11582,49 @@ function UI:UpdateDamageTrackerList()
             return "Miss"
         end
         if event.eventGroup == "control" then
+            local subevent = string.upper(tostring(event.subevent or ""))
+            local spellText = string.lower(tostring(event.spellName or event.spell or ""))
+            if string.find(subevent, "RESURRECT", 1, true)
+                or string.find(spellText, "resurrect", 1, true)
+                or string.find(spellText, "revive", 1, true) then
+                return "Revive"
+            end
+            if string.find(subevent, "INTERRUPT", 1, true) then
+                return "Interrupt"
+            end
+            if string.find(subevent, "DISPEL", 1, true)
+                or string.find(subevent, "STOLEN", 1, true)
+                or string.find(spellText, "dispel", 1, true) then
+                return "Dispel"
+            end
+            if string.find(spellText, "taunt", 1, true) then
+                return "Taunt"
+            end
+            if string.find(spellText, "fear", 1, true) or string.find(spellText, "horror", 1, true) then
+                return "Fear"
+            end
+            if string.find(spellText, "stun", 1, true) then
+                return "Stun"
+            end
+            if string.find(spellText, "silence", 1, true) then
+                return "Silence"
+            end
+            if string.find(spellText, "charm", 1, true) or string.find(spellText, "mind control", 1, true) then
+                return "Charm"
+            end
+            if string.find(spellText, "root", 1, true)
+                or string.find(spellText, "snare", 1, true)
+                or string.find(spellText, "freeze", 1, true)
+                or string.find(spellText, "frost nova", 1, true)
+                or string.find(spellText, "entangling", 1, true) then
+                return "Root"
+            end
+            if string.find(spellText, "polymorph", 1, true) or string.find(spellText, "sap", 1, true) then
+                return "CC"
+            end
+            if string.find(spellText, "banish", 1, true) then
+                return "CC"
+            end
             return "Control"
         end
         if event.eventGroup == "resource" then
@@ -11332,9 +11643,31 @@ function UI:UpdateDamageTrackerList()
         return "Changed"
     end
 
+    local function formatCombinedDuration(seconds)
+        local s = tonumber(seconds) or 0
+        if s < 0.1 then
+            s = 0.1
+        end
+        local rounded = math.floor((s * 10) + 0.5) / 10
+        local text = tostring(rounded)
+        text = string.gsub(text, "%.0$", "")
+        return text
+    end
+
     local function detailAndTotal(event)
         local function colorWrap(text, r, g, b)
             return string.format("|cff%02x%02x%02x%s|r", (r or 1) * 255, (g or 1) * 255, (b or 1) * 255, tostring(text or ""))
+        end
+        local LIFE_TAP_SPELL_IDS = {
+            [1454] = true, [1455] = true, [1456] = true, [11687] = true,
+            [11688] = true, [11689] = true, [27222] = true, [57946] = true,
+        }
+        local function isLifeTap(event, spellLower)
+            local sid = tonumber(event.spellId)
+            if sid and LIFE_TAP_SPELL_IDS[sid] then
+                return true
+            end
+            return spellLower and string.find(spellLower, "life tap", 1, true) ~= nil
         end
         local clr = {
             damage = { 1.00, 0.30, 0.30 },
@@ -11345,6 +11678,36 @@ function UI:UpdateDamageTrackerList()
             blocked = { 0.80, 0.74, 0.46 },
             absorbed = { 0.60, 0.74, 0.98 },
         }
+        if event.isCombinedOverTime then
+            local total = tonumber(event.combinedTotal or event.effectiveAmount or event.amount) or 0
+            local duration = tonumber(event.combinedDuration) or 0.1
+            local rate = tonumber(event.combinedRate)
+            if not rate then
+                rate = total / math.max(duration, 0.1)
+            end
+            local rateDen = math.max(duration, 0.1)
+            local detailColor = (event.eventGroup == "heal") and clr.heal or clr.damage
+            local oh = tonumber(event.combinedOverheal or event.overheal) or 0
+            local ok = tonumber(event.combinedOverkill or event.overkill) or 0
+            local rs = tonumber(event.combinedResisted or event.resisted) or 0
+            local bl = tonumber(event.combinedBlocked or event.blocked) or 0
+            local ab = tonumber(event.combinedAbsorbed or event.absorbed) or 0
+            local prevented = (event.eventGroup == "heal") and oh or (ok + rs + bl + ab)
+            local rateText = tostring(math.floor(rate + 0.5))
+            local preventedRateText = tostring(math.floor((prevented / rateDen) + 0.5))
+            local innerColor = (event.eventGroup == "heal") and clr.overheal or clr.resist
+            local detail = colorWrap(rateText, detailColor[1], detailColor[2], detailColor[3])
+                .. " "
+                .. colorWrap("(" .. preventedRateText .. ")", innerColor[1], innerColor[2], innerColor[3])
+                .. " "
+                .. colorWrap("/s", 0.85, 0.88, 0.92)
+            local totalText = colorWrap(tostring(math.floor(total + 0.5)), detailColor[1], detailColor[2], detailColor[3])
+                .. " "
+                .. colorWrap("( " .. tostring(math.floor(prevented + 0.5)) .. " )", innerColor[1], innerColor[2], innerColor[3])
+                .. " "
+                .. colorWrap("/" .. formatCombinedDuration(duration) .. "s", 0.85, 0.88, 0.92)
+            return detail, totalText
+        end
         if event.eventGroup == "aura" then
             local detail = (event.auraType == "BUFF" and "Buff") or (event.auraType == "DEBUFF" and "Debuff") or "Aura"
             return detail, auraAction(event)
@@ -11352,6 +11715,25 @@ function UI:UpdateDamageTrackerList()
         if event.amount then
             local effective = tonumber(event.effectiveAmount or event.amount) or 0
             local detail = tostring(effective)
+            if event.eventGroup == "resource" then
+                local spellLower = string.lower(tostring(event.spellName or event.spell or ""))
+                local resourceName = tostring(event.resourceName or event.powerName or event.powerType or "Resource")
+                if tonumber(event.powerType) == 0 then
+                    resourceName = "Mana"
+                end
+                local resourceShort = (string.lower(tostring(resourceName)) == "mana") and "MP" or string.lower(tostring(resourceName))
+                local healthLost = tonumber(event.healthLost or event.healthCost or event.lifeCost or event.hpCost or event.selfDamage)
+                if (not healthLost or healthLost <= 0) and isLifeTap(event, spellLower) then
+                    healthLost = tonumber(event.extraAmount)
+                end
+                local totalText = colorWrap("+" .. tostring(math.floor(effective)) .. " " .. resourceShort, 0.36, 0.62, 0.95)
+                if healthLost and healthLost > 0 and effective > 0 then
+                    detail = colorWrap("-" .. tostring(math.floor(healthLost)) .. " HP", 1.00, 0.35, 0.35)
+                else
+                    detail = "-"
+                end
+                return detail, totalText
+            end
             if event.eventGroup == "heal" then
                 detail = colorWrap(detail, clr.heal[1], clr.heal[2], clr.heal[3])
                 if event.overheal then
@@ -11394,24 +11776,66 @@ function UI:UpdateDamageTrackerList()
 
     local function colorForGroup(group)
         if group == "heal" then
-            return 0.2, 1, 0.2
+            return 0.26, 0.95, 0.42
         end
         if group == "damage" then
-            return 1, 0.25, 0.25
+            return 0.95, 0.30, 0.30
         end
         if group == "aura" then
-            return 1, 0.88, 0.35
+            return 0.96, 0.82, 0.34
         end
         if group == "death" then
-            return 0.8, 0.35, 0.9
+            return 0.86, 0.42, 0.92
         end
         if group == "control" then
-            return 0.6, 0.8, 1
+            return 0.44, 0.74, 0.98
         end
         if group == "resource" then
-            return 0.52, 0.72, 0.98
+            return 0.34, 0.64, 0.96
+        end
+        if group == "miss" then
+            return 0.86, 0.86, 0.86
         end
         return 1, 1, 1
+    end
+
+    local function colorForType(event)
+        local group = event and event.eventGroup or nil
+        if group ~= "control" then
+            return colorForGroup(group)
+        end
+        local typeText = groupType(event)
+        if typeText == "Revive" then
+            return 0.64, 1.00, 0.74
+        end
+        if typeText == "Interrupt" then
+            return 1.00, 0.60, 0.30
+        end
+        if typeText == "Dispel" then
+            return 0.54, 0.84, 1.00
+        end
+        if typeText == "Taunt" then
+            return 0.95, 0.78, 0.34
+        end
+        if typeText == "CC" then
+            return 0.70, 0.62, 0.98
+        end
+        if typeText == "Fear" then
+            return 0.88, 0.56, 0.98
+        end
+        if typeText == "Stun" then
+            return 0.98, 0.66, 0.36
+        end
+        if typeText == "Silence" then
+            return 0.66, 0.84, 0.98
+        end
+        if typeText == "Charm" then
+            return 0.98, 0.58, 0.82
+        end
+        if typeText == "Root" then
+            return 0.66, 0.90, 0.72
+        end
+        return 0.44, 0.74, 0.98
     end
 
     local function colorForTier(tier)
@@ -11439,12 +11863,19 @@ function UI:UpdateDamageTrackerList()
     end
 
     local function colorForUnit(event, isSource)
+        local name = isSource and event.sourceName or event.destName
+        local classFile = isSource and event.sourceClass or event.destClass
+        if Goals and Goals.GetPlayerColor and name and name ~= "" then
+            local pr, pg, pb = Goals:GetPlayerColor(name)
+            if pr and pg and pb then
+                return pr, pg, pb
+            end
+        end
         local tier = isSource and event.sourceTier or event.destTier
         local tr, tg, tb = colorForTier(tier)
         if tr then
             return tr, tg, tb
         end
-        local classFile = isSource and event.sourceClass or event.destClass
         local cr, cg, cb = colorForClass(classFile)
         if cr then
             return cr, cg, cb
@@ -11504,6 +11935,10 @@ function UI:UpdateDamageTrackerList()
                 return "Mana"
             end
             return "Resource"
+        end
+        local rtLower = string.lower(rt)
+        if rtLower == "0" then
+            return "Mana"
         end
         return rt
     end
@@ -11574,6 +12009,17 @@ function UI:UpdateDamageTrackerList()
 
     local function buildChatLine(event, src, dst, where, r, g, b, sr, sg, sb, tr, tg, tb, ar, ag, ab)
         local parts = {}
+        local LIFE_TAP_SPELL_IDS = {
+            [1454] = true, [1455] = true, [1456] = true, [11687] = true,
+            [11688] = true, [11689] = true, [27222] = true, [57946] = true,
+        }
+        local function isLifeTap(event, spellLower)
+            local sid = tonumber(event.spellId)
+            if sid and LIFE_TAP_SPELL_IDS[sid] then
+                return true
+            end
+            return spellLower and string.find(spellLower, "life tap", 1, true) ~= nil
+        end
         local action = chatActionVerb(event)
         local ts = formatCombatTimestamp(event.timestamp or event.ts)
         if ts and ts ~= "" then
@@ -11607,7 +12053,41 @@ function UI:UpdateDamageTrackerList()
         local raw = tonumber(event.rawAmount or event.amount)
         if effective and event.eventGroup ~= "aura" and event.eventGroup ~= "death" then
             parts[#parts + 1] = "for"
-            if event.eventGroup == "heal" then
+            if event.isCombinedOverTime then
+                local total = tonumber(event.combinedTotal or effective) or 0
+                local rawTotal = tonumber(event.combinedRawTotal or event.rawAmount or event.amount) or total
+                local duration = tonumber(event.combinedDuration) or 0.1
+                local ticks = math.max(1, math.floor((tonumber(event.combinedTicks) or 1) + 0.5))
+                local rate = tonumber(event.combinedRate)
+                if not rate then
+                    rate = total / math.max(duration, 0.1)
+                end
+                local rateDen = math.max(duration, 0.1)
+                local rr, rg, rb = 1.00, 0.30, 0.30
+                if event.eventGroup == "heal" then
+                    rr, rg, rb = 0.30, 1.00, 0.30
+                end
+                local oh = tonumber(event.combinedOverheal or event.overheal) or 0
+                local ok = tonumber(event.combinedOverkill or event.overkill) or 0
+                local rs = tonumber(event.combinedResisted or event.resisted) or 0
+                local bl = tonumber(event.combinedBlocked or event.blocked) or 0
+                local ab = tonumber(event.combinedAbsorbed or event.absorbed) or 0
+                local prevented = (event.eventGroup == "heal") and oh or (ok + rs + bl + ab)
+                local innerR, innerG, innerB = 0.68, 0.10, 0.10
+                if event.eventGroup == "heal" then
+                    innerR, innerG, innerB = 0.00, 0.70, 0.20
+                end
+                parts[#parts + 1] = colorWrap(tostring(math.floor(total + 0.5)), rr, rg, rb)
+                parts[#parts + 1] = colorWrap("(" .. tostring(math.floor(prevented + 0.5)) .. ")", innerR, innerG, innerB)
+                parts[#parts + 1] = "over"
+                parts[#parts + 1] = colorWrap(formatCombinedDuration(duration) .. "s, " .. tostring(ticks) .. " ticks.", 0.80, 0.84, 0.90)
+                parts[#parts + 1] = colorWrap(tostring(math.floor(rate + 0.5)), rr, rg, rb)
+                parts[#parts + 1] = colorWrap("(" .. tostring(math.floor((prevented / rateDen) + 0.5)) .. ")", innerR, innerG, innerB)
+                parts[#parts + 1] = colorWrap("/s", 0.85, 0.88, 0.92)
+                if rawTotal > 0 then
+                    parts[#parts + 1] = colorWrap("[" .. tostring(math.floor(rawTotal + 0.5)) .. "]", 0.70, 0.74, 0.80)
+                end
+            elseif event.eventGroup == "heal" then
                 parts[#parts + 1] = colorWrap(tostring(math.floor(effective)), 0.30, 1.00, 0.30)
                 local oh = tonumber(event.overheal) or 0
                 if oh > 0 then
@@ -11625,17 +12105,21 @@ function UI:UpdateDamageTrackerList()
                 end
             elseif event.eventGroup == "resource" then
                 local resource = string.lower(resourceLabel(event))
+                local resourceShort = (resource == "mana") and "MP" or resource
                 local spellLower = string.lower(spellText or "")
                 local healthLost = tonumber(event.healthLost or event.healthCost or event.lifeCost or event.hpCost or event.selfDamage) or 0
+                if healthLost <= 0 and isLifeTap(event, spellLower) then
+                    healthLost = tonumber(event.extraAmount) or 0
+                end
                 local manaBlue = {0.36, 0.62, 0.95}
                 local manaBlueDark = {0.22, 0.45, 0.78}
-                if string.find(spellLower, "life tap", 1, true) and healthLost > 0 and effective > 0 then
-                    parts[#parts + 1] = colorWrap("-" .. tostring(math.floor(healthLost)) .. " health", 1.00, 0.35, 0.35)
-                    parts[#parts + 1] = colorWrap("+" .. tostring(math.floor(effective)) .. " " .. resource, manaBlue[1], manaBlue[2], manaBlue[3])
+                if isLifeTap(event, spellLower) and healthLost > 0 and effective > 0 then
+                    parts[#parts + 1] = colorWrap("-" .. tostring(math.floor(healthLost)) .. " HP", 1.00, 0.35, 0.35)
+                    parts[#parts + 1] = colorWrap("+" .. tostring(math.floor(effective)) .. " " .. resourceShort, manaBlue[1], manaBlue[2], manaBlue[3])
                 else
                     local sign = effective >= 0 and "+" or ""
                     parts[#parts + 1] = colorWrap(sign .. tostring(math.floor(effective)), manaBlue[1], manaBlue[2], manaBlue[3])
-                    parts[#parts + 1] = colorWrap(resource, manaBlueDark[1], manaBlueDark[2], manaBlueDark[3])
+                    parts[#parts + 1] = colorWrap(resourceShort, manaBlueDark[1], manaBlueDark[2], manaBlueDark[3])
                 end
             else
                 parts[#parts + 1] = colorWrap(tostring(math.floor(effective)), ar, ag, ab)
@@ -11666,10 +12150,10 @@ function UI:UpdateDamageTrackerList()
         if absorbed > 0 then
             mods[#mods + 1] = "Absorb " .. tostring(math.floor(absorbed))
         end
-        if #mods > 0 then
+        if (not event.isCombinedOverTime) and #mods > 0 then
             parts[#parts + 1] = colorWrap("(" .. table.concat(mods, ", ") .. ")", 0.80, 0.84, 0.90)
         end
-        if raw then
+        if (not event.isCombinedOverTime) and raw then
             parts[#parts + 1] = colorWrap("[" .. tostring(math.floor(raw)) .. "]", 0.70, 0.74, 0.80)
         end
         if where and where ~= "" then
@@ -11695,6 +12179,7 @@ function UI:UpdateDamageTrackerList()
                 where = where .. " " .. event.coordsText
             end
             local r, g, b = colorForGroup(event.eventGroup)
+            local trr, tgg, tbb = colorForType(event)
             local sr, sg, sb = colorForUnit(event, true)
             local tr, tg, tb = colorForUnit(event, false)
             local ar, ag, ab = colorForAbility(event)
@@ -11733,7 +12218,7 @@ function UI:UpdateDamageTrackerList()
                 row.cols.total:SetText(total or "")
                 row.cols.where:SetText(where or "")
 
-                row.cols.type:SetTextColor(r, g, b)
+                row.cols.type:SetTextColor(trr, tgg, tbb)
                 row.cols.total:SetTextColor(ar, ag, ab)
                 row.cols.time:SetTextColor(1, 1, 1)
                 row.cols.icon:SetTextColor(1, 1, 1)
@@ -14469,6 +14954,9 @@ function UI:Refresh()
     end
     if self.combatSoftRowsCheck then
         self.combatSoftRowsCheck:SetChecked(Goals.db.settings.combatWhtmSoftRowColors ~= false)
+    end
+    if self.combatCombineOverTimeCheck then
+        self.combatCombineOverTimeCheck:SetChecked(Goals.db.settings.combatWhtmCombineOverTime and true or false)
     end
     if self.combatThemeDropdown then
         local theme = self:GetCombatTheme()

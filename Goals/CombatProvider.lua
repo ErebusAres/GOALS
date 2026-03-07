@@ -32,6 +32,9 @@ local function defaultSettings(settings)
     if settings.combatWhtmPaused == nil then
         settings.combatWhtmPaused = false
     end
+    if settings.combatWhtmCombineOverTime == nil then
+        settings.combatWhtmCombineOverTime = false
+    end
     if settings.combatWhtmDirections == nil then
         settings.combatWhtmDirections = {
             incoming = true,
@@ -193,7 +196,165 @@ function CombatProvider:ClearLog()
     end
 end
 
-function CombatProvider:RebuildPeriodicCombines()
+local function getEventTimestamp(event)
+    local ts = tonumber(event and (event.timestamp or event.ts or event.combatTimestamp))
+    return ts or 0
+end
+
+local function getPeriodicAmount(event)
+    local amount = tonumber(event and event.effectiveAmount)
+    if amount == nil and event then
+        local raw = tonumber(event.amount) or 0
+        local overheal = tonumber(event.overheal) or 0
+        local overkill = tonumber(event.overkill) or 0
+        local resisted = tonumber(event.resisted) or 0
+        amount = raw - overheal - overkill - resisted
+    end
+    amount = tonumber(amount) or 0
+    if amount < 0 then
+        amount = 0
+    end
+    return amount
+end
+
+local function isPeriodicOverTimeEvent(event)
+    if not event then
+        return false
+    end
+    if event.eventGroup == "damage" and event.subevent == "SPELL_PERIODIC_DAMAGE" then
+        return true
+    end
+    if event.eventGroup == "heal" and event.subevent == "SPELL_PERIODIC_HEAL" then
+        return true
+    end
+    return false
+end
+
+local function periodicBucketKey(event)
+    local src = tostring(event.sourceGUID or event.sourceName or "?")
+    local dst = tostring(event.destGUID or event.destName or "?")
+    local spell = tostring(event.spellId or event.spellName or event.subevent or "?")
+    local group = tostring(event.eventGroup or "?")
+    local dir = tostring(event.direction or "?")
+    return table.concat({ src, dst, spell, group, dir }, "\31")
+end
+
+local function flushPeriodicBucket(outChrono, bucket)
+    if not bucket then
+        return
+    end
+    if (bucket.ticks or 0) <= 1 then
+        if bucket.firstEvent then
+            outChrono[#outChrono + 1] = bucket.firstEvent
+        end
+        return
+    end
+    local base = safeCopy(bucket.firstEvent or {})
+    local total = bucket.total or 0
+    local rawTotal = bucket.rawTotal or total
+    local ticks = bucket.ticks or 0
+    local startTs = bucket.startTs or 0
+    local endTs = bucket.endTs or startTs
+    local duration = endTs - startTs
+    if duration < 0.1 then
+        duration = 0.1
+    end
+    local rate = total / duration
+
+    base.isCombinedOverTime = true
+    base.combinedKind = (base.eventGroup == "heal") and "hot" or "dot"
+    base.combinedTicks = ticks
+    base.combinedTotal = total
+    base.combinedRawTotal = rawTotal
+    base.combinedStartTs = startTs
+    base.combinedEndTs = endTs
+    base.combinedDuration = duration
+    base.combinedRate = rate
+    base.combinedOverheal = bucket.overheal or 0
+    base.combinedOverkill = bucket.overkill or 0
+    base.combinedResisted = bucket.resisted or 0
+    base.combinedBlocked = bucket.blocked or 0
+    base.combinedAbsorbed = bucket.absorbed or 0
+    base.amount = total
+    base.effectiveAmount = total
+    base.rawAmount = rawTotal
+    base.overheal = (bucket.overheal and bucket.overheal > 0) and bucket.overheal or nil
+    base.overkill = (bucket.overkill and bucket.overkill > 0) and bucket.overkill or nil
+    base.resisted = (bucket.resisted and bucket.resisted > 0) and bucket.resisted or nil
+    base.blocked = (bucket.blocked and bucket.blocked > 0) and bucket.blocked or nil
+    base.absorbed = (bucket.absorbed and bucket.absorbed > 0) and bucket.absorbed or nil
+    base.timestamp = endTs
+    base.ts = endTs
+
+    outChrono[#outChrono + 1] = base
+end
+
+function CombatProvider:RebuildPeriodicCombines(events)
+    local input = events or {}
+    if #input == 0 then
+        return input
+    end
+
+    local out = {}
+    local buckets = {}
+
+    -- Input is newest->oldest. Emit each periodic key once at first sight and
+    -- keep accumulating older ticks into that same bucket.
+    for i = 1, #input do
+        local event = input[i]
+        local ts = getEventTimestamp(event)
+        if isPeriodicOverTimeEvent(event) then
+            local key = periodicBucketKey(event)
+            local amount = getPeriodicAmount(event)
+            local bucket = buckets[key]
+            if not bucket then
+                bucket = {
+                    key = key,
+                    firstEvent = event,
+                    startTs = ts,
+                    endTs = ts,
+                    total = amount,
+                    rawTotal = tonumber(event.amount) or amount,
+                    ticks = 1,
+                    overheal = tonumber(event.overheal) or 0,
+                    overkill = tonumber(event.overkill) or 0,
+                    resisted = tonumber(event.resisted) or 0,
+                    blocked = tonumber(event.blocked) or 0,
+                    absorbed = tonumber(event.absorbed) or 0,
+                }
+                buckets[key] = bucket
+                out[#out + 1] = { __combineBucket = bucket }
+            else
+                if ts < (bucket.startTs or ts) then
+                    bucket.startTs = ts
+                end
+                if ts > (bucket.endTs or ts) then
+                    bucket.endTs = ts
+                end
+                bucket.total = (bucket.total or 0) + amount
+                bucket.rawTotal = (bucket.rawTotal or 0) + (tonumber(event.amount) or amount)
+                bucket.ticks = (bucket.ticks or 0) + 1
+                bucket.overheal = (bucket.overheal or 0) + (tonumber(event.overheal) or 0)
+                bucket.overkill = (bucket.overkill or 0) + (tonumber(event.overkill) or 0)
+                bucket.resisted = (bucket.resisted or 0) + (tonumber(event.resisted) or 0)
+                bucket.blocked = (bucket.blocked or 0) + (tonumber(event.blocked) or 0)
+                bucket.absorbed = (bucket.absorbed or 0) + (tonumber(event.absorbed) or 0)
+            end
+        else
+            out[#out + 1] = event
+        end
+    end
+
+    local final = {}
+    for i = 1, #out do
+        local entry = out[i]
+        if type(entry) == "table" and entry.__combineBucket then
+            flushPeriodicBucket(final, entry.__combineBucket)
+        else
+            final[#final + 1] = entry
+        end
+    end
+    return final
 end
 
 function CombatProvider:AddEntry(entry)
@@ -208,7 +369,10 @@ function CombatProvider:AddEntry(entry)
     table.insert(self.events, 1, e)
 end
 
-function CombatProvider:GetFilteredEntries()
+function CombatProvider:GetFilteredEntries(opts)
+    if type(opts) ~= "table" then
+        opts = nil
+    end
     local s = self:GetSettings()
     local all = self.events or {}
     local out = {}
@@ -228,6 +392,9 @@ function CombatProvider:GetFilteredEntries()
         if directionEnabled and groupEnabled and auraOk and bossOk then
             out[#out + 1] = event
         end
+    end
+    if s.combatWhtmCombineOverTime and not (opts and opts.disableCombine) then
+        return self:RebuildPeriodicCombines(out)
     end
     return out
 end
