@@ -9603,11 +9603,6 @@ function UI:SendCombatEntryToChannel(entry, channel, target)
             channel = "WHISPER"
         end
     end
-    local api = _G.WHTM_API
-    if api and api.ShareEvent then
-        api.ShareEvent(entry, channel, target)
-        return
-    end
     local line = self:FormatCombatBroadcastLine(entry)
     if not line or line == "" then
         return
@@ -11409,7 +11404,30 @@ function UI:FormatCombatBroadcastLine(entry)
     local absorbed = tonumber(entry.absorbed) or 0
     if effective and group ~= "aura" and group ~= "death" then
         parts[#parts + 1] = "for"
-        if group == "resource" then
+        if entry.isCombinedOverTime and (group == "heal" or group == "damage") then
+            local total = tonumber(entry.combinedTotal or effective) or 0
+            local rawTotal = tonumber(entry.combinedRawTotal or entry.rawAmount or entry.amount) or total
+            local duration = math.max(0.1, tonumber(entry.combinedDuration) or 0.1)
+            local ticks = math.max(1, math.floor((tonumber(entry.combinedTicks) or 1) + 0.5))
+            local rate = tonumber(entry.combinedRate) or (total / duration)
+            local oh = tonumber(entry.combinedOverheal or entry.overheal) or 0
+            local ok = tonumber(entry.combinedOverkill or entry.overkill) or 0
+            local rs = tonumber(entry.combinedResisted or entry.resisted) or 0
+            local bl = tonumber(entry.combinedBlocked or entry.blocked) or 0
+            local ab = tonumber(entry.combinedAbsorbed or entry.absorbed) or 0
+            local prevented = (group == "heal") and oh or (ok + rs + bl + ab)
+            parts[#parts + 1] = tostring(math.floor(total + 0.5))
+            parts[#parts + 1] = "(" .. tostring(math.floor(prevented + 0.5)) .. ")"
+            parts[#parts + 1] = "over"
+            parts[#parts + 1] = tostring(math.floor(duration + 0.5)) .. "s,"
+            parts[#parts + 1] = tostring(ticks) .. " ticks."
+            parts[#parts + 1] = tostring(math.floor(rate + 0.5))
+            parts[#parts + 1] = "(" .. tostring(math.floor((prevented / duration) + 0.5)) .. ")"
+            parts[#parts + 1] = "/s"
+            if rawTotal > 0 then
+                parts[#parts + 1] = "[" .. tostring(math.floor(rawTotal + 0.5)) .. "]"
+            end
+        elseif group == "resource" then
             local resource = string.lower(resourceLabel(entry))
             local resourceShort = (resource == "mana") and "MP" or resource
             local spellLower = string.lower(spell or "")
@@ -11441,7 +11459,7 @@ function UI:FormatCombatBroadcastLine(entry)
         parts[#parts + 1] = "for"
         parts[#parts + 1] = tostring(entry.missType)
     end
-    if group ~= "heal" and group ~= "damage" then
+    if (not entry.isCombinedOverTime) and group ~= "heal" and group ~= "damage" then
         local mods = {}
         if over > 0 then mods[#mods + 1] = "OH " .. tostring(math.floor(over)) end
         if resist > 0 then mods[#mods + 1] = "Resist " .. tostring(math.floor(resist)) end
@@ -11452,7 +11470,7 @@ function UI:FormatCombatBroadcastLine(entry)
             parts[#parts + 1] = "(" .. table.concat(mods, ", ") .. ")"
         end
     end
-    if raw then
+    if (not entry.isCombinedOverTime) and raw then
         parts[#parts + 1] = "[" .. tostring(math.floor(raw)) .. "]"
     end
     if where ~= "" then
