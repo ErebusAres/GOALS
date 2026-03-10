@@ -1173,10 +1173,20 @@ function Goals:HandleLootAssignment(playerName, itemLink, skipSync, forceRecord)
     local shouldTrack = self:ShouldTrackLoot(quality, itemType, itemSubType, equipSlot)
     local shouldReset = shouldTrack and self:ShouldResetForLoot(itemType, itemSubType, equipSlot, quality)
     local isToken = self:IsToken(itemType, itemSubType)
-    if shouldReset and itemId then
+    local isMappedTokenItem = false
+    local resetTokensEnabled = self.db and self.db.settings and self.db.settings.resetTokens and true or false
+    if itemId then
         local tokenId = self:GetArmorTokenForItem(itemId)
-        if tokenId and tokenId ~= itemId then
-            shouldReset = false
+        isMappedTokenItem = tokenId and tokenId ~= itemId
+        if isMappedTokenItem then
+            -- Treat tier pieces that map to tokens as token resets when token resets are enabled.
+            -- This is needed on servers where token-equivalent loot is represented as tier item IDs.
+            if resetTokensEnabled then
+                shouldTrack = true
+                shouldReset = true
+            else
+                shouldReset = false
+            end
         end
     end
     if shouldReset and self.db and self.db.settings and self.db.settings.resetRequiresLootWindow then
@@ -1186,7 +1196,7 @@ function Goals:HandleLootAssignment(playerName, itemLink, skipSync, forceRecord)
     end
     local overviewSettings = self:GetOverviewSettings()
     if overviewSettings.disablePointGain then
-        if not isToken then
+        if not isToken and not isMappedTokenItem then
             shouldReset = false
         end
     end
@@ -3314,8 +3324,50 @@ function Goals:FlushWishlistAnnouncements()
     self.wishlistState.announceQueue = {}
 end
 
+function Goals:GetWishlistMatchIdSet(itemId)
+    local ids = {}
+    local baseId = tonumber(itemId) or 0
+    if baseId <= 0 then
+        return ids
+    end
+
+    ids[baseId] = true
+
+    local mappedToken = self:GetArmorTokenForItem(baseId)
+    if mappedToken and mappedToken > 0 then
+        ids[mappedToken] = true
+        local remappedToken = self:GetCustomRealmTokenOverride(mappedToken, mappedToken)
+        if remappedToken and remappedToken > 0 then
+            ids[remappedToken] = true
+        end
+    end
+
+    local realmMapped = self:GetCustomRealmTokenOverride(baseId, baseId)
+    if realmMapped and realmMapped > 0 then
+        ids[realmMapped] = true
+    end
+
+    return ids
+end
+
+local function wishlistEntryMatchesIds(entry, ids)
+    if type(entry) ~= "table" or type(ids) ~= "table" then
+        return false
+    end
+    local entryItemId = tonumber(entry.itemId) or 0
+    if entryItemId > 0 and ids[entryItemId] then
+        return true
+    end
+    local entryTokenId = tonumber(entry.tokenId) or 0
+    if entryTokenId > 0 and ids[entryTokenId] then
+        return true
+    end
+    return false
+end
+
 function Goals:WishlistContainsItem(itemId)
-    if not itemId then
+    local ids = self:GetWishlistMatchIdSet(itemId)
+    if not next(ids) then
         return false
     end
     local data = self:EnsureWishlistData()
@@ -3323,7 +3375,7 @@ function Goals:WishlistContainsItem(itemId)
     for _, list in pairs(lists) do
         if list and list.items then
             for _, entry in pairs(list.items) do
-                if entry and (entry.itemId == itemId or entry.tokenId == itemId) then
+                if wishlistEntryMatchesIds(entry, ids) then
                     return true
                 end
             end
@@ -3333,7 +3385,8 @@ function Goals:WishlistContainsItem(itemId)
 end
 
 function Goals:GetWishlistsContainingItem(itemId)
-    if not itemId then
+    local ids = self:GetWishlistMatchIdSet(itemId)
+    if not next(ids) then
         return {}
     end
     local data = self:EnsureWishlistData()
@@ -3342,7 +3395,7 @@ function Goals:GetWishlistsContainingItem(itemId)
     for _, list in pairs(lists) do
         if list and list.items then
             for _, entry in pairs(list.items) do
-                if entry and (entry.itemId == itemId or entry.tokenId == itemId) then
+                if wishlistEntryMatchesIds(entry, ids) then
                     table.insert(names, list.name or "Wishlist")
                     break
                 end
@@ -3383,7 +3436,8 @@ function Goals:GetWishlistFoundMap(listId)
 end
 
 function Goals:MarkWishlistFound(itemId)
-    if not itemId then
+    local ids = self:GetWishlistMatchIdSet(itemId)
+    if not next(ids) then
         return
     end
     local data = self:EnsureWishlistData()
@@ -3395,9 +3449,10 @@ function Goals:MarkWishlistFound(itemId)
             if foundMap then
                 local listUpdated = false
                 for _, entry in pairs(list.items) do
-                    if entry and (entry.itemId == itemId or entry.tokenId == itemId) then
-                        if not foundMap[entry.itemId] then
-                            foundMap[entry.itemId] = true
+                    if wishlistEntryMatchesIds(entry, ids) then
+                        local entryItemId = tonumber(entry.itemId) or 0
+                        if entryItemId > 0 and not foundMap[entryItemId] then
+                            foundMap[entryItemId] = true
                             listUpdated = true
                         end
                     end
