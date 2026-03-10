@@ -3952,7 +3952,18 @@ function UI:UpdateFrameWidthForTab(tabId)
     if math.abs(currentW - targetW) < 1 then
         return
     end
+    local anchorLeft = self.frame.GetLeft and self.frame:GetLeft() or nil
+    local anchorTop = self.frame.GetTop and self.frame:GetTop() or nil
     self.frame:SetWidth(targetW)
+    if anchorLeft and anchorTop and UIParent then
+        -- Keep the left edge stable while switching tab widths (normal <-> combat)
+        -- so the content does not appear to stretch out to the left.
+        self.frame:ClearAllPoints()
+        self.frame:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", anchorLeft, anchorTop)
+    end
+    if self.LayoutTabs then
+        self:LayoutTabs()
+    end
 end
 
 function UI:LayoutTabs()
