@@ -71,6 +71,50 @@ local OPTIONS_HEADER_HEIGHT = 16
 local OPTIONS_BUTTON_ID = 0
 local createLabel
 
+local function insertWishlistChatLink(link)
+    if not link or link == "" then
+        return false
+    end
+    if not (IsModifiedClick and IsModifiedClick("CHATLINK")) then
+        return false
+    end
+    if ChatEdit_InsertLink and ChatEdit_InsertLink(link) then
+        return true
+    end
+    if HandleModifiedItemClick then
+        HandleModifiedItemClick(link)
+        return true
+    end
+    return false
+end
+
+local function getWishlistItemChatLink(itemId, itemLink)
+    if itemLink and itemLink ~= "" then
+        return itemLink
+    end
+    local cached = itemId and Goals.CacheItemById and Goals:CacheItemById(itemId) or nil
+    return (cached and cached.link) or (itemId and ("item:" .. tostring(itemId))) or nil
+end
+
+local function getWishlistEnchantChatLink(enchantId, entry)
+    local info = entry
+    if not info and enchantId and Goals.GetEnchantInfoById then
+        info = Goals:GetEnchantInfoById(enchantId)
+    end
+    local spellId = info and tonumber(info.spellId) or nil
+    if spellId and GetSpellLink then
+        local link = GetSpellLink(spellId)
+        if link and link ~= "" then
+            return link
+        end
+    end
+    if spellId then
+        local name = (info and info.name) or (GetSpellInfo and GetSpellInfo(spellId)) or ("Enchant " .. tostring(enchantId or spellId))
+        return "|cff71d5ff|Hspell:" .. tostring(spellId) .. "|h[" .. tostring(name) .. "]|h|r"
+    end
+    return info and info.name or nil
+end
+
 local THEME = {
     frameBg = { 0.08, 0.09, 0.12, 0.95 },
     frameLight = { 0.14, 0.15, 0.19, 0.4 },
@@ -3952,18 +3996,7 @@ function UI:UpdateFrameWidthForTab(tabId)
     if math.abs(currentW - targetW) < 1 then
         return
     end
-    local anchorLeft = self.frame.GetLeft and self.frame:GetLeft() or nil
-    local anchorTop = self.frame.GetTop and self.frame:GetTop() or nil
     self.frame:SetWidth(targetW)
-    if anchorLeft and anchorTop and UIParent then
-        -- Keep the left edge stable while switching tab widths (normal <-> combat)
-        -- so the content does not appear to stretch out to the left.
-        self.frame:ClearAllPoints()
-        self.frame:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", anchorLeft, anchorTop)
-    end
-    if self.LayoutTabs then
-        self:LayoutTabs()
-    end
 end
 
 function UI:LayoutTabs()
@@ -4947,6 +4980,18 @@ function UI:CreateOverviewTab(page)
     end, "Minimize GOALS automatically when combat starts.")
     self.autoMinimizeCheck = autoMinCheck
 
+    self.announceEncounterStartCheck = addCheck("Announce encounter starts", function(selfBtn)
+        Goals.db.settings.announceEncounterStarts = selfBtn:GetChecked() and true or false
+    end, "Show a local chat message when a tracked encounter begins.")
+
+    self.announceEncounterWipeCheck = addCheck("Announce encounter wipes", function(selfBtn)
+        Goals.db.settings.announceEncounterWipes = selfBtn:GetChecked() and true or false
+    end, "Show a local chat message when a tracked encounter ends in a wipe.")
+
+    self.announceEncounterCompletionCheck = addCheck("Announce encounter completion", function(selfBtn)
+        Goals.db.settings.announceEncounterCompletions = selfBtn:GetChecked() and true or false
+    end, "Show a local chat message when a boss point is awarded.")
+
     local localOnlyCheck = addCheck("Local-only mode", function(selfBtn)
         Goals.db.settings.localOnly = selfBtn:GetChecked() and true or false
     end, "Disable syncing; changes stay on this client.")
@@ -5555,6 +5600,9 @@ function UI:CreateLootTab(page)
     self.resetQuestItemsCheck = addCheck("Reset quest items to 0", function(selfBtn)
         Goals:SetRaidSetting("resetQuestItems", selfBtn:GetChecked() and true or false)
     end, "Set quest item winners to 0 points when they win these items.")
+    self.resetBagsCheck = addCheck("Reset bags to 0", function(selfBtn)
+        Goals:SetRaidSetting("resetBags", selfBtn:GetChecked() and true or false)
+    end, "When disabled, bags remain in loot history but never reset the winner's points because of item quality.")
     self.resetLootWindowCheck = addCheck("Manual mode", function(selfBtn)
         Goals:SetRaidSetting("resetRequiresLootWindow", selfBtn:GetChecked() and true or false)
     end, "Disable automatic resets unless loot is being assigned.")
@@ -6157,6 +6205,16 @@ function UI:CreateWishlistTab(page)
                 selected:Hide()
                 row.selected = selected
                 row:SetScript("OnClick", function(selfRow)
+                    local chatLink = nil
+                    if block.mode == "ENCHANT" then
+                        chatLink = getWishlistEnchantChatLink(selfRow.entry and selfRow.entry.id, selfRow.entry)
+                    else
+                        local itemId = selfRow.entry and (selfRow.entry.id or selfRow.entry.itemId)
+                        chatLink = getWishlistItemChatLink(itemId, selfRow.entry and selfRow.entry.link)
+                    end
+                    if insertWishlistChatLink(chatLink) then
+                        return
+                    end
                     if block.mode == "ENCHANT" then
                         UI.selectedWishlistEnchantResult = selfRow.entry
                         UI.selectedWishlistEnchantResultId = selfRow.entry and selfRow.entry.id or nil
@@ -6245,6 +6303,12 @@ function UI:CreateWishlistTab(page)
     end)
     self.wishlistRefreshButton = refreshBtn
 
+    local summary = createLabel(leftInset, "0/0 items found", "GameFontHighlightSmall")
+    summary:SetPoint("BOTTOMLEFT", leftInset, "BOTTOMLEFT", 10, 13)
+    summary:SetPoint("RIGHT", refreshBtn, "LEFT", -8, 0)
+    summary:SetJustifyH("LEFT")
+    self.wishlistCompletionSummary = summary
+
     self.wishlistSlotButtons = {}
     local slots = Goals:GetWishlistSlotDefs() or {}
     local leftColumnX = 28
@@ -6332,6 +6396,12 @@ function UI:CreateWishlistTab(page)
             gemTex:SetPoint("BOTTOMRIGHT", gemBtn, "BOTTOMRIGHT", -1, 1)
             gemBtn.icon = gemTex
             gemTex:SetDrawLayer("OVERLAY", 1)
+            local gemPlus = gemBtn:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+            gemPlus:SetPoint("CENTER", gemBtn, "CENTER", 0, 0)
+            gemPlus:SetText("+")
+            gemPlus:SetTextColor(0.95, 0.82, 0.35)
+            gemPlus:Hide()
+            gemBtn.plus = gemPlus
             local gemSelected = gemBtn:CreateTexture(nil, "OVERLAY")
             gemSelected:SetTexture("Interface\\Buttons\\CheckButtonHilight")
             gemSelected:SetBlendMode("ADD")
@@ -6346,13 +6416,20 @@ function UI:CreateWishlistTab(page)
                 elseif selfGem.socketType then
                     GameTooltip:SetOwner(selfGem, "ANCHOR_RIGHT")
                     GameTooltip:SetText(selfGem.socketType .. " Socket")
-                    GameTooltip:Show()
                 end
+                GameTooltip:AddLine("Click: Choose gem", 0.75, 0.75, 0.75)
+                if selfGem.itemId then
+                    GameTooltip:AddLine("Shift-click: Link in chat", 0.75, 0.75, 0.75)
+                end
+                GameTooltip:Show()
             end)
             gemBtn:SetScript("OnLeave", function()
                 GameTooltip:Hide()
             end)
             gemBtn:SetScript("OnClick", function(selfGem)
+                if insertWishlistChatLink(getWishlistItemChatLink(selfGem.itemId)) then
+                    return
+                end
                 if UI and UI.OpenWishlistSocketPicker then
                     UI:OpenWishlistSocketPicker("GEM", slotDef.key, selfGem.socketIndex or i)
                 end
@@ -6368,6 +6445,12 @@ function UI:CreateWishlistTab(page)
         enchantTex:SetAllPoints(enchantBtn)
         enchantTex:SetTexture("Interface\\Icons\\inv_enchant_formulagood_01")
         enchantBtn.icon = enchantTex
+        local enchantPlus = enchantBtn:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        enchantPlus:SetPoint("CENTER", enchantBtn, "CENTER", 0, 0)
+        enchantPlus:SetText("+")
+        enchantPlus:SetTextColor(0.95, 0.82, 0.35)
+        enchantPlus:Hide()
+        enchantBtn.plus = enchantPlus
         local enchantSelected = enchantBtn:CreateTexture(nil, "OVERLAY")
         enchantSelected:SetTexture("Interface\\Buttons\\CheckButtonHilight")
         enchantSelected:SetBlendMode("ADD")
@@ -6380,13 +6463,20 @@ function UI:CreateWishlistTab(page)
             elseif selfIcon.enchantAvailable then
                 GameTooltip:SetOwner(selfIcon, "ANCHOR_RIGHT")
                 GameTooltip:SetText("Empty enchant slot")
-                GameTooltip:Show()
             end
+            GameTooltip:AddLine("Click: Choose enchant", 0.75, 0.75, 0.75)
+            if selfIcon.enchantId then
+                GameTooltip:AddLine("Shift-click: Link in chat", 0.75, 0.75, 0.75)
+            end
+            GameTooltip:Show()
         end)
         enchantBtn:SetScript("OnLeave", function()
             GameTooltip:Hide()
         end)
-        enchantBtn:SetScript("OnClick", function()
+        enchantBtn:SetScript("OnClick", function(selfEnchant)
+            if insertWishlistChatLink(getWishlistEnchantChatLink(selfEnchant.enchantId)) then
+                return
+            end
             if UI and UI.OpenWishlistSocketPicker then
                 UI:OpenWishlistSocketPicker("ENCHANT", slotDef.key)
             end
@@ -6402,12 +6492,19 @@ function UI:CreateWishlistTab(page)
             else
                 GameTooltip:SetText(slotDef.label or "")
             end
+            if selfBtn.itemId then
+                GameTooltip:AddLine("Shift-click: Link in chat", 0.75, 0.75, 0.75)
+                GameTooltip:AddLine("Alt-click: Mark found   Right-click: Remove", 0.75, 0.75, 0.75)
+            end
             GameTooltip:Show()
         end)
         button:SetScript("OnLeave", function()
             GameTooltip:Hide()
         end)
         button:SetScript("OnClick", function(selfBtn, btn)
+            if btn == "LeftButton" and insertWishlistChatLink(getWishlistItemChatLink(selfBtn.itemId, selfBtn.itemLink)) then
+                return
+            end
             local altDown = (IsModifiedClick and IsModifiedClick("ALT")) or (IsAltKeyDown and IsAltKeyDown())
             if btn == "LeftButton" and altDown then
                 if Goals.ToggleWishlistFoundForSlot then
@@ -6777,6 +6874,10 @@ function UI:CreateWishlistTab(page)
         selected:Hide()
         row.selected = selected
         row:SetScript("OnClick", function(selfRow)
+            local itemId = selfRow.entry and (selfRow.entry.id or selfRow.entry.itemId)
+            if insertWishlistChatLink(getWishlistItemChatLink(itemId, selfRow.entry and selfRow.entry.link)) then
+                return
+            end
             UI.selectedWishlistResult = selfRow.entry
             UI:UpdateWishlistSearchResults()
             UI:UpdateWishlistUI()
@@ -6943,6 +7044,9 @@ function UI:CreateWishlistTab(page)
         end)
         row:SetScript("OnLeave", function()
             GameTooltip:Hide()
+        end)
+        row:SetScript("OnClick", function(selfRow)
+            insertWishlistChatLink(getWishlistItemChatLink(selfRow.itemId, selfRow.itemLink))
         end)
         self.wishlistTokenRows[i] = row
     end
@@ -7691,8 +7795,32 @@ function UI:CreateSettingsTab(page)
     end)
     self.autoMinimizeCheck = autoMinCheck
 
+    local announceStartCheck = CreateFrame("CheckButton", nil, leftInset, "UICheckButtonTemplate")
+    announceStartCheck:SetPoint("TOPLEFT", autoMinCheck, "BOTTOMLEFT", 0, -8)
+    setCheckText(announceStartCheck, "Announce encounter starts")
+    announceStartCheck:SetScript("OnClick", function(selfBtn)
+        Goals.db.settings.announceEncounterStarts = selfBtn:GetChecked() and true or false
+    end)
+    self.announceEncounterStartCheck = announceStartCheck
+
+    local announceWipeCheck = CreateFrame("CheckButton", nil, leftInset, "UICheckButtonTemplate")
+    announceWipeCheck:SetPoint("TOPLEFT", announceStartCheck, "BOTTOMLEFT", 0, -8)
+    setCheckText(announceWipeCheck, "Announce encounter wipes")
+    announceWipeCheck:SetScript("OnClick", function(selfBtn)
+        Goals.db.settings.announceEncounterWipes = selfBtn:GetChecked() and true or false
+    end)
+    self.announceEncounterWipeCheck = announceWipeCheck
+
+    local announceCompletionCheck = CreateFrame("CheckButton", nil, leftInset, "UICheckButtonTemplate")
+    announceCompletionCheck:SetPoint("TOPLEFT", announceWipeCheck, "BOTTOMLEFT", 0, -8)
+    setCheckText(announceCompletionCheck, "Announce encounter completion")
+    announceCompletionCheck:SetScript("OnClick", function(selfBtn)
+        Goals.db.settings.announceEncounterCompletions = selfBtn:GetChecked() and true or false
+    end)
+    self.announceEncounterCompletionCheck = announceCompletionCheck
+
     local localOnlyCheck = CreateFrame("CheckButton", nil, leftInset, "UICheckButtonTemplate")
-    localOnlyCheck:SetPoint("TOPLEFT", autoMinCheck, "BOTTOMLEFT", 0, -8)
+    localOnlyCheck:SetPoint("TOPLEFT", announceCompletionCheck, "BOTTOMLEFT", 0, -8)
     setCheckText(localOnlyCheck, "Local-only mode")
     localOnlyCheck:SetScript("OnClick", function(selfBtn)
         Goals.db.settings.localOnly = selfBtn:GetChecked() and true or false
@@ -14164,10 +14292,17 @@ function UI:UpdateWishlistUI()
         end
     end
     Goals:BuildWishlistItemCache()
+    local configuredCount = 0
+    local foundCount = 0
+    local emptySocketCount = 0
+    local missingEnchantCount = 0
     for slotKey, button in pairs(self.wishlistSlotButtons) do
         local slotDef = Goals:GetWishlistSlotDef(slotKey)
         local entry = list and list.items and list.items[slotKey] or nil
         local cached = entry and entry.itemId and Goals:CacheItemById(entry.itemId) or nil
+        if entry and entry.itemId then
+            configuredCount = configuredCount + 1
+        end
         local iconTexture = nil
         if slotDef and slotDef.inv then
             local _, texture = GetInventorySlotInfo(slotDef.inv)
@@ -14239,6 +14374,7 @@ function UI:UpdateWishlistUI()
                 end
             end
             if found then
+                foundCount = foundCount + 1
                 button.foundIcon:Show()
                 if button.foundShadow then
                     button.foundShadow:Show()
@@ -14334,6 +14470,9 @@ function UI:UpdateWishlistUI()
                     end
                     gem.itemId = gemId
                     gem.socketType = socketType
+                    if gem.plus then
+                        gem.plus:Hide()
+                    end
                 else
                     gem.icon:SetTexture(nil)
                     gem.icon:SetVertexColor(1, 1, 1, 0)
@@ -14343,6 +14482,10 @@ function UI:UpdateWishlistUI()
                     end
                     gem.itemId = nil
                     gem.socketType = socketType or "Socket"
+                    emptySocketCount = emptySocketCount + 1
+                    if gem.plus then
+                        gem.plus:Show()
+                    end
                 end
                 gem:Show()
                 gem:ClearAllPoints()
@@ -14374,6 +14517,9 @@ function UI:UpdateWishlistUI()
                 gem:Hide()
                 gem.itemId = nil
                 gem.socketType = nil
+                if gem.plus then
+                    gem.plus:Hide()
+                end
                 if gem.selected then
                     gem.selected:Hide()
                 end
@@ -14386,6 +14532,16 @@ function UI:UpdateWishlistUI()
             local enchantId = hasEnchant and (tonumber(entry.enchantId) or entry.enchantId) or nil
             button.enchantIcon.enchantId = enchantId
             button.enchantIcon.enchantAvailable = not hasEnchant
+            if not hasEnchant then
+                missingEnchantCount = missingEnchantCount + 1
+            end
+            if button.enchantIcon.plus then
+                if hasEnchant then
+                    button.enchantIcon.plus:Hide()
+                else
+                    button.enchantIcon.plus:Show()
+                end
+            end
             if hasEnchant and Goals.GetEnchantInfoById then
                 local info = Goals:GetEnchantInfoById(entry.enchantId)
                 if info and info.matchedSpellId and info.id and info.id ~= entry.enchantId then
@@ -14420,6 +14576,9 @@ function UI:UpdateWishlistUI()
             button.enchantIcon:Hide()
             button.enchantIcon.enchantId = nil
             button.enchantIcon.enchantAvailable = nil
+            if button.enchantIcon.plus then
+                button.enchantIcon.plus:Hide()
+            end
             if button.enchantIcon.selected then
                 button.enchantIcon.selected:Hide()
             end
@@ -14429,6 +14588,16 @@ function UI:UpdateWishlistUI()
         else
             button.selected:Hide()
         end
+    end
+    if self.wishlistCompletionSummary then
+        local parts = { string.format("%d/%d found", foundCount, configuredCount) }
+        if emptySocketCount > 0 then
+            table.insert(parts, tostring(emptySocketCount) .. " empty sockets")
+        end
+        if missingEnchantCount > 0 then
+            table.insert(parts, tostring(missingEnchantCount) .. " missing enchants")
+        end
+        self.wishlistCompletionSummary:SetText(table.concat(parts, "  |  "))
     end
     if self.wishlistNotesBox and self.wishlistSourceEntryBox then
         local selected = self.selectedWishlistSlot and list and list.items and list.items[self.selectedWishlistSlot] or nil
@@ -14953,6 +15122,15 @@ function UI:Refresh()
     if self.autoMinimizeCheck then
         self.autoMinimizeCheck:SetChecked(Goals.db.settings.autoMinimizeCombat and true or false)
     end
+    if self.announceEncounterStartCheck then
+        self.announceEncounterStartCheck:SetChecked(Goals.db.settings.announceEncounterStarts ~= false)
+    end
+    if self.announceEncounterWipeCheck then
+        self.announceEncounterWipeCheck:SetChecked(Goals.db.settings.announceEncounterWipes ~= false)
+    end
+    if self.announceEncounterCompletionCheck then
+        self.announceEncounterCompletionCheck:SetChecked(Goals.db.settings.announceEncounterCompletions ~= false)
+    end
     local trackingEnabled = Goals.db.settings.combatLogTracking and true or false
     if self.combatLogTrackingCheck then
         self.combatLogTrackingCheck:SetChecked(trackingEnabled)
@@ -15256,6 +15434,9 @@ function UI:Refresh()
     end
     if self.resetQuestItemsCheck then
         self.resetQuestItemsCheck:SetChecked(Goals.db.settings.resetQuestItems and true or false)
+    end
+    if self.resetBagsCheck then
+        self.resetBagsCheck:SetChecked(Goals.db.settings.resetBags and true or false)
     end
     if self.resetLootWindowCheck then
         self.resetLootWindowCheck:SetChecked(Goals.db.settings.resetRequiresLootWindow and true or false)

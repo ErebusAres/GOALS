@@ -309,6 +309,9 @@ function Goals:GetGroupChannel()
 end
 
 function Goals:AnnounceWipe(encounterName)
+    if self.db and self.db.settings and self.db.settings.announceEncounterWipes == false then
+        return
+    end
     local count = #wipeMessages
     if count == 0 then
         self:Print(string.format("%s wiped.", encounterName or "Group"))
@@ -320,6 +323,9 @@ function Goals:AnnounceWipe(encounterName)
 end
 
 function Goals:AnnounceEncounterStart(encounterName)
+    if self.db and self.db.settings and self.db.settings.announceEncounterStarts == false then
+        return
+    end
     self:Print(string.format("Good luck! %s started.", encounterName or "Encounter"))
 end
 
@@ -933,7 +939,9 @@ function Goals:AwardBossKill(encounterName, members, skipSync)
     if self.History then
         self.History:AddBossKill(encounterName, 1, names, self.db.settings.combineBossHistory)
     end
-    self:Print(encounterName .. " was completed. +1 Point.")
+    if not (self.db and self.db.settings and self.db.settings.announceEncounterCompletions == false) then
+        self:Print(encounterName .. " was completed. +1 Point.")
+    end
     self:NotifyDataChanged()
     if self:CanSync() and not skipSync and self.Comm then
         self.Comm:SendBossKill(encounterName, names)
@@ -1017,6 +1025,13 @@ function Goals:IsTrinket(itemSubType, equipSlot)
     return itemSubType == trinketType or equipSlot == trinketSlot
 end
 
+function Goals:IsBag(itemType, equipSlot)
+    local containerType = CONTAINER or ITEM_CLASS_CONTAINER or "Container"
+    local bagSlot = INVTYPE_BAG or "INVTYPE_BAG"
+    local quiverSlot = INVTYPE_QUIVER or "INVTYPE_QUIVER"
+    return itemType == containerType or equipSlot == bagSlot or equipSlot == quiverSlot
+end
+
 function Goals:GetResetMinQuality()
     local minQuality = self.db and self.db.settings and self.db.settings.resetMinQuality
     if type(minQuality) ~= "number" then
@@ -1029,6 +1044,17 @@ function Goals:GetResetMinQuality()
         return 7
     end
     return minQuality
+end
+
+function Goals:IsKnownArmorTokenItem(itemId)
+    itemId = tonumber(itemId)
+    if not itemId then
+        return false
+    end
+    if not self.ArmorTokenReverse or not next(self.ArmorTokenReverse) then
+        self:RefreshArmorTokenMap()
+    end
+    return self.ArmorTokenReverse[itemId] and true or false
 end
 
 function Goals:IsTrackedLootType(itemType, itemSubType, equipSlot)
@@ -1055,9 +1081,12 @@ function Goals:IsTrackedLootType(itemType, itemSubType, equipSlot)
     return false
 end
 
-function Goals:ShouldTrackLoot(quality, itemType, itemSubType, equipSlot)
+function Goals:ShouldTrackLoot(quality, itemType, itemSubType, equipSlot, itemId)
     if not self:IsInRaid() and not (self.Dev and self.Dev.enabled) then
         return false
+    end
+    if self:IsKnownArmorTokenItem(itemId) then
+        return self.db and self.db.settings and self.db.settings.resetTokens or false
     end
     if not quality then
         return false
@@ -1080,15 +1109,21 @@ function Goals:ShouldTrackLoot(quality, itemType, itemSubType, equipSlot)
     if self:IsQuestItem(itemType) then
         return self.db and self.db.settings and self.db.settings.resetQuestItems or false
     end
+    if self:IsBag(itemType, equipSlot) then
+        return quality >= minQuality
+    end
     if itemType == armorType or itemType == weaponType or self:IsTrinket(itemSubType, equipSlot) or self:IsEquippableSlot(equipSlot) then
         return quality >= minQuality
     end
     return false
 end
 
-function Goals:ShouldResetForLoot(itemType, itemSubType, equipSlot, quality)
+function Goals:ShouldResetForLoot(itemType, itemSubType, equipSlot, quality, itemId)
     local armorType = ARMOR or "Armor"
     local weaponType = WEAPON or "Weapon"
+    if self:IsKnownArmorTokenItem(itemId) then
+        return self.db and self.db.settings and self.db.settings.resetTokens and true or false
+    end
     if self:IsMount(itemType, itemSubType) then
         return self.db and self.db.settings and self.db.settings.resetMounts and true or false
     end
@@ -1103,6 +1138,9 @@ function Goals:ShouldResetForLoot(itemType, itemSubType, equipSlot, quality)
     end
     if self:IsQuestItem(itemType) then
         return self.db and self.db.settings and self.db.settings.resetQuestItems and true or false
+    end
+    if self:IsBag(itemType, equipSlot) then
+        return self.db and self.db.settings and self.db.settings.resetBags and true or false
     end
     if itemType == armorType or itemType == weaponType or self:IsTrinket(itemSubType, equipSlot) or self:IsEquippableSlot(equipSlot) then
         if not quality then
@@ -1170,23 +1208,13 @@ function Goals:HandleLootAssignment(playerName, itemLink, skipSync, forceRecord)
         return
     end
     local itemId = self:GetItemIdFromLink(itemLink)
-    local shouldTrack = self:ShouldTrackLoot(quality, itemType, itemSubType, equipSlot)
-    local shouldReset = shouldTrack and self:ShouldResetForLoot(itemType, itemSubType, equipSlot, quality)
-    local isToken = self:IsToken(itemType, itemSubType)
-    local isMappedTokenItem = false
-    local resetTokensEnabled = self.db and self.db.settings and self.db.settings.resetTokens and true or false
-    if itemId then
+    local shouldTrack = self:ShouldTrackLoot(quality, itemType, itemSubType, equipSlot, itemId)
+    local shouldReset = shouldTrack and self:ShouldResetForLoot(itemType, itemSubType, equipSlot, quality, itemId)
+    local isToken = self:IsToken(itemType, itemSubType) or self:IsKnownArmorTokenItem(itemId)
+    if shouldReset and itemId then
         local tokenId = self:GetArmorTokenForItem(itemId)
-        isMappedTokenItem = tokenId and tokenId ~= itemId
-        if isMappedTokenItem then
-            -- Treat tier pieces that map to tokens as token resets when token resets are enabled.
-            -- This is needed on servers where token-equivalent loot is represented as tier item IDs.
-            if resetTokensEnabled then
-                shouldTrack = true
-                shouldReset = true
-            else
-                shouldReset = false
-            end
+        if tokenId and tokenId ~= itemId then
+            shouldReset = false
         end
     end
     if shouldReset and self.db and self.db.settings and self.db.settings.resetRequiresLootWindow then
@@ -1196,7 +1224,7 @@ function Goals:HandleLootAssignment(playerName, itemLink, skipSync, forceRecord)
     end
     local overviewSettings = self:GetOverviewSettings()
     if overviewSettings.disablePointGain then
-        if not isToken and not isMappedTokenItem then
+        if not isToken then
             shouldReset = false
         end
     end
@@ -2126,6 +2154,20 @@ function Goals:GetCustomRealmTokenOverride(itemId, defaultToken)
         [31098] = 31100, [31099] = 31100, [31100] = 31100, -- Leggings of the Forgotten Protector
         [31101] = 31103, [31102] = 31103, [31103] = 31103, -- Pauldrons of the Forgotten Protector
     }
+    local t7Map = {
+        -- T7.10 Heroes' Lost tokens
+        [40610] = 40611, [40611] = 40611, [40612] = 40611, -- Chestguard of the Lost Protector
+        [40613] = 40614, [40614] = 40614, [40615] = 40614, -- Gloves of the Lost Protector
+        [40616] = 40617, [40617] = 40617, [40618] = 40617, -- Helm of the Lost Protector
+        [40619] = 40620, [40620] = 40620, [40621] = 40620, -- Leggings of the Lost Protector
+        [40622] = 40623, [40623] = 40623, [40624] = 40623, -- Spaulders of the Lost Protector
+        -- T7.25 Valorous Lost tokens
+        [40625] = 40626, [40626] = 40626, [40627] = 40626, -- Breastplate of the Lost Protector
+        [40628] = 40629, [40629] = 40629, [40630] = 40629, -- Gauntlets of the Lost Protector
+        [40631] = 40632, [40632] = 40632, [40633] = 40632, -- Crown of the Lost Protector
+        [40634] = 40635, [40635] = 40635, [40636] = 40635, -- Legplates of the Lost Protector
+        [40637] = 40638, [40638] = 40638, [40639] = 40638, -- Mantle of the Lost Protector
+    }
     if t4Map[tokenId] then
         return t4Map[tokenId]
     end
@@ -2134,6 +2176,9 @@ function Goals:GetCustomRealmTokenOverride(itemId, defaultToken)
     end
     if t6Map[tokenId] then
         return t6Map[tokenId]
+    end
+    if t7Map[tokenId] then
+        return t7Map[tokenId]
     end
     return nil
 end
@@ -3324,50 +3369,8 @@ function Goals:FlushWishlistAnnouncements()
     self.wishlistState.announceQueue = {}
 end
 
-function Goals:GetWishlistMatchIdSet(itemId)
-    local ids = {}
-    local baseId = tonumber(itemId) or 0
-    if baseId <= 0 then
-        return ids
-    end
-
-    ids[baseId] = true
-
-    local mappedToken = self:GetArmorTokenForItem(baseId)
-    if mappedToken and mappedToken > 0 then
-        ids[mappedToken] = true
-        local remappedToken = self:GetCustomRealmTokenOverride(mappedToken, mappedToken)
-        if remappedToken and remappedToken > 0 then
-            ids[remappedToken] = true
-        end
-    end
-
-    local realmMapped = self:GetCustomRealmTokenOverride(baseId, baseId)
-    if realmMapped and realmMapped > 0 then
-        ids[realmMapped] = true
-    end
-
-    return ids
-end
-
-local function wishlistEntryMatchesIds(entry, ids)
-    if type(entry) ~= "table" or type(ids) ~= "table" then
-        return false
-    end
-    local entryItemId = tonumber(entry.itemId) or 0
-    if entryItemId > 0 and ids[entryItemId] then
-        return true
-    end
-    local entryTokenId = tonumber(entry.tokenId) or 0
-    if entryTokenId > 0 and ids[entryTokenId] then
-        return true
-    end
-    return false
-end
-
 function Goals:WishlistContainsItem(itemId)
-    local ids = self:GetWishlistMatchIdSet(itemId)
-    if not next(ids) then
+    if not itemId then
         return false
     end
     local data = self:EnsureWishlistData()
@@ -3375,7 +3378,7 @@ function Goals:WishlistContainsItem(itemId)
     for _, list in pairs(lists) do
         if list and list.items then
             for _, entry in pairs(list.items) do
-                if wishlistEntryMatchesIds(entry, ids) then
+                if entry and (entry.itemId == itemId or entry.tokenId == itemId) then
                     return true
                 end
             end
@@ -3385,8 +3388,7 @@ function Goals:WishlistContainsItem(itemId)
 end
 
 function Goals:GetWishlistsContainingItem(itemId)
-    local ids = self:GetWishlistMatchIdSet(itemId)
-    if not next(ids) then
+    if not itemId then
         return {}
     end
     local data = self:EnsureWishlistData()
@@ -3395,7 +3397,7 @@ function Goals:GetWishlistsContainingItem(itemId)
     for _, list in pairs(lists) do
         if list and list.items then
             for _, entry in pairs(list.items) do
-                if wishlistEntryMatchesIds(entry, ids) then
+                if entry and (entry.itemId == itemId or entry.tokenId == itemId) then
                     table.insert(names, list.name or "Wishlist")
                     break
                 end
@@ -3436,8 +3438,7 @@ function Goals:GetWishlistFoundMap(listId)
 end
 
 function Goals:MarkWishlistFound(itemId)
-    local ids = self:GetWishlistMatchIdSet(itemId)
-    if not next(ids) then
+    if not itemId then
         return
     end
     local data = self:EnsureWishlistData()
@@ -3449,10 +3450,9 @@ function Goals:MarkWishlistFound(itemId)
             if foundMap then
                 local listUpdated = false
                 for _, entry in pairs(list.items) do
-                    if wishlistEntryMatchesIds(entry, ids) then
-                        local entryItemId = tonumber(entry.itemId) or 0
-                        if entryItemId > 0 and not foundMap[entryItemId] then
-                            foundMap[entryItemId] = true
+                    if entry and (entry.itemId == itemId or entry.tokenId == itemId) then
+                        if not foundMap[entry.itemId] then
+                            foundMap[entry.itemId] = true
                             listUpdated = true
                         end
                     end

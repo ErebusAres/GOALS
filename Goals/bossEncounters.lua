@@ -174,9 +174,8 @@ _G.bossEncounters = {
     ["Kel'Thuzad"] = { "Kel'Thuzad" },
     --T7 The Obsidian Sanctum Bosses
     ["Sartharion"] = { "Sartharion" },
-    ["Shadron"] = { "Shadron" },
-    ["Tenebron"] = { "Tenebron" },
-    ["Vesperon"] = { "Vesperon" },
+    -- Shadron, Tenebron, and Vesperon are optional drakes in Sartharion's
+    -- encounter. They must not start or complete their own point encounters.
     --T0 The Eye of Eternity Bosses
     ["Malygos"] = { "Malygos" },
     --T8 Ulduar Bosses
