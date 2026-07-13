@@ -12,6 +12,7 @@ Goals.L = {
     TAB_LOOT = "Loot",
     TAB_HISTORY = "History",
     TAB_WISHLIST = "Wishlist",
+    TAB_DIAGNOSTICS = "Diag",
     TAB_DAMAGE_TRACKER = "Combat",
     TAB_SETTINGS = "Settings",
     TAB_UPDATE = "Update",

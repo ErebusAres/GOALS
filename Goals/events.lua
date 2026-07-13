@@ -227,13 +227,14 @@ function Events:BuildBossLookup()
     self.encounterBosses = {}
     self.encounterBossRequiredCounts = {}
     self.encounterFinalBosses = {}
+    self.encounterBossRoles = {}
     if type(_G.bossEncounters) ~= "table" then
         return
     end
     local redusRealm = isRedusRealm()
     for encounterName, data in pairs(_G.bossEncounters) do
         local set = {}
-        local meta = { finalBosses = {}, requiredCounts = {} }
+        local meta = { finalBosses = {}, requiredCounts = {}, roles = {} }
         if encounterName == "Chess Event" and not redusRealm then
             set["King Llane"] = true
             set["Warchief Blackhand"] = true
@@ -242,6 +243,36 @@ function Events:BuildBossLookup()
         else
             self:CollectBossNames(data, set, meta)
         end
+        local memberCount = 0
+        for bossName in pairs(set) do
+            memberCount = memberCount + 1
+            if not meta.roles[bossName] then
+                meta.roles[bossName] = "required"
+            end
+        end
+        local rule = _G.encounterRules and _G.encounterRules[encounterName] or nil
+        if memberCount == 1 and not rule then
+            for bossName in pairs(set) do
+                meta.roles[bossName] = "completion"
+            end
+        elseif rule and rule.type == "final_boss_kill" then
+            for bossName in pairs(set) do
+                meta.roles[bossName] = "support"
+            end
+            if rule.finalBoss then
+                meta.roles[rule.finalBoss] = "completion"
+            end
+            for _, bossName in ipairs(rule.finalBosses or {}) do
+                meta.roles[bossName] = "completion"
+            end
+        elseif rule and rule.type == "any_boss_kill" then
+            for bossName in pairs(set) do
+                meta.roles[bossName] = "support"
+            end
+            for _, bossName in ipairs(rule.bosses or {}) do
+                meta.roles[bossName] = "completion"
+            end
+        end
         if next(meta.finalBosses) then
             self.encounterFinalBosses[encounterName] = meta.finalBosses
         end
@@ -249,6 +280,7 @@ function Events:BuildBossLookup()
             self.encounterBossRequiredCounts[encounterName] = meta.requiredCounts
         end
         self.encounterBosses[encounterName] = set
+        self.encounterBossRoles[encounterName] = meta.roles
         for bossName in pairs(set) do
             self.bossToEncounter[bossName] = encounterName
             local normalized = normalizeBossName(bossName)
@@ -307,6 +339,9 @@ function Events:CollectBossNames(data, set, meta)
                 end
                 if data.final and meta and meta.finalBosses then
                     meta.finalBosses[name] = true
+                end
+                if meta and meta.roles and type(data.role) == "string" then
+                    meta.roles[name] = data.role
                 end
             end
             return
@@ -691,8 +726,12 @@ function Events:HandleCombatLog(...)
             end
             local encounterName, canonicalBoss = self:GetEncounterForBossName(name)
             if encounterName then
-                self:StartEncounter(encounterName, canonicalBoss)
-                self:TouchEncounterActivity(encounterName)
+                -- Nearby combat-log traffic can include another group's boss fight.
+                -- Use ordinary CLEU names only to maintain an encounter that was
+                -- started by DBM, an engaged boss unit, or an actual death event.
+                if Goals.encounter and Goals.encounter.active and Goals.encounter.name == encounterName then
+                    self:TouchEncounterActivity(encounterName)
+                end
             end
         end
         if sourceName and sourceName ~= "" then
@@ -820,6 +859,7 @@ function Events:StartEncounter(encounterName, bossName)
     Goals.encounter.alive = {}
     Goals.encounter.cycles = 0
     Goals.encounter.rule = self:GetEncounterRule(encounterName)
+    Goals.encounter.roles = self.encounterBossRoles and self.encounterBossRoles[encounterName] or {}
     if Goals.encounter.rule and Goals.encounter.rule.type then
         Goals:Debug("Encounter rule: " .. encounterName .. " (" .. Goals.encounter.rule.type .. ")")
     end
@@ -843,6 +883,12 @@ function Events:StartEncounter(encounterName, bossName)
     Goals.encounter.lastBossActivityTs = Goals.encounter.startTime
     Goals.encounter.lastBoss = bossName
     Goals:Debug("Encounter started: " .. encounterName)
+    Goals:RecordDiagnostic("ENCOUNTER", "Encounter tracking started", {
+        ["Encounter"] = encounterName,
+        ["Creature"] = bossName or "Detected boss unit",
+        ["API source"] = "Combat event or DBM_Pull",
+        ["Plain explanation"] = "Goals recognized a configured encounter member and began tracking the attempt.",
+    })
     if Goals.History and Goals.History.AddEncounterStart then
         Goals.History:AddEncounterStart(encounterName)
     end
@@ -874,6 +920,7 @@ function Events:MarkBossDead(bossName, allowOutOfCombat)
     Goals.encounter.lastBossActivityTs = time()
     local rule = Goals.encounter.rule
     local bossKey = canonicalBoss or bossName
+    local role = Goals.encounter.roles and Goals.encounter.roles[bossKey] or "required"
     local now = time()
     Goals.encounter.deathEventTs = Goals.encounter.deathEventTs or {}
     local lastDeathTs = Goals.encounter.deathEventTs[bossKey] or 0
@@ -881,15 +928,60 @@ function Events:MarkBossDead(bossName, allowOutOfCombat)
         return
     end
     Goals.encounter.deathEventTs[bossKey] = now
+    Goals:RecordDiagnostic("ENCOUNTER", "Boss death evaluated", {
+        ["Creature"] = bossKey,
+        ["Encounter"] = encounterName,
+        ["Encounter role"] = role,
+        ["Rule"] = rule and rule.type or "all_required",
+        ["Plain explanation"] = role == "support" and "This creature can maintain encounter activity but cannot complete the encounter." or "This death counts toward the configured completion rule.",
+    })
+    if role == "support" and Goals.AnnounceEncounterProgress then
+        Goals:AnnounceEncounterProgress(string.format("Supporting creature %s defeated.", bossKey))
+    end
     if rule then
         if rule.type == "multi_kill" then
             Goals.encounter.kills[bossKey] = (Goals.encounter.kills[bossKey] or 0) + 1
             local required = rule.requiredKills or 1
+            if Goals.AnnounceEncounterProgress then
+                Goals:AnnounceEncounterProgress(string.format("%s defeated (%d/%d).", bossKey, math.min(Goals.encounter.kills[bossKey], required), required))
+            end
             Goals:Debug(string.format("Rule multi_kill: %s %d/%d", bossKey, Goals.encounter.kills[bossKey], required))
             if Goals.encounter.kills[bossKey] >= required then
                 Goals.encounter.lastBossKillTs = time()
                 Goals:Debug("Rule multi_kill complete: " .. encounterName)
                 self:FinishEncounter(true)
+            end
+            return
+        elseif rule.type == "paired_kill_counts" then
+            local bosses = rule.bosses or {}
+            local required = math.max(1, math.floor(tonumber(rule.requiredKillsPerBoss) or 2))
+            Goals.encounter.kills[bossKey] = (Goals.encounter.kills[bossKey] or 0) + 1
+            Goals.encounter.deathTimes[bossKey] = now
+            if Goals.AnnounceEncounterProgress then
+                Goals:AnnounceEncounterProgress(string.format("%s defeated (%d/%d).", bossKey, math.min(Goals.encounter.kills[bossKey], required), required))
+            end
+            for _, name in ipairs(bosses) do
+                if (Goals.encounter.kills[name] or 0) < required then
+                    Goals:Debug(string.format("Rule paired_kill_counts: %s %d/%d", bossKey, Goals.encounter.kills[bossKey], required))
+                    return
+                end
+            end
+            local minTime, maxTime
+            for _, name in ipairs(bosses) do
+                local ts = Goals.encounter.deathTimes[name]
+                if not ts then
+                    return
+                end
+                minTime = minTime and math.min(minTime, ts) or ts
+                maxTime = maxTime and math.max(maxTime, ts) or ts
+            end
+            local window = tonumber(rule.finalWindow) or 12
+            if maxTime and minTime and (maxTime - minTime) <= window then
+                Goals.encounter.lastBossKillTs = now
+                Goals:Debug("Rule paired_kill_counts complete: " .. encounterName)
+                self:FinishEncounter(true)
+            else
+                Goals:Debug(string.format("Rule paired_kill_counts waiting for final window: %s", encounterName))
             end
             return
         elseif rule.type == "pair_revive" then
@@ -1068,6 +1160,13 @@ function Events:MarkBossDead(bossName, allowOutOfCombat)
         else
             Goals.encounter.remaining[bossKey] = nil
         end
+        local remainingTotal = 0
+        for _, count in pairs(Goals.encounter.remaining) do
+            remainingTotal = remainingTotal + math.max(0, tonumber(count) or 0)
+        end
+        if remainingTotal > 0 and role ~= "support" and Goals.AnnounceEncounterProgress then
+            Goals:AnnounceEncounterProgress(string.format("%s defeated. %d required creature%s remaining.", bossKey, remainingTotal, remainingTotal == 1 and "" or "s"))
+        end
         if not next(Goals.encounter.remaining) then
             Goals.encounter.lastBossKillTs = time()
             self:FinishEncounter(true)
@@ -1182,6 +1281,11 @@ function Events:FinishEncounter(success)
             return
         end
     end
+    Goals:RecordDiagnostic(success and "ENCOUNTER" or "WIPE", success and "Encounter completed" or "Encounter ended without completion", {
+        ["Encounter"] = encounterName,
+        ["Result"] = success and "Success" or "Wipe",
+        ["Plain explanation"] = success and "The configured completion rule was satisfied." or "The group left combat before the completion rule was satisfied.",
+    })
     Goals.encounter.active = false
     Goals.encounter.name = nil
     Goals.encounter.remaining = nil
@@ -1196,6 +1300,7 @@ function Events:FinishEncounter(success)
     Goals.encounter.alive = nil
     Goals.encounter.cycles = 0
     Goals.encounter.rule = nil
+    Goals.encounter.roles = nil
     Goals.encounter.pendingRuleConfirm = nil
     if success then
         if Goals:IsSyncMaster() or (Goals.Dev and Goals.Dev.enabled) then
@@ -1231,5 +1336,6 @@ function Events:ResetEncounter()
     Goals.encounter.alive = nil
     Goals.encounter.cycles = 0
     Goals.encounter.rule = nil
+    Goals.encounter.roles = nil
     Goals.encounter.pendingRuleConfirm = nil
 end

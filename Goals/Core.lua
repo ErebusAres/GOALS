@@ -329,6 +329,68 @@ function Goals:AnnounceEncounterStart(encounterName)
     self:Print(string.format("Good luck! %s started.", encounterName or "Encounter"))
 end
 
+function Goals:AnnounceEncounterProgress(message)
+    if not message or message == "" then
+        return
+    end
+    if self.db and self.db.settings and self.db.settings.announceEncounterProgress == false then
+        return
+    end
+    self:Print(message)
+end
+
+function Goals:RecordDiagnostic(category, summary, fields)
+    self.diagnostics = self.diagnostics or { entries = {}, paused = false, nextId = 1 }
+    if self.diagnostics.paused then
+        return
+    end
+    local entry = {
+        id = self.diagnostics.nextId,
+        ts = time(),
+        category = tostring(category or "SYSTEM"),
+        summary = tostring(summary or "Decision recorded"),
+        fields = fields or {},
+    }
+    self.diagnostics.nextId = self.diagnostics.nextId + 1
+    table.insert(self.diagnostics.entries, 1, entry)
+    while #self.diagnostics.entries > 200 do
+        table.remove(self.diagnostics.entries)
+    end
+    if self.UI and self.UI.UpdateDiagnostics then
+        self.UI:UpdateDiagnostics()
+    end
+    return entry
+end
+
+function Goals:GetDiagnostics()
+    self.diagnostics = self.diagnostics or { entries = {}, paused = false, nextId = 1 }
+    return self.diagnostics.entries
+end
+
+function Goals:ClearDiagnostics()
+    self.diagnostics = self.diagnostics or { entries = {}, paused = false, nextId = 1 }
+    self.diagnostics.entries = {}
+    if self.UI and self.UI.UpdateDiagnostics then
+        self.UI:UpdateDiagnostics()
+    end
+end
+
+function Goals:FormatDiagnostic(entry)
+    if not entry then return "Select a diagnostic entry." end
+    local lines = {
+        "Category: " .. tostring(entry.category or ""),
+        "Time: " .. (entry.ts and date("%Y-%m-%d %H:%M:%S", entry.ts) or ""),
+        "Decision: " .. tostring(entry.summary or ""),
+    }
+    local keys = {}
+    for key in pairs(entry.fields or {}) do table.insert(keys, key) end
+    table.sort(keys)
+    for _, key in ipairs(keys) do
+        table.insert(lines, tostring(key) .. ": " .. tostring(entry.fields[key]))
+    end
+    return table.concat(lines, "\n")
+end
+
 function Goals:Debug(msg)
     if not (self.Dev and self.Dev.enabled) then
         return
@@ -1229,6 +1291,16 @@ function Goals:HandleLootAssignment(playerName, itemLink, skipSync, forceRecord)
         end
     end
     local resetApplied = shouldReset and not self:IsDisenchanter(playerName)
+    self:RecordDiagnostic("LOOT", resetApplied and "Points reset to 0" or "Points unchanged", {
+        ["API item ID"] = itemId or "unknown",
+        ["Item"] = itemName,
+        ["Item class"] = itemType or "unknown",
+        ["Item subclass"] = itemSubType or "unknown",
+        ["Inventory type"] = equipSlot or "INVTYPE_NON_EQUIP",
+        ["Quality"] = quality or "unknown",
+        ["Known tier token"] = self:IsKnownArmorTokenItem(itemId) and "Yes" or "No",
+        ["Plain explanation"] = resetApplied and "This loot matches the active point-reset policy." or "This loot does not reset the winner's points.",
+    })
     if forceRecord or shouldTrack then
         local before = nil
         if resetApplied then
@@ -1304,7 +1376,7 @@ function Goals:RequestItemInfo(itemLink)
     end)
 end
 
-function Goals:RecordLootFound(itemLink)
+function Goals:RecordLootFound(itemLink, lootId, entryTs)
     if not itemLink then
         return
     end
@@ -1323,7 +1395,7 @@ function Goals:RecordLootFound(itemLink)
     end
     self.state.lootFoundSeenLinks[itemLink] = time()
     if self.History then
-        self.History:AddLootFound(itemLink)
+        self.History:AddLootFound(itemLink, lootId, entryTs)
     end
 end
 
@@ -1421,10 +1493,11 @@ function Goals:ApplyLootFound(id, ts, itemLink, sender)
         ts = ts or time(),
         assignedTo = nil,
         synced = true,
+        id = id,
     })
     self.state.lootFoundSeenLinks[itemLink] = ts or time()
     if self.History then
-        self.History:AddLootFound(itemLink)
+        self.History:AddLootFound(itemLink, id, ts)
     end
     if self.HandleWishlistLoot then
         self:HandleWishlistLoot(itemLink)
@@ -1460,7 +1533,7 @@ function Goals:UpdateLootSlots(resetSeen)
                 })
                 if seen[slot] ~= link then
                     seen[slot] = link
-                    self:RecordLootFound(link)
+                    self:RecordLootFound(link, entryId, entryTs)
                     if self.HandleWishlistLoot then
                         self:HandleWishlistLoot(link)
                     end
@@ -1683,6 +1756,78 @@ function Goals:ApplyLootReset(playerName, itemLink)
     self:RemoveFoundLootByLink(itemLink)
     self:SetPoints(playerName, 0, "Loot reset: " .. itemLink, true, true)
     self:HandleWishlistLoot(itemLink)
+end
+
+function Goals:EditLootHistoryRecord(itemLink, foundTs, assignTs, mode, playerName, skipSync)
+    if not itemLink or not self.db or not self.db.history then
+        return false
+    end
+    mode = mode == "RESET" and "RESET" or (mode == "UNASSIGN" and "UNASSIGN" or "ASSIGN")
+    local foundEntry, assignEntry, assignIndex
+    for index, entry in ipairs(self.db.history) do
+        local data = entry and entry.data or nil
+        if data and data.item == itemLink then
+            if entry.kind == "LOOT_FOUND" and tonumber(entry.ts or 0) == tonumber(foundTs or 0) then
+                foundEntry = entry
+            elseif entry.kind == "LOOT_ASSIGN" and tonumber(entry.ts or 0) == tonumber(assignTs or 0) then
+                assignEntry = entry
+                assignIndex = index
+            end
+        end
+    end
+    if not foundEntry and not assignEntry then
+        return false
+    end
+
+    local targetData = assignEntry and assignEntry.data or (foundEntry and foundEntry.data)
+    local oldPlayer = targetData and self:NormalizeName(targetData.player or targetData.assignedTo or "") or ""
+    if targetData and targetData.reset and oldPlayer ~= "" then
+        local players = self:GetOverviewPlayers()
+        local oldPoints = players[oldPlayer] and players[oldPlayer].points or nil
+        if oldPoints == 0 and targetData.resetBefore ~= nil then
+            self:SetPoints(oldPlayer, tonumber(targetData.resetBefore) or 0, "Undo loot reset: " .. itemLink, skipSync, false, true)
+        end
+    end
+
+    if mode == "UNASSIGN" then
+        if assignIndex then
+            table.remove(self.db.history, assignIndex)
+        end
+        if foundEntry and foundEntry.data then
+            foundEntry.data.assignedTo = nil
+            foundEntry.data.player = nil
+            foundEntry.data.reset = nil
+            foundEntry.data.resetBefore = nil
+        end
+    else
+        playerName = self:NormalizeName(playerName)
+        if playerName == "" then
+            return false
+        end
+        local data = assignEntry and assignEntry.data or foundEntry.data
+        data.player = assignEntry and playerName or nil
+        data.assignedTo = assignEntry and nil or playerName
+        data.players = nil
+        data.playerCount = nil
+        data.reset = mode == "RESET"
+        data.resetBefore = nil
+        if mode == "RESET" then
+            local players = self:GetOverviewPlayers()
+            local before = players[playerName] and players[playerName].points or 0
+            data.resetBefore = before
+            self:SetPoints(playerName, 0, "Loot reset: " .. itemLink, skipSync, false, true)
+        end
+        if assignEntry then
+            local suffix = data.reset and string.format(" (%s's points set to 0 (-%d))", playerName, tonumber(data.resetBefore) or 0) or ""
+            assignEntry.text = string.format("Assigned to %s: %s%s", playerName, itemLink, suffix)
+        end
+    end
+
+    if self.Comm and self:CanSync() and not skipSync and self.Comm.SendLootEdit then
+        self.Comm:SendLootEdit(foundTs or 0, assignTs or 0, mode, playerName or "", itemLink)
+    end
+    self:NotifyDataChanged()
+    return true
 end
 
 function Goals:RecordUndo(name, points)
@@ -2126,61 +2271,92 @@ end
 
 function Goals:GetCustomRealmTokenOverride(itemId, defaultToken)
     local realm = GetRealmName and GetRealmName() or ""
-    if realm == "" or string.lower(realm) ~= "redus" then
-        return nil
+    local key = realm ~= "" and string.lower(realm) or nil
+    local override = key and self.RealmOverrides and self.RealmOverrides[key] or nil
+    local aliases = override and override.armorTokenAliases or nil
+    return aliases and defaultToken and aliases[defaultToken] or nil
+end
+
+local function backupKeySort(a, b)
+    local ta, tb = type(a), type(b)
+    if ta == tb then
+        return tostring(a) < tostring(b)
     end
-    local tokenId = defaultToken
-    if not tokenId then
-        return nil
+    return ta < tb
+end
+
+local function serializeBackupValue(value, seen)
+    local valueType = type(value)
+    if valueType == "nil" then return "nil" end
+    if valueType == "boolean" or valueType == "number" then return tostring(value) end
+    if valueType == "string" then return string.format("%q", value) end
+    if valueType ~= "table" then return string.format("%q", "<" .. valueType .. ">") end
+    if seen[value] then return string.format("%q", "<cycle>") end
+    seen[value] = true
+    local keys = {}
+    for key in pairs(value) do table.insert(keys, key) end
+    table.sort(keys, backupKeySort)
+    local parts = { "{" }
+    for _, key in ipairs(keys) do
+        table.insert(parts, "[")
+        table.insert(parts, serializeBackupValue(key, seen))
+        table.insert(parts, "]=")
+        table.insert(parts, serializeBackupValue(value[key], seen))
+        table.insert(parts, ",")
     end
-    local t4Map = {
-        [29753] = 29755, [29754] = 29755, [29755] = 29755, -- Chestguard of the Fallen Hero
-        [29756] = 29756, [29757] = 29756, [29758] = 29756, -- Gloves of the Fallen Hero
-        [29759] = 29759, [29760] = 29759, [29761] = 29759, -- Helm of the Fallen Hero
-        [29762] = 29762, [29763] = 29762, [29764] = 29762, -- Pauldrons of the Fallen Hero
-        [29765] = 29765, [29766] = 29765, [29767] = 29765, -- Leggings of the Fallen Hero
+    table.insert(parts, "}")
+    seen[value] = nil
+    return table.concat(parts)
+end
+
+function Goals:BuildBackupSnapshot()
+    local root = self.dbRoot or self.db or {}
+    return {
+        schemaVersion = 1,
+        addonVersion = self:GetDisplayVersion(),
+        created = time(),
+        activeTableName = root.activeTableName or "",
+        players = deepCopyTable(root.players or {}),
+        history = deepCopyTable(root.history or {}),
+        settings = deepCopyTable(root.settings or {}),
+        wishlists = deepCopyTable(root.wishlists or {}),
+        tables = deepCopyTable(root.tables or {}),
+        overviewSettings = deepCopyTable(root.overviewSettings or {}),
     }
-    local t5Map = {
-        [30236] = 30238, [30237] = 30238, [30238] = 30238, -- Chestguard of the Vanquished Hero
-        [30239] = 30241, [30240] = 30241, [30241] = 30241, -- Gloves of the Vanquished Hero
-        [30242] = 30244, [30243] = 30244, [30244] = 30244, -- Helm of the Vanquished Hero
-        [30245] = 30247, [30246] = 30247, [30247] = 30247, -- Leggings of the Vanquished Hero
-        [30248] = 30250, [30249] = 30250, [30250] = 30250, -- Pauldrons of the Vanquished Hero
-    }
-    local t6Map = {
-        [31089] = 31091, [31090] = 31091, [31091] = 31091, -- Chestguard of the Forgotten Protector
-        [31092] = 31094, [31093] = 31094, [31094] = 31094, -- Gloves of the Forgotten Protector
-        [31095] = 31095, [31096] = 31095, [31097] = 31095, -- Helm of the Forgotten Protector
-        [31098] = 31100, [31099] = 31100, [31100] = 31100, -- Leggings of the Forgotten Protector
-        [31101] = 31103, [31102] = 31103, [31103] = 31103, -- Pauldrons of the Forgotten Protector
-    }
-    local t7Map = {
-        -- T7.10 Heroes' Lost tokens
-        [40610] = 40611, [40611] = 40611, [40612] = 40611, -- Chestguard of the Lost Protector
-        [40613] = 40614, [40614] = 40614, [40615] = 40614, -- Gloves of the Lost Protector
-        [40616] = 40617, [40617] = 40617, [40618] = 40617, -- Helm of the Lost Protector
-        [40619] = 40620, [40620] = 40620, [40621] = 40620, -- Leggings of the Lost Protector
-        [40622] = 40623, [40623] = 40623, [40624] = 40623, -- Spaulders of the Lost Protector
-        -- T7.25 Valorous Lost tokens
-        [40625] = 40626, [40626] = 40626, [40627] = 40626, -- Breastplate of the Lost Protector
-        [40628] = 40629, [40629] = 40629, [40630] = 40629, -- Gauntlets of the Lost Protector
-        [40631] = 40632, [40632] = 40632, [40633] = 40632, -- Crown of the Lost Protector
-        [40634] = 40635, [40635] = 40635, [40636] = 40635, -- Legplates of the Lost Protector
-        [40637] = 40638, [40638] = 40638, [40639] = 40638, -- Mantle of the Lost Protector
-    }
-    if t4Map[tokenId] then
-        return t4Map[tokenId]
+end
+
+function Goals:CreateLocalBackup()
+    local root = self.dbRoot or self.db
+    if not root then return nil, "GOALS data is not ready." end
+    root.localBackup = self:BuildBackupSnapshot()
+    return root.localBackup, "Local backup created."
+end
+
+function Goals:ExportBackup()
+    local snapshot = self:BuildBackupSnapshot()
+    return "GOALS_BACKUP_1:" .. serializeBackupValue(snapshot, {})
+end
+
+function Goals:RestoreLocalBackup()
+    local root = self.dbRoot or self.db
+    local backup = root and root.localBackup
+    if type(backup) ~= "table" or backup.schemaVersion ~= 1 then
+        return false, "No compatible local backup was found."
     end
-    if t5Map[tokenId] then
-        return t5Map[tokenId]
-    end
-    if t6Map[tokenId] then
-        return t6Map[tokenId]
-    end
-    if t7Map[tokenId] then
-        return t7Map[tokenId]
-    end
-    return nil
+    root.players = deepCopyTable(backup.players or {})
+    root.history = deepCopyTable(backup.history or {})
+    root.settings = deepCopyTable(backup.settings or {})
+    root.wishlists = deepCopyTable(backup.wishlists or {})
+    root.tables = deepCopyTable(backup.tables or {})
+    root.overviewSettings = deepCopyTable(backup.overviewSettings or {})
+    root.activeTableName = backup.activeTableName or root.activeTableName or ""
+    local activeKey = self:NormalizeName(root.activeTableName or "")
+    local active = activeKey ~= "" and root.tables[activeKey] or nil
+    self.db = active or root
+    self:CopyDefaults(self.db, self.defaults)
+    self:EnsureWishlistData()
+    self:NotifyDataChanged()
+    return true, "Local backup restored."
 end
 
 local function gemsEqual(a, b)
@@ -2254,6 +2430,16 @@ function Goals:ClearWishlistItem(slotKey)
     list.items = list.items or {}
     local entry = list.items[slotKey]
     if entry then
+        local undo = { listId = list.id, slotKey = slotKey, entry = deepCopyTable(entry), ts = time() }
+        self.wishlistUndo = undo
+        if C_Timer and C_Timer.After then
+            C_Timer.After(60, function()
+                if Goals.wishlistUndo == undo then
+                    Goals.wishlistUndo = nil
+                    if Goals.UI and Goals.UI.UpdateWishlistUI then Goals.UI:UpdateWishlistUI() end
+                end
+            end)
+        end
         if self.History and entry.itemId then
             self.History:AddWishlistItemRemoved(slotKey, entry.itemId)
         end
@@ -4848,6 +5034,20 @@ function Goals:InitSlashCommands()
         end
         self:ToggleUI()
     end
+end
+
+function Goals:UndoWishlistRemoval()
+    local undo = self.wishlistUndo
+    if not undo or (time() - (undo.ts or 0)) > 60 then return false end
+    local list = self:GetWishlistById(undo.listId)
+    if not list then return false end
+    list.items = list.items or {}
+    if list.items[undo.slotKey] then return false end
+    list.items[undo.slotKey] = deepCopyTable(undo.entry)
+    list.updated = time()
+    self.wishlistUndo = nil
+    self:NotifyDataChanged()
+    return true
 end
 
 local function isTypingInEditBox()

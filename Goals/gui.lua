@@ -2568,6 +2568,8 @@ function UI:GetLootTableEntries()
                     reset = dataEntry.reset,
                     resetBefore = dataEntry.resetBefore,
                     noteKey = noteKey,
+                    sourceFoundTs = matched.entry.ts,
+                    sourceAssignTs = entry.ts,
                 })
                 if noteKey then
                     foundIndexByKey[noteKey] = #list
@@ -2599,11 +2601,13 @@ function UI:GetLootTableEntries()
         local groupLast = 0
         local groupFirst = 0
         local groupKey = nil
+        local groupEntry = nil
         local function flushGroup()
             if groupCount <= 0 then
                 return
             end
             local noteKey = groupKey or getLootNoteKey(itemLink, groupLast)
+            local foundData = groupEntry and groupEntry.data or nil
             table.insert(list, {
                 kind = "FOUND",
                 ts = groupLast,
@@ -2612,6 +2616,11 @@ function UI:GetLootTableEntries()
                 raw = nil,
                 noteKey = noteKey,
                 stackCount = groupCount,
+                assignedTo = groupCount == 1 and foundData and foundData.assignedTo or nil,
+                reset = groupCount == 1 and foundData and foundData.reset or nil,
+                resetBefore = groupCount == 1 and foundData and foundData.resetBefore or nil,
+                sourceFoundTs = groupCount == 1 and groupEntry and groupEntry.ts or nil,
+                sourceAssignTs = nil,
             })
             if noteKey then
                 foundIndexByKey[noteKey] = #list
@@ -2620,6 +2629,7 @@ function UI:GetLootTableEntries()
             groupLast = 0
             groupFirst = 0
             groupKey = nil
+            groupEntry = nil
         end
         for _, wrapper in ipairs(entries) do
             local ts = wrapper.entry.ts or 0
@@ -2628,16 +2638,19 @@ function UI:GetLootTableEntries()
                 groupFirst = ts
                 groupLast = ts
                 groupKey = wrapper.key
+                groupEntry = wrapper.entry
             elseif ts - groupLast <= LOOT_GROUP_WINDOW then
                 groupCount = groupCount + 1
                 groupLast = ts
                 groupKey = wrapper.key
+                groupEntry = nil
             else
                 flushGroup()
                 groupCount = 1
                 groupFirst = ts
                 groupLast = ts
                 groupKey = wrapper.key
+                groupEntry = wrapper.entry
             end
         end
         flushGroup()
@@ -3893,6 +3906,8 @@ function UI:CreateMainFrame()
         { key = "loot", text = L.TAB_LOOT, create = "CreateLootTab" },
         { key = "history", text = L.TAB_HISTORY, create = "CreateHistoryTab" },
         { key = "wishlist", text = L.TAB_WISHLIST, create = "CreateWishlistTab" },
+        { key = "diagnostics", text = L.TAB_DIAGNOSTICS or "Diag", create = "CreateDiagnosticsTab" },
+        { key = "settings", text = L.TAB_SETTINGS or "Settings", create = "CreateSettingsTab" },
     }
     if hasWHTMInstalled then
         table.insert(tabDefs, { key = "damage", text = L.TAB_DAMAGE_TRACKER, create = "CreateDamageTrackerTab" })
@@ -4225,9 +4240,12 @@ function UI:GetTabFooter2Segments(key)
         local listName = list and list.name or "Wishlist"
         local listText = "List: " .. listName
         local tabLabel = self:GetWishlistTabLabel(self.wishlistActiveTab)
-        local tabText = tabLabel and ("Tab: " .. tabLabel) or nil
+        if tabLabel and tabLabel ~= "" then
+            listText = listText .. " | " .. tabLabel
+        end
+        local completionText = self.wishlistCompletionText
         local alertsText = self:GetWishlistAlertsSummary(settings)
-        return listText, tabText, alertsText
+        return listText, completionText, alertsText
     end
     if key == "damage" then
         local filter = self.damageTrackerFilter or COMBAT_SHOW_ALL
@@ -4973,29 +4991,29 @@ function UI:CreateOverviewTab(page)
         Goals.db.settings.minimap.hide = not selfBtn:GetChecked()
         UI:UpdateMinimapButton()
     end, "Show the GOALS minimap button.")
-    self.minimapCheck = minimapCheck
+    self.quickMinimapCheck = minimapCheck
 
     local autoMinCheck = addCheck("Auto-minimize in combat", function(selfBtn)
         Goals.db.settings.autoMinimizeCombat = selfBtn:GetChecked() and true or false
     end, "Minimize GOALS automatically when combat starts.")
-    self.autoMinimizeCheck = autoMinCheck
+    self.quickAutoMinimizeCheck = autoMinCheck
 
-    self.announceEncounterStartCheck = addCheck("Announce encounter starts", function(selfBtn)
+    self.quickAnnounceEncounterStartCheck = addCheck("Announce encounter starts", function(selfBtn)
         Goals.db.settings.announceEncounterStarts = selfBtn:GetChecked() and true or false
     end, "Show a local chat message when a tracked encounter begins.")
 
-    self.announceEncounterWipeCheck = addCheck("Announce encounter wipes", function(selfBtn)
+    self.quickAnnounceEncounterWipeCheck = addCheck("Announce encounter wipes", function(selfBtn)
         Goals.db.settings.announceEncounterWipes = selfBtn:GetChecked() and true or false
     end, "Show a local chat message when a tracked encounter ends in a wipe.")
 
-    self.announceEncounterCompletionCheck = addCheck("Announce encounter completion", function(selfBtn)
+    self.quickAnnounceEncounterCompletionCheck = addCheck("Announce encounter completion", function(selfBtn)
         Goals.db.settings.announceEncounterCompletions = selfBtn:GetChecked() and true or false
     end, "Show a local chat message when a boss point is awarded.")
 
     local localOnlyCheck = addCheck("Local-only mode", function(selfBtn)
         Goals.db.settings.localOnly = selfBtn:GetChecked() and true or false
     end, "Disable syncing; changes stay on this client.")
-    self.localOnlyCheck = localOnlyCheck
+    self.quickLocalOnlyCheck = localOnlyCheck
 
     local function hasDBM()
         if DBM and DBM.RegisterCallback then
@@ -5014,12 +5032,12 @@ function UI:CreateOverviewTab(page)
                 Goals.Events:InitDBMCallbacks()
             end
         end, "Use DBM encounter events to improve boss tracking (if installed).")
-        self.dbmIntegrationCheck = dbmCheck
+        self.quickDbmIntegrationCheck = dbmCheck
 
         local dbmWishlistCheck = addCheck("DBM wishlist alerts", function(selfBtn)
             Goals.db.settings.wishlistDbmIntegration = selfBtn:GetChecked() and true or false
         end, "Use DBM events to help detect wishlist drops.")
-        self.wishlistDbmIntegrationCheck = dbmWishlistCheck
+        self.quickWishlistDbmIntegrationCheck = dbmWishlistCheck
     end
 
     y = y - 8
@@ -5419,9 +5437,12 @@ function UI:CreateLootTab(page)
             if selfRow.entry then
                 UI:SetLootSelection(selfRow, selfRow.entry)
             end
-            if button == "RightButton" and selfRow.entry and selfRow.entry.kind == "FOUND"
-                and selfRow.entry.raw and not selfRow.entry.raw.assignedTo then
-                UI:ShowFoundLootMenu(selfRow, selfRow.entry.raw)
+            if button == "RightButton" and selfRow.entry and selfRow.entry.kind == "FOUND" then
+                if selfRow.entry.sourceFoundTs then
+                    UI:ShowLootHistoryEditMenu(selfRow, selfRow.entry)
+                elseif selfRow.entry.raw and not selfRow.entry.raw.assignedTo then
+                    UI:ShowFoundLootMenu(selfRow, selfRow.entry.raw)
+                end
             end
         end)
 
@@ -5612,6 +5633,16 @@ function UI:CreateLootTab(page)
     attachSideTooltip(minDrop, "Only reset points for items at or above this quality.")
     self.resetQualityDropdown = minDrop
     self:SetupResetQualityDropdown(minDrop)
+
+    y = y - 6
+    addSectionHeader("Current Point Policy")
+    local policy = addInfoLabel("")
+    policy:SetWidth(OPTIONS_CONTROL_WIDTH)
+    policy:SetJustifyH("LEFT")
+    policy:SetJustifyV("TOP")
+    policy:SetHeight(92)
+    y = y - 76
+    self.lootPolicyPreview = policy
 
     y = y - 8
     addSectionHeader("Notes")
@@ -6304,10 +6335,20 @@ function UI:CreateWishlistTab(page)
     self.wishlistRefreshButton = refreshBtn
 
     local summary = createLabel(leftInset, "0/0 items found", "GameFontHighlightSmall")
-    summary:SetPoint("BOTTOMLEFT", leftInset, "BOTTOMLEFT", 10, 13)
-    summary:SetPoint("RIGHT", refreshBtn, "LEFT", -8, 0)
-    summary:SetJustifyH("LEFT")
+    -- Completion details are displayed in the wishlist footer. Keeping this
+    -- compatibility font string hidden avoids covering bottom-row item names.
+    summary:Hide()
     self.wishlistCompletionSummary = summary
+
+    local undoBtn = CreateFrame("Button", nil, leftInset, "UIPanelButtonTemplate")
+    undoBtn:SetSize(240, 20)
+    undoBtn:SetPoint("BOTTOM", leftInset, "BOTTOM", 0, 38)
+    undoBtn:SetText("Undo removed item")
+    undoBtn:SetScript("OnClick", function()
+        if Goals:UndoWishlistRemoval() then UI:UpdateWishlistUI() end
+    end)
+    undoBtn:Hide()
+    self.wishlistUndoButton = undoBtn
 
     self.wishlistSlotButtons = {}
     local slots = Goals:GetWishlistSlotDefs() or {}
@@ -7752,269 +7793,7 @@ function UI:CreateWishlistTab(page)
     end
 end
 
-function UI:CreateSettingsTab(page)
-    local leftInset = CreateFrame("Frame", "GoalsSettingsInset", page, "GoalsInsetTemplate")
-    applyInsetTheme(leftInset)
-    leftInset:SetPoint("TOPLEFT", page, "TOPLEFT", 8, -12)
-    leftInset:SetPoint("BOTTOMLEFT", page, "BOTTOMLEFT", 8, 8)
-    leftInset:SetWidth(350)
-    self.settingsInset = leftInset
-
-    local rightInset = CreateFrame("Frame", "GoalsSettingsActionsInset", page, "GoalsInsetTemplate")
-    applyInsetTheme(rightInset)
-    rightInset:SetPoint("TOPLEFT", leftInset, "TOPRIGHT", 12, 0)
-    rightInset:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -8, 8)
-    self.settingsActionsInset = rightInset
-
-    local settingsTitle = createLabel(leftInset, L.TAB_SETTINGS, "GameFontNormal")
-    local settingsBar = applySectionHeader(settingsTitle, leftInset, -6)
-    applySectionCaption(settingsBar, "General")
-
-    local combineCheck = CreateFrame("CheckButton", nil, leftInset, "UICheckButtonTemplate")
-    combineCheck:SetPoint("TOPLEFT", settingsTitle, "BOTTOMLEFT", 0, -10)
-    setCheckText(combineCheck, L.CHECK_COMBINE_HISTORY)
-    combineCheck:SetScript("OnClick", function(selfBtn)
-        Goals:SetRaidSetting("combineBossHistory", selfBtn:GetChecked() and true or false)
-    end)
-    self.combineCheck = combineCheck
-
-    local minimapCheck = CreateFrame("CheckButton", nil, leftInset, "UICheckButtonTemplate")
-    minimapCheck:SetPoint("TOPLEFT", combineCheck, "BOTTOMLEFT", 0, -8)
-    setCheckText(minimapCheck, L.CHECK_MINIMAP)
-    minimapCheck:SetScript("OnClick", function(selfBtn)
-        Goals.db.settings.minimap.hide = not selfBtn:GetChecked()
-        UI:UpdateMinimapButton()
-    end)
-    self.minimapCheck = minimapCheck
-
-    local autoMinCheck = CreateFrame("CheckButton", nil, leftInset, "UICheckButtonTemplate")
-    autoMinCheck:SetPoint("TOPLEFT", minimapCheck, "BOTTOMLEFT", 0, -8)
-    setCheckText(autoMinCheck, L.CHECK_AUTO_MINIMIZE_COMBAT)
-    autoMinCheck:SetScript("OnClick", function(selfBtn)
-        Goals.db.settings.autoMinimizeCombat = selfBtn:GetChecked() and true or false
-    end)
-    self.autoMinimizeCheck = autoMinCheck
-
-    local announceStartCheck = CreateFrame("CheckButton", nil, leftInset, "UICheckButtonTemplate")
-    announceStartCheck:SetPoint("TOPLEFT", autoMinCheck, "BOTTOMLEFT", 0, -8)
-    setCheckText(announceStartCheck, "Announce encounter starts")
-    announceStartCheck:SetScript("OnClick", function(selfBtn)
-        Goals.db.settings.announceEncounterStarts = selfBtn:GetChecked() and true or false
-    end)
-    self.announceEncounterStartCheck = announceStartCheck
-
-    local announceWipeCheck = CreateFrame("CheckButton", nil, leftInset, "UICheckButtonTemplate")
-    announceWipeCheck:SetPoint("TOPLEFT", announceStartCheck, "BOTTOMLEFT", 0, -8)
-    setCheckText(announceWipeCheck, "Announce encounter wipes")
-    announceWipeCheck:SetScript("OnClick", function(selfBtn)
-        Goals.db.settings.announceEncounterWipes = selfBtn:GetChecked() and true or false
-    end)
-    self.announceEncounterWipeCheck = announceWipeCheck
-
-    local announceCompletionCheck = CreateFrame("CheckButton", nil, leftInset, "UICheckButtonTemplate")
-    announceCompletionCheck:SetPoint("TOPLEFT", announceWipeCheck, "BOTTOMLEFT", 0, -8)
-    setCheckText(announceCompletionCheck, "Announce encounter completion")
-    announceCompletionCheck:SetScript("OnClick", function(selfBtn)
-        Goals.db.settings.announceEncounterCompletions = selfBtn:GetChecked() and true or false
-    end)
-    self.announceEncounterCompletionCheck = announceCompletionCheck
-
-    local localOnlyCheck = CreateFrame("CheckButton", nil, leftInset, "UICheckButtonTemplate")
-    localOnlyCheck:SetPoint("TOPLEFT", announceCompletionCheck, "BOTTOMLEFT", 0, -8)
-    setCheckText(localOnlyCheck, "Local-only mode")
-    localOnlyCheck:SetScript("OnClick", function(selfBtn)
-        Goals.db.settings.localOnly = selfBtn:GetChecked() and true or false
-    end)
-    self.localOnlyCheck = localOnlyCheck
-
-    local function hasDBM()
-        if DBM and DBM.RegisterCallback then
-            return true
-        end
-        if IsAddOnLoaded then
-            return IsAddOnLoaded("DBM-Core") or IsAddOnLoaded("DBM-GUI")
-        end
-        return false
-    end
-
-    if hasDBM() then
-        local dbmCheck = CreateFrame("CheckButton", nil, leftInset, "UICheckButtonTemplate")
-        dbmCheck:SetPoint("TOPLEFT", localOnlyCheck, "BOTTOMLEFT", 0, -8)
-        setCheckText(dbmCheck, L.CHECK_DBM_INTEGRATION)
-        dbmCheck:SetScript("OnClick", function(selfBtn)
-            Goals.db.settings.dbmIntegration = selfBtn:GetChecked() and true or false
-            if Goals.db.settings.dbmIntegration and Goals.Events and Goals.Events.InitDBMCallbacks then
-                Goals.Events:InitDBMCallbacks()
-            end
-        end)
-        self.dbmIntegrationCheck = dbmCheck
-
-        local dbmWishlistCheck = CreateFrame("CheckButton", nil, leftInset, "UICheckButtonTemplate")
-        dbmWishlistCheck:SetPoint("TOPLEFT", dbmCheck, "BOTTOMLEFT", 0, -8)
-        setCheckText(dbmWishlistCheck, L.CHECK_DBM_WISHLIST)
-        dbmWishlistCheck:SetScript("OnClick", function(selfBtn)
-            Goals.db.settings.wishlistDbmIntegration = selfBtn:GetChecked() and true or false
-        end)
-        self.wishlistDbmIntegrationCheck = dbmWishlistCheck
-    end
-
-    local bindsTitle = createLabel(leftInset, "Keybindings", "GameFontNormal")
-    bindsTitle:SetPoint("BOTTOMLEFT", leftInset, "BOTTOMLEFT", 12, 10)
-    self.keybindsTitle = bindsTitle
-
-    local uiBindLabel = createLabel(leftInset, "Toggle GOALS UI:", "GameFontHighlightSmall")
-    uiBindLabel:SetPoint("BOTTOMLEFT", bindsTitle, "TOPLEFT", 0, 4)
-    self.keybindUiLabel = uiBindLabel
-
-    local uiBindValue = createLabel(leftInset, "", "GameFontHighlightSmall")
-    uiBindValue:SetPoint("LEFT", uiBindLabel, "RIGHT", 6, 0)
-    uiBindValue:SetJustifyH("LEFT")
-    self.keybindUiValue = uiBindValue
-
-    local miniBindLabel = createLabel(leftInset, "Toggle Mini Viewer:", "GameFontHighlightSmall")
-    miniBindLabel:SetPoint("BOTTOMLEFT", uiBindLabel, "TOPLEFT", 0, 4)
-    self.keybindMiniLabel = miniBindLabel
-
-    local miniBindValue = createLabel(leftInset, "", "GameFontHighlightSmall")
-    miniBindValue:SetPoint("LEFT", miniBindLabel, "RIGHT", 6, 0)
-    miniBindValue:SetJustifyH("LEFT")
-    self.keybindMiniValue = miniBindValue
-
-    setupSudoDevPopup()
-    setupSaveTableHelpPopup()
-    setupBuildSharePopup()
-
-    local actionsTitle = createLabel(rightInset, "Data Management", "GameFontNormal")
-    local actionsBar = applySectionHeader(actionsTitle, rightInset, -6)
-    applySectionCaption(actionsBar, "Local maintenance")
-
-    local function createActionButton(text, onClick)
-        local btn = CreateFrame("Button", nil, rightInset, "UIPanelButtonTemplate")
-        btn:SetSize(180, 20)
-        btn:SetText(text)
-        btn:SetScript("OnClick", onClick)
-        return btn
-    end
-
-    local function createAlignedDivider(anchor, yOffset)
-        if not anchor then
-            return nil
-        end
-        local line = rightInset:CreateTexture(nil, "BORDER")
-        line:SetHeight(1)
-        line:SetPoint("TOP", anchor, "BOTTOM", 0, yOffset or -8)
-        line:SetPoint("LEFT", rightInset, "LEFT", 4, 0)
-        line:SetPoint("RIGHT", rightInset, "RIGHT", -4, 0)
-        line:SetTexture(1, 1, 1, 0.08)
-        return line
-    end
-
-    local function applyAlignedSectionHeader(label, anchor, yOffset)
-        if not label or not anchor then
-            return nil
-        end
-        local bar = rightInset:CreateTexture(nil, "BORDER")
-        bar:SetHeight(16)
-        bar:SetPoint("TOP", anchor, "BOTTOM", 0, yOffset or -8)
-        bar:SetPoint("LEFT", rightInset, "LEFT", 4, 0)
-        bar:SetPoint("RIGHT", rightInset, "RIGHT", -4, 0)
-        bar:SetTexture(0, 0, 0, 0.45)
-        label:ClearAllPoints()
-        label:SetPoint("LEFT", bar, "LEFT", 6, 0)
-        label:SetTextColor(0.92, 0.8, 0.5, 1)
-        return bar
-    end
-
-    local ACTIONS_LEFT = 2
-
-    local clearPointsBtn = createActionButton("Clear All Points", function()
-        if Goals and Goals.ClearAllPointsLocal then
-            Goals:ClearAllPointsLocal()
-        end
-    end)
-    clearPointsBtn:SetPoint("TOPLEFT", actionsTitle, "BOTTOMLEFT", ACTIONS_LEFT, -10)
-
-    local clearPlayersBtn = createActionButton("Clear Players List", function()
-        if Goals and Goals.ClearPlayersLocal then
-            Goals:ClearPlayersLocal()
-        end
-    end)
-    clearPlayersBtn:SetPoint("TOPLEFT", clearPointsBtn, "BOTTOMLEFT", 0, -6)
-
-    local clearHistoryBtn = createActionButton("Clear History", function()
-        if Goals and Goals.ClearHistoryLocal then
-            Goals:ClearHistoryLocal()
-        end
-    end)
-    clearHistoryBtn:SetPoint("TOPLEFT", clearPlayersBtn, "BOTTOMLEFT", 0, -6)
-
-    local clearAllBtn = createActionButton("Clear All", function()
-        if Goals and Goals.ClearAllLocal then
-            Goals:ClearAllLocal()
-        end
-    end)
-    clearAllBtn:SetPoint("TOPLEFT", clearHistoryBtn, "BOTTOMLEFT", 0, -10)
-
-    local miniDivider = createAlignedDivider(clearAllBtn, -6)
-    local miniTitle = createLabel(rightInset, L.LABEL_MINI_TRACKER, "GameFontNormal")
-    local miniBar = applyAlignedSectionHeader(miniTitle, miniDivider or clearAllBtn, -6)
-    applySectionCaption(miniBar, "Quick view")
-    if miniBar then
-        local resetMiniBtn = createSmallIconButton(rightInset, 16, "Interface\\Buttons\\UI-RefreshButton")
-        resetMiniBtn:SetPoint("RIGHT", miniBar, "RIGHT", -6, 0)
-        resetMiniBtn:SetScript("OnClick", function()
-            if UI and UI.ResetMiniTrackerPosition then
-                UI:ResetMiniTrackerPosition()
-            end
-        end)
-        resetMiniBtn:SetScript("OnEnter", function(selfBtn)
-            showSideTooltip("Reset Mini Position")
-        end)
-        resetMiniBtn:SetScript("OnLeave", function()
-            hideSideTooltip()
-        end)
-    end
-
-    local miniBtn = createActionButton(L.BUTTON_TOGGLE_MINI_TRACKER, function()
-        if UI and UI.ToggleMiniTracker then
-            UI:ToggleMiniTracker()
-        end
-    end)
-    miniBtn:SetPoint("TOPLEFT", miniTitle, "BOTTOMLEFT", ACTIONS_LEFT, -6)
-    self.miniTrackerButton = miniBtn
-
-    local editDivider = createAlignedDivider(miniBtn, -6)
-    local editTitle = createLabel(rightInset, "Local Editing", "GameFontNormal")
-    local editBar = applyAlignedSectionHeader(editTitle, editDivider or syncSeenBtn, -6)
-    applySectionCaption(editBar, "Admin tools")
-
-    local sudoBtn = createActionButton("", function()
-        if Goals.db.settings.sudoDev then
-            Goals.db.settings.sudoDev = false
-            UI:Refresh()
-            return
-        end
-        if StaticPopup_Show then
-            StaticPopup_Show("GOALS_SUDO_DEV")
-        end
-    end)
-    sudoBtn:SetPoint("TOPLEFT", editTitle, "BOTTOMLEFT", ACTIONS_LEFT, -10)
-    self.sudoDevButton = sudoBtn
-
-    local syncRequestBtn = createActionButton("Ask for sync", function()
-        if Goals and Goals.Comm and Goals.Comm.RequestSync then
-            Goals.Comm:RequestSync("MANUAL")
-        end
-    end)
-    syncRequestBtn:SetPoint("TOPLEFT", sudoBtn, "BOTTOMLEFT", 0, -6)
-    syncRequestBtn:SetScript("OnEnter", function(selfBtn)
-        showSideTooltip("Ask the loot master to send a full roster/points sync.")
-    end)
-    syncRequestBtn:SetScript("OnLeave", function()
-        hideSideTooltip()
-    end)
-    self.syncRequestButton = syncRequestBtn
-end
+-- Diagnostics and Settings tab implementations are loaded from UI modules.
 
 function UI:CreateDamageTrackerTab(page)
     local optionsPanel, optionsContent = createOptionsPanel(page, "GoalsDamageOptionsInset", OPTIONS_PANEL_WIDTH)
@@ -14597,7 +14376,25 @@ function UI:UpdateWishlistUI()
         if missingEnchantCount > 0 then
             table.insert(parts, tostring(missingEnchantCount) .. " missing enchants")
         end
-        self.wishlistCompletionSummary:SetText(table.concat(parts, "  |  "))
+        self.wishlistCompletionText = table.concat(parts, " | ")
+        self.wishlistCompletionSummary:SetText(self.wishlistCompletionText)
+        local wishlistFooter = self.tabFooters2 and self.tabFooters2.wishlist
+        if wishlistFooter and wishlistFooter.centerText then
+            wishlistFooter.centerText:SetText(self.wishlistCompletionText)
+        end
+    end
+    if self.wishlistUndoButton then
+        local undo = Goals.wishlistUndo
+        if undo and undo.entry then
+            local itemName = undo.entry.itemName or undo.entry.name
+            if (not itemName or itemName == "") and undo.entry.itemId and GetItemInfo then
+                itemName = GetItemInfo(undo.entry.itemId)
+            end
+            self.wishlistUndoButton:SetText(itemName and ("Undo: " .. itemName) or "Undo removed item")
+        else
+            self.wishlistUndoButton:SetText("Undo removed item")
+        end
+        setShown(self.wishlistUndoButton, undo and (time() - (undo.ts or 0)) <= 60)
     end
     if self.wishlistNotesBox and self.wishlistSourceEntryBox then
         local selected = self.selectedWishlistSlot and list and list.items and list.items[self.selectedWishlistSlot] or nil
@@ -15032,6 +14829,73 @@ function UI:ShowFoundLootMenu(row, entry)
     ToggleDropDownMenu(1, nil, menu, "cursor", 0, 0)
 end
 
+function UI:ShowLootHistoryEditMenu(row, entry)
+    local hasLeaderAccess = Goals and Goals.HasLeaderAccess and Goals:HasLeaderAccess()
+    if not entry or not entry.sourceFoundTs or (not hasLeaderAccess and not hasModifyAccess()) then
+        return
+    end
+    if not self.lootHistoryEditMenu then
+        self.lootHistoryEditMenu = CreateFrame("Frame", "GoalsLootHistoryEditMenu", UIParent, "UIDropDownMenuTemplate")
+    end
+    local players = {}
+    local seen = {}
+    for _, member in ipairs(Goals:GetGroupMembers() or {}) do
+        local name = Goals:NormalizeName(member.name)
+        if name ~= "" and not seen[name] then
+            seen[name] = true
+            table.insert(players, name)
+        end
+    end
+    if #players == 0 then
+        players = self:GetPresentPlayerNames()
+    end
+    table.sort(players)
+    local menu = self.lootHistoryEditMenu
+    menu.lootEntry = entry
+    UIDropDownMenu_Initialize(menu, function(_, level)
+        local selected = menu.lootEntry
+        if not selected then return end
+        if level == 1 then
+            local info = UIDropDownMenu_CreateInfo()
+            info.text = "Change recipient"
+            info.notCheckable = true
+            info.hasArrow = true
+            info.value = "ASSIGN"
+            UIDropDownMenu_AddButton(info, level)
+
+            info = UIDropDownMenu_CreateInfo()
+            info.text = "Change recipient + reset points"
+            info.notCheckable = true
+            info.hasArrow = true
+            info.value = "RESET"
+            UIDropDownMenu_AddButton(info, level)
+
+            if selected.assignedTo and selected.assignedTo ~= "" then
+                info = UIDropDownMenu_CreateInfo()
+                info.text = "Mark unassigned (undo reset)"
+                info.notCheckable = true
+                info.func = function()
+                    Goals:EditLootHistoryRecord(selected.item, selected.sourceFoundTs, selected.sourceAssignTs or 0, "UNASSIGN", "", false)
+                end
+                UIDropDownMenu_AddButton(info, level)
+            end
+        elseif level == 2 and (UIDROPDOWNMENU_MENU_VALUE == "ASSIGN" or UIDROPDOWNMENU_MENU_VALUE == "RESET") then
+            local mode = UIDROPDOWNMENU_MENU_VALUE
+            for _, name in ipairs(players) do
+                local player = name
+                local info = UIDropDownMenu_CreateInfo()
+                info.text = colorizeName(player)
+                info.notCheckable = true
+                info.func = function()
+                    Goals:EditLootHistoryRecord(selected.item, selected.sourceFoundTs, selected.sourceAssignTs or 0, mode, player, false)
+                end
+                UIDropDownMenu_AddButton(info, level)
+            end
+        end
+    end, "MENU")
+    ToggleDropDownMenu(1, nil, menu, "cursor", 0, 0)
+end
+
 function UI:RefreshStatus()
     if Goals and Goals.UpdateSyncStatus then
         Goals:UpdateSyncStatus(true)
@@ -15119,17 +14983,49 @@ function UI:Refresh()
     if self.minimapCheck then
         self.minimapCheck:SetChecked(not Goals.db.settings.minimap.hide)
     end
+    if self.quickMinimapCheck then
+        self.quickMinimapCheck:SetChecked(not Goals.db.settings.minimap.hide)
+    end
     if self.autoMinimizeCheck then
         self.autoMinimizeCheck:SetChecked(Goals.db.settings.autoMinimizeCombat and true or false)
+    end
+    if self.quickAutoMinimizeCheck then
+        self.quickAutoMinimizeCheck:SetChecked(Goals.db.settings.autoMinimizeCombat and true or false)
     end
     if self.announceEncounterStartCheck then
         self.announceEncounterStartCheck:SetChecked(Goals.db.settings.announceEncounterStarts ~= false)
     end
+    if self.quickAnnounceEncounterStartCheck then
+        self.quickAnnounceEncounterStartCheck:SetChecked(Goals.db.settings.announceEncounterStarts ~= false)
+    end
     if self.announceEncounterWipeCheck then
         self.announceEncounterWipeCheck:SetChecked(Goals.db.settings.announceEncounterWipes ~= false)
     end
+    if self.quickAnnounceEncounterWipeCheck then
+        self.quickAnnounceEncounterWipeCheck:SetChecked(Goals.db.settings.announceEncounterWipes ~= false)
+    end
     if self.announceEncounterCompletionCheck then
         self.announceEncounterCompletionCheck:SetChecked(Goals.db.settings.announceEncounterCompletions ~= false)
+    end
+    if self.quickAnnounceEncounterCompletionCheck then
+        self.quickAnnounceEncounterCompletionCheck:SetChecked(Goals.db.settings.announceEncounterCompletions ~= false)
+    end
+    if self.announceEncounterProgressCheck then
+        self.announceEncounterProgressCheck:SetChecked(Goals.db.settings.announceEncounterProgress ~= false)
+    end
+    local root = Goals.dbRoot or Goals.db
+    local localBackup = root and root.localBackup or nil
+    if self.backupStatusLabel then
+        self.backupStatusLabel:SetText(localBackup and localBackup.created and ("Saved " .. date("%Y-%m-%d %H:%M", localBackup.created)) or "No local backup")
+    end
+    if self.restoreBackupButton then
+        if localBackup then
+            self.restoreBackupButton:Enable()
+            self.restoreBackupButton:SetAlpha(1)
+        else
+            self.restoreBackupButton:Disable()
+            self.restoreBackupButton:SetAlpha(0.5)
+        end
     end
     local trackingEnabled = Goals.db.settings.combatLogTracking and true or false
     if self.combatLogTrackingCheck then
@@ -15406,17 +15302,33 @@ function UI:Refresh()
     if self.localOnlyCheck then
         self.localOnlyCheck:SetChecked(Goals.db.settings.localOnly and true or false)
     end
+    if self.quickLocalOnlyCheck then
+        self.quickLocalOnlyCheck:SetChecked(Goals.db.settings.localOnly and true or false)
+    end
     if self.dbmIntegrationCheck then
         self.dbmIntegrationCheck:SetChecked(Goals.db.settings.dbmIntegration and true or false)
     end
+    if self.quickDbmIntegrationCheck then
+        self.quickDbmIntegrationCheck:SetChecked(Goals.db.settings.dbmIntegration and true or false)
+    end
     if self.wishlistDbmIntegrationCheck then
         self.wishlistDbmIntegrationCheck:SetChecked(Goals.db.settings.wishlistDbmIntegration and true or false)
+    end
+    if self.quickWishlistDbmIntegrationCheck then
+        self.quickWishlistDbmIntegrationCheck:SetChecked(Goals.db.settings.wishlistDbmIntegration and true or false)
     end
     if self.sudoDevButton then
         if Goals.db.settings.sudoDev then
             self.sudoDevButton:SetText(L.BUTTON_SUDO_DEV_DISABLE)
         else
             self.sudoDevButton:SetText(L.BUTTON_SUDO_DEV_ENABLE)
+        end
+    end
+    if self.settingsSudoDevButton then
+        if Goals.db.settings.sudoDev then
+            self.settingsSudoDevButton:SetText(L.BUTTON_SUDO_DEV_DISABLE)
+        else
+            self.settingsSudoDevButton:SetText(L.BUTTON_SUDO_DEV_ENABLE)
         end
     end
     local overviewSettings = Goals.GetOverviewSettings and Goals:GetOverviewSettings() or (Goals.db and Goals.db.settings) or {}
@@ -15440,6 +15352,19 @@ function UI:Refresh()
     end
     if self.resetLootWindowCheck then
         self.resetLootWindowCheck:SetChecked(Goals.db.settings.resetRequiresLootWindow and true or false)
+    end
+    if self.lootPolicyPreview then
+        local s = Goals.db.settings
+        local quality = getQualityLabel(Goals:GetResetMinQuality())
+        local function state(enabled) return enabled and "|cff55ff55RESET|r" or "|cffaaaaaaIGNORE|r" end
+        self.lootPolicyPreview:SetText(table.concat({
+            quality .. " armor: |cff55ff55RESET|r",
+            "Tier tokens: " .. state(s.resetTokens),
+            quality .. " bags: " .. state(s.resetBags),
+            "Mounts: " .. state(s.resetMounts),
+            "Recipes: " .. state(s.resetRecipes),
+            "Mode: " .. (s.resetRequiresLootWindow and "Manual loot assignment" or "Automatic raid loot"),
+        }, "\n"))
     end
     if self.debugCheck then
         self.debugCheck:SetChecked(Goals.db.settings.debug and true or false)
@@ -16072,4 +15997,19 @@ function UI:CreateOptionsPanel()
     InterfaceOptions_AddCategory(panel)
     self.optionsPanel = panel
 end
-
+-- Shared only with tab modules loaded immediately after this file.
+UI.ModuleHelpers = {
+    applyInsetTheme = applyInsetTheme,
+    applyFrameTheme = applyFrameTheme,
+    applySectionHeader = applySectionHeader,
+    applySectionCaption = applySectionCaption,
+    createLabel = createLabel,
+    setCheckText = setCheckText,
+    setupSudoDevPopup = setupSudoDevPopup,
+    setupSaveTableHelpPopup = setupSaveTableHelpPopup,
+    setupBuildSharePopup = setupBuildSharePopup,
+    attachSideTooltip = attachSideTooltip,
+    createSmallIconButton = createSmallIconButton,
+    showSideTooltip = showSideTooltip,
+    hideSideTooltip = hideSideTooltip,
+}

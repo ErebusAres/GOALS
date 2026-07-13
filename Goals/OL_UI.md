@@ -302,3 +302,11 @@ Goal: add tab-aware info density without clutter. Provide up to 6 short, glancea
 - Chat lines preserve per-segment colors (actor source/target, event type, ability, detail/amount, and location).
 - Chat display headers now read `Actor` and `Chat` for clearer intent.
 - Follow-up: chat mode now uses a single cohesive line layout (`Timestamp [RT] Source action Target with Spell for Value (mods) [Raw] @ Location`) and hides table headers/columns.
+
+## UI Module Refactor (7/12/2026)
+
+- Moved Diagnostics tab creation and refresh behavior into `UI/Diagnostics.lua`.
+- Moved Settings tab creation and backup-export UI into `UI/Settings.lua`.
+- Kept shared visual helpers private to the UI layer through `UI.ModuleHelpers`; no saved-variable or gameplay behavior changed.
+- Wishlist completion status now updates the center footer segment directly, keeping white status text out of the gear grid and away from bottom-row item names.
+- This is the first conservative split of the large `gui.lua`; additional tabs should only move after the current release is tested.

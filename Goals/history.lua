@@ -136,6 +136,7 @@ function History:AddEntry(kind, text, data)
         data = data,
     }
     table.insert(self.db.history, 1, entry)
+    return entry
 end
 
 function History:AddBossKill(encounterName, points, names, combine)
@@ -182,12 +183,16 @@ function History:AddSetPoints(playerName, before, after, reason)
     )
 end
 
-function History:AddLootFound(itemLink)
-    self:AddEntry(
+function History:AddLootFound(itemLink, lootId, entryTs)
+    local entry = self:AddEntry(
         "LOOT_FOUND",
         string.format("Found %s", itemLink),
-        { item = itemLink }
+        { item = itemLink, lootId = lootId }
     )
+    if entry and entryTs then
+        entry.ts = entryTs
+    end
+    return entry
 end
 
 function History:AddLootAssigned(playerName, itemLink, resetPoints, resetBefore)

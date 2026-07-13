@@ -15,7 +15,10 @@ _G.bossEncounters = {
     ["High Priestess Arlokk"] = { "High Priestess Arlokk" },
     ["Hakkar"] = { "Hakkar" },
     --Optional Zul'Gurub Bosses
-    ["Bloodlord Encounter"] = { "Bloodlord Mandokir", "Ohgan" },
+    ["Bloodlord Encounter"] = {
+        { name = "Bloodlord Mandokir", role = "completion", final = true },
+        { name = "Ohgan", role = "support" },
+    },
     ["Edge of Madness: Gri'lek"] = { "Gri'lek" },
     ["Edge of Madness: Hazza'rah"] = { "Hazza'rah" },
     ["Edge of Madness: Renataki"] = { "Renataki" },
@@ -249,11 +252,10 @@ _G.bossEncounters = {
 -- Encounter-specific rules for multi-kill or revive mechanics.
 _G.encounterRules = {
     ["Opera Event, Romulo and Julianne"] = {
-        type = "pair_revive",
+        type = "paired_kill_counts",
         bosses = { "Romulo", "Julianne" },
-        requiredKills = 1,
-        reviveWindow = 10,
-        minFightTime = 30,
+        requiredKillsPerBoss = 2,
+        finalWindow = 12,
         wipeGrace = 25,
     },
     ["Mimiron"] = {

@@ -12,6 +12,26 @@ local hasProfileStopComm = type(debugprofilestop) == "function"
 
 Comm.prefix = "GOALS"
 Comm.pending = {}
+Comm.maxChunks = 100
+Comm.maxTransferBytes = 65536
+Comm.chunkExpiry = 30
+
+local protectedMessageTypes = {
+    SYNC_POINTS = true,
+    SYNC_SETTINGS = true,
+    BOSSKILL = true,
+    ADJUST = true,
+    SETPOINTS = true,
+    LOOTRESET = true,
+    LOOT = true,
+    LOOTEDIT = true,
+    SETTING = true,
+}
+local chunkableMessageTypes = {
+    SYNC_POINTS = true,
+    SYNC_SETTINGS = true,
+    WISHLIST_BUILD = true,
+}
 
 local function split(str, delim)
     local parts = {}
@@ -93,10 +113,16 @@ function Comm:OnMessage(prefix, message, channel, sender)
     end
     local base, index, total = msgType:match("^(.-)#(%d+)/(%d+)$")
     if base then
+        if not self:IsAuthorizedSender(base, sender) then
+            return
+        end
         self:HandleChunk(base, tonumber(index), tonumber(total), payload, sender, channel)
         if traceEnabled and ui and ui.RecordCpuSpikeDetail then
             ui:RecordCpuSpikeDetail("Comm.OnMessage", debugprofilestop() - t0, string.format("chunk type=%s sender=%s", tostring(base), tostring(sender or "-")))
         end
+        return
+    end
+    if not self:IsAuthorizedSender(msgType, sender) then
         return
     end
     self:HandleMessage(msgType, payload, sender, channel)
@@ -105,9 +131,58 @@ function Comm:OnMessage(prefix, message, channel, sender)
     end
 end
 
+function Comm:IsAuthorizedSender(msgType, sender)
+    if not protectedMessageTypes[msgType] then
+        return true
+    end
+    if not sender or sender == "" then
+        return false
+    end
+    if Goals.UpdateSyncStatus then
+        Goals:UpdateSyncStatus()
+    end
+    local expected = Goals.sync and Goals.sync.masterName or nil
+    if not expected or expected == "" then
+        return false
+    end
+    local allowed = Goals:NormalizeName(sender) == Goals:NormalizeName(expected)
+    if not allowed and Goals.RecordDiagnostic then
+        Goals:RecordDiagnostic("SYNC", "Rejected untrusted state change", {
+            ["Message type"] = msgType,
+            ["Sender"] = sender,
+            ["Trusted sender"] = expected,
+            ["Plain explanation"] = "Only the recognized group leader may change shared GOALS data.",
+        })
+    end
+    return allowed
+end
+
 function Comm:HandleChunk(base, index, total, payload, sender, channel)
+    if not chunkableMessageTypes[base] or not sender or not index or not total or index < 1 or total < 1 or index > total or total > self.maxChunks then
+        return
+    end
+    local now = GetTime and GetTime() or time()
+    for pendingType, senders in pairs(self.pending) do
+        for pendingSender, pendingEntry in pairs(senders) do
+            if (now - (pendingEntry.started or now)) > self.chunkExpiry then
+                senders[pendingSender] = nil
+            end
+        end
+        if not next(senders) then self.pending[pendingType] = nil end
+    end
     self.pending[base] = self.pending[base] or {}
-    local entry = self.pending[base][sender] or { parts = {}, total = total }
+    local entry = self.pending[base][sender]
+    if entry and ((now - (entry.started or now)) > self.chunkExpiry or entry.total ~= total) then
+        entry = nil
+    end
+    entry = entry or { parts = {}, total = total, bytes = 0, started = now }
+    if not entry.parts[index] then
+        entry.bytes = entry.bytes + #(payload or "")
+    end
+    if entry.bytes > self.maxTransferBytes then
+        self.pending[base][sender] = nil
+        return
+    end
     entry.parts[index] = payload
     entry.total = total
     self.pending[base][sender] = entry
@@ -214,6 +289,15 @@ function Comm:HandleMessage(msgType, payload, sender, channel)
         local id, ts, itemLink = payload:match("^(%d+)|(%d+)|(.+)$")
         Goals:ApplyLootFound(tonumber(id) or 0, tonumber(ts) or 0, itemLink, sender)
         traceDone("lootfound")
+        return
+    end
+    if msgType == "LOOTEDIT" then
+        Goals.lastSyncReceivedAt = time()
+        local foundTs, assignTs, mode, name, itemLink = payload:match("^(%d+)|(%d+)|([^|]+)|([^|]*)|(.+)$")
+        if foundTs and itemLink and Goals.EditLootHistoryRecord then
+            Goals:EditLootHistoryRecord(itemLink, tonumber(foundTs) or 0, tonumber(assignTs) or 0, mode, name, true)
+        end
+        traceDone("lootedit")
         return
     end
     if msgType == "SETTING" then
@@ -345,6 +429,14 @@ function Comm:SerializePoints()
         table.insert(parts, name .. "," .. points .. "," .. class)
     end
     return table.concat(parts, ";")
+end
+
+function Comm:SendLootEdit(foundTs, assignTs, mode, name, itemLink)
+    if not itemLink or itemLink == "" then
+        return
+    end
+    local payload = string.format("%d|%d|%s|%s|%s", tonumber(foundTs) or 0, tonumber(assignTs) or 0, mode or "ASSIGN", name or "", itemLink)
+    self:Send("LOOTEDIT", payload)
 end
 
 function Comm:ApplyPoints(payload)
