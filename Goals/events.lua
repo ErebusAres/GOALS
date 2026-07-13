@@ -121,7 +121,6 @@ function Events:Init()
     self.frame:RegisterEvent("CHAT_MSG_ADDON")
     self.frame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
     self.frame:RegisterEvent("PLAYER_ENTERING_WORLD")
-    self.frame:RegisterEvent("BOSS_KILL")
     self.frame:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
     if not self.watchFrame then
         self.watchFrame = CreateFrame("Frame")
@@ -180,11 +179,28 @@ function Events:GetDBMEncounterName(mod)
     return nil
 end
 
+function Events:GetKnownEncounterName(name)
+    if not name or name == "" then
+        return nil
+    end
+    if self.encounterBosses and self.encounterBosses[name] then
+        return name
+    end
+    local normalized = normalizeBossName(name)
+    for encounterName in pairs(self.encounterBosses or {}) do
+        if normalizeBossName(encounterName) == normalized then
+            return encounterName
+        end
+    end
+    local encounterName = self:GetEncounterForBossName(name)
+    return encounterName
+end
+
 function Events:HandleDBMPull(mod)
     if not (Goals and Goals.db and Goals.db.settings and Goals.db.settings.dbmIntegration) then
         return
     end
-    local encounterName = self:GetDBMEncounterName(mod)
+    local encounterName = self:GetKnownEncounterName(self:GetDBMEncounterName(mod))
     if not encounterName then
         return
     end
@@ -195,12 +211,12 @@ function Events:HandleDBMEnd(mod, success)
     if not (Goals and Goals.db and Goals.db.settings and Goals.db.settings.dbmIntegration) then
         return
     end
-    local encounterName = self:GetDBMEncounterName(mod)
-    if not encounterName then
+    if not Goals.encounter.active then
         return
     end
-    if Goals.encounter.name ~= encounterName then
-        Goals.encounter.name = encounterName
+    local encounterName = self:GetKnownEncounterName(self:GetDBMEncounterName(mod))
+    if not encounterName or Goals.encounter.name ~= encounterName then
+        return
     end
     self:FinishEncounter(success)
 end
@@ -437,13 +453,6 @@ function Events:OnEvent(event, ...)
     end
     if event == "CHAT_MSG_ADDON" then
         Goals.Comm:OnMessage(...)
-        return
-    end
-    if event == "BOSS_KILL" then
-        local _, bossName = ...
-        if bossName then
-            self:MarkBossDead(bossName, true)
-        end
         return
     end
     if event == "UNIT_SPELLCAST_SUCCEEDED" then
@@ -770,6 +779,12 @@ end
 function Events:GetEncounterForBossName(bossName)
     if not bossName then
         return nil
+    end
+    if type(IsInInstance) == "function" then
+        local inInstance, instanceType = IsInInstance()
+        if inInstance and instanceType == "party" then
+            return nil
+        end
     end
     local normalized = normalizeBossName(bossName)
     if bossIgnoreList[normalized] then
