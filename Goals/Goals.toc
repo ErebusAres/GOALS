@@ -1,7 +1,7 @@
 ## Interface: 30300
 ## Author: Adam and Corey
 ## Title: |cff00ccffGOALS|r - Gen2
-## Version: v2.23
+## Version: v2.24
 ## Notes: DKP-style boss and loot tracker for Wrath 3.3.5a
 ## DefaultState: enabled
 ## SavedVariables: GoalsDB
@@ -29,5 +29,13 @@ updates.lua
 CombatProvider.lua
 UI.xml
 gui.lua
+UI\Shell.lua
+UI\Overview.lua
+UI\Loot.lua
+UI\History.lua
+UI\Wishlist.lua
+UI\Combat.lua
+UI\Developer.lua
+UI\Minimap.lua
 UI\Diagnostics.lua
 UI\Settings.lua

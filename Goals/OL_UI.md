@@ -310,3 +310,11 @@ Goal: add tab-aware info density without clutter. Provide up to 6 short, glancea
 - Kept shared visual helpers private to the UI layer through `UI.ModuleHelpers`; no saved-variable or gameplay behavior changed.
 - Wishlist completion status now updates the center footer segment directly, keeping white status text out of the gear grid and away from bottom-row item names.
 - This is the first conservative split of the large `gui.lua`; additional tabs should only move after the current release is tested.
+
+## Full UI Modularization (7/13/2026)
+
+- Completed the UI split: all `UI:` methods now live in feature modules under `UI/`.
+- Added modules for Shell, Overview, Loot, History, Wishlist, Combat, Developer tools, and Minimap/mini-tracker behavior.
+- `gui.lua` now contains the shared visual helpers and private module context instead of every tab and refresh implementation.
+- Diagnostics and Settings remain in their dedicated modules from the first phase.
+- Version advanced to v2.24 for the full modularized release.
