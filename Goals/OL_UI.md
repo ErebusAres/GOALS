@@ -318,3 +318,9 @@ Goal: add tab-aware info density without clutter. Provide up to 6 short, glancea
 - `gui.lua` now contains the shared visual helpers and private module context instead of every tab and refresh implementation.
 - Diagnostics and Settings remain in their dedicated modules from the first phase.
 - Version advanced to v2.24 for the full modularized release.
+
+## Wishlist Undo Control (7/13/2026)
+
+- Replaced the wide wishlist undo text button with a compact undo-arrow icon.
+- The hover tooltip now identifies the removed item and equipment slot and shows how long the undo remains available.
+- Version advanced to v2.25.

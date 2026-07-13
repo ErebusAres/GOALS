@@ -733,12 +733,42 @@ function UI:CreateWishlistTab(page)
     summary:Hide()
     self.wishlistCompletionSummary = summary
 
-    local undoBtn = CreateFrame("Button", nil, leftInset, "UIPanelButtonTemplate")
-    undoBtn:SetSize(240, 20)
-    undoBtn:SetPoint("BOTTOM", leftInset, "BOTTOM", 0, 38)
-    undoBtn:SetText("Undo removed item")
+    local undoBtn = CreateFrame("Button", nil, leftInset)
+    undoBtn:SetSize(22, 22)
+    -- Keep the transient control clear of the bottom-row gear slots and labels.
+    undoBtn:SetPoint("BOTTOMRIGHT", leftInset, "BOTTOMRIGHT", -8, 34)
+    undoBtn:SetNormalTexture("Interface\\Buttons\\UI-RotationLeft-Button-Up")
+    undoBtn:SetPushedTexture("Interface\\Buttons\\UI-RotationLeft-Button-Down")
+    undoBtn:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
     undoBtn:SetScript("OnClick", function()
         if Goals:UndoWishlistRemoval() then UI:UpdateWishlistUI() end
+    end)
+    undoBtn:SetScript("OnEnter", function(selfBtn)
+        local undo = Goals.wishlistUndo
+        if not undo or not undo.entry then
+            return
+        end
+        local entry = undo.entry
+        local itemName, itemLink
+        if entry.itemId and GetItemInfo then
+            itemName, itemLink = GetItemInfo(entry.itemId)
+        end
+        itemName = itemName or entry.itemName or entry.name or "Removed item"
+        local slotDef = Goals.GetWishlistSlotDef and Goals:GetWishlistSlotDef(undo.slotKey) or nil
+        local slotName = slotDef and slotDef.label or undo.slotKey
+        local remaining = math.max(0, 60 - (time() - (undo.ts or 0)))
+
+        GameTooltip:SetOwner(selfBtn, "ANCHOR_RIGHT")
+        GameTooltip:SetText("Undo wishlist removal")
+        GameTooltip:AddLine(itemLink or itemName, 1, 1, 1)
+        if slotName and slotName ~= "" then
+            GameTooltip:AddLine("Slot: " .. slotName, 0.75, 0.75, 0.75)
+        end
+        GameTooltip:AddLine(string.format("Restores this item (%d seconds remaining).", math.ceil(remaining)), 0.55, 0.8, 1, true)
+        GameTooltip:Show()
+    end)
+    undoBtn:SetScript("OnLeave", function()
+        GameTooltip:Hide()
     end)
     undoBtn:Hide()
     self.wishlistUndoButton = undoBtn
@@ -4139,15 +4169,6 @@ function UI:UpdateWishlistUI()
     end
     if self.wishlistUndoButton then
         local undo = Goals.wishlistUndo
-        if undo and undo.entry then
-            local itemName = undo.entry.itemName or undo.entry.name
-            if (not itemName or itemName == "") and undo.entry.itemId and GetItemInfo then
-                itemName = GetItemInfo(undo.entry.itemId)
-            end
-            self.wishlistUndoButton:SetText(itemName and ("Undo: " .. itemName) or "Undo removed item")
-        else
-            self.wishlistUndoButton:SetText("Undo removed item")
-        end
         setShown(self.wishlistUndoButton, undo and (time() - (undo.ts or 0)) <= 60)
     end
     if self.wishlistNotesBox and self.wishlistSourceEntryBox then
