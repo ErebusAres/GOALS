@@ -183,11 +183,20 @@ function History:AddSetPoints(playerName, before, after, reason)
     )
 end
 
-function History:AddLootFound(itemLink, lootId, entryTs)
+function History:AddLootFound(itemLink, lootId, entryTs, sourceSender)
+    local lootSources = nil
+    if sourceSender and sourceSender ~= "" then
+        lootSources = { [sourceSender] = lootId or true }
+    end
     local entry = self:AddEntry(
         "LOOT_FOUND",
         string.format("Found %s", itemLink),
-        { item = itemLink, lootId = lootId }
+        {
+            item = itemLink,
+            lootId = lootId,
+            sourceSender = sourceSender,
+            lootSources = lootSources,
+        }
     )
     if entry and entryTs then
         entry.ts = entryTs

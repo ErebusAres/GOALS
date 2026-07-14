@@ -212,25 +212,25 @@ function UI:CreateSettingsTab(page)
 
     local bindsTitle = createLabel(leftInset, "Keybindings", "GameFontNormal")
     bindsTitle:SetPoint("TOPLEFT", lastSettingsCheck, "BOTTOMLEFT", 12, -16)
-    self.keybindsTitle = bindsTitle
+    self.settingsKeybindsTitle = bindsTitle
 
     local uiBindLabel = createLabel(leftInset, "Toggle GOALS UI:", "GameFontHighlightSmall")
     uiBindLabel:SetPoint("TOPLEFT", bindsTitle, "BOTTOMLEFT", 0, -8)
-    self.keybindUiLabel = uiBindLabel
+    self.settingsKeybindUiLabel = uiBindLabel
 
     local uiBindValue = createLabel(leftInset, "", "GameFontHighlightSmall")
     uiBindValue:SetPoint("LEFT", uiBindLabel, "RIGHT", 6, 0)
     uiBindValue:SetJustifyH("LEFT")
-    self.keybindUiValue = uiBindValue
+    self.settingsKeybindUiValue = uiBindValue
 
     local miniBindLabel = createLabel(leftInset, "Toggle Mini Viewer:", "GameFontHighlightSmall")
     miniBindLabel:SetPoint("TOPLEFT", uiBindLabel, "BOTTOMLEFT", 0, -6)
-    self.keybindMiniLabel = miniBindLabel
+    self.settingsKeybindMiniLabel = miniBindLabel
 
     local miniBindValue = createLabel(leftInset, "", "GameFontHighlightSmall")
     miniBindValue:SetPoint("LEFT", miniBindLabel, "RIGHT", 6, 0)
     miniBindValue:SetJustifyH("LEFT")
-    self.keybindMiniValue = miniBindValue
+    self.settingsKeybindMiniValue = miniBindValue
 
     setupSudoDevPopup()
     setupSaveTableHelpPopup()
@@ -430,4 +430,29 @@ function UI:CreateSettingsTab(page)
         hideSideTooltip()
     end)
     self.settingsSyncRequestButton = syncRequestBtn
+
+    -- Size each scroll child to its actual controls. Fixed oversized heights
+    -- leave a long, empty scroll range when the Settings page is taller than
+    -- its contents.
+    local function fitScrollContent(scroll, content, bottomControl)
+        local function updateHeight()
+            local contentTop = content:GetTop()
+            local controlBottom = bottomControl:GetBottom()
+            local viewportHeight = scroll:GetHeight() or 0
+            if contentTop and controlBottom then
+                content:SetHeight(math.max(viewportHeight, contentTop - controlBottom + 12))
+                scroll:UpdateScrollChildRect()
+            end
+        end
+        scroll:HookScript("OnShow", updateHeight)
+        scroll:HookScript("OnSizeChanged", updateHeight)
+        if C_Timer and C_Timer.After then
+            C_Timer.After(0, updateHeight)
+        else
+            updateHeight()
+        end
+    end
+
+    fitScrollContent(leftScroll, leftInset, miniBindLabel)
+    fitScrollContent(rightScroll, rightInset, syncRequestBtn)
 end

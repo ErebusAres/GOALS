@@ -93,12 +93,20 @@ function UI:GetLootTableEntries()
     local LOOT_GROUP_WINDOW = 15
     local LOOT_ASSIGN_MERGE_WINDOW = 3600
 
+    local function getItemIdentity(itemLink)
+        if Goals and Goals.GetLootIdentityKey then
+            return Goals:GetLootIdentityKey(itemLink)
+        end
+        return itemLink or ""
+    end
+
     for _, entry in ipairs(history) do
         if entry.kind == "LOOT_FOUND" then
             local itemLink = entry.data and entry.data.item or nil
             if itemLink and itemLink ~= "" then
-                foundByLink[itemLink] = foundByLink[itemLink] or {}
-                table.insert(foundByLink[itemLink], {
+                local identity = getItemIdentity(itemLink)
+                foundByLink[identity] = foundByLink[identity] or {}
+                table.insert(foundByLink[identity], {
                     entry = entry,
                     key = getLootNoteKey(itemLink, entry.ts),
                 })
@@ -124,7 +132,7 @@ function UI:GetLootTableEntries()
             local dataEntry = entry.data or {}
             local itemLink = dataEntry.item or ""
             local matched = nil
-            local listForLink = foundByLink[itemLink]
+            local listForLink = foundByLink[getItemIdentity(itemLink)]
             if listForLink then
                 for i = #listForLink, 1, -1 do
                     local candidate = listForLink[i]
@@ -246,7 +254,7 @@ function UI:GetLootTableEntries()
             if entry and entry.link then
                 local key = getLootNoteKey(entry.link, entry.ts)
                 local matched = nil
-                local listForLink = foundByLink[entry.link]
+                local listForLink = foundByLink[getItemIdentity(entry.link)]
                 if listForLink and #listForLink > 0 then
                     local bestIndex = nil
                     local bestDiff = nil

@@ -1380,39 +1380,37 @@ function Goals:RecordLootFound(itemLink, lootId, entryTs)
     if not itemLink then
         return
     end
-    self.state.lootFoundSeenLinks = self.state.lootFoundSeenLinks or {}
-    local lastSeen = self.state.lootFoundSeenLinks[itemLink] or 0
-    if lastSeen > 0 and (time() - lastSeen) < 120 then
+    self.state.lootFoundSeenIds = self.state.lootFoundSeenIds or {}
+    local seenKey = lootId and string.format("local:%s:%s", tostring(lootId), tostring(entryTs or 0)) or nil
+    if seenKey and self.state.lootFoundSeenIds[seenKey] then
         return
     end
-    if next(self.state.lootFoundSeenLinks) then
-        local now = time()
-        for link, ts in pairs(self.state.lootFoundSeenLinks) do
-            if (now - (ts or 0)) > 300 then
-                self.state.lootFoundSeenLinks[link] = nil
-            end
-        end
+    if seenKey then
+        self.state.lootFoundSeenIds[seenKey] = entryTs or time()
     end
-    self.state.lootFoundSeenLinks[itemLink] = time()
     if self.History then
-        self.History:AddLootFound(itemLink, lootId, entryTs)
+        self.History:AddLootFound(itemLink, lootId, entryTs, self:GetPlayerName())
     end
+end
+
+function Goals:GetLootIdentityKey(itemLink)
+    local itemId = self:GetItemIdFromLink(itemLink)
+    if itemId then
+        return "item:" .. tostring(itemId)
+    end
+    return tostring(itemLink or "")
 end
 
 function Goals:RemoveFoundLootByLink(itemLink)
     if not itemLink or not self.state.lootFound then
         return
     end
-    local removed = false
     for i = #self.state.lootFound, 1, -1 do
         local entry = self.state.lootFound[i]
         if entry and entry.link == itemLink then
             table.remove(self.state.lootFound, i)
-            removed = true
+            return
         end
-    end
-    if removed then
-        return
     end
     local itemId = self:GetItemIdFromLink(itemLink)
     if not itemId then
@@ -1460,22 +1458,18 @@ function Goals:ApplyLootFound(id, ts, itemLink, sender)
     end
     self.state.lootFound = self.state.lootFound or {}
     self.state.lootFoundSeenIds = self.state.lootFoundSeenIds or {}
-    self.state.lootFoundSeenLinks = self.state.lootFoundSeenLinks or {}
     local now = ts or time()
-    local lastSeen = self.state.lootFoundSeenLinks[itemLink] or 0
-    if lastSeen > 0 and math.abs(now - lastSeen) < 120 then
-        return
-    end
+    local sourceSender = self:NormalizeName(sender or "")
     if id and id > 0 then
         local key = tostring(id)
         if ts then
             key = key .. ":" .. tostring(ts)
         end
-        if sender then
-            key = sender .. ":" .. key
+        if sourceSender ~= "" then
+            key = sourceSender .. ":" .. key
         end
         local seenAt = self.state.lootFoundSeenIds[key]
-        if seenAt and math.abs(now - seenAt) < 120 then
+        if seenAt then
             return
         end
         if next(self.state.lootFoundSeenIds) then
@@ -1487,6 +1481,41 @@ function Goals:ApplyLootFound(id, ts, itemLink, sender)
         end
         self.state.lootFoundSeenIds[key] = now
     end
+
+    -- The group leader and a separate master looter can both announce the
+    -- same loot window. Reconcile those broadcasts by source while retaining
+    -- the correct count when two copies of an item genuinely dropped.
+    local identityKey = self:GetLootIdentityKey(itemLink)
+    local duplicateEntry = nil
+    local duplicateDiff = nil
+    if sourceSender ~= "" and self.db and self.db.history then
+        for index, historyEntry in ipairs(self.db.history) do
+            if index > 100 then
+                break
+            end
+            local data = historyEntry and historyEntry.data or nil
+            if historyEntry and historyEntry.kind == "LOOT_FOUND" and data and data.item then
+                local entryTs = tonumber(historyEntry.ts or 0) or 0
+                local diff = math.abs(now - entryTs)
+                local sources = data.lootSources or {}
+                if diff <= 10
+                    and self:GetLootIdentityKey(data.item) == identityKey
+                    and self:NormalizeName(data.sourceSender or "") ~= sourceSender
+                    and sources[sourceSender] == nil
+                    and (duplicateDiff == nil or diff < duplicateDiff) then
+                    duplicateEntry = historyEntry
+                    duplicateDiff = diff
+                end
+            end
+        end
+    end
+    if duplicateEntry then
+        local data = duplicateEntry.data
+        data.lootSources = data.lootSources or {}
+        data.lootSources[sourceSender] = id or true
+        return
+    end
+
     table.insert(self.state.lootFound, 1, {
         slot = 0,
         link = itemLink,
@@ -1495,9 +1524,8 @@ function Goals:ApplyLootFound(id, ts, itemLink, sender)
         synced = true,
         id = id,
     })
-    self.state.lootFoundSeenLinks[itemLink] = ts or time()
     if self.History then
-        self.History:AddLootFound(itemLink, id, ts)
+        self.History:AddLootFound(itemLink, id, ts, sourceSender)
     end
     if self.HandleWishlistLoot then
         self:HandleWishlistLoot(itemLink)
@@ -1667,15 +1695,6 @@ function Goals:AssignLootSlot(slot, targetName, itemLink)
             self:Debug("AssignLootSlot skipped: dev test requires an item link.")
             return
         end
-        if self.state.lootFound then
-            for i, entry in ipairs(self.state.lootFound) do
-                if entry.link == itemLink then
-                    entry.assignedTo = self:NormalizeName(targetName)
-                    table.remove(self.state.lootFound, i)
-                    break
-                end
-            end
-        end
         self:HandleLootAssignment(targetName, itemLink, false, true)
         self:NotifyDataChanged()
         return
@@ -1713,15 +1732,6 @@ function Goals:AssignLootSlot(slot, targetName, itemLink)
         GiveMasterLoot(slot, index)
     end
     local link = itemLink or (GetLootSlotLink and GetLootSlotLink(slot) or nil)
-    if self.state.lootFound then
-        for i, entry in ipairs(self.state.lootFound) do
-            if entry.slot == slot then
-                entry.assignedTo = self:NormalizeName(targetName)
-                table.remove(self.state.lootFound, i)
-                break
-            end
-        end
-    end
     if link then
         self:HandleLootAssignment(targetName, link, false, true)
     end

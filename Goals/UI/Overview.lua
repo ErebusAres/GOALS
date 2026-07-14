@@ -743,24 +743,23 @@ function UI:CreateOverviewTab(page)
     local keybindsLabel, keybindsBar = addSectionHeader("Keybindings")
     self.overviewKeybindsLabel = keybindsLabel
     self.overviewKeybindsBar = keybindsBar
-    self.keybindsTitle = keybindsLabel
 
     local uiBindLabel = addLabel("Toggle main window:")
-    self.keybindUiLabel = uiBindLabel
+    self.overviewKeybindUiLabel = uiBindLabel
     local uiBindValue = createLabel(optionsContent, "", "GameFontHighlightSmall")
     uiBindValue:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
     uiBindValue:SetJustifyH("LEFT")
     styleOptionsLabel(uiBindValue)
-    self.keybindUiValue = uiBindValue
+    self.overviewKeybindUiValue = uiBindValue
     y = y - 16
 
     local miniBindLabel = addLabel("Toggle mini tracker:")
-    self.keybindMiniLabel = miniBindLabel
+    self.overviewKeybindMiniLabel = miniBindLabel
     local miniBindValue = createLabel(optionsContent, "", "GameFontHighlightSmall")
     miniBindValue:SetPoint("TOPLEFT", optionsContent, "TOPLEFT", 8, y)
     miniBindValue:SetJustifyH("LEFT")
     styleOptionsLabel(miniBindValue)
-    self.keybindMiniValue = miniBindValue
+    self.overviewKeybindMiniValue = miniBindValue
     y = y - 16
 
     local function storeOverviewAnchor(control)
@@ -790,11 +789,10 @@ function UI:CreateOverviewTab(page)
 
     self.overviewShiftBelowDev = {
         self.overviewKeybindsBar,
-        self.keybindsTitle,
-        self.keybindUiLabel,
-        self.keybindUiValue,
-        self.keybindMiniLabel,
-        self.keybindMiniValue,
+        self.overviewKeybindUiLabel,
+        self.overviewKeybindUiValue,
+        self.overviewKeybindMiniLabel,
+        self.overviewKeybindMiniValue,
     }
 
     for _, control in ipairs(self.overviewShiftBelowMaintenance) do
@@ -869,24 +867,24 @@ function UI:CreateOverviewTab(page)
                 -- Keybindings section (skip Dev Tools entirely)
                 setSpacer(0)
                 setHeader(self.overviewKeybindsBar)
-                if self.keybindUiLabel and self.keybindUiLabel.ClearAllPoints then
-                    self.keybindUiLabel:ClearAllPoints()
-                    self.keybindUiLabel:SetPoint("TOPLEFT", content, "TOPLEFT", 8, y)
+                if self.overviewKeybindUiLabel and self.overviewKeybindUiLabel.ClearAllPoints then
+                    self.overviewKeybindUiLabel:ClearAllPoints()
+                    self.overviewKeybindUiLabel:SetPoint("TOPLEFT", content, "TOPLEFT", 8, y)
                     y = y - 18
                 end
-                if self.keybindUiValue and self.keybindUiValue.ClearAllPoints then
-                    self.keybindUiValue:ClearAllPoints()
-                    self.keybindUiValue:SetPoint("TOPLEFT", content, "TOPLEFT", 8, y)
+                if self.overviewKeybindUiValue and self.overviewKeybindUiValue.ClearAllPoints then
+                    self.overviewKeybindUiValue:ClearAllPoints()
+                    self.overviewKeybindUiValue:SetPoint("TOPLEFT", content, "TOPLEFT", 8, y)
                     y = y - 16
                 end
-                if self.keybindMiniLabel and self.keybindMiniLabel.ClearAllPoints then
-                    self.keybindMiniLabel:ClearAllPoints()
-                    self.keybindMiniLabel:SetPoint("TOPLEFT", content, "TOPLEFT", 8, y)
+                if self.overviewKeybindMiniLabel and self.overviewKeybindMiniLabel.ClearAllPoints then
+                    self.overviewKeybindMiniLabel:ClearAllPoints()
+                    self.overviewKeybindMiniLabel:SetPoint("TOPLEFT", content, "TOPLEFT", 8, y)
                     y = y - 18
                 end
-                if self.keybindMiniValue and self.keybindMiniValue.ClearAllPoints then
-                    self.keybindMiniValue:ClearAllPoints()
-                    self.keybindMiniValue:SetPoint("TOPLEFT", content, "TOPLEFT", 8, y)
+                if self.overviewKeybindMiniValue and self.overviewKeybindMiniValue.ClearAllPoints then
+                    self.overviewKeybindMiniValue:ClearAllPoints()
+                    self.overviewKeybindMiniValue:SetPoint("TOPLEFT", content, "TOPLEFT", 8, y)
                     y = y - 16
                 end
 

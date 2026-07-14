@@ -907,11 +907,19 @@ function UI:Refresh()
         return text1 or text2 or "Unbound"
     end
 
-    if self.keybindUiValue then
-        self.keybindUiValue:SetText(formatBinding("GOALS_TOGGLE_UI"))
+    local uiBindingText = formatBinding("GOALS_TOGGLE_UI")
+    local miniBindingText = formatBinding("GOALS_TOGGLE_MINI")
+    if self.overviewKeybindUiValue then
+        self.overviewKeybindUiValue:SetText(uiBindingText)
     end
-    if self.keybindMiniValue then
-        self.keybindMiniValue:SetText(formatBinding("GOALS_TOGGLE_MINI"))
+    if self.overviewKeybindMiniValue then
+        self.overviewKeybindMiniValue:SetText(miniBindingText)
+    end
+    if self.settingsKeybindUiValue then
+        self.settingsKeybindUiValue:SetText(uiBindingText)
+    end
+    if self.settingsKeybindMiniValue then
+        self.settingsKeybindMiniValue:SetText(miniBindingText)
     end
     if self.wishlistTestCountBox then
         local value = tonumber(Goals.db.settings.devTestWishlistItems) or 1
